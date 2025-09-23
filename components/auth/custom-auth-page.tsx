@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useState, useMemo } from "react"
-import { SignIn, SignUp } from "@clerk/nextjs"
-import { useSignIn } from "@clerk/nextjs"
+import { SignIn, SignUp, useSignIn } from "@clerk/nextjs"
+import type { Theme } from "@clerk/types"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type Tab = "signin" | "signup"
 
@@ -14,6 +15,7 @@ interface Props {
 export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   const [tab, setTab] = useState<Tab>(defaultTab)
   const { signIn, isLoaded: isSignInLoaded } = useSignIn()
+  const [oauthError, setOauthError] = useState<string | null>(null)
 
   const appearance = useMemo(
     () => ({
@@ -45,17 +47,32 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
         dividerRow: "hidden",
         identityPreview: "hidden",
       },
-    }),
+    }) satisfies Theme,
     []
   )
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_github") {
     if (!isSignInLoaded || !signIn) return
-    await signIn.authenticateWithRedirect({
-      strategy,
-      redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/dashboard",
-    })
+    setOauthError(null)
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy,
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/dashboard",
+      })
+    } catch (err) {
+      // Log detailed error for debugging without exposing internals to users
+      console.error("OAuth redirect failed", {
+        strategy,
+        error:
+          err instanceof Error
+            ? { name: err.name, message: err.message, stack: err.stack }
+            : err,
+      })
+      setOauthError(
+        "Authentication failed. Please try again or use another provider.",
+      )
+    }
   }
 
   return (
@@ -155,6 +172,12 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   <span className="bg-black px-2 text-white/50">Or continue with</span>
                 </div>
               </div>
+
+              {oauthError && (
+                <Alert variant="destructive" className="mb-4 bg-red-500/10 border-red-500/30 text-red-200">
+                  <AlertDescription>{oauthError}</AlertDescription>
+                </Alert>
+              )}
 
               {/* Social Logins */}
               <div className="grid grid-cols-2 gap-3">

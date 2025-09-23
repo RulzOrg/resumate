@@ -6,7 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { RefreshCw, Settings, Plus } from "lucide-react"
+import { RefreshCw, Settings, Plus, User } from "lucide-react"
 import Link from "next/link"
 import { LogoutButton } from "./logout-button"
 import { UploadResumeDialog } from "./upload-resume-dialog"
@@ -40,8 +40,19 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             </UploadResumeDialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <div className="cursor-pointer">
-                  <UserAvatar />
+                <div
+                  className="cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Open account menu"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      ;(e.currentTarget as HTMLElement).click()
+                    }
+                  }}
+                >
+                  <UserAvatar user={user} />
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-lg border-white/10" align="end" forceMount>

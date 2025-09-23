@@ -1,9 +1,74 @@
 import { neon } from "@neondatabase/serverless"
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth, currentUser, clerkClient } from "@clerk/nextjs/server"
 
 const sql = neon(process.env.DATABASE_URL!)
 
 export { sql }
+
+// Monitoring and debugging utilities
+export async function logConstraintViolation(
+  operation: string, 
+  error: any, 
+  context: Record<string, any>
+) {
+  const violationType = error.code === "23503" ? "foreign_key" : 
+                       error.code === "23505" ? "unique_constraint" : "unknown"
+  
+  console.error(`[DB_CONSTRAINT_VIOLATION] ${violationType.toUpperCase()}:`, {
+    timestamp: new Date().toISOString(),
+    operation,
+    error_code: error.code,
+    error_message: error.message,
+    context,
+    constraint_name: error.constraint_name || 'unknown'
+  })
+
+  // In production, you might want to send this to a monitoring service
+  // await sendToMonitoringService({ operation, error, context })
+}
+
+// Database health check function
+export async function checkDatabaseHealth() {
+  try {
+    const results = await Promise.all([
+      // Check if we can connect to database
+      sql`SELECT 1 as health_check`,
+      
+      // Check users_sync table structure
+      sql`SELECT COUNT(*) as user_count FROM users_sync WHERE deleted_at IS NULL`,
+      
+      // Check for orphaned records (shouldn't happen with foreign keys)
+      sql`
+        SELECT COUNT(*) as orphaned_job_analyses
+        FROM job_analysis ja
+        LEFT JOIN users_sync u ON ja.user_id = u.id
+        WHERE u.id IS NULL
+      `
+    ])
+
+    const [healthCheck, userCount, orphanedCount] = results
+    
+    console.log('[DB_HEALTH_CHECK] Database health status:', {
+      timestamp: new Date().toISOString(),
+      connection: healthCheck[0]?.health_check === 1 ? 'healthy' : 'unhealthy',
+      user_count: userCount[0]?.user_count || 0,
+      orphaned_job_analyses: orphanedCount[0]?.orphaned_job_analyses || 0
+    })
+
+    return {
+      healthy: true,
+      userCount: userCount[0]?.user_count || 0,
+      orphanedCount: orphanedCount[0]?.orphaned_job_analyses || 0
+    }
+  } catch (error: any) {
+    console.error('[DB_HEALTH_CHECK] Database health check failed:', {
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      code: error.code
+    })
+    return { healthy: false, error: error.message }
+  }
+}
 
 function generateUUID() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -74,6 +139,11 @@ export interface JobAnalysis {
     company_culture: string[]
     benefits: string[]
     match_score?: number
+    analysis_quality?: {
+      confidence: number
+      completeness: number
+      content_processed: boolean
+    }
   }
   keywords: string[]
   required_skills: string[]
@@ -136,9 +206,14 @@ export interface ClerkWebhookEvent {
 // User functions
 export async function createUserFromClerk(clerkUserId: string, email: string, name: string) {
   const [user] = await sql`
-    INSERT INTO users_sync (id, clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at)
-    VALUES (${generateUUID()}, ${clerkUserId}, ${email}, ${name}, 'free', 'free', NOW(), NOW())
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at
+    INSERT INTO users_sync (clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at)
+    VALUES (${clerkUserId}, ${email}, ${name}, 'free', 'free', NOW(), NOW())
+    ON CONFLICT (clerk_user_id) DO UPDATE
+      SET email = EXCLUDED.email,
+          name = EXCLUDED.name,
+          deleted_at = NULL,
+          updated_at = NOW()
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, created_at, updated_at
   `
   return user as User
 }
@@ -313,7 +388,109 @@ export async function getUserJobApplications(user_id: string) {
   return applications as (JobApplication & { resume_title: string })[]
 }
 
-// Job analysis functions
+// Enhanced job analysis creation with user verification
+export async function createJobAnalysisWithVerification(data: {
+  user_id: string
+  job_title: string
+  company_name?: string
+  job_url?: string
+  job_description: string
+  analysis_result: JobAnalysis["analysis_result"]
+}) {
+  console.log('Starting job analysis creation with verification:', {
+    user_id: data.user_id,
+    job_title: data.job_title,
+    company_name: data.company_name
+  })
+
+  try {
+    // Step 1: Verify user exists in database
+    const user = await getUserById(data.user_id)
+    if (!user) {
+      console.error('User not found for job analysis creation:', { user_id: data.user_id })
+      throw new Error(`User not found with ID: ${data.user_id}. Cannot create job analysis.`)
+    }
+
+    console.log('User verification successful:', { 
+      user_id: user.id, 
+      email: user.email, 
+      clerk_user_id: user.clerk_user_id 
+    })
+
+    // Step 2: Validate analysis_result structure
+    if (!data.analysis_result || typeof data.analysis_result !== 'object') {
+      throw new Error('Invalid analysis_result: must be an object')
+    }
+
+    // Step 3: Extract fields safely with fallbacks
+    const keywords = Array.isArray(data.analysis_result.keywords) ? data.analysis_result.keywords : []
+    const required_skills = Array.isArray(data.analysis_result.required_skills) ? data.analysis_result.required_skills : []
+    const preferred_skills = Array.isArray(data.analysis_result.preferred_skills) ? data.analysis_result.preferred_skills : []
+    const experience_level = data.analysis_result.experience_level || null
+    const salary_range = data.analysis_result.salary_range || null
+    const location = data.analysis_result.location || null
+
+    // Step 4: Generate UUID fallback if database doesn't handle it
+    const id = generateUUID()
+
+    console.log('Inserting job analysis into database:', {
+      id,
+      user_id: data.user_id,
+      job_title: data.job_title,
+      analysis_keys: Object.keys(data.analysis_result)
+    })
+
+    // Step 5: Insert with comprehensive error handling
+    const [analysis] = await sql`
+      INSERT INTO job_analysis (
+        id, user_id, job_title, company_name, job_url, job_description, 
+        analysis_result, keywords, required_skills, preferred_skills,
+        experience_level, salary_range, location, created_at, updated_at
+      )
+      VALUES (
+        ${id}, ${data.user_id}, ${data.job_title}, ${data.company_name || null}, 
+        ${data.job_url || null}, ${data.job_description}, ${JSON.stringify(data.analysis_result)},
+        ${keywords}, ${required_skills}, ${preferred_skills}, ${experience_level},
+        ${salary_range}, ${location}, NOW(), NOW()
+      )
+      RETURNING *
+    `
+
+    console.log('Job analysis created successfully:', { 
+      analysis_id: analysis.id, 
+      user_id: analysis.user_id,
+      job_title: analysis.job_title 
+    })
+
+    return analysis as JobAnalysis
+  } catch (error: any) {
+    console.error('Failed to create job analysis with verification:', {
+      error: error.message,
+      code: error.code,
+      user_id: data.user_id,
+      job_title: data.job_title,
+      analysis_structure: data.analysis_result ? Object.keys(data.analysis_result) : 'null'
+    })
+
+    // Enhanced error handling for foreign key constraint violations
+    if (error.code === "23503" || error.code === "23505") {
+      await logConstraintViolation('createJobAnalysis', error, {
+        user_id: data.user_id,
+        job_title: data.job_title,
+        company_name: data.company_name,
+        operation_step: 'job_analysis_insertion'
+      })
+      
+      if (error.code === "23503") {
+        throw new Error(`Cannot create job analysis: User with ID ${data.user_id} does not exist in the database. Please ensure the user is properly created first.`)
+      }
+    }
+
+    throw error
+  }
+}
+
+// Original job analysis function (kept for backward compatibility)
 export async function createJobAnalysis(data: {
   user_id: string
   job_title: string
@@ -322,23 +499,8 @@ export async function createJobAnalysis(data: {
   job_description: string
   analysis_result: JobAnalysis["analysis_result"]
 }) {
-  const [analysis] = await sql`
-    INSERT INTO job_analysis (
-      user_id, job_title, company_name, job_url, job_description, 
-      analysis_result, keywords, required_skills, preferred_skills,
-      experience_level, salary_range, location, created_at, updated_at
-    )
-    VALUES (
-      ${data.user_id}, ${data.job_title}, ${data.company_name || null}, 
-      ${data.job_url || null}, ${data.job_description}, ${JSON.stringify(data.analysis_result)},
-      ${data.analysis_result.keywords}, ${data.analysis_result.required_skills}, 
-      ${data.analysis_result.preferred_skills}, ${data.analysis_result.experience_level || null},
-      ${data.analysis_result.salary_range || null}, ${data.analysis_result.location || null},
-      NOW(), NOW()
-    )
-    RETURNING *
-  `
-  return analysis as JobAnalysis
+  // Delegate to the enhanced version with verification
+  return await createJobAnalysisWithVerification(data)
 }
 
 export async function getUserJobAnalyses(user_id: string) {
@@ -523,24 +685,139 @@ export async function logClerkWebhookEvent(data: {
   return event as ClerkWebhookEvent
 }
 
+// Enhanced user verification function
+export async function ensureUserExists(userId: string): Promise<User | null> {
+  // First, try to get the user from database
+  let dbUser = await getUserByClerkId(userId)
+  
+  // Check if user exists and is not soft-deleted
+  if (dbUser) {
+    console.log('User found in database:', { id: dbUser.id, clerk_user_id: dbUser.clerk_user_id })
+    return dbUser
+  }
+
+  console.log('User not found in database, attempting to create:', { clerk_user_id: userId })
+
+  // User doesn't exist, try to create them
+  let clerkUser
+  try {
+    clerkUser = await clerkClient.users.getUser(userId)
+  } catch (error) {
+    console.error("Failed to fetch Clerk user for user creation:", { 
+      clerk_user_id: userId, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    })
+    return null
+  }
+
+  if (!clerkUser) {
+    console.error("Clerk user not found:", { clerk_user_id: userId })
+    return null
+  }
+
+  const email =
+    clerkUser.emailAddresses?.find((address) => address.id === clerkUser.primaryEmailAddressId)?.emailAddress ||
+    clerkUser.emailAddresses?.[0]?.emailAddress ||
+    ""
+
+  const name = clerkUser.fullName || clerkUser.firstName || clerkUser.username || "User"
+
+  // Retry logic for user creation with exponential backoff
+  let retryCount = 0
+  const maxRetries = 3
+  let delay = 100 // Start with 100ms
+
+  while (retryCount <= maxRetries) {
+    try {
+      console.log(`Attempting to create user (attempt ${retryCount + 1}/${maxRetries + 1}):`, {
+        clerk_user_id: userId,
+        email,
+        name
+      })
+
+      const newUser = await createUserFromClerk(userId, email, name)
+      console.log('User created successfully:', { id: newUser.id, clerk_user_id: newUser.clerk_user_id })
+      return newUser
+    } catch (error: any) {
+      console.error(`User creation attempt ${retryCount + 1} failed:`, {
+        error: error.message,
+        code: error.code,
+        clerk_user_id: userId
+      })
+
+      if (error.code === "23505") {
+        // Unique constraint violation - user was created concurrently
+        await logConstraintViolation('createUserFromClerk', error, {
+          clerk_user_id: userId,
+          email,
+          name,
+          attempt: retryCount + 1
+        })
+        
+        console.log("User creation race condition detected, fetching existing user")
+        const existingUser = await getUserByClerkId(userId)
+        if (existingUser) {
+          console.log('Found existing user after race condition:', { id: existingUser.id })
+          return existingUser
+        }
+      }
+
+      if (retryCount >= maxRetries) {
+        console.error("Max retries exceeded for user creation:", { clerk_user_id: userId })
+        throw error
+      }
+
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay))
+      delay *= 2
+      retryCount++
+    }
+  }
+
+  return null
+}
+
 // Utility functions
 export async function getOrCreateUser() {
   const { userId } = await auth()
 
   if (!userId) {
+    console.log("No userId from auth, returning null")
     return null
   }
 
-  const user = await currentUser()
-  let dbUser = await getUserByClerkId(userId)
+  console.log("Getting or creating user for:", { clerk_user_id: userId })
 
-  if (!dbUser && user) {
-    dbUser = await createUserFromClerk(
-      userId,
-      user.emailAddresses[0]?.emailAddress || "",
-      user.fullName || user.firstName || "User",
-    )
+  // Use enhanced user verification with retry logic
+  try {
+    const user = await ensureUserExists(userId)
+    if (!user) {
+      console.error("Failed to ensure user exists:", { clerk_user_id: userId })
+    }
+    return user
+  } catch (error: any) {
+    console.error("Error in getOrCreateUser:", {
+      error: error.message,
+      code: error.code,
+      clerk_user_id: userId
+    })
+    
+    // Additional fallback for foreign key constraint violations
+    if (error.code === "23503") {
+      console.log("Foreign key constraint error detected, attempting one more user creation")
+      try {
+        // Wait a moment for any database operations to settle
+        await new Promise(resolve => setTimeout(resolve, 200))
+        return await ensureUserExists(userId)
+      } catch (fallbackError: any) {
+        console.error("Fallback user creation also failed:", {
+          error: fallbackError.message,
+          code: fallbackError.code,
+          clerk_user_id: userId
+        })
+      }
+    }
+    
+    throw error
   }
-
-  return dbUser
 }

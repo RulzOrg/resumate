@@ -10,7 +10,6 @@ interface EmptyStateCardProps {
   action?: ReactNode
   className?: string
   dashed?: boolean
-  minHeightClassName?: string
 }
 
 export function EmptyStateCard({
@@ -20,14 +19,12 @@ export function EmptyStateCard({
   action,
   className,
   dashed = true,
-  minHeightClassName = "min-h-[500px]",
 }: EmptyStateCardProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center text-center rounded-2xl p-12 bg-white/5",
+        "flex flex-col items-center justify-center text-center rounded-2xl p-12 bg-white/5 min-h-[500px]",
         dashed ? "border border-dashed border-white/20" : "border border-white/10",
-        minHeightClassName,
         className,
       )}
     >

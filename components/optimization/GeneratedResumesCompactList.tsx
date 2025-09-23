@@ -1,0 +1,60 @@
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { FileText, Download } from "lucide-react"
+import type { OptimizedResume } from "@/lib/db"
+
+interface GeneratedResumesCompactListProps {
+  resumes: OptimizedResume[]
+  limit?: number
+}
+
+export function GeneratedResumesCompactList({ resumes, limit = 3 }: GeneratedResumesCompactListProps) {
+  const items = resumes.slice(0, limit)
+  const handleDownload = async (id: string) => {
+    try {
+      const response = await fetch(`/api/resumes/download?id=${id}&format=pdf`)
+      if (!response.ok) return
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `resume.html`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch {}
+  }
+
+  return (
+    <div className="divide-y divide-white/10">
+      {items.map((resume) => (
+        <div key={resume.id} className="flex flex-col sm:flex-row sm:items-center gap-4 py-4">
+          <div className="flex items-center gap-4 flex-1">
+            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-white/5">
+              <FileText className="h-5 w-5 text-white/70" />
+            </div>
+            <div>
+              <p className="font-medium">Resume for {resume.title}</p>
+              <p className="text-sm text-white/60">
+                Generated {new Date(resume.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 self-start sm:self-center">
+            <div className="text-center">
+              <p className="font-medium text-emerald-400">{resume.match_score || 88}%</p>
+              <p className="text-xs text-white/60">Match</p>
+            </div>
+            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id)}>
+              <Download className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+

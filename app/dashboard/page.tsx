@@ -2,16 +2,35 @@ import { getAuthenticatedUser } from "@/lib/auth-utils"
 import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 import { UploadResumeDialog } from "@/components/dashboard/upload-resume-dialog"
-import { FileText, Download, Plus, Briefcase, RefreshCw, FileCheck } from "lucide-react"
+import { FileText, Download, Plus, RefreshCw, FileCheck } from "lucide-react"
 import { TargetJobsEmptyState } from "@/components/dashboard/TargetJobsEmptyState"
+import { AnalyzeJobDialog } from "@/components/jobs/analyze-job-dialog"
+import { TargetJobsCompactList } from "@/components/dashboard/TargetJobsCompactList"
+import { GeneratedResumesCompactList } from "@/components/optimization/GeneratedResumesCompactList"
 import Link from "next/link"
 import { UserAvatar } from "@/components/dashboard/user-avatar"
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
   const user = await getAuthenticatedUser()
   const resumes = await getUserResumes(user.id)
   const jobAnalyses = await getUserJobAnalyses(user.id)
   const optimizedResumes = await getUserOptimizedResumes(user.id)
+
+  const isDemo = (searchParams?.demo as string) === "1"
+
+  const demoJobAnalyses = [
+    { id: "d1", job_title: "Senior Product Manager", company_name: "Vercel" },
+    { id: "d2", job_title: "Frontend Engineer", company_name: "Stripe" },
+  ] as any
+
+  const demoOptimized = [
+    { id: "o1", title: "Linear", created_at: new Date().toISOString(), match_score: 92 },
+    { id: "o2", title: "OpenAI", created_at: new Date().toISOString(), match_score: 88 },
+  ] as any
 
   const totalGenerations = optimizedResumes.length
   const maxGenerations = user.subscription_plan === "pro" ? 50 : 5
@@ -68,84 +87,26 @@ export default async function DashboardPage() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                   <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Target Jobs</h2>
-                  
+                  <AnalyzeJobDialog existingAnalyses={jobAnalyses}>
+                    <Button className="mt-4 sm:mt-0 inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-4 hover:bg-white/20 transition-colors self-start sm:self-center">
+                      <Plus className="h-4 w-4" />
+                      Add Job
+                    </Button>
+                  </AnalyzeJobDialog>
                 </div>
-                <div className="space-y-4">
-                  {jobAnalyses.length === 0 ? (
-                    <TargetJobsEmptyState />
-                  ) : (
-                    jobAnalyses.slice(0, 2).map((job) => (
-                      <div
-                        key={job.id}
-                        className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg bg-white/5 border border-white/10"
-                      >
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-white/5">
-                            <Briefcase className="h-5 w-5 text-white/70" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{job.job_title}</p>
-                            <p className="text-sm text-white/60">{job.company_name || "Company"}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 self-start sm:self-center">
-                          <Link
-                            href={`/dashboard/jobs`}
-                            className="text-xs font-medium text-white/70 hover:text-white transition"
-                          >
-                            View
-                          </Link>
-                          <Link
-                            href={`/dashboard/optimize`}
-                            className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition"
-                          >
-                            Generate
-                          </Link>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                {(isDemo ? demoJobAnalyses : jobAnalyses).length === 0 ? (
+                  <div className="space-y-4">
+                    <TargetJobsEmptyState existingAnalyses={jobAnalyses} />
+                  </div>
+                ) : (
+                  <TargetJobsCompactList analyses={isDemo ? demoJobAnalyses : jobAnalyses} limit={2} />
+                )}
               </div>
 
-              {optimizedResumes.length > 0 && (
+              {(isDemo || optimizedResumes.length > 0) && (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
                   <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Generated Resumes</h2>
-                  <div className="divide-y divide-white/10">
-                    {optimizedResumes.slice(0, 3).map((resume) => (
-                      <div key={resume.id} className="flex flex-col sm:flex-row sm:items-center gap-4 py-4">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-white/5">
-                            <FileText className="h-5 w-5 text-white/70" />
-                          </div>
-                          <div>
-                            <p className="font-medium">Resume for {resume.company_name || resume.job_title}</p>
-                            <p className="text-sm text-white/60">
-                              Generated{" "}
-                              {new Date(resume.created_at).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 self-start sm:self-center">
-                          <div className="text-center">
-                            <p className="font-medium text-emerald-400">{resume.match_score || 88}%</p>
-                            <p className="text-xs text-white/60">Match</p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 p-0"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <GeneratedResumesCompactList resumes={isDemo ? demoOptimized : optimizedResumes} limit={3} />
                 </div>
               )}
             </div>

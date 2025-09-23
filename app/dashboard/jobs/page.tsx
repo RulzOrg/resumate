@@ -33,7 +33,7 @@ export default async function JobsPage() {
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
               Start by analyzing job postings to understand what employers are looking for and optimize your resume.
             </p>
-            <AnalyzeJobDialog>
+            <AnalyzeJobDialog existingAnalyses={jobAnalyses}>
               <Button size="lg">
                 <Search className="w-5 h-5 mr-2" />
                 Analyze Your First Job
@@ -44,7 +44,7 @@ export default async function JobsPage() {
           <div className="space-y-8">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold">Your Job Analyses</h2>
-              <AnalyzeJobDialog>
+              <AnalyzeJobDialog existingAnalyses={jobAnalyses}>
                 <Button>
                   <Plus className="w-4 h-4 mr-2" />
                   Analyze Job
