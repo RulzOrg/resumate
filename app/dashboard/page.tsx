@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   const optimizedResumes = await getUserOptimizedResumes(user.id)
 
   const totalGenerations = optimizedResumes.length
-  const maxGenerations = user.subscriptionPlan === "pro" ? 50 : 5
+  const maxGenerations = user.subscription_plan === "pro" ? 50 : 5
   const usagePercentage = (totalGenerations / maxGenerations) * 100
 
   // Get the primary resume for the master resume section
@@ -178,7 +178,7 @@ export default async function DashboardPage() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <h3 className="text-base font-medium text-white/90">Account Status</h3>
                 <p className="text-sm text-white/60 mt-1">
-                  {user.subscriptionPlan === "pro" ? "Pro Plan" : "Free Plan"}
+                  {user.subscription_plan === "pro" ? "Pro Plan" : "Free Plan"}
                 </p>
                 <div className="mt-4">
                   <div className="flex justify-between text-xs text-white/70 mb-1">
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
                 </div>
                 <Link href="/pricing">
                   <button className="mt-4 w-full text-center text-sm font-medium text-emerald-400 hover:text-emerald-300 transition">
-                    {user.subscriptionPlan === "pro" ? "Manage Plan" : "Upgrade Plan"}
+                    {user.subscription_plan === "pro" ? "Manage Plan" : "Upgrade Plan"}
                   </button>
                 </Link>
               </div>

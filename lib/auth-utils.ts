@@ -27,8 +27,10 @@ export async function getAuthenticatedUser() {
     clerkId: userId,
     email: user?.emailAddresses[0]?.emailAddress || "",
     name: user?.fullName || user?.firstName || "User",
-    subscriptionStatus: dbUser?.subscription_status || "free",
-    subscriptionPlan: dbUser?.subscription_plan || "free",
+    subscription_status: dbUser?.subscription_status || "free",
+    subscription_plan: dbUser?.subscription_plan || "free",
+    created_at: dbUser?.created_at || new Date().toISOString(),
+    updated_at: dbUser?.updated_at || new Date().toISOString(),
   }
 }
 

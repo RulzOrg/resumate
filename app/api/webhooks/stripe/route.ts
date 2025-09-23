@@ -4,7 +4,7 @@ import Stripe from "stripe"
 import { updateUserSubscription } from "@/lib/db"
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+  apiVersion: "2025-08-27.basil",
 })
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
           if (clerkUserId) {
             await updateUserSubscription(clerkUserId, {
               subscription_status: subscription.status,
-              subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              subscription_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
             })
           }
         }
