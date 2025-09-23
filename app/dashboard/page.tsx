@@ -2,9 +2,10 @@ import { getAuthenticatedUser } from "@/lib/auth-utils"
 import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 import { UploadResumeDialog } from "@/components/dashboard/upload-resume-dialog"
-import { AnalyzeJobDialog } from "@/components/jobs/analyze-job-dialog"
-import { FileText, Download, Plus, Briefcase, RefreshCw, FileCheck, User } from "lucide-react"
+import { FileText, Download, Plus, Briefcase, RefreshCw, FileCheck } from "lucide-react"
+import { TargetJobsEmptyState } from "@/components/dashboard/TargetJobsEmptyState"
 import Link from "next/link"
+import { UserAvatar } from "@/components/dashboard/user-avatar"
 
 export default async function DashboardPage() {
   const user = await getAuthenticatedUser()
@@ -15,6 +16,7 @@ export default async function DashboardPage() {
   const totalGenerations = optimizedResumes.length
   const maxGenerations = user.subscription_plan === "pro" ? 50 : 5
   const usagePercentage = (totalGenerations / maxGenerations) * 100
+  const isBrandNew = jobAnalyses.length === 0 && optimizedResumes.length === 0
 
   // Get the primary resume for the master resume section
   const primaryResume = resumes.find((r) => r.is_primary) || resumes[0]
@@ -46,11 +48,7 @@ export default async function DashboardPage() {
                 </Button>
               </UploadResumeDialog>
               <div className="relative">
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-full ring-2 ring-white/10 bg-emerald-500 flex items-center justify-center">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                </div>
+                <UserAvatar />
               </div>
             </div>
           </div>
@@ -70,23 +68,11 @@ export default async function DashboardPage() {
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
                   <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Target Jobs</h2>
-                  <AnalyzeJobDialog>
-                    <Button className="mt-4 sm:mt-0 inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-4 hover:bg-white/20 transition-colors self-start sm:self-center">
-                      <Plus className="h-4 w-4" />
-                      Add Job
-                    </Button>
-                  </AnalyzeJobDialog>
+                  
                 </div>
                 <div className="space-y-4">
                   {jobAnalyses.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-white/60 mb-4">No job analyses yet. Start by analyzing job postings.</p>
-                      <AnalyzeJobDialog>
-                        <Button variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10">
-                          Analyze Your First Job
-                        </Button>
-                      </AnalyzeJobDialog>
-                    </div>
+                    <TargetJobsEmptyState />
                   ) : (
                     jobAnalyses.slice(0, 2).map((job) => (
                       <div
@@ -122,20 +108,11 @@ export default async function DashboardPage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
-                <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Generated Resumes</h2>
-                <div className="divide-y divide-white/10">
-                  {optimizedResumes.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-white/60 mb-4">No optimized resumes yet. Generate your first one!</p>
-                      <Link href="/dashboard/optimize">
-                        <Button variant="outline" className="bg-white/5 border-white/20 text-white hover:bg-white/10">
-                          Optimize Resume
-                        </Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    optimizedResumes.slice(0, 3).map((resume) => (
+              {optimizedResumes.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
+                  <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Generated Resumes</h2>
+                  <div className="divide-y divide-white/10">
+                    {optimizedResumes.slice(0, 3).map((resume) => (
                       <div key={resume.id} className="flex flex-col sm:flex-row sm:items-center gap-4 py-4">
                         <div className="flex items-center gap-4 flex-1">
                           <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-white/5">
@@ -167,10 +144,10 @@ export default async function DashboardPage() {
                           </Button>
                         </div>
                       </div>
-                    ))
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="space-y-8 mt-8 lg:mt-0">
@@ -210,8 +187,8 @@ export default async function DashboardPage() {
                     <p className="text-sm font-medium truncate flex-1">{primaryResume.file_name}</p>
                   </div>
                 ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-white/60 mb-3">No resume uploaded yet</p>
+                  <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-white/5 border border-dashed border-white/20">
+                    <p className="text-sm text-white/60">Upload your master resume to get started.</p>
                   </div>
                 )}
                 <UploadResumeDialog>

@@ -3,6 +3,8 @@
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable pgcrypto for gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Create users_sync table
 CREATE TABLE IF NOT EXISTS users_sync (

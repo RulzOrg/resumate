@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "neon-remote": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.neon.tech/mcp"]
+    },
+    "neon-local": {
+      "command": "npx",
+      "args": ["-y", "@neondatabase/mcp-server-neon", "start", "${NEON_API_KEY}"]
+    }
+  }
+}
