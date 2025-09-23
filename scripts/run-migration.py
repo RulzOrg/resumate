@@ -121,12 +121,13 @@ def fix_foreign_key_constraint():
         
         # Test the constraint works by checking for orphaned records
         cursor.execute("""
-            SELECT COUNT(*) 
+            SELECT COUNT(*) as count
             FROM job_analysis ja
             LEFT JOIN users_sync u ON ja.user_id = u.id
             WHERE u.id IS NULL
         """)
-        orphaned_count = cursor.fetchone()[0]
+        orphaned_result = cursor.fetchone()
+        orphaned_count = orphaned_result['count'] if orphaned_result else 0
         
         print(f"✅ Orphaned job_analysis records: {orphaned_count}")
         

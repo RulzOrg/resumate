@@ -39,7 +39,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     suggestion?: string
   }>({ isValid: true })
   const [fetchedContent, setFetchedContent] = useState<{
-    title: string
+    title: string | null
     company?: string
     content: string
     url: string
@@ -51,6 +51,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     similarityScore?: number
   }>({ isDuplicate: false })
   const [detectedCompany, setDetectedCompany] = useState<string | null>(null)
+  const [jobTitle, setJobTitle] = useState("")
   const [contentValidation, setContentValidation] = useState<{
     isValid: boolean
     charCount: number
@@ -113,6 +114,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
           jobUrl: jobUrl.trim(),
           jobDescription: jobDescription.trim(),
           detectedCompany,
+          jobTitle: jobTitle.trim() || undefined,
           autoSaveEnabled: autoSave.enabled
         }),
       })
@@ -148,6 +150,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   const loadDraft = (draft: any) => {
     setJobUrl(draft.jobUrl || '')
     setJobDescription(draft.jobDescription || '')
+    setJobTitle(draft.jobTitle || '')
     setDetectedCompany(draft.detectedCompany || null)
     setAutoSave(prev => ({ 
       ...prev, 
@@ -185,7 +188,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     debounce(() => {
       saveDraft()
     }, 3000), // Save after 3 seconds of no changes
-    [jobDescription, jobUrl, detectedCompany, autoSave.enabled]
+    [jobDescription, jobUrl, detectedCompany, jobTitle, autoSave.enabled]
   )
 
   // Load drafts when dialog opens
@@ -213,7 +216,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           job_description: content.trim(),
-          job_title: jobUrl ? extractTitleFromUrl(jobUrl) : undefined,
+          job_title: jobTitle.trim() || (jobUrl ? extractTitleFromUrl(jobUrl) : undefined),
           company_name: detectedCompany
         }),
       })
@@ -271,7 +274,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
         performAiPreview(content)
       }
     }, 2000), // 2 second delay
-    [contentValidation.isValid, detectedCompany, jobUrl]
+    [contentValidation.isValid, detectedCompany, jobUrl, jobTitle]
   )
 
   // Content validation function
@@ -720,20 +723,29 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
 
       if (response.ok) {
         const data = await response.json()
+        const detectedTitle: string = typeof data.title === "string" ? data.title : ""
         // Store fetched content for preview
         const content = data.content || ""
-        const title = data.title || "Job Posting"
         
         // Enhanced company name extraction
         const smartCompanyName = getSmartCompanyName(
           jobUrl.trim(),
           content,
-          title,
+          detectedTitle,
           data.company
         )
-        
+
+        setJobTitle((prev) => (detectedTitle ? detectedTitle : prev))
+        setUrlValidation((prev) => ({
+          ...prev,
+          isValid: true,
+          message: detectedTitle
+            ? prev.isValid ? undefined : prev.message
+            : "We couldn't detect the job title automatically. Please add it manually below.",
+        }))
+
         setFetchedContent({
-          title: title,
+          title: detectedTitle || null,
           company: smartCompanyName,
           content: content,
           url: jobUrl.trim()
@@ -765,6 +777,9 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     setError("")
 
     const deriveTitle = () => {
+      if (jobTitle.trim()) {
+        return jobTitle.trim()
+      }
       try {
         if (jobUrl.trim()) {
           const u = new URL(jobUrl.trim())
@@ -845,6 +860,9 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   const handleUseContent = () => {
     if (fetchedContent) {
       setJobDescription(fetchedContent.content)
+      if (fetchedContent.title) {
+        setJobTitle(fetchedContent.title)
+      }
       setShowPreview(false)
       
       // Validate the content we're about to use
@@ -859,6 +877,9 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   const handleEditContent = () => {
     if (fetchedContent) {
       setJobDescription(fetchedContent.content)
+      if (fetchedContent.title) {
+        setJobTitle(fetchedContent.title)
+      }
       setShowPreview(false)
       
       // Validate the content we're about to edit
@@ -887,6 +908,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   const resetForm = () => {
     setJobUrl("")
     setJobDescription("")
+    setJobTitle("")
     setError("")
     setUrlValidation({ isValid: true })
     setContentValidation({ isValid: true, charCount: 0, level: 'info' })
@@ -1111,7 +1133,9 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm text-white/60">Job Title:</p>
-                      <p className="font-medium text-white">{fetchedContent.title}</p>
+                      <p className={`font-medium ${fetchedContent.title ? 'text-white' : 'text-yellow-400'}`}>
+                        {fetchedContent.title || 'Not detected automatically'}
+                      </p>
                     </div>
                     
                     {fetchedContent.company && (
@@ -1216,6 +1240,34 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                 </div>
               </div>
             )}
+
+            <div>
+              <Label htmlFor="job-title" className="mb-2 block text-white/80">Job Title</Label>
+              <Input
+                id="job-title"
+                placeholder="e.g., Senior Frontend Engineer"
+                value={jobTitle}
+                onChange={(e) => {
+                  const value = e.target.value
+                  setJobTitle(value)
+                  if (value.trim()) {
+                    setUrlValidation((prev) => {
+                      if (prev.message && prev.message.includes("couldn't detect")) {
+                        return { ...prev, message: undefined }
+                      }
+                      return prev
+                    })
+                  }
+                }}
+                disabled={isAnalyzing}
+                className="bg-white/5 border-white/10 text-white placeholder-white/40"
+              />
+              <p className={`mt-2 text-xs ${jobTitle.trim() ? 'text-white/40' : 'text-yellow-400'}`}>
+                {jobTitle.trim()
+                  ? 'Feel free to tweak the detected title before running the analysis.'
+                  : "We couldn't detect a title automatically. Please add one so we can reference this job accurately."}
+              </p>
+            </div>
 
             <div className="flex items-center py-1">
               <div className="flex-grow border-t border-white/10" />

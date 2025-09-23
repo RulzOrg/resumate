@@ -6,6 +6,7 @@ interface JobDraft {
   id: string
   jobUrl: string
   jobDescription: string
+  jobTitle?: string
   detectedCompany?: string
   lastSaved: string
   autoSaveEnabled: boolean
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { jobUrl, jobDescription, detectedCompany, autoSaveEnabled = true } = await request.json()
+    const { jobUrl, jobDescription, jobTitle, detectedCompany, autoSaveEnabled = true } = await request.json()
 
     if (!jobDescription || jobDescription.trim().length < 50) {
       throw new AppError("Draft content too short to save", 400)
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
       id: draftId,
       jobUrl: jobUrl || '',
       jobDescription: jobDescription.trim(),
+      jobTitle: jobTitle?.trim() || undefined,
       detectedCompany,
       lastSaved: new Date().toISOString(),
       autoSaveEnabled
