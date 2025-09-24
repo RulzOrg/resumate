@@ -101,10 +101,20 @@ export interface Resume {
   file_type: string
   file_size: number
   content_text?: string
+  kind: ResumeKind
+  processing_status: ResumeProcessingStatus
+  processing_error?: string | null
+  parsed_sections?: Record<string, any> | null
+  extracted_at?: string | null
+  source_metadata?: Record<string, any> | null
   is_primary: boolean
   created_at: string
   updated_at: string
 }
+
+export type ResumeKind = "uploaded" | "master" | "generated" | "duplicate"
+
+export type ResumeProcessingStatus = "pending" | "processing" | "completed" | "failed"
 
 export interface JobApplication {
   id: string
@@ -269,11 +279,57 @@ export async function createResume(data: {
   file_type: string
   file_size: number
   content_text?: string
+  kind?: ResumeKind
+  processing_status?: ResumeProcessingStatus
+  processing_error?: string | null
+  parsed_sections?: Record<string, any> | null
+  extracted_at?: string | Date | null
+  source_metadata?: Record<string, any> | null
   is_primary?: boolean
 }) {
+  const kind = data.kind ?? "uploaded"
+  const processingStatus = data.processing_status ?? "completed"
+  const processedSections = data.parsed_sections ? JSON.stringify(data.parsed_sections) : null
+  const sourceMetadata = data.source_metadata ? JSON.stringify(data.source_metadata) : null
+  const extractedAt = data.extracted_at ? new Date(data.extracted_at) : null
+
   const [resume] = await sql`
-    INSERT INTO resumes (user_id, title, file_name, file_url, file_type, file_size, content_text, is_primary, created_at, updated_at)
-    VALUES (${data.user_id}, ${data.title}, ${data.file_name}, ${data.file_url}, ${data.file_type}, ${data.file_size}, ${data.content_text || null}, ${data.is_primary || false}, NOW(), NOW())
+    INSERT INTO resumes (
+      user_id,
+      title,
+      file_name,
+      file_url,
+      file_type,
+      file_size,
+      content_text,
+      kind,
+      processing_status,
+      processing_error,
+      parsed_sections,
+      extracted_at,
+      source_metadata,
+      is_primary,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${data.user_id},
+      ${data.title},
+      ${data.file_name},
+      ${data.file_url},
+      ${data.file_type},
+      ${data.file_size},
+      ${data.content_text || null},
+      ${kind},
+      ${processingStatus},
+      ${data.processing_error || null},
+      ${processedSections},
+      ${extractedAt},
+      ${sourceMetadata},
+      ${data.is_primary || false},
+      NOW(),
+      NOW()
+    )
     RETURNING *
   `
   return resume as Resume
@@ -286,6 +342,19 @@ export async function getUserResumes(user_id: string) {
     ORDER BY is_primary DESC, created_at DESC
   `
   return resumes as Resume[]
+}
+
+export async function getMasterResume(user_id: string) {
+  const [resume] = await sql`
+    SELECT * FROM resumes
+    WHERE user_id = ${user_id}
+      AND kind = 'master'
+      AND deleted_at IS NULL
+    ORDER BY is_primary DESC, updated_at DESC
+    LIMIT 1
+  `
+
+  return resume as Resume | undefined
 }
 
 export async function getResumeById(id: string, user_id: string) {
@@ -339,8 +408,34 @@ export async function setPrimaryResume(id: string, user_id: string) {
 // Simplified createResume function for duplication
 export async function createResumeDuplicate(user_id: string, title: string, content: string) {
   const [resume] = await sql`
-    INSERT INTO resumes (user_id, title, file_name, file_url, file_type, file_size, content_text, is_primary, created_at, updated_at)
-    VALUES (${user_id}, ${title}, 'duplicated.txt', '', 'text/plain', ${content.length}, ${content}, false, NOW(), NOW())
+    INSERT INTO resumes (
+      user_id,
+      title,
+      file_name,
+      file_url,
+      file_type,
+      file_size,
+      content_text,
+      kind,
+      processing_status,
+      is_primary,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${user_id},
+      ${title},
+      'duplicated.txt',
+      '',
+      'text/plain',
+      ${content.length},
+      ${content},
+      'generated',
+      'completed',
+      false,
+      NOW(),
+      NOW()
+    )
     RETURNING *
   `
   return resume as Resume
@@ -357,6 +452,63 @@ export async function updateResumeContent(id: string, content_text: string) {
     WHERE id = ${id} AND deleted_at IS NULL
     RETURNING *
   `
+  return resume as Resume | undefined
+}
+
+export async function updateResumeAnalysis(
+  id: string,
+  user_id: string,
+  data: {
+    content_text?: string | null
+    parsed_sections?: Record<string, any> | null
+    processing_status?: ResumeProcessingStatus
+    processing_error?: string | null
+    extracted_at?: string | Date | null
+    source_metadata?: Record<string, any> | null
+  },
+) {
+  const setClauses = []
+
+  if (data.content_text !== undefined) {
+    setClauses.push(sql`content_text = ${data.content_text}`)
+  }
+
+  if (data.parsed_sections !== undefined) {
+    setClauses.push(sql`parsed_sections = ${data.parsed_sections ? JSON.stringify(data.parsed_sections) : null}`)
+  }
+
+  if (data.processing_status !== undefined) {
+    setClauses.push(sql`processing_status = ${data.processing_status}`)
+  }
+
+  if (data.processing_error !== undefined) {
+    setClauses.push(sql`processing_error = ${data.processing_error}`)
+  }
+
+  if (data.extracted_at !== undefined) {
+    const extractedAt = data.extracted_at ? new Date(data.extracted_at) : null
+    setClauses.push(sql`extracted_at = ${extractedAt}`)
+  }
+
+  if (data.source_metadata !== undefined) {
+    setClauses.push(sql`source_metadata = ${data.source_metadata ? JSON.stringify(data.source_metadata) : null}`)
+  }
+
+  if (setClauses.length === 0) {
+    const [resume] = await sql`
+      SELECT * FROM resumes WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+    `
+    return resume as Resume | undefined
+  }
+
+  const [resume] = await sql`
+    UPDATE resumes
+    SET ${sql.join(setClauses, sql`, `)},
+        updated_at = NOW()
+    WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+    RETURNING *
+  `
+
   return resume as Resume | undefined
 }
 

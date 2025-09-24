@@ -83,6 +83,25 @@ def fix_foreign_key_constraint():
         print("  4. Creating index for performance...")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_job_analysis_user_id ON job_analysis(user_id)")
         
+        # Step 5: Ensure resumes table has master resume columns
+        print("\n🛠️ Ensuring resumes table columns for master resume support...")
+        cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS kind VARCHAR(32) DEFAULT 'uploaded'")
+        cursor.execute("ALTER TABLE resumes ALTER COLUMN kind SET DEFAULT 'uploaded'")
+        cursor.execute("UPDATE resumes SET kind = 'uploaded' WHERE kind IS NULL")
+        cursor.execute("ALTER TABLE resumes ALTER COLUMN kind SET NOT NULL")
+
+        cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS processing_status VARCHAR(32) DEFAULT 'completed'")
+        cursor.execute("ALTER TABLE resumes ALTER COLUMN processing_status SET DEFAULT 'completed'")
+        cursor.execute("UPDATE resumes SET processing_status = 'completed' WHERE processing_status IS NULL")
+        cursor.execute("ALTER TABLE resumes ALTER COLUMN processing_status SET NOT NULL")
+
+        cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS processing_error TEXT")
+        cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS parsed_sections JSONB")
+        cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS extracted_at TIMESTAMP WITH TIME ZONE")
+        cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS source_metadata JSONB")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_resumes_kind ON resumes(kind)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_resumes_processing_status ON resumes(processing_status)")
+        
         # Commit all changes
         conn.commit()
         print("\n✅ Migration completed successfully!")

@@ -92,6 +92,9 @@ export async function POST(request: NextRequest) {
       file_type: file.type,
       file_size: file.size,
       content_text: contentText,
+      kind: "uploaded",
+      processing_status: "completed",
+      extracted_at: new Date().toISOString(),
     })
 
     return NextResponse.json({ resume })

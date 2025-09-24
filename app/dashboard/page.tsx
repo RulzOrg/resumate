@@ -1,7 +1,8 @@
 import { getAuthenticatedUser } from "@/lib/auth-utils"
-import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes } from "@/lib/db"
+import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes, getMasterResume } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 import { UploadResumeDialog } from "@/components/dashboard/upload-resume-dialog"
+import { UploadMasterResumeDialog } from "@/components/dashboard/master-resume-dialog"
 import { FileText, Download, Plus, RefreshCw, FileCheck } from "lucide-react"
 import { TargetJobsEmptyState } from "@/components/dashboard/TargetJobsEmptyState"
 import { AnalyzeJobDialog } from "@/components/jobs/analyze-job-dialog"
@@ -9,6 +10,7 @@ import { TargetJobsCompactList } from "@/components/dashboard/TargetJobsCompactL
 import { GeneratedResumesCompactList } from "@/components/optimization/GeneratedResumesCompactList"
 import Link from "next/link"
 import { UserAvatar } from "@/components/dashboard/user-avatar"
+import { formatDistanceToNow } from "date-fns"
 
 export default async function DashboardPage({
   searchParams,
@@ -19,6 +21,7 @@ export default async function DashboardPage({
   const resumes = await getUserResumes(user.id)
   const jobAnalyses = await getUserJobAnalyses(user.id)
   const optimizedResumes = await getUserOptimizedResumes(user.id)
+  const masterResume = await getMasterResume(user.id)
 
   const isDemo = (searchParams?.demo as string) === "1"
   const pageParam = parseInt((searchParams?.page as string) || "1", 10)
@@ -47,9 +50,6 @@ export default async function DashboardPage({
   const maxGenerations = user.subscription_plan === "pro" ? 50 : 5
   const usagePercentage = (totalGenerations / maxGenerations) * 100
   const isBrandNew = jobAnalyses.length === 0 && optimizedResumes.length === 0
-
-  // Get the primary resume for the master resume section
-  const primaryResume = resumes.find((r) => r.is_primary) || resumes[0]
 
   return (
     <div className="antialiased text-white bg-black font-geist min-h-screen">
@@ -179,21 +179,35 @@ export default async function DashboardPage({
               {/* Master Resume */}
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                 <h3 className="text-base font-medium text-white/90 mb-4">Master Resume</h3>
-                {primaryResume ? (
+                {masterResume ? (
                   <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
                     <FileCheck className="h-5 w-5 text-white/70 flex-shrink-0" />
-                    <p className="text-sm font-medium truncate flex-1">{primaryResume.file_name}</p>
+                    <div className="flex flex-col gap-0.5 text-left">
+                      <p className="text-sm font-medium truncate text-white/90">{masterResume.file_name}</p>
+                      <p className="text-xs text-white/50">
+                        {masterResume.processing_status === "completed"
+                          ? `Last updated ${formatDistanceToNow(new Date(masterResume.updated_at), { addSuffix: true })}`
+                          : masterResume.processing_status === "processing"
+                          ? "Processing... this usually takes under a minute"
+                          : masterResume.processing_status === "failed"
+                          ? "Latest processing attempt failed"
+                          : "Ready"}
+                      </p>
+                      {masterResume.processing_error && (
+                        <p className="text-xs text-red-400">{masterResume.processing_error}</p>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-white/5 border border-dashed border-white/20">
                     <p className="text-sm text-white/60">Upload your master resume to get started.</p>
                   </div>
                 )}
-                <UploadResumeDialog>
+                <UploadMasterResumeDialog>
                   <button className="mt-4 w-full text-center text-sm font-medium text-white/80 hover:text-white transition bg-white/10 rounded-full py-2">
-                    {primaryResume ? "Update Resume" : "Upload Resume"}
+                    {masterResume ? "Replace Master Resume" : "Upload Master Resume"}
                   </button>
-                </UploadResumeDialog>
+                </UploadMasterResumeDialog>
               </div>
 
               {/* Cover Letter CTA */}
