@@ -26,6 +26,8 @@ interface AnalyzeJobDialogProps {
 }
 
 export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJobDialogProps) {
+  // Toggle to disable URL import flow and rely on paste-only UX
+  const ENABLE_URL_IMPORT = false
   const [open, setOpen] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [error, setError] = useState("")
@@ -52,6 +54,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   }>({ isDuplicate: false })
   const [detectedCompany, setDetectedCompany] = useState<string | null>(null)
   const [jobTitle, setJobTitle] = useState("")
+  const [company, setCompany] = useState("")
   const [contentValidation, setContentValidation] = useState<{
     isValid: boolean
     charCount: number
@@ -803,13 +806,13 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
       return "Target Role"
     }
 
-    // Extract smart company name for analysis
-    const smartCompany = getSmartCompanyName(
-      jobUrl.trim() || undefined,
-      jobDescription.trim(),
-      deriveTitle(),
-      fetchedContent?.company
-    )
+    // Require user-provided company
+    const finalCompany = company.trim()
+    if (!finalCompany) {
+      setIsAnalyzing(false)
+      setError("Company is required")
+      return
+    }
 
     try {
       const response = await fetch("/api/jobs/analyze", {
@@ -817,7 +820,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           job_title: deriveTitle(),
-          company_name: smartCompany,
+          company_name: finalCompany,
           job_url: jobUrl.trim() || undefined,
           job_description: jobDescription.trim(),
         }),
@@ -1066,55 +1069,56 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
           )}
 
           <div className="mt-6 space-y-6">
-            <div>
-              <Label htmlFor="job-url" className="mb-2 block text-white/80">Job Post URL</Label>
-              <div className="relative">
-                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                  <Link2 className="h-5 w-5 text-white/40" />
+            {ENABLE_URL_IMPORT && (
+              <>
+                <Label htmlFor="job-url" className="mb-2 block text-white/80">Job Post URL</Label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Link2 className="h-5 w-5 text-white/40" />
+                  </div>
+                  <Input
+                    id="job-url"
+                    type="url"
+                    placeholder="https://example.com/careers/..."
+                    value={jobUrl}
+                    onChange={(e) => handleUrlChange(e.target.value)}
+                    disabled={isFetching}
+                    className={`bg-white/5 border-white/10 text-white placeholder-white/40 pl-10 pr-24 ${
+                      !urlValidation.isValid ? 'border-red-500/50 focus:border-red-500' : ''
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleFetchFromUrl}
+                    disabled={!jobUrl.trim() || isFetching || !urlValidation.isValid}
+                    className="absolute right-1 top-1 bottom-1 inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 text-sm text-white/90 disabled:opacity-50"
+                  >
+                    {isFetching ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Fetching
+                      </>
+                    ) : (
+                      <>Preview</>
+                    )}
+                  </button>
                 </div>
-                <Input
-                  id="job-url"
-                  type="url"
-                  placeholder="https://example.com/careers/..."
-                  value={jobUrl}
-                  onChange={(e) => handleUrlChange(e.target.value)}
-                  disabled={isFetching}
-                  className={`bg-white/5 border-white/10 text-white placeholder-white/40 pl-10 pr-24 ${
-                    !urlValidation.isValid ? 'border-red-500/50 focus:border-red-500' : ''
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={handleFetchFromUrl}
-                  disabled={!jobUrl.trim() || isFetching || !urlValidation.isValid}
-                  className="absolute right-1 top-1 bottom-1 inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 text-sm text-white/90 disabled:opacity-50"
-                >
-                  {isFetching ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Fetching
-                    </>
-                  ) : (
-                    <>Preview</>
-                  )}
-                </button>
-              </div>
-              
-              {/* URL Validation Feedback */}
-              {urlValidation.message && (
-                <div className={`mt-2 text-sm ${
-                  urlValidation.isValid ? 'text-yellow-400' : 'text-red-400'
-                }`}>
-                  <p>{urlValidation.message}</p>
-                  {urlValidation.suggestion && (
-                    <p className="text-white/50 mt-1">{urlValidation.suggestion}</p>
-                  )}
-                </div>
-              )}
-            </div>
+                {/* URL Validation Feedback */}
+                {urlValidation.message && (
+                  <div className={`mt-2 text-sm ${
+                    urlValidation.isValid ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    <p>{urlValidation.message}</p>
+                    {urlValidation.suggestion && (
+                      <p className="text-white/50 mt-1">{urlValidation.suggestion}</p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
 
             {/* Content Preview */}
-            {showPreview && fetchedContent && (
+            {ENABLE_URL_IMPORT && showPreview && fetchedContent && (
               <div className="space-y-4">
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <div className="flex items-start justify-between mb-3">
@@ -1262,20 +1266,34 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                 disabled={isAnalyzing}
                 className="bg-white/5 border-white/10 text-white placeholder-white/40"
               />
-              <p className={`mt-2 text-xs ${jobTitle.trim() ? 'text-white/40' : 'text-yellow-400'}`}>
-                {jobTitle.trim()
-                  ? 'Feel free to tweak the detected title before running the analysis.'
-                  : "We couldn't detect a title automatically. Please add one so we can reference this job accurately."}
-              </p>
+              {jobTitle.trim() ? (
+                <p className="mt-2 text-xs text-white/40">
+                  You can tweak the title before running the analysis.
+                </p>
+              ) : null}
             </div>
 
-            <div className="flex items-center py-1">
-              <div className="flex-grow border-t border-white/10" />
-              <span className="mx-4 text-xs text-white/50 uppercase">
-                {showPreview ? "Or Edit Manually" : "Or"}
-              </span>
-              <div className="flex-grow border-t border-white/10" />
+            <div>
+              <Label htmlFor="company" className="mb-2 block text-white/80">Company</Label>
+              <Input
+                id="company"
+                placeholder="e.g., Meta"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                disabled={isAnalyzing}
+                className="bg-white/5 border-white/10 text-white placeholder-white/40"
+              />
             </div>
+
+            {ENABLE_URL_IMPORT && (
+              <div className="flex items-center py-1">
+                <div className="flex-grow border-t border-white/10" />
+                <span className="mx-4 text-xs text-white/50 uppercase">
+                  {showPreview ? "Or Edit Manually" : "Or"}
+                </span>
+                <div className="flex-grow border-t border-white/10" />
+              </div>
+            )}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">

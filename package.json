@@ -13,6 +13,7 @@
     "@clerk/nextjs": "latest",
     "@clerk/themes": "latest",
     "@hookform/resolvers": "^3.10.0",
+    "@mozilla/readability": "^0.4.4",
     "@neondatabase/serverless": "latest",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -45,6 +46,7 @@
     "ai": "latest",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^2.4.3",
+    "cheerio": "^1.0.0-rc.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
@@ -53,8 +55,9 @@
     "geist": "latest",
     "input-otp": "1.4.1",
     "jose": "^5.9.6",
+    "jsdom": "^21.1.2",
     "lucide-react": "^0.454.0",
-    "next": "14.2.16",
+    "next": "^14.2.25",
     "next-auth": "4.24.11",
     "next-themes": "^0.4.6",
     "react": "^18",
@@ -69,7 +72,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "zod": "3.25.67"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.9",

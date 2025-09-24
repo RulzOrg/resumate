@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -211,6 +212,11 @@ function JobAnalysisCard({ analysis }: JobAnalysisCardProps) {
 
         {/* Action Buttons */}
         <div className="flex gap-2 pt-2">
+          <Button size="sm" className="flex-1" asChild>
+            <Link href={`/dashboard/jobs/${analysis.id}`}>
+              View
+            </Link>
+          </Button>
           <Button size="sm" className="flex-1">
             <Zap className="w-4 h-4 mr-2" />
             Optimize Resume

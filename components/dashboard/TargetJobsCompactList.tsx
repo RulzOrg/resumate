@@ -28,7 +28,7 @@ export function TargetJobsCompactList({ analyses, limit = 2 }: TargetJobsCompact
             </div>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-center">
-            <Link href="/dashboard/jobs" className="text-xs font-medium text-white/70 hover:text-white transition">
+            <Link href={`/dashboard/jobs/${job.id}`} className="text-xs font-medium text-white/70 hover:text-white transition">
               View
             </Link>
             <Link

@@ -21,11 +21,22 @@ export default async function DashboardPage({
   const optimizedResumes = await getUserOptimizedResumes(user.id)
 
   const isDemo = (searchParams?.demo as string) === "1"
+  const pageParam = parseInt((searchParams?.page as string) || "1", 10)
+  const currentPage = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam
+  const perPage = 5
 
   const demoJobAnalyses = [
     { id: "d1", job_title: "Senior Product Manager", company_name: "Vercel" },
     { id: "d2", job_title: "Frontend Engineer", company_name: "Stripe" },
   ] as any
+  // Pagination state computed after demo arrays are defined
+  const demos = isDemo ? demoJobAnalyses : jobAnalyses
+  const allAnalyses = demos
+  const totalAnalyses = allAnalyses.length
+  const totalPages = Math.max(1, Math.ceil(totalAnalyses / perPage))
+  const safePage = Math.min(currentPage, totalPages)
+  const start = (safePage - 1) * perPage
+  const paginatedAnalyses = allAnalyses.slice(start, start + perPage)
 
   const demoOptimized = [
     { id: "o1", title: "Linear", created_at: new Date().toISOString(), match_score: 92 },
@@ -94,12 +105,38 @@ export default async function DashboardPage({
                     </Button>
                   </AnalyzeJobDialog>
                 </div>
-                {(isDemo ? demoJobAnalyses : jobAnalyses).length === 0 ? (
+                {demos.length === 0 ? (
                   <div className="space-y-4">
                     <TargetJobsEmptyState existingAnalyses={jobAnalyses} />
                   </div>
                 ) : (
-                  <TargetJobsCompactList analyses={isDemo ? demoJobAnalyses : jobAnalyses} limit={2} />
+                  <>
+                    <TargetJobsCompactList analyses={paginatedAnalyses} limit={perPage} />
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="mt-4 flex items-center justify-between text-sm text-white/70">
+                        <span>
+                          Showing {Math.min(totalAnalyses === 0 ? 0 : start + 1, totalAnalyses)}–
+                          {Math.min(start + perPage, totalAnalyses)} of {totalAnalyses}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/dashboard?${new URLSearchParams({ page: String(Math.max(1, safePage - 1)), ...(isDemo ? { demo: '1' } : {}) }).toString()}`}
+                            className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safePage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
+                          >
+                            Prev
+                          </Link>
+                          <span className="opacity-70">Page {safePage} / {totalPages}</span>
+                          <Link
+                            href={`/dashboard?${new URLSearchParams({ page: String(Math.min(totalPages, safePage + 1)), ...(isDemo ? { demo: '1' } : {}) }).toString()}`}
+                            className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safePage >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
+                          >
+                            Next
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 

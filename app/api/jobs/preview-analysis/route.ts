@@ -8,15 +8,15 @@ import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { intelligentTruncate, analyzeContentLength } from "@/lib/content-processor"
 
 const previewAnalysisSchema = z.object({
-  keywords: z.array(z.string()).max(8).describe("Top 8 most important keywords from the job posting"),
-  required_skills: z.array(z.string()).max(6).describe("Top 6 must-have technical and soft skills"),
-  preferred_skills: z.array(z.string()).max(4).describe("Top 4 nice-to-have skills"),
-  experience_level: z.string().describe("Required experience level (e.g., Entry Level, Mid Level, Senior)"),
-  salary_range: z.string().optional().describe("Salary range if mentioned"),
-  location: z.string().optional().describe("Job location"),
-  key_requirements: z.array(z.string()).max(4).describe("Top 4 key job requirements"),
-  company_culture: z.array(z.string()).max(3).describe("Top 3 company culture aspects mentioned"),
-  benefits: z.array(z.string()).max(4).describe("Top 4 benefits and perks mentioned"),
+  keywords: z.array(z.string()).describe("Important keywords from the job posting"),
+  required_skills: z.array(z.string()).describe("Must-have technical and soft skills"),
+  preferred_skills: z.array(z.string()).describe("Nice-to-have skills"),
+  experience_level: z.union([z.string(), z.null()]).describe("Required experience level or null if unspecified"),
+  salary_range: z.union([z.string(), z.null()]).optional().describe("Salary range if mentioned (string or null)"),
+  location: z.union([z.string(), z.null()]).optional().describe("Job location if mentioned (string or null)"),
+  key_requirements: z.array(z.string()).describe("Key job requirements"),
+  company_culture: z.array(z.string()).describe("Company culture aspects mentioned"),
+  benefits: z.array(z.string()).describe("Benefits and perks mentioned"),
   analysis_confidence: z.number().min(0).max(100).describe("Confidence score (0-100) in the analysis quality based on content detail"),
   content_info: z.object({
     was_truncated: z.boolean().describe("Whether the content was truncated for analysis"),
@@ -24,6 +24,16 @@ const previewAnalysisSchema = z.object({
     processed_length: z.number().describe("Processed content length used for analysis")
   }).optional().describe("Information about content processing")
 })
+
+// Hard caps for preview payload to keep UI consistent
+const PREVIEW_LIMITS = {
+  keywords: 8,
+  required: 6,
+  preferred: 4,
+  keyRequirements: 4,
+  culture: 3,
+  benefits: 4,
+} as const
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,23 +84,53 @@ export async function POST(request: NextRequest) {
         const { object } = await generateObject({
           model: openai("gpt-4o-mini"),
           schema: previewAnalysisSchema,
-          prompt: `Provide a quick preview analysis of this job posting. Focus on the most important elements for resume optimization:
+          prompt: `You are an expert ATS analyst. Produce a compact, ATS-ready preview strictly matching previewAnalysisSchema. Return JSON only (no prose/markdown). Do not fabricate; use null/[] when unknown.
 
+OBJECTIVE (Preview)
+• Prioritize exact, copyable keywords/phrases that should appear in a resume (max 8 per schema).
+• Separate REQUIRED vs PREFERRED skills (respect schema max: required 6, preferred 4).
+• Convert responsibilities/requirements into crisp, action-oriented bullets (max 4) that could be adapted into resume statements truthfully.
+• Capture experience level, location/work model, salary if explicitly present.
+
+INPUT
 Job Title: ${job_title || "Not specified"}
 Company: ${company_name || "Not specified"}
 Job Description:
 ${processedContent}
 
 ${truncationInfo?.was_truncated ? 
-  `Note: Content was intelligently truncated from ${truncationInfo.original_length} to ${truncationInfo.processed_length} characters, preserving key sections: ${truncationInfo.preserved_sections.join(', ')}.` : 
+  `Note: Content was truncated from ${truncationInfo.original_length} to ${truncationInfo.processed_length} characters (key sections preserved).` : 
   ''
 }
 
-Extract the top keywords, skills, and requirements that would be most important for ATS optimization and resume tailoring. Be selective and prioritize the most relevant items.
+CONSTRAINTS
+• Obey schema limits: keywords ≤ 8; required_skills ≤ 6; preferred_skills ≤ 4; key_requirements ≤ 4; company_culture ≤ 3; benefits ≤ 4.
+• Normalize skills to canonical names; keep exact phrases in keywords.
+• No chain-of-thought; JSON output only.
 
-Rate your confidence in the analysis quality based on how detailed and complete the job description is (0-100 scale). ${truncationInfo?.was_truncated ? 'Consider that some content was truncated.' : ''}`,
+CONFIDENCE
+• analysis_confidence: 0–100 based on clarity/completeness.
+• content_info.was_truncated should reflect whether truncation occurred.`,
         })
-        return object
+        // Apply defensive caps to avoid schema/consumer overflow
+        const capped = {
+          ...object,
+          keywords: Array.isArray(object.keywords) ? object.keywords.slice(0, PREVIEW_LIMITS.keywords) : [],
+          required_skills: Array.isArray(object.required_skills)
+            ? object.required_skills.slice(0, PREVIEW_LIMITS.required)
+            : [],
+          preferred_skills: Array.isArray(object.preferred_skills)
+            ? object.preferred_skills.slice(0, PREVIEW_LIMITS.preferred)
+            : [],
+          key_requirements: Array.isArray(object.key_requirements)
+            ? object.key_requirements.slice(0, PREVIEW_LIMITS.keyRequirements)
+            : [],
+          company_culture: Array.isArray(object.company_culture)
+            ? object.company_culture.slice(0, PREVIEW_LIMITS.culture)
+            : [],
+          benefits: Array.isArray(object.benefits) ? object.benefits.slice(0, PREVIEW_LIMITS.benefits) : [],
+        }
+        return capped
       },
       2, // Only 2 retries for preview
       500,

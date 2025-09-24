@@ -1,3 +1,4 @@
+"use client"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Building2, MapPin, Star, Zap } from "lucide-react"
@@ -78,3 +79,5 @@ export function JobAnalysisCompact({ analysis, showOptimizeButton = true }: JobA
     </div>
   )
 }
+
+export default JobAnalysisCompact
