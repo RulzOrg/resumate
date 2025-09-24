@@ -15,17 +15,11 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
   const router = useRouter()
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   
-  // Debug logging
-  console.log('MasterResumesSection mounted with resumes:', resumes)
-  
   const masterResumes = resumes.filter(resume => 
     resume.kind === 'master' || resume.kind === 'uploaded'
   ).slice(0, 3)
-  
-  console.log('Filtered master resumes:', masterResumes)
 
   const handleEdit = (resumeId: string) => {
-    console.log('handleEdit called with resumeId:', resumeId)
     // Navigate to resume edit page (we'll need to create this)
     router.push(`/dashboard/resumes/${resumeId}/edit`)
   }
@@ -93,22 +87,16 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                   <p className="text-xs text-red-400">{resume.processing_error}</p>
                 )}
               </div>
-              <div className="flex items-center gap-2 opacity-100 transition-opacity">
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
-                  onClick={() => {
-                    console.log('Edit button clicked for resume:', resume.id)
-                    handleEdit(resume.id)
-                  }}
+                  onClick={() => handleEdit(resume.id)}
                   className="text-white/60 hover:text-white transition-colors"
                   title="Edit resume"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button 
-                  onClick={() => {
-                    console.log('Delete button clicked for resume:', resume.id)
-                    handleDelete(resume.id, resume.file_name)
-                  }}
+                  onClick={() => handleDelete(resume.id, resume.file_name)}
                   disabled={isDeleting === resume.id}
                   className="text-white/60 hover:text-red-400 transition-colors disabled:opacity-50"
                   title="Delete resume"
