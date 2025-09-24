@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getResumeById, getJobAnalysisById, createOptimizedResume, getOrCreateUser } from "@/lib/db"
+import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
@@ -43,6 +44,15 @@ export async function POST(request: NextRequest) {
     const user = await getOrCreateUser()
     if (!user) {
       throw new AppError("User not found", 404)
+    }
+
+    // Check subscription limits
+    const canOptimize = await canPerformAction('resumeOptimizations')
+    if (!canOptimize) {
+      return NextResponse.json({ 
+        error: "You've reached your monthly resume optimization limit. Upgrade to Pro for unlimited optimizations.",
+        code: "LIMIT_EXCEEDED"
+      }, { status: 403 })
     }
 
     const { resume_id, job_analysis_id } = await request.json()

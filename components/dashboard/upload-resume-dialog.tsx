@@ -69,8 +69,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null)
   const [uploadedResumeId, setUploadedResumeId] = useState<string | null>(null)
-  const [jobUrl, setJobUrl] = useState("")
-  const [step, setStep] = useState<"upload" | "analysis" | "job-url">("upload")
+  const [step, setStep] = useState<"upload" | "analysis">("upload")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -85,9 +84,10 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
     ]
     if (!allowedTypes.includes(selectedFile.type)) {
-      setError("Please upload a PDF or Word document")
+      setError("Please upload a PDF, Word, or plain text file")
       return
     }
 
@@ -155,9 +155,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
             const analysisResult = await analysisResponse.json()
             setAnalysis(analysisResult.analysis)
             setIsAnalyzing(false)
-            setTimeout(() => {
-              setStep("job-url")
-            }, 1000)
+            // Proceed directly; job URL step removed
           } else {
             const analysisResult = await analysisResponse.json()
             setError(analysisResult.error || "Analysis failed")
@@ -179,13 +177,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   }
 
   const handleProceedToOptimization = () => {
-    if (jobUrl.trim()) {
-      // Navigate to optimization page with job URL
-      router.push(`/dashboard/optimize?resumeId=${uploadedResumeId}&jobUrl=${encodeURIComponent(jobUrl.trim())}`)
-    } else {
-      // Navigate to optimization page without job URL
-      router.push(`/dashboard/optimize?resumeId=${uploadedResumeId}`)
-    }
+    router.push(`/dashboard/optimize?resumeId=${uploadedResumeId}`)
     setOpen(false)
     resetForm()
   }
@@ -197,7 +189,6 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     setUploadProgress(0)
     setAnalysis(null)
     setUploadedResumeId(null)
-    setJobUrl("")
     setStep("upload")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -218,15 +209,14 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
           <DialogTitle>
             {step === "upload" && "Upload Resume"}
             {step === "analysis" && "Analyzing Resume"}
-            {step === "job-url" && "Ready to Optimize"}
+            {/* job-url step removed */}
           </DialogTitle>
           <DialogDescription>
             {step === "upload" &&
-              "Upload your resume in PDF or Word format to start optimizing it for job applications."}
+              "Upload your resume in PDF, Word, or plain text format to start optimizing it for job applications."}
             {step === "analysis" &&
               "We're analyzing your resume to understand your skills, experience, and areas for improvement."}
-            {step === "job-url" &&
-              "Your resume has been analyzed! Provide a job URL to optimize your resume for a specific position."}
+            {/* job-url step removed */}
           </DialogDescription>
         </DialogHeader>
 
@@ -251,11 +241,11 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
                   <p className="text-sm text-muted-foreground mb-2">
                     Drag and drop your resume here, or click to browse
                   </p>
-                  <p className="text-xs text-muted-foreground">Supports PDF and Word documents (max 10MB)</p>
+                  <p className="text-xs text-muted-foreground">Supports PDF, Word, or plain text files (max 10MB)</p>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".pdf,.doc,.docx"
+                    accept=".pdf,.doc,.docx,.txt"
                     onChange={handleFileInputChange}
                     className="hidden"
                   />
@@ -334,56 +324,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
             </div>
           )}
 
-          {/* Job URL Step */}
-          {step === "job-url" && analysis && (
-            <div className="space-y-6">
-              {/* Analysis Summary */}
-              <div className="bg-muted p-4 rounded-lg">
-                <h3 className="font-semibold mb-3">Resume Analysis Summary</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Experience Level</p>
-                    <p className="font-medium capitalize">{analysis.experience_level}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Overall Score</p>
-                    <p className="font-medium">{analysis.overall_score}/100</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Technical Skills</p>
-                    <p className="font-medium">{analysis.skills.technical.length} identified</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Work Experience</p>
-                    <p className="font-medium">{analysis.work_experience.length} positions</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Job URL Input */}
-              <div className="space-y-2">
-                <Label htmlFor="jobUrl">Job URL (Optional)</Label>
-                <Input
-                  id="jobUrl"
-                  value={jobUrl}
-                  onChange={(e) => setJobUrl(e.target.value)}
-                  placeholder="Paste the job posting URL to optimize your resume for this specific role"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Providing a job URL will help us tailor your resume specifically for that position
-                </p>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={handleProceedToOptimization} className="flex-1">
-                  {jobUrl.trim() ? "Optimize for This Job" : "Continue to Optimization"}
-                </Button>
-                <Button variant="outline" onClick={resetForm}>
-                  Upload Another
-                </Button>
-              </div>
-            </div>
-          )}
+          {/* Job URL Step removed */}
         </div>
       </DialogContent>
     </Dialog>

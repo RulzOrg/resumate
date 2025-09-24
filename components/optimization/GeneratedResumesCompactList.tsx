@@ -14,17 +14,22 @@ export function GeneratedResumesCompactList({ resumes, limit = 3 }: GeneratedRes
   const handleDownload = async (id: string) => {
     try {
       const response = await fetch(`/api/resumes/download?id=${id}&format=pdf`)
-      if (!response.ok) return
+      if (!response.ok) {
+        console.error('Download failed:', response.statusText)
+        return
+      }
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `resume.html`
+      a.download = `resume-${id}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
-    } catch {}
+    } catch (error) {
+      console.error('Download error:', error)
+    }
   }
 
   return (

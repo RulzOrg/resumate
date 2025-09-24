@@ -1,7 +1,12 @@
 import { neon } from "@neondatabase/serverless"
-import { auth, currentUser, clerkClient } from "@clerk/nextjs/server"
+import { auth, clerkClient } from "@clerk/nextjs/server"
 
-const sql = neon(process.env.DATABASE_URL!)
+const databaseUrl = process.env.DATABASE_URL
+const isDbConfigured = Boolean(databaseUrl)
+
+const sql = databaseUrl ? neon(databaseUrl) : (async () => {
+  throw new Error("DATABASE_URL is not configured. Set it to enable database features.")
+}) as unknown as ReturnType<typeof neon>
 
 export { sql }
 
@@ -878,28 +883,10 @@ export async function ensureUserExists(userId: string): Promise<User | null> {
   console.log('User not found in database, attempting to create:', { clerk_user_id: userId })
 
   // User doesn't exist, try to create them
-  let clerkUser
-  try {
-    clerkUser = await clerkClient.users.getUser(userId)
-  } catch (error) {
-    console.error("Failed to fetch Clerk user for user creation:", { 
-      clerk_user_id: userId, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    })
-    return null
-  }
-
+  const { clerkUser, email, name } = await fetchClerkUser(userId)
   if (!clerkUser) {
-    console.error("Clerk user not found:", { clerk_user_id: userId })
     return null
   }
-
-  const email =
-    clerkUser.emailAddresses?.find((address) => address.id === clerkUser.primaryEmailAddressId)?.emailAddress ||
-    clerkUser.emailAddresses?.[0]?.emailAddress ||
-    ""
-
-  const name = clerkUser.fullName || clerkUser.firstName || clerkUser.username || "User"
 
   // Retry logic for user creation with exponential backoff
   let retryCount = 0
@@ -957,11 +944,12 @@ export async function ensureUserExists(userId: string): Promise<User | null> {
 }
 
 // Utility functions
-export async function getOrCreateUser() {
-  const { userId } = await auth()
+export async function getOrCreateUser(passedUserId?: string) {
+  const clerkAuth = passedUserId ? null : await auth()
+  const userId = passedUserId ?? clerkAuth?.userId
 
   if (!userId) {
-    console.log("No userId from auth, returning null")
+    console.log("No userId available for getOrCreateUser, returning null")
     return null
   }
 
@@ -999,4 +987,79 @@ export async function getOrCreateUser() {
     
     throw error
   }
+}
+
+async function fetchClerkUser(userId: string): Promise<{
+  clerkUser: any | null
+  email: string
+  name: string
+}> {
+  try {
+    const sessionUser = await currentUser()
+    if (sessionUser && sessionUser.id === userId) {
+      const email =
+        sessionUser.emailAddresses?.find((address) => address.id === sessionUser.primaryEmailAddressId)?.emailAddress ||
+        sessionUser.emailAddresses?.[0]?.emailAddress ||
+        ""
+      const name = sessionUser.fullName || sessionUser.firstName || sessionUser.username || "User"
+
+      return { clerkUser: sessionUser, email, name }
+    }
+  } catch (error) {
+    console.warn("currentUser() lookup failed", { userId, error })
+  }
+
+  const secretKey = process.env.CLERK_SECRET_KEY
+  if (!secretKey) {
+    console.error("CLERK_SECRET_KEY not set; cannot fetch user via Clerk API", { userId })
+    return { clerkUser: null, email: "", name: "" }
+  }
+
+  try {
+    const response = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      console.error("Clerk REST API returned non-OK status", { userId, status: response.status })
+      return { clerkUser: null, email: "", name: "" }
+    }
+
+    const clerkUser = await response.json()
+
+    const email = extractPrimaryEmail(clerkUser)
+    const name =
+      clerkUser.full_name ||
+      [clerkUser.first_name, clerkUser.last_name].filter(Boolean).join(" ") ||
+      clerkUser.username ||
+      "User"
+
+    return { clerkUser, email, name }
+  } catch (error) {
+    console.error("Failed to fetch Clerk user via REST API", { userId, error })
+    return { clerkUser: null, email: "", name: "" }
+  }
+}
+
+function extractPrimaryEmail(clerkUser: any): string {
+  if (!clerkUser) return ""
+
+  if (Array.isArray(clerkUser.emailAddresses)) {
+    const match = clerkUser.emailAddresses.find((address: any) => address.id === clerkUser.primaryEmailAddressId)
+    if (match?.emailAddress) return match.emailAddress
+    if (clerkUser.emailAddresses[0]?.emailAddress) return clerkUser.emailAddresses[0].emailAddress
+  }
+
+  if (Array.isArray(clerkUser.email_addresses)) {
+    const primaryId = clerkUser.primary_email_address_id
+    const match = clerkUser.email_addresses.find((address: any) => address.id === primaryId)
+    if (match?.email_address) return match.email_address
+    if (clerkUser.email_addresses[0]?.email_address) return clerkUser.email_addresses[0].email_address
+  }
+
+  return clerkUser.email_address || clerkUser.email || ""
 }

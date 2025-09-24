@@ -386,90 +386,64 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="relative max-w-5xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="relative max-w-5xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Free */}
             <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8">
-              <div className="relative text-left">
-                <h3 className="text-xl text-white font-medium tracking-tight font-sans">Starter</h3>
-                <div className="mt-4 flex items-end gap-2">
+              <div className="flex-1">
+                <h3 className="text-xl text-white font-medium tracking-tight font-sans">Free</h3>
+                <p className="mt-4 text-sm text-white/70 font-sans">Perfect for getting started with AI resume optimization.</p>
+                <div className="mt-6 flex items-end gap-2">
+                  <p className="text-4xl sm:text-5xl text-white tracking-tight font-space-grotesk font-semibold">$0</p>
+                </div>
+              </div>
+              <ul className="mt-8 space-y-4 text-sm">
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">3 resume optimizations / mo</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Basic job analysis</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">ATS compatibility check</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Standard templates</span></li>
+              </ul>
+              <Link href="/auth/signup" className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-white/10 border border-white/20 text-sm font-medium hover:bg-white/20 transition font-sans">Get Started</Link>
+            </article>
+
+            {/* Pro */}
+            <article className="relative overflow-hidden rounded-2xl border border-emerald-500/50 bg-white/5 p-8 ring-1 ring-emerald-500">
+              <div className="absolute top-0 right-0 m-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 font-sans">Most Popular</div>
+              <div className="flex-1">
+                <h3 className="text-xl text-white font-medium tracking-tight font-sans">Pro</h3>
+                <p className="mt-4 text-sm text-white/70 font-sans">Ideal for active job seekers and career changers.</p>
+                <div className="mt-6 flex items-end gap-2">
                   <p className="text-4xl sm:text-5xl text-white tracking-tight font-space-grotesk font-semibold">$19</p>
                   <span className="text-white/70 text-sm mb-2 font-sans">/ month</span>
                 </div>
-                <p className="mt-4 text-sm text-white/70 font-sans">
-                  Perfect for getting started and landing your next interview quickly.
-                </p>
               </div>
-
               <ul className="mt-8 space-y-4 text-sm">
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">5 AI Resume Generations / mo</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">ATS Keyword Matching</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">Standard Resume Templates</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">Email Support</span>
-                </li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Unlimited resume optimizations</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Advanced job analysis</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">AI cover letter generator</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Premium templates</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Priority email support</span></li>
               </ul>
-
-              <Link
-                href="/auth/signup"
-                className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-white/10 border border-white/20 text-sm font-medium hover:bg-white/20 transition font-sans"
-              >
-                Choose Starter
-              </Link>
+              <Link href="/auth/signup" className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-400 transition font-sans">Choose Pro</Link>
             </article>
 
-            <article className="relative overflow-hidden rounded-2xl border border-emerald-500/50 bg-white/5 p-8 ring-1 ring-emerald-500">
-              <div className="absolute top-0 right-0 m-4 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 font-sans">
-                Most Popular
-              </div>
-              <div className="relative text-left">
-                <h3 className="text-xl text-white font-medium tracking-tight font-sans">Pro</h3>
-                <div className="mt-4 flex items-end gap-2">
+            {/* Enterprise */}
+            <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8">
+              <div className="flex-1">
+                <h3 className="text-xl text-white font-medium tracking-tight font-sans">Enterprise</h3>
+                <p className="mt-4 text-sm text-white/70 font-sans">For professionals and teams who need the best.</p>
+                <div className="mt-6 flex items-end gap-2">
                   <p className="text-4xl sm:text-5xl text-white tracking-tight font-space-grotesk font-semibold">$49</p>
                   <span className="text-white/70 text-sm mb-2 font-sans">/ month</span>
                 </div>
-                <p className="mt-4 text-sm text-white/70 font-sans">
-                  For the serious job seeker who wants every advantage.
-                </p>
               </div>
-
               <ul className="mt-8 space-y-4 text-sm">
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">Unlimited AI Generations</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">Advanced Job Description Analysis</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">AI Cover Letter Generator</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">Premium Resume Templates</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-400" />
-                  <span className="text-white/90 font-sans">Priority Support</span>
-                </li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Everything in Pro</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Team collaboration</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">API access</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Advanced analytics</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-white/90 font-sans">Dedicated account manager</span></li>
               </ul>
-
-              <Link
-                href="/auth/signup"
-                className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-400 transition font-sans"
-              >
-                Choose Pro
-              </Link>
+              <a href="mailto:sales@resumeai.com?subject=Enterprise Plan Inquiry" className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-white/10 border border-white/20 text-sm font-medium hover:bg-white/20 transition font-sans">Contact Sales</a>
             </article>
           </div>
         </div>

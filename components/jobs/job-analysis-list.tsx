@@ -27,6 +27,7 @@ interface JobAnalysisCardProps {
 function JobAnalysisCard({ analysis }: JobAnalysisCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const analysisData = analysis.analysis_result
+  const keywords = analysisData?.keywords ?? []
 
   return (
     <Card className="border-border/50 bg-card/50 backdrop-blur-sm hover:bg-card/70 transition-colors">
@@ -98,11 +99,11 @@ function JobAnalysisCard({ analysis }: JobAnalysisCardProps) {
         {/* Key Insights Summary */}
         <div className="grid grid-cols-2 gap-4 p-3 bg-muted/20 rounded-lg">
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">{analysisData.required_skills.length}</div>
+            <div className="text-2xl font-bold text-primary">{analysisData.required_skills?.length ?? 0}</div>
             <div className="text-xs text-muted-foreground">Required Skills</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-accent">{analysisData.keywords.length}</div>
+            <div className="text-2xl font-bold text-accent">{keywords.length}</div>
             <div className="text-xs text-muted-foreground">Key Keywords</div>
           </div>
         </div>
@@ -114,14 +115,14 @@ function JobAnalysisCard({ analysis }: JobAnalysisCardProps) {
             Must-Have Skills
           </h4>
           <div className="flex flex-wrap gap-1">
-            {analysisData.required_skills.slice(0, 6).map((skill, index) => (
+            {(analysisData.required_skills ?? []).slice(0, 6).map((skill, index) => (
               <Badge key={index} variant="default" className="text-xs bg-primary/10 text-primary border-primary/20">
                 {skill}
               </Badge>
             ))}
-            {analysisData.required_skills.length > 6 && (
+            {(analysisData.required_skills?.length ?? 0) > 6 && (
               <Badge variant="outline" className="text-xs">
-                +{analysisData.required_skills.length - 6} more
+                +{(analysisData.required_skills?.length ?? 0) - 6} more
               </Badge>
             )}
           </div>
@@ -131,14 +132,14 @@ function JobAnalysisCard({ analysis }: JobAnalysisCardProps) {
         <div>
           <h4 className="text-sm font-medium mb-2">Key Keywords</h4>
           <div className="flex flex-wrap gap-1">
-            {analysisData.keywords.slice(0, 5).map((keyword, index) => (
+            {keywords.slice(0, 5).map((keyword, index) => (
               <Badge key={index} variant="secondary" className="text-xs">
                 {keyword}
               </Badge>
             ))}
-            {analysisData.keywords.length > 5 && (
+            {keywords.length > 5 && (
               <Badge variant="secondary" className="text-xs">
-                +{analysisData.keywords.length - 5} more
+                +{keywords.length - 5} more
               </Badge>
             )}
           </div>

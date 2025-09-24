@@ -6,6 +6,7 @@ import { z } from "zod"
 
 import {
   createResume,
+  ensureUserExists,
   getOrCreateUser,
   setPrimaryResume,
   updateResumeAnalysis,
@@ -83,16 +84,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Use enhanced user creation with retry logic
-    const user = await getOrCreateUser()
+    // Ensure a matching database user exists
+    const ensuredUser = await ensureUserExists(userId)
+    const user = ensuredUser ?? (await getOrCreateUser(userId))
     if (!user) {
-      return NextResponse.json({ error: "Unable to verify user account. Please try again." }, { status: 500 })
+      console.error("Unable to resolve user during master resume upload", { userId })
+      return NextResponse.json({ error: "Unable to verify account. Please try again." }, { status: 500 })
     }
-
-    console.log('User verification successful in master resume upload:', { 
-      user_id: user.id, 
-      clerk_user_id: user.clerk_user_id 
-    })
 
     const formData = await request.formData()
     const file = formData.get("file") as File | null
@@ -142,7 +140,7 @@ export async function POST(request: NextRequest) {
     try {
       const { text } = await generateText({
         model: openai("gpt-4o-mini"),
-        prompt: `Extract the full text content from this resume. Maintain section headings and bullet structure.
+        prompt: `Extract the full text content from this resume. Preserve section headings and bullet structure.
 
 FILE_TYPE: ${file.type}
 BASE64_DATA:
@@ -152,7 +150,7 @@ Return only the extracted resume text.`,
       })
       contentText = text.trim()
     } catch (extractionError) {
-      console.error("Master resume content extraction error:", extractionError)
+      console.error("Master resume text extraction failed", extractionError)
       contentText = "Content extraction failed. Please re-upload or edit manually."
     }
 
@@ -170,7 +168,7 @@ Return only the extracted resume text.`,
 Resume Content:
 ${contentText}
 
-Provide clear, concise results. Use arrays for bullet points, prefer ISO date strings (YYYY-MM) when inferring dates, and leave fields undefined if the information is missing.`,
+Provide concise results. Use arrays for bullets, prefer ISO dates (YYYY-MM) when inferring dates, and leave fields undefined if the information is missing.`,
       })
 
       const extractionTimestamp = new Date().toISOString()
@@ -191,7 +189,8 @@ Provide clear, concise results. Use arrays for bullet points, prefer ISO date st
 
       return NextResponse.json({ resume: updated })
     } catch (analysisError) {
-      console.error("Master resume analysis error:", analysisError)
+      console.error("Master resume structured analysis failed", analysisError)
+
       const failedResume =
         (await updateResumeAnalysis(resume.id, user.id, {
           content_text: contentText,
@@ -210,7 +209,7 @@ Provide clear, concise results. Use arrays for bullet points, prefer ISO date st
       )
     }
   } catch (error) {
-    console.error("Master resume upload error:", error)
+    console.error("Master resume upload error", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

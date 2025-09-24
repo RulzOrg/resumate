@@ -54,7 +54,7 @@ export function intelligentTruncate(
 
   // Extract and prioritize sections
   const sections = extractSections(original)
-  const result = prioritizedTruncation(sections, maxLength)
+  const result = prioritizedTruncation(sections, maxLength, originalLength)
   
   return result
 }
@@ -72,7 +72,7 @@ function extractSections(content: string): ContentSection[] {
   for (const line of lines) {
     const sectionType = identifySectionType(line)
     
-    if (sectionType !== 'other' || currentSection?.type === 'other') {
+    if (sectionType !== 'other' && (!currentSection || currentSection.type !== sectionType)) {
       // Finish previous section
       if (currentSection && currentContent.length > 0) {
         currentSection.content = currentContent.join('\n').trim()
@@ -118,7 +118,7 @@ function extractSections(content: string): ContentSection[] {
  * Identify section type based on content patterns
  */
 function identifySectionType(line: string): ContentSection['type'] {
-  const lower = line.toLowerCase()
+  // Requirements indicators
   
   // Requirements indicators
   if (/(requirements?|qualifications?|must have|required|essential):/i.test(line) ||
@@ -172,7 +172,7 @@ function getSectionPriority(type: ContentSection['type']): number {
 /**
  * Perform prioritized truncation of sections
  */
-function prioritizedTruncation(sections: ContentSection[], maxLength: number): TruncationResult {
+function prioritizedTruncation(sections: ContentSection[], maxLength: number, originalLength: number): TruncationResult {
   // Sort by priority (lower number = higher priority)
   const sortedSections = [...sections].sort((a, b) => a.priority - b.priority)
   
@@ -210,7 +210,7 @@ function prioritizedTruncation(sections: ContentSection[], maxLength: number): T
   return {
     truncatedContent: result,
     wasTruncated: true,
-    originalLength: sections.reduce((sum, s) => sum + s.content.length, 0),
+    originalLength: originalLength,
     truncatedLength: result.length,
     removedSections,
     preservedSections

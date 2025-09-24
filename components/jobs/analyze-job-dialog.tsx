@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Link2, X, Eye, Edit3, Trash2, Check, AlertTriangle, FileText, AlertCircle, Brain, Sparkles, TrendingUp, Save, Clock, Archive } from "lucide-react"
+import { Loader2, X, AlertTriangle, FileText, AlertCircle, Brain, Sparkles, TrendingUp, Save, Clock, Archive } from "lucide-react"
 import type { JobAnalysis } from "@/lib/db"
 
 interface AnalyzeJobDialogProps {
@@ -27,26 +27,12 @@ interface AnalyzeJobDialogProps {
 
 export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJobDialogProps) {
   // Disable URL import - users will manually provide job details
-  const ENABLE_URL_IMPORT = false
   const [open, setOpen] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [error, setError] = useState("")
-  // URL
-  const [jobUrl, setJobUrl] = useState("")
-  const [isFetching, setIsFetching] = useState(false)
+  // URL import disabled
+  const [jobUrl] = useState("")
   const [jobDescription, setJobDescription] = useState("")
-  const [urlValidation, setUrlValidation] = useState<{
-    isValid: boolean
-    message?: string
-    suggestion?: string
-  }>({ isValid: true })
-  const [fetchedContent, setFetchedContent] = useState<{
-    title: string | null
-    company?: string
-    content: string
-    url: string
-  } | null>(null)
-  const [showPreview, setShowPreview] = useState(false)
   const [duplicateDetection, setDuplicateDetection] = useState<{
     isDuplicate: boolean
     duplicateJob?: JobAnalysis
@@ -151,7 +137,6 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   }
 
   const loadDraft = (draft: any) => {
-    setJobUrl(draft.jobUrl || '')
     setJobDescription(draft.jobDescription || '')
     setJobTitle(draft.jobTitle || '')
     setDetectedCompany(draft.detectedCompany || null)
@@ -164,9 +149,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     
     // Trigger validation and other updates
     handleDescriptionChange(draft.jobDescription || '')
-    if (draft.jobUrl) {
-      handleUrlChange(draft.jobUrl)
-    }
+    // URL handling removed
   }
 
   const deleteDraft = async (draftId: string) => {
@@ -219,7 +202,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           job_description: content.trim(),
-          job_title: jobTitle.trim() || (jobUrl ? extractTitleFromUrl(jobUrl) : undefined),
+          job_title: jobTitle.trim() || undefined,
           company_name: detectedCompany
         }),
       })
@@ -255,20 +238,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     }
   }
 
-  const extractTitleFromUrl = (url: string): string | undefined => {
-    try {
-      const urlObj = new URL(url)
-      const pathParts = urlObj.pathname.split('/').filter(Boolean)
-      const lastPart = pathParts[pathParts.length - 1]
-      if (lastPart && lastPart.length > 3) {
-        return lastPart
-          .replace(/[-_]/g, ' ')
-          .replace(/\b\w/g, l => l.toUpperCase())
-          .trim()
-      }
-    } catch {}
-    return undefined
-  }
+  // URL-based title extraction removed
 
   // Debounced AI preview trigger
   const triggerAiPreviewDebounced = useCallback(
@@ -277,7 +247,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
         performAiPreview(content)
       }
     }, 2000), // 2 second delay
-    [contentValidation.isValid, detectedCompany, jobUrl, jobTitle]
+    [contentValidation.isValid, detectedCompany, jobTitle]
   )
 
   // Content validation function
@@ -344,91 +314,14 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   }
 
   // URL validation function
-  const validateJobUrl = (url: string): { isValid: boolean; message?: string; suggestion?: string } => {
-    if (!url.trim()) {
-      return { isValid: true } // Empty is valid (no error shown)
-    }
-
-    try {
-      const urlObj = new URL(url)
-      
-      // Check protocol
-      if (!['http:', 'https:'].includes(urlObj.protocol)) {
-        return { 
-          isValid: false, 
-          message: "URL must use http:// or https://",
-          suggestion: `Try: https://${url.replace(/^[^:]+:\/\//, '')}`
-        }
-      }
-
-      // Check for common job board domains and patterns
-      const hostname = urlObj.hostname.toLowerCase()
-      const pathname = urlObj.pathname.toLowerCase()
-      
-      // Common job board domains
-      const jobBoardDomains = [
-        'linkedin.com', 'indeed.com', 'glassdoor.com', 'monster.com',
-        'ziprecruiter.com', 'careerbuilder.com', 'simplyhired.com',
-        'jobs.com', 'workable.com', 'lever.co', 'greenhouse.io',
-        'smartrecruiters.com', 'bamboohr.com', 'breezy.hr'
-      ]
-
-      // Company career page patterns
-      const careerPatterns = [
-        '/careers', '/jobs', '/opportunities', '/positions',
-        '/work-with-us', '/join-us', '/employment', '/openings'
-      ]
-
-      const isJobBoard = jobBoardDomains.some(domain => 
-        hostname.includes(domain) || hostname.endsWith(`.${domain}`)
-      )
-      
-      const hasCareerPath = careerPatterns.some(pattern => 
-        pathname.includes(pattern)
-      )
-
-      // Warn for non-job URLs but don't block them
-      if (!isJobBoard && !hasCareerPath) {
-        return {
-          isValid: true, // Still valid, just a warning
-          message: "This doesn't look like a job posting URL. Make sure it links to a specific job listing.",
-          suggestion: "Try URLs from job boards (LinkedIn, Indeed) or company career pages (/careers, /jobs)"
-        }
-      }
-
-      return { isValid: true }
-    } catch {
-      return { 
-        isValid: false, 
-        message: "Please enter a valid URL",
-        suggestion: "Example: https://company.com/careers/software-engineer"
-      }
-    }
-  }
-
-  // Duplicate detection functions
-  const checkForDuplicates = (url?: string, content?: string) => {
+  // Duplicate detection functions (URL-based checks removed)
+  const checkForDuplicates = (_url?: string, content?: string) => {
     if (!existingAnalyses.length) {
       setDuplicateDetection({ isDuplicate: false })
       return
     }
 
-    // Check for URL duplicates first (exact match)
-    if (url?.trim()) {
-      const normalizedUrl = normalizeUrl(url.trim())
-      const urlDuplicate = existingAnalyses.find(analysis => 
-        analysis.job_url && normalizeUrl(analysis.job_url) === normalizedUrl
-      )
-      
-      if (urlDuplicate) {
-        setDuplicateDetection({
-          isDuplicate: true,
-          duplicateJob: urlDuplicate,
-          similarityScore: 100
-        })
-        return
-      }
-    }
+    // URL duplicate checks removed
 
     // Check for content similarity if we have content
     if (content?.trim() && content.length > 100) {
@@ -446,21 +339,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     setDuplicateDetection({ isDuplicate: false })
   }
 
-  const normalizeUrl = (url: string): string => {
-    try {
-      const urlObj = new URL(url)
-      // Remove common tracking parameters and fragments
-      urlObj.search = ''
-      urlObj.hash = ''
-      // Normalize trailing slashes
-      let pathname = urlObj.pathname.replace(/\/+$/, '')
-      if (!pathname) pathname = '/'
-      urlObj.pathname = pathname
-      return urlObj.toString().toLowerCase()
-    } catch {
-      return url.toLowerCase().trim()
-    }
-  }
+  // URL normalization removed
 
   const findMostSimilarJob = (content: string): { job: JobAnalysis; score: number } => {
     let mostSimilar = { job: existingAnalyses[0], score: 0 }
@@ -496,45 +375,6 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   }
 
   // Enhanced company name extraction
-  const extractCompanyFromUrl = (url: string): string | null => {
-    try {
-      const urlObj = new URL(url)
-      const hostname = urlObj.hostname.toLowerCase()
-      
-      // Remove common prefixes and TLDs
-      let domain = hostname
-        .replace(/^(www\.|careers\.|jobs\.|apply\.|workday\.|greenhouse\.|lever\.|bamboohr\.|smartrecruiters\.)/, '')
-        .replace(/\.(com|org|net|io|co|jobs|careers)(\.[a-z]{2})?$/, '')
-      
-      // Handle specific patterns
-      if (domain.includes('.')) {
-        const parts = domain.split('.')
-        // For domains like "company.workday.com" or "company.greenhouse.io"
-        if (parts.length >= 2 && ['workday', 'greenhouse', 'lever', 'bamboohr', 'smartrecruiters'].includes(parts[1])) {
-          domain = parts[0]
-        } else {
-          // Take the main domain part
-          domain = parts[parts.length - 2] || parts[0]
-        }
-      }
-      
-      // Clean up and format
-      domain = domain
-        .replace(/[-_]/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase())
-        .trim()
-      
-      // Skip if it's too generic or too short
-      if (domain.length < 2 || ['Jobs', 'Careers', 'Apply', 'Work'].includes(domain)) {
-        return null
-      }
-      
-      return domain
-    } catch {
-      return null
-    }
-  }
-
   const extractCompanyFromContent = (content: string, title?: string): string | null => {
     const text = `${title || ''} ${content}`.toLowerCase()
     
@@ -604,46 +444,20 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
       })
   }
 
-  const getSmartCompanyName = (url?: string, content?: string, title?: string, providedCompany?: string): string | undefined => {
-    // 1. Use provided company if it exists and looks good
+  const getSmartCompanyName = (_url?: string, content?: string, _title?: string, providedCompany?: string): string | undefined => {
     if (providedCompany && isValidCompanyName(providedCompany)) {
       return formatCompanyName(providedCompany)
     }
-    
-    // 2. Try to extract from URL
-    if (url) {
-      const urlCompany = extractCompanyFromUrl(url)
-      if (urlCompany) return urlCompany
-    }
-    
-    // 3. Try to extract from content
+
     if (content) {
-      const contentCompany = extractCompanyFromContent(content, title)
+      const contentCompany = extractCompanyFromContent(content)
       if (contentCompany) return contentCompany
     }
-    
+
     return undefined
   }
 
-  // Handle URL input changes with validation
-  const handleUrlChange = (url: string) => {
-    setJobUrl(url)
-    const validation = validateJobUrl(url)
-    setUrlValidation(validation)
-    
-    // Check for duplicates when URL changes
-    checkForDuplicates(url, jobDescription)
-    
-    // Clear general error if URL becomes valid
-    if (validation.isValid && error.includes("URL")) {
-      setError("")
-    }
-    
-    // Trigger auto-save if we have content
-    if (jobDescription.trim().length >= 50) {
-      autoSaveDebounced()
-    }
-  }
+  // URL input removed
 
   // Handle job description changes
   const handleDescriptionChange = (content: string) => {
@@ -661,7 +475,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     
     // Check for duplicates when content changes
     if (content.length > 100) {
-      checkForDuplicates(jobUrl, content)
+      checkForDuplicates(undefined, content)
     } else {
       setDuplicateDetection({ isDuplicate: false })
     }
@@ -686,74 +500,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     }
   }
 
-  const handleFetchFromUrl = async () => {
-    if (!jobUrl.trim()) return
-
-    // Validate URL before attempting fetch
-    const validation = validateJobUrl(jobUrl)
-    if (!validation.isValid) {
-      setError(validation.message || "Invalid URL")
-      return
-    }
-
-    // Warn if content already exists
-    if (jobDescription.trim() && !confirm("This will replace your current job description. Continue?")) {
-      return
-    }
-
-    setIsFetching(true)
-    setError("")
-
-    try {
-      const response = await fetch("/api/jobs/fetch-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: jobUrl.trim() }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        const detectedTitle: string = typeof data.title === "string" ? data.title : ""
-        // Store fetched content for preview
-        const content = data.content || ""
-        
-        // Enhanced company name extraction
-        const smartCompanyName = getSmartCompanyName(
-          jobUrl.trim(),
-          content,
-          detectedTitle,
-          data.company
-        )
-
-        setJobTitle((prev) => (detectedTitle ? detectedTitle : prev))
-        setUrlValidation((prev) => ({
-          ...prev,
-          isValid: true,
-          message: detectedTitle
-            ? prev.isValid ? undefined : prev.message
-            : "We couldn't detect the job title automatically. Please add it manually below.",
-        }))
-
-        setFetchedContent({
-          title: detectedTitle || null,
-          company: smartCompanyName,
-          content: content,
-          url: jobUrl.trim()
-        })
-        setShowPreview(true)
-        
-        // Check for duplicates with fetched content
-        checkForDuplicates(jobUrl.trim(), content)
-      } else {
-        const result = await response.json()
-        setError(result.error || "Failed to fetch job posting")
-      }
-    } catch (err) {
-      setError("Failed to fetch job posting")
-    } finally {
-      setIsFetching(false)
-    }
-  }
+  // URL fetch removed
 
   const handleAnalyze = async () => {
     // Validate content before proceeding
@@ -808,7 +555,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
         body: JSON.stringify({
           job_title: deriveTitle(),
           company_name: finalCompany,
-          job_url: jobUrl.trim() || undefined,
+          job_url: undefined,
           job_description: jobDescription.trim(),
         }),
       })
@@ -847,64 +594,18 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   }
 
   // Handle preview actions
-  const handleUseContent = () => {
-    if (fetchedContent) {
-      setJobDescription(fetchedContent.content)
-      if (fetchedContent.title) {
-        setJobTitle(fetchedContent.title)
-      }
-      setShowPreview(false)
-      
-      // Validate the content we're about to use
-      const validation = validateJobContent(fetchedContent.content)
-      setContentValidation(validation)
-      
-      // Check duplicates with the content we're about to use
-      checkForDuplicates(jobUrl, fetchedContent.content)
-    }
-  }
+  // URL content handlers removed
 
-  const handleEditContent = () => {
-    if (fetchedContent) {
-      setJobDescription(fetchedContent.content)
-      if (fetchedContent.title) {
-        setJobTitle(fetchedContent.title)
-      }
-      setShowPreview(false)
-      
-      // Validate the content we're about to edit
-      const validation = validateJobContent(fetchedContent.content)
-      setContentValidation(validation)
-      
-      // Check duplicates with the content we're about to edit
-      checkForDuplicates(jobUrl, fetchedContent.content)
-      
-      // Focus the textarea for editing
-      setTimeout(() => {
-        const textarea = document.getElementById('job-description') as HTMLTextAreaElement
-        if (textarea) {
-          textarea.focus()
-          textarea.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        }
-      }, 100)
-    }
-  }
+  // URL content handlers removed
 
-  const handleDiscardContent = () => {
-    setFetchedContent(null)
-    setShowPreview(false)
-  }
+  // URL content handlers removed
 
   const resetForm = () => {
-    setJobUrl("")
     setJobDescription("")
     setJobTitle("")
     setCompany("")
     setError("")
-    setUrlValidation({ isValid: true })
     setContentValidation({ isValid: true, charCount: 0, level: 'info' })
-    setFetchedContent(null)
-    setShowPreview(false)
     setDuplicateDetection({ isDuplicate: false })
     setDetectedCompany(null)
     setAiPreview({ isAnalyzing: false, analysis: null, error: null, lastAnalyzedContent: '' })
@@ -1029,9 +730,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                       onClick={() => loadDraft(draft)}
                       className="flex-1 text-left"
                     >
-                      <div className="text-sm text-blue-200">
-                        {draft.jobUrl ? new URL(draft.jobUrl).hostname : 'Manual Entry'}
-                      </div>
+                      <div className="text-sm text-blue-200">Manual Entry</div>
                       <div className="text-xs text-blue-300/60 truncate">
                         {draft.jobDescription.substring(0, 60)}...
                       </div>
@@ -1044,7 +743,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                       onClick={() => deleteDraft(draft.id)}
                       className="ml-2 p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <span className="w-3 h-3">✕</span>
                     </button>
                   </div>
                 ))}
@@ -1057,48 +756,39 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
           )}
 
           <div className="mt-6 space-y-6">
-            {ENABLE_URL_IMPORT && (
+            {false && (
               <>
                 <Label htmlFor="job-url" className="mb-2 block text-white/80">Job Post URL</Label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Link2 className="h-5 w-5 text-white/40" />
+                    <span className="h-5 w-5 text-white/40">🔗</span>
                   </div>
                   <Input
                     id="job-url"
                     type="url"
                     placeholder="https://example.com/careers/..."
-                    value={jobUrl}
-                    onChange={(e) => handleUrlChange(e.target.value)}
-                    disabled={isFetching}
-                    className={`bg-white/5 border-white/10 text-white placeholder-white/40 pl-10 pr-24 ${
-                      !urlValidation.isValid ? 'border-red-500/50 focus:border-red-500' : ''
-                    }`}
+                    value={""}
+                    onChange={() => {}}
+                    disabled
+                    className={`bg-white/5 border-white/10 text-white placeholder-white/40 pl-10 pr-24`}
                   />
                   <button
                     type="button"
-                    onClick={handleFetchFromUrl}
-                    disabled={!jobUrl.trim() || isFetching || !urlValidation.isValid}
+                    onClick={() => {}}
+                    disabled
                     className="absolute right-1 top-1 bottom-1 inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 text-sm text-white/90 disabled:opacity-50"
                   >
-                    {isFetching ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Fetching
-                      </>
-                    ) : (
-                      <>Preview</>
-                    )}
+                    <>Preview</>
                   </button>
                 </div>
                 {/* URL Validation Feedback */}
-                {urlValidation.message && (
+                {false && (
                   <div className={`mt-2 text-sm ${
-                    urlValidation.isValid ? 'text-yellow-400' : 'text-red-400'
+                    'text-yellow-400'
                   }`}>
-                    <p>{urlValidation.message}</p>
-                    {urlValidation.suggestion && (
-                      <p className="text-white/50 mt-1">{urlValidation.suggestion}</p>
+                    <p>Validation</p>
+                    {false && (
+                      <p className="text-white/50 mt-1">Suggestion</p>
                     )}
                   </div>
                 )}
@@ -1106,16 +796,16 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
             )}
 
             {/* Content Preview */}
-            {ENABLE_URL_IMPORT && showPreview && fetchedContent && (
+            {false && (
               <div className="space-y-4">
                 <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-emerald-400" />
+                      <span className="h-4 w-4 text-emerald-400">👁</span>
                       <h4 className="font-medium text-white">Content Preview</h4>
                     </div>
                     <button
-                      onClick={handleDiscardContent}
+                      onClick={() => {}}
                       className="text-white/50 hover:text-red-400 transition-colors"
                     >
                       <X className="h-4 w-4" />
@@ -1125,16 +815,16 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                   <div className="space-y-3">
                     <div>
                       <p className="text-sm text-white/60">Job Title:</p>
-                      <p className={`font-medium ${fetchedContent.title ? 'text-white' : 'text-yellow-400'}`}>
-                        {fetchedContent.title || 'Not detected automatically'}
+                      <p className={`font-medium text-yellow-400`}>
+                        Not detected automatically
                       </p>
                     </div>
                     
-                    {fetchedContent.company && (
+                    {false && (
                       <div>
                         <p className="text-sm text-white/60">Company:</p>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-white">{fetchedContent.company}</p>
+                          <p className="font-medium text-white">Company</p>
                           <span className="text-xs text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded">
                             Auto-detected
                           </span>
@@ -1146,32 +836,31 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                       <p className="text-sm text-white/60">Content Preview:</p>
                       <div className="mt-1 max-h-32 overflow-y-auto rounded bg-white/5 p-3">
                         <p className="text-sm text-white/80 whitespace-pre-wrap">
-                          {fetchedContent.content.slice(0, 500)}
-                          {fetchedContent.content.length > 500 && "..."}
+                          ...
                         </p>
                       </div>
                       <p className="text-xs text-white/50 mt-1">
-                        {fetchedContent.content.length} characters
+                        0 characters
                       </p>
                     </div>
                   </div>
                   
                   <div className="flex gap-2 mt-4">
                     <Button
-                      onClick={handleUseContent}
+                      onClick={() => {}}
                       className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-black"
                       size="sm"
                     >
-                      <Check className="h-4 w-4 mr-2" />
+                      <span className="h-4 w-4 mr-2">✔</span>
                       Use This Content
                     </Button>
                     <Button
-                      onClick={handleEditContent}
+                      onClick={() => {}}
                       variant="outline"
                       className="flex-1 border-white/20 text-white hover:bg-white/10"
                       size="sm"
                     >
-                      <Edit3 className="h-4 w-4 mr-2" />
+                      <span className="h-4 w-4 mr-2">✎</span>
                       Edit & Use
                     </Button>
                   </div>
@@ -1242,14 +931,6 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                 onChange={(e) => {
                   const value = e.target.value
                   setJobTitle(value)
-                  if (value.trim()) {
-                    setUrlValidation((prev) => {
-                      if (prev.message && prev.message.includes("couldn't detect")) {
-                        return { ...prev, message: undefined }
-                      }
-                      return prev
-                    })
-                  }
                 }}
                 disabled={isAnalyzing}
                 className="bg-white/5 border-white/10 text-white placeholder-white/40"
@@ -1272,16 +953,6 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                 className="bg-white/5 border-white/10 text-white placeholder-white/40"
               />
             </div>
-
-            {ENABLE_URL_IMPORT && (
-              <div className="flex items-center py-1">
-                <div className="flex-grow border-t border-white/10" />
-                <span className="mx-4 text-xs text-white/50 uppercase">
-                  {showPreview ? "Or Edit Manually" : "Or"}
-                </span>
-                <div className="flex-grow border-t border-white/10" />
-              </div>
-            )}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">

@@ -9,7 +9,7 @@ export async function getSession() {
     redirect("/auth/login")
   }
 
-  const dbUser = await getOrCreateUser()
+  const dbUser = await getOrCreateUser(userId)
 
   if (!dbUser) {
     redirect("/auth/login")

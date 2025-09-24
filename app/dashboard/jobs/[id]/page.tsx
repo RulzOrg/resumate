@@ -108,7 +108,7 @@ export default async function JobViewPage({ params }: { params: { id: string } }
                           <span>Experience Level: {analysisData.experience_level}</span>
                         </li>
                       )}
-                      {analysisData.required_skills?.slice(0, 3).map((skill, i) => (
+                      {analysisData.required_skills?.slice(0, 3)?.map((skill, i) => (
                         <li key={i} className="flex items-start gap-2">
                           <span className="mt-1 inline-block w-1.5 h-1.5 rounded-full bg-primary" />
                           <span>Required: {skill}</span>

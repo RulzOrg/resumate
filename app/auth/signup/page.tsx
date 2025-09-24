@@ -1,6 +1,5 @@
-import dynamic from "next/dynamic"
-
-const CustomAuthPage = dynamic(() => import("@/components/auth/custom-auth-page"), { ssr: false })
+import CustomAuthPage from "@/components/auth/custom-auth-page"
+export const dynamic = "force-dynamic"
 
 export default function SignupPage() {
   return <CustomAuthPage defaultTab="signup" />

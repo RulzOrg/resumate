@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getResumeById, updateResumeContent, getOrCreateUser } from "@/lib/db"
+// No direct S3 SDK usage here; we fetch via HTTPS using the stored URL.
 import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
 
@@ -26,10 +27,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 })
     }
 
-    // Extract base64 data from the stored file URL
-    const base64Data = resume.file_url.split(",")[1]
-    if (!base64Data) {
-      return NextResponse.json({ error: "Invalid file data" }, { status: 400 })
+    let base64Data: string | null = null
+    // Legacy support: data URLs stored previously
+    if (resume.file_url.startsWith("data:")) {
+      base64Data = resume.file_url.split(",")[1] || null
+    } else {
+      // Assume external URL (S3 or CDN). Fetch the file and convert to base64 for the current AI extraction path
+      try {
+        let downloadUrl = resume.file_url
+        // If this looks like an S3 key (rare case), generate signed URL. Otherwise, use as-is.
+        // For now, treat resume.file_url as a full URL; if your DB stores keys, add logic to detect and sign.
+        let response = await fetch(downloadUrl)
+        if (!response.ok && resume.source_metadata && typeof resume.source_metadata === "object") {
+          const key = (resume.source_metadata as any).key as string | undefined
+          if (key) {
+            try {
+              // Attempt to presign in case the object is private
+              const { getSignedDownloadUrl } = await import("@/lib/storage")
+              downloadUrl = await getSignedDownloadUrl(key, 300)
+              response = await fetch(downloadUrl)
+            } catch (e) {
+              console.warn("Presign fallback failed:", e)
+            }
+          }
+        }
+        if (!response.ok) throw new Error(`Fetch failed: ${response.status}`)
+        const arrayBuf = await response.arrayBuffer()
+        base64Data = Buffer.from(arrayBuf).toString("base64")
+      } catch (e) {
+        console.error("Failed to fetch resume file from URL:", e)
+        return NextResponse.json({ error: "Unable to fetch resume file for extraction" }, { status: 400 })
+      }
     }
 
     // Use AI to extract structured content

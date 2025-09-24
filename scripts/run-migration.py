@@ -68,10 +68,40 @@ def fix_foreign_key_constraint():
         cursor.execute("ALTER TABLE job_analysis DROP CONSTRAINT IF EXISTS job_analysis_user_id_fkey")
         
         # Step 2: Ensure data type consistency
+        # Pre-change compatibility check to avoid truncation/errors when narrowing to VARCHAR(255)
+        print("  2.1 Checking job_analysis.user_id value lengths prior to type change...")
+        cursor.execute("""
+            SELECT COUNT(*) AS offending_count,
+                   COALESCE(MAX(CHAR_LENGTH(user_id::text)), 0) AS max_len
+            FROM job_analysis
+            WHERE CHAR_LENGTH(user_id::text) > 255
+        """)
+        length_check = cursor.fetchone()
+        offending_count = length_check['offending_count'] if length_check else 0
+        max_len = length_check['max_len'] if length_check else 0
+
+        if offending_count and offending_count > 0:
+            print(f"\n🚫 Incompatibility detected: {offending_count} rows in job_analysis.user_id exceed 255 characters (max length: {max_len}).")
+            print("❌ Aborting migration. Choose TEXT or a larger VARCHAR size for job_analysis.user_id and rerun.")
+            raise Exception("Incompatible data length for VARCHAR(255) on job_analysis.user_id")
+
         print("  2. Updating job_analysis.user_id data type to VARCHAR(255)...")
         cursor.execute("ALTER TABLE job_analysis ALTER COLUMN user_id TYPE VARCHAR(255)")
         
         # Step 3: Re-create foreign key constraint
+        print("  3. Pre-checking for orphaned job_analysis.user_id before creating foreign key...")
+        cursor.execute("""
+            SELECT COUNT(*) AS orphan_count
+            FROM job_analysis ja
+            LEFT JOIN users_sync u ON ja.user_id = u.id
+            WHERE ja.user_id IS NOT NULL AND u.id IS NULL
+        """)
+        orphan_check = cursor.fetchone()
+        orphan_count = orphan_check['orphan_count'] if orphan_check else 0
+        print(f"     Orphaned records (non-null user_id without matching users_sync.id): {orphan_count}")
+        if orphan_count and orphan_count > 0:
+            print("❌ Aborting migration: resolve orphaned job_analysis.user_id records before adding foreign key.")
+            raise Exception("Orphaned job_analysis.user_id records exist")
         print("  3. Creating new foreign key constraint...")
         cursor.execute("""
             ALTER TABLE job_analysis 
@@ -154,7 +184,7 @@ def fix_foreign_key_constraint():
             SELECT COUNT(*) as count
             FROM job_analysis ja
             LEFT JOIN users_sync u ON ja.user_id = u.id
-            WHERE u.id IS NULL
+            WHERE ja.user_id IS NOT NULL AND u.id IS NULL
         """)
         orphaned_result = cursor.fetchone()
         orphaned_count = orphaned_result['count'] if orphaned_result else 0

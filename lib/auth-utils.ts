@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
 import { getOrCreateUser as getOrCreateUserRecord } from "./db"
+import { currentUser } from "@clerk/nextjs/server"
 
 export async function getAuthenticatedUser() {
   const { userId } = await auth()
@@ -10,9 +11,20 @@ export async function getAuthenticatedUser() {
   }
 
   const dbUser = await getOrCreateUserRecord()
-
   if (!dbUser) {
-    redirect("/auth/login")
+    // DB not ready: synthesize minimal user from Clerk so dashboard can render
+    const cUser = await currentUser()
+    return {
+      id: userId,
+      clerkId: userId,
+      email: cUser?.emailAddresses?.[0]?.emailAddress || "",
+      name: cUser?.fullName || cUser?.firstName || cUser?.username || "User",
+      subscription_status: "free",
+      subscription_plan: "free",
+      subscription_period_end: undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
   }
 
   return {

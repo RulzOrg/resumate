@@ -7,10 +7,19 @@ import type { JobAnalysis } from "@/lib/db"
 interface JobAnalysisCompactProps {
   analysis: JobAnalysis
   showOptimizeButton?: boolean
+  onOptimize?: () => void
 }
 
-export function JobAnalysisCompact({ analysis, showOptimizeButton = true }: JobAnalysisCompactProps) {
+export function JobAnalysisCompact({ analysis, showOptimizeButton = true, onOptimize = () => {} }: JobAnalysisCompactProps) {
   const analysisData = analysis.analysis_result
+  
+  if (!analysisData) {
+    return (
+      <div className="p-4 rounded-lg border border-border/50 bg-card/30">
+        <p className="text-muted-foreground">Analysis data not available</p>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 rounded-lg border border-border/50 bg-card/30 hover:bg-card/50 transition-colors">
@@ -70,7 +79,14 @@ export function JobAnalysisCompact({ analysis, showOptimizeButton = true }: JobA
 
         {/* Action Button */}
         {showOptimizeButton && (
-          <Button size="sm" className="w-full">
+          <Button
+            size="sm"
+            className="w-full"
+            onClick={onOptimize}
+            aria-label="Optimize for this job"
+            title="Optimize for this job"
+            type="button"
+          >
             <Zap className="w-3 h-3 mr-1" />
             Optimize
           </Button>

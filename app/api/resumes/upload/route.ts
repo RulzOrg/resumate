@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createResume, getOrCreateUser } from "@/lib/db"
+import { buildS3Key, uploadBufferToS3 } from "@/lib/storage"
 
 import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
@@ -41,14 +42,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File size must be less than 10MB" }, { status: 400 })
     }
 
-    // Convert file to base64 for storage (in a real app, you'd upload to cloud storage)
+    // Upload file to S3 and store URL
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const base64 = buffer.toString("base64")
-    const fileUrl = `data:${file.type};base64,${base64}`
+    const key = buildS3Key({ userId: user.id, kind: "uploaded", fileName: file.name })
+    const { url: fileUrl } = await uploadBufferToS3({ buffer, key, contentType: file.type })
 
+    let extractionSuccess = false
     let contentText = ""
     try {
+      const base64 = buffer.toString("base64")
       const { text } = await generateText({
         model: openai("gpt-4o-mini"),
         prompt: `Extract all text content from this resume file. The file is in ${file.type} format.
@@ -78,6 +81,7 @@ export async function POST(request: NextRequest) {
         File data: ${base64.substring(0, 2000)}...`,
       })
       contentText = text
+      extractionSuccess = true
     } catch (extractionError) {
       console.error("Content extraction error:", extractionError)
       // Fallback content if extraction fails
@@ -93,8 +97,9 @@ export async function POST(request: NextRequest) {
       file_size: file.size,
       content_text: contentText,
       kind: "uploaded",
-      processing_status: "completed",
+      processing_status: extractionSuccess ? "completed" : "failed",
       extracted_at: new Date().toISOString(),
+      source_metadata: { storage: "r2", key },
     })
 
     return NextResponse.json({ resume })

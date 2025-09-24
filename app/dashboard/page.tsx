@@ -1,5 +1,6 @@
 import { getAuthenticatedUser } from "@/lib/auth-utils"
 import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes, getMasterResume } from "@/lib/db"
+import { getCurrentSubscription, getUsageLimits } from "@/lib/subscription"
 import { Button } from "@/components/ui/button"
 import { UploadResumeDialog } from "@/components/dashboard/upload-resume-dialog"
 import { UploadMasterResumeDialog } from "@/components/dashboard/master-resume-dialog"
@@ -19,10 +20,26 @@ export default async function DashboardPage({
   searchParams?: { [key: string]: string | string[] | undefined }
 }) {
   const user = await getAuthenticatedUser()
-  const resumes = await getUserResumes(user.id)
-  const jobAnalyses = await getUserJobAnalyses(user.id)
-  const optimizedResumes = await getUserOptimizedResumes(user.id)
-  const masterResume = await getMasterResume(user.id)
+  // Guard: ensure DB user exists to avoid 500 on fresh Clerk account
+  if (!user?.id) {
+    // Next will render NotFound if something odd happened
+    return null
+  }
+  const [
+    resumes,
+    jobAnalyses,
+    optimizedResumes,
+    masterResume,
+    subscription,
+    usageLimits,
+  ] = await Promise.all([
+    getUserResumes(user.id).catch(() => [] as any[]),
+    getUserJobAnalyses(user.id).catch(() => [] as any[]),
+    getUserOptimizedResumes(user.id).catch(() => [] as any[]),
+    getMasterResume(user.id).catch(() => undefined as any),
+    getCurrentSubscription().catch(() => null),
+    getUsageLimits().catch(() => null),
+  ])
 
   const isDemo = (searchParams?.demo as string) === "1"
   const pageParam = parseInt((searchParams?.page as string) || "1", 10)
@@ -48,7 +65,7 @@ export default async function DashboardPage({
   ] as any
 
   const totalGenerations = optimizedResumes.length
-  const maxGenerations = user.subscription_plan === "pro" ? 50 : 5
+  const maxGenerations = usageLimits?.resumeOptimizations.limit === 'unlimited' ? 999 : (usageLimits?.resumeOptimizations.limit || 3)
   const usagePercentage = (totalGenerations / maxGenerations) * 100
   const isBrandNew = jobAnalyses.length === 0 && optimizedResumes.length === 0
 
@@ -152,11 +169,12 @@ export default async function DashboardPage({
             <div className="space-y-8 mt-8 lg:mt-0">
               {/* Account Status */}
               <AccountStatusCard
-                plan={user.subscription_plan}
-                status={user.subscription_status}
-                periodEnd={(user as any).subscription_period_end}
-                totalGenerations={totalGenerations}
-                maxGenerations={maxGenerations}
+                plan={subscription?.plan || 'free'}
+                status={subscription?.status || 'free'}
+                periodEnd={subscription?.periodEnd?.toISOString()}
+                jobAnalyses={jobAnalyses.length}
+                optimizedResumes={optimizedResumes.length}
+                usageLimits={usageLimits || undefined}
               />
 
               {/* Master Resume */}

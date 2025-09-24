@@ -32,6 +32,8 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadAbortRef = useRef<AbortController | null>(null)
+  const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   const resetState = () => {
     setFile(null)
@@ -59,7 +61,7 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
     ]
 
     if (!allowedTypes.includes(selectedFile.type)) {
-      setError("Please upload a PDF or Word document")
+      setError("Please upload a PDF, Word, or plain text file")
       return
     }
 
@@ -77,8 +79,9 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
     setIsUploading(true)
     setError(null)
     setProgress(10)
-
-    const timer = setInterval(() => {
+    
+    // Start progress timer
+    progressTimerRef.current = setInterval(() => {
       setProgress((prev) => (prev >= 80 ? prev : prev + 10))
     }, 150)
 
@@ -89,9 +92,14 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
         formData.append("title", title.trim())
       }
 
+      // Create and store AbortController for cancellation
+      const controller = new AbortController()
+      uploadAbortRef.current = controller
+
       const response = await fetch("/api/resumes/master/upload", {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       })
 
       if (!response.ok) {
@@ -99,16 +107,32 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
         throw new Error(payload.error || "Upload failed")
       }
 
-      clearInterval(timer)
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current)
+        progressTimerRef.current = null
+      }
       setProgress(100)
       setSuccess(true)
       router.refresh()
     } catch (uploadError) {
-      clearInterval(timer)
+      if (progressTimerRef.current) {
+        clearInterval(progressTimerRef.current)
+        progressTimerRef.current = null
+      }
       setProgress(0)
-      setError(uploadError instanceof Error ? uploadError.message : "Upload failed")
+      // Handle abort distinctly
+      const isAbort =
+        (uploadError as any)?.name === "AbortError" ||
+        (uploadError instanceof DOMException && uploadError.name === "AbortError")
+      if (isAbort) {
+        setError("Upload cancelled")
+      } else {
+        setError(uploadError instanceof Error ? uploadError.message : "Upload failed")
+      }
     } finally {
       setIsUploading(false)
+      // Clear stored controller
+      uploadAbortRef.current = null
     }
   }
 
@@ -178,7 +202,7 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white">Drag & drop your resume</p>
-                  <p className="text-xs text-white/60">PDF or Word document, up to 10MB</p>
+                  <p className="text-xs text-white/60">PDF, Word, or plain text file, up to 10MB</p>
                 </div>
                 <div>
                   <Button
@@ -228,12 +252,24 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  if (!isUploading) {
+                  if (isUploading) {
+                    // Abort in-flight request and cleanup
+                    if (uploadAbortRef.current) {
+                      uploadAbortRef.current.abort()
+                    }
+                    if (progressTimerRef.current) {
+                      clearInterval(progressTimerRef.current)
+                      progressTimerRef.current = null
+                    }
+                    setIsUploading(false)
+                    setProgress(0)
+                    setSuccess(false)
+                    setError("Upload cancelled")
+                  } else {
                     setOpen(false)
                   }
                 }}
                 className="text-white/70"
-                disabled={isUploading}
               >
                 <X className="mr-2 h-4 w-4" /> Cancel
               </Button>

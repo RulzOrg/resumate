@@ -234,10 +234,10 @@ CONSTRAINTS
 
 Job Title: ${job_title}
 Company: ${company_name || "Not specified"}
-Required Skills: ${analysis.required_skills.join(", ")}
-Preferred Skills: ${analysis.preferred_skills.join(", ")}
-Keywords: ${analysis.keywords.join(", ")}
-Experience Level: ${analysis.experience_level}
+Required Skills: ${analysis.required_skills?.join(", ") || "Not specified"}
+Preferred Skills: ${analysis.preferred_skills?.join(", ") || "Not specified"}
+Keywords: ${analysis.keywords?.join(", ") || "Not specified"}
+Experience Level: ${analysis.experience_level || "Not specified"}
 Key Requirements: ${analysis.key_requirements.join(", ")}
 Nice to Have: ${analysis.nice_to_have.join(", ")}
 Company Culture: ${analysis.company_culture.join(", ")}
