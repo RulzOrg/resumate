@@ -13,7 +13,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const user = await getOrCreateUser()
+    const user = await getOrCreateUser(userId)
     console.log('User lookup:', { userId: user?.id, found: !!user })
     
     if (!user) {
