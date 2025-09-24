@@ -11,6 +11,7 @@ import {
   setPrimaryResume,
   updateResumeAnalysis,
 } from "@/lib/db"
+import { buildS3Key, uploadBufferToS3 } from "@/lib/storage"
 
 const StructuredResumeSchema = z.object({
   personal_info: z
@@ -117,8 +118,10 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
+    // Upload to R2/S3 and store URL
+    const key = buildS3Key({ userId: user.id, kind: "master", fileName: file.name })
+    const { url: fileUrl } = await uploadBufferToS3({ buffer, key, contentType: file.type })
     const base64 = buffer.toString("base64")
-    const fileUrl = `data:${file.type};base64,${base64}`
 
     const resume = await createResume({
       user_id: user.id,
@@ -130,7 +133,7 @@ export async function POST(request: NextRequest) {
       kind: "master",
       processing_status: "processing",
       is_primary: true,
-      content_text: null,
+      source_metadata: { storage: "r2", key },
     })
 
     await setPrimaryResume(resume.id, user.id)
@@ -138,19 +141,28 @@ export async function POST(request: NextRequest) {
     let contentText = ""
 
     try {
-      const { text } = await generateText({
-        model: openai("gpt-4o-mini"),
-        prompt: `Extract the full text content from this resume. Preserve section headings and bullet structure.
-
-FILE_TYPE: ${file.type}
-BASE64_DATA:
-${base64.substring(0, 2000)}...
-
-Return only the extracted resume text.`,
-      })
-      contentText = text.trim()
+      // For text files, read directly without AI
+      if (file.type === "text/plain") {
+        contentText = buffer.toString('utf-8')
+      } else {
+        // Use full base64 data for better extraction
+        const { text } = await generateText({
+          model: openai("gpt-4o-mini"),
+          prompt: `Extract the full text content from this resume. Preserve section headings and bullet structure.
+          Return only the extracted resume text, no additional commentary.
+          
+          FILE_TYPE: ${file.type}
+          BASE64_DATA: ${base64}`,
+        })
+        contentText = text.trim()
+      }
+      console.log(`Text extraction successful, content length: ${contentText.length}`)
     } catch (extractionError) {
-      console.error("Master resume text extraction failed", extractionError)
+      console.error("Master resume text extraction failed", {
+        error: extractionError instanceof Error ? extractionError.message : extractionError,
+        fileType: file.type,
+        fileSize: file.size
+      })
       contentText = "Content extraction failed. Please re-upload or edit manually."
     }
 
@@ -160,16 +172,44 @@ Return only the extracted resume text.`,
         throw new Error("Unable to extract enough resume content for analysis")
       }
 
-      const { object: structured } = await generateObject({
-        model: openai("gpt-4o-mini"),
-        schema: StructuredResumeSchema,
-        prompt: `Analyze the following resume content and extract structured data for reuse.
+      console.log(`Starting structured analysis for resume with ${sanitizedText.length} characters`)
 
-Resume Content:
-${contentText}
+      // Try structured analysis with retry logic
+      let structured
+      let retryCount = 0
+      const maxRetries = 2
 
-Provide concise results. Use arrays for bullets, prefer ISO dates (YYYY-MM) when inferring dates, and leave fields undefined if the information is missing.`,
-      })
+      while (retryCount <= maxRetries) {
+        try {
+          const result = await generateObject({
+            model: openai("gpt-4o-mini"),
+            schema: StructuredResumeSchema,
+            prompt: `Analyze the following resume content and extract structured data for reuse.
+            Focus on identifying clear sections and extracting key information.
+            If uncertain about any field, leave it undefined rather than guessing.
+
+            Resume Content:
+            ${sanitizedText.substring(0, 8000)} ${sanitizedText.length > 8000 ? '...' : ''}
+
+            Provide concise results. Use arrays for bullets, prefer ISO dates (YYYY-MM) when inferring dates, and leave fields undefined if the information is missing.`,
+          })
+          structured = result.object
+          console.log('Structured analysis completed successfully')
+          break
+        } catch (retryError) {
+          console.error(`Structured analysis attempt ${retryCount + 1} failed:`, {
+            error: retryError instanceof Error ? retryError.message : retryError,
+            attempt: retryCount + 1
+          })
+          
+          if (retryCount >= maxRetries) {
+            throw retryError
+          }
+          retryCount++
+          // Wait briefly before retry
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+      }
 
       const extractionTimestamp = new Date().toISOString()
 
@@ -181,16 +221,24 @@ Provide concise results. Use arrays for bullets, prefer ISO dates (YYYY-MM) when
           processing_error: null,
           extracted_at: extractionTimestamp,
           source_metadata: {
-            pipeline: "master_resume_v1",
+            storage: "r2",
+            key,
+            pipeline: "master_resume_v2",
             model: "gpt-4o-mini",
             extracted_at: extractionTimestamp,
           },
         })) ?? { ...resume, content_text: contentText, parsed_sections: structured, processing_status: "completed" }
 
+      console.log('Resume processing completed successfully')
       return NextResponse.json({ resume: updated })
     } catch (analysisError) {
-      console.error("Master resume structured analysis failed", analysisError)
+      console.error("Master resume structured analysis failed after all retries", {
+        error: analysisError instanceof Error ? analysisError.message : analysisError,
+        stack: analysisError instanceof Error ? analysisError.stack : undefined,
+        contentLength: contentText.length
+      })
 
+      // Still save the resume with extracted text even if structured analysis fails
       const failedResume =
         (await updateResumeAnalysis(resume.id, user.id, {
           content_text: contentText,
@@ -200,12 +248,13 @@ Provide concise results. Use arrays for bullets, prefer ISO dates (YYYY-MM) when
           extracted_at: new Date().toISOString(),
         })) ?? { ...resume, content_text: contentText, processing_status: "failed" }
 
+      // Return the resume anyway so users can still see their content
       return NextResponse.json(
         {
-          error: "Structured analysis failed. Please review the uploaded resume.",
+          error: "Master resume structured analysis failed. The resume was saved but may need manual review.",
           resume: failedResume,
         },
-        { status: 500 },
+        { status: 200 }, // Changed to 200 so the frontend doesn't show error
       )
     }
   } catch (error) {

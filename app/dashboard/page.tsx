@@ -1,10 +1,10 @@
 import { getAuthenticatedUser } from "@/lib/auth-utils"
-import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes, getMasterResume } from "@/lib/db"
+import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes } from "@/lib/db"
 import { getCurrentSubscription, getUsageLimits } from "@/lib/subscription"
 import { Button } from "@/components/ui/button"
 import { UploadResumeDialog } from "@/components/dashboard/upload-resume-dialog"
 import { UploadMasterResumeDialog } from "@/components/dashboard/master-resume-dialog"
-import { FileText, Download, Plus, RefreshCw, FileCheck } from "lucide-react"
+import { FileText, Download, Plus, RefreshCw } from "lucide-react"
 import { TargetJobsEmptyState } from "@/components/dashboard/TargetJobsEmptyState"
 import { AnalyzeJobDialog } from "@/components/jobs/analyze-job-dialog"
 import { TargetJobsCompactList } from "@/components/dashboard/TargetJobsCompactList"
@@ -12,6 +12,7 @@ import { GeneratedResumesCompactList } from "@/components/optimization/Generated
 import Link from "next/link"
 import { UserAvatar } from "@/components/dashboard/user-avatar"
 import { AccountStatusCard } from "@/components/dashboard/AccountStatusCard"
+import { MasterResumesSection } from "@/components/dashboard/MasterResumesSection"
 import { formatDistanceToNow } from "date-fns"
 
 export default async function DashboardPage({
@@ -29,14 +30,12 @@ export default async function DashboardPage({
     resumes,
     jobAnalyses,
     optimizedResumes,
-    masterResume,
     subscription,
     usageLimits,
   ] = await Promise.all([
     getUserResumes(user.id).catch(() => [] as any[]),
     getUserJobAnalyses(user.id).catch(() => [] as any[]),
     getUserOptimizedResumes(user.id).catch(() => [] as any[]),
-    getMasterResume(user.id).catch(() => undefined as any),
     getCurrentSubscription().catch(() => null),
     getUsageLimits().catch(() => null),
   ])
@@ -63,11 +62,6 @@ export default async function DashboardPage({
     { id: "o1", title: "Linear", created_at: new Date().toISOString(), match_score: 92 },
     { id: "o2", title: "OpenAI", created_at: new Date().toISOString(), match_score: 88 },
   ] as any
-
-  const totalGenerations = optimizedResumes.length
-  const maxGenerations = usageLimits?.resumeOptimizations.limit === 'unlimited' ? 999 : (usageLimits?.resumeOptimizations.limit || 3)
-  const usagePercentage = (totalGenerations / maxGenerations) * 100
-  const isBrandNew = jobAnalyses.length === 0 && optimizedResumes.length === 0
 
   return (
     <div className="antialiased text-white bg-black font-geist min-h-screen">
@@ -177,39 +171,8 @@ export default async function DashboardPage({
                 usageLimits={usageLimits || undefined}
               />
 
-              {/* Master Resume */}
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <h3 className="text-base font-medium text-white/90 mb-4">Master Resume</h3>
-                {masterResume ? (
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-white/5">
-                    <FileCheck className="h-5 w-5 text-white/70 flex-shrink-0" />
-                    <div className="flex flex-col gap-0.5 text-left">
-                      <p className="text-sm font-medium truncate text-white/90">{masterResume.file_name}</p>
-                      <p className="text-xs text-white/50">
-                        {masterResume.processing_status === "completed"
-                          ? `Last updated ${formatDistanceToNow(new Date(masterResume.updated_at), { addSuffix: true })}`
-                          : masterResume.processing_status === "processing"
-                          ? "Processing... this usually takes under a minute"
-                          : masterResume.processing_status === "failed"
-                          ? "Latest processing attempt failed"
-                          : "Ready"}
-                      </p>
-                      {masterResume.processing_error && (
-                        <p className="text-xs text-red-400">{masterResume.processing_error}</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-white/5 border border-dashed border-white/20">
-                    <p className="text-sm text-white/60">Upload your master resume to get started.</p>
-                  </div>
-                )}
-                <UploadMasterResumeDialog>
-                  <button className="mt-4 w-full text-center text-sm font-medium text-white/80 hover:text-white transition bg-white/10 rounded-full py-2">
-                    {masterResume ? "Replace Master Resume" : "Upload Master Resume"}
-                  </button>
-                </UploadMasterResumeDialog>
-              </div>
+              {/* Master Resumes */}
+              <MasterResumesSection resumes={resumes} />
 
               {/* Cover Letter CTA */}
               <div className="rounded-2xl border border-dashed border-white/20 bg-transparent p-6 text-center">
