@@ -22,6 +22,7 @@ export async function getAuthenticatedUser() {
     name: dbUser.name,
     subscription_status: dbUser.subscription_status,
     subscription_plan: dbUser.subscription_plan,
+    subscription_period_end: dbUser.subscription_period_end,
     created_at: dbUser.created_at,
     updated_at: dbUser.updated_at,
   }

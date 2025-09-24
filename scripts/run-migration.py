@@ -83,7 +83,18 @@ def fix_foreign_key_constraint():
         print("  4. Creating index for performance...")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_job_analysis_user_id ON job_analysis(user_id)")
         
-        # Step 5: Ensure resumes table has master resume columns
+        # Step 5: Fix resumes table foreign key data type mismatch
+        print("\n🔧 Fixing resumes table foreign key data type...")
+        cursor.execute("ALTER TABLE resumes DROP CONSTRAINT IF EXISTS resumes_user_id_fkey")
+        cursor.execute("ALTER TABLE resumes ALTER COLUMN user_id TYPE TEXT")
+        cursor.execute("""
+            ALTER TABLE resumes 
+            ADD CONSTRAINT resumes_user_id_fkey 
+            FOREIGN KEY (user_id) REFERENCES users_sync(id) ON DELETE CASCADE
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id)")
+        
+        # Step 6: Ensure resumes table has master resume columns
         print("\n🛠️ Ensuring resumes table columns for master resume support...")
         cursor.execute("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS kind VARCHAR(32) DEFAULT 'uploaded'")
         cursor.execute("ALTER TABLE resumes ALTER COLUMN kind SET DEFAULT 'uploaded'")

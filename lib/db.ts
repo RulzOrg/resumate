@@ -467,47 +467,74 @@ export async function updateResumeAnalysis(
     source_metadata?: Record<string, any> | null
   },
 ) {
-  const setClauses = []
-
-  if (data.content_text !== undefined) {
-    setClauses.push(sql`content_text = ${data.content_text}`)
-  }
-
-  if (data.parsed_sections !== undefined) {
-    setClauses.push(sql`parsed_sections = ${data.parsed_sections ? JSON.stringify(data.parsed_sections) : null}`)
-  }
-
-  if (data.processing_status !== undefined) {
-    setClauses.push(sql`processing_status = ${data.processing_status}`)
-  }
-
-  if (data.processing_error !== undefined) {
-    setClauses.push(sql`processing_error = ${data.processing_error}`)
-  }
-
-  if (data.extracted_at !== undefined) {
-    const extractedAt = data.extracted_at ? new Date(data.extracted_at) : null
-    setClauses.push(sql`extracted_at = ${extractedAt}`)
-  }
-
-  if (data.source_metadata !== undefined) {
-    setClauses.push(sql`source_metadata = ${data.source_metadata ? JSON.stringify(data.source_metadata) : null}`)
-  }
-
-  if (setClauses.length === 0) {
+  // If no data to update, just return the current resume
+  if (Object.keys(data).length === 0) {
     const [resume] = await sql`
       SELECT * FROM resumes WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
     `
     return resume as Resume | undefined
   }
 
-  const [resume] = await sql`
-    UPDATE resumes
-    SET ${sql.join(setClauses, sql`, `)},
-        updated_at = NOW()
-    WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
-    RETURNING *
+  // Use multiple UPDATE statements to handle optional fields properly
+  let [resume] = await sql`
+    SELECT * FROM resumes WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
   `
+
+  if (!resume) {
+    return undefined
+  }
+
+  // Update each field individually if provided
+  if (data.content_text !== undefined) {
+    [resume] = await sql`
+      UPDATE resumes SET content_text = ${data.content_text}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.parsed_sections !== undefined) {
+    const parsedSections = data.parsed_sections ? JSON.stringify(data.parsed_sections) : null
+    ;[resume] = await sql`
+      UPDATE resumes SET parsed_sections = ${parsedSections}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.processing_status !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET processing_status = ${data.processing_status}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.processing_error !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET processing_error = ${data.processing_error}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.extracted_at !== undefined) {
+    const extractedAt = data.extracted_at ? new Date(data.extracted_at) : null
+    ;[resume] = await sql`
+      UPDATE resumes SET extracted_at = ${extractedAt}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.source_metadata !== undefined) {
+    const sourceMetadata = data.source_metadata ? JSON.stringify(data.source_metadata) : null
+    ;[resume] = await sql`
+      UPDATE resumes SET source_metadata = ${sourceMetadata}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
 
   return resume as Resume | undefined
 }

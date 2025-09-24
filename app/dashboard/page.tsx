@@ -10,6 +10,7 @@ import { TargetJobsCompactList } from "@/components/dashboard/TargetJobsCompactL
 import { GeneratedResumesCompactList } from "@/components/optimization/GeneratedResumesCompactList"
 import Link from "next/link"
 import { UserAvatar } from "@/components/dashboard/user-avatar"
+import { AccountStatusCard } from "@/components/dashboard/AccountStatusCard"
 import { formatDistanceToNow } from "date-fns"
 
 export default async function DashboardPage({
@@ -150,31 +151,13 @@ export default async function DashboardPage({
 
             <div className="space-y-8 mt-8 lg:mt-0">
               {/* Account Status */}
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                <h3 className="text-base font-medium text-white/90">Account Status</h3>
-                <p className="text-sm text-white/60 mt-1">
-                  {user.subscription_plan === "pro" ? "Pro Plan" : "Free Plan"}
-                </p>
-                <div className="mt-4">
-                  <div className="flex justify-between text-xs text-white/70 mb-1">
-                    <span>Generations Used</span>
-                    <span>
-                      {totalGenerations} of {maxGenerations}
-                    </span>
-                  </div>
-                  <div className="w-full bg-white/10 rounded-full h-2">
-                    <div
-                      className="bg-emerald-500 h-2 rounded-full"
-                      style={{ width: `${Math.min(usagePercentage, 100)}%` }}
-                    ></div>
-                  </div>
-                </div>
-                <Link href="/pricing">
-                  <button className="mt-4 w-full text-center text-sm font-medium text-emerald-400 hover:text-emerald-300 transition">
-                    {user.subscription_plan === "pro" ? "Manage Plan" : "Upgrade Plan"}
-                  </button>
-                </Link>
-              </div>
+              <AccountStatusCard
+                plan={user.subscription_plan}
+                status={user.subscription_status}
+                periodEnd={(user as any).subscription_period_end}
+                totalGenerations={totalGenerations}
+                maxGenerations={maxGenerations}
+              />
 
               {/* Master Resume */}
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6">

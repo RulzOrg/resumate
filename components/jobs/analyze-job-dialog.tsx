@@ -26,7 +26,7 @@ interface AnalyzeJobDialogProps {
 }
 
 export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJobDialogProps) {
-  // Toggle to disable URL import flow and rely on paste-only UX
+  // Disable URL import - users will manually provide job details
   const ENABLE_URL_IMPORT = false
   const [open, setOpen] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -631,12 +631,6 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     const validation = validateJobUrl(url)
     setUrlValidation(validation)
     
-    // Detect company from URL
-    const urlCompany = url ? extractCompanyFromUrl(url) : null
-    if (urlCompany) {
-      setDetectedCompany(urlCompany)
-    }
-    
     // Check for duplicates when URL changes
     checkForDuplicates(url, jobDescription)
     
@@ -664,13 +658,6 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
       setError("")
     }
     
-    // Detect company from content if we don't have one from URL
-    if (!detectedCompany && content.length > 50) {
-      const contentCompany = extractCompanyFromContent(content)
-      if (contentCompany) {
-        setDetectedCompany(contentCompany)
-      }
-    }
     
     // Check for duplicates when content changes
     if (content.length > 100) {
@@ -912,6 +899,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     setJobUrl("")
     setJobDescription("")
     setJobTitle("")
+    setCompany("")
     setError("")
     setUrlValidation({ isValid: true })
     setContentValidation({ isValid: true, charCount: 0, level: 'info' })
@@ -949,7 +937,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
               <DialogHeader className="text-left">
                 <DialogTitle className="text-2xl tracking-tight">Add Target Job</DialogTitle>
                 <DialogDescription className="mt-1 text-white/60 text-sm">
-                  Import from a URL or paste the description.
+                  Enter the job details and description to analyze.
                 </DialogDescription>
               </DialogHeader>
               
@@ -1419,15 +1407,6 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                 </div>
               )}
               
-              {/* Company Detection Indicator */}
-              {detectedCompany && !showPreview && (
-                <div className="flex items-center gap-2 p-2 rounded bg-emerald-500/10 border border-emerald-500/20">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-sm text-emerald-300">
-                    Company detected: <span className="font-medium">{detectedCompany}</span>
-                  </span>
-                </div>
-              )}
               
               {/* AI Preview Analysis */}
               {showAiPreview && aiPreview.analysis && (

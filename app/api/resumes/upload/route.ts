@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     let contentText = ""
     try {
       const { text } = await generateText({
-        model: openai.responses("gpt-5"),
+        model: openai("gpt-4o-mini"),
         prompt: `Extract all text content from this resume file. The file is in ${file.type} format.
         
         Please extract and organize the content with clear section headers:

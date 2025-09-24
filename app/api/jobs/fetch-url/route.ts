@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { extractJobPostingFromUrl } from "@/lib/job-extraction"
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
@@ -31,24 +30,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid URL format" }, { status: 400 })
     }
 
-    // First attempt the new extraction pipeline (structured data + adapters)
-    try {
-      const structuredResult = await extractJobPostingFromUrl(url, { userAgent: UA })
-      if (structuredResult && structuredResult.description.trim()) {
-        return NextResponse.json({
-          title: structuredResult.title,
-          company: structuredResult.company,
-          content: structuredResult.description,
-          location: structuredResult.location ?? null,
-          compensation: structuredResult.compensation ?? null,
-          metadata: structuredResult.metadata ?? {},
-          provider: structuredResult.extractedBy,
-          url,
-        })
-      }
-    } catch (error) {
-      console.warn("Structured extraction failed, falling back to legacy pipeline", error)
-    }
+    // Skip structured extraction pipeline (module not available)
+    // Proceed directly to fallback extraction methods
 
     // Fetch the job posting content (non-fatal if blocked; we'll fallback)
     let html = ""

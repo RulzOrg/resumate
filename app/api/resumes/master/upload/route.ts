@@ -4,7 +4,12 @@ import { openai } from "@ai-sdk/openai"
 import { generateText, generateObject } from "ai"
 import { z } from "zod"
 
-import { createResume, getOrCreateUser, setPrimaryResume, updateResumeAnalysis } from "@/lib/db"
+import {
+  createResume,
+  getOrCreateUser,
+  setPrimaryResume,
+  updateResumeAnalysis,
+} from "@/lib/db"
 
 const StructuredResumeSchema = z.object({
   personal_info: z
@@ -78,10 +83,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Use enhanced user creation with retry logic
     const user = await getOrCreateUser()
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      return NextResponse.json({ error: "Unable to verify user account. Please try again." }, { status: 500 })
     }
+
+    console.log('User verification successful in master resume upload:', { 
+      user_id: user.id, 
+      clerk_user_id: user.clerk_user_id 
+    })
 
     const formData = await request.formData()
     const file = formData.get("file") as File | null
