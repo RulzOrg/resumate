@@ -1,8 +1,13 @@
 -- Create the users_sync table from scratch
 -- This is the base table that all other tables reference
 
--- Enable UUID extension
+-- Enable uuid-ossp because other tables use uuid_generate_v4()
+-- Required by: scripts/create-database-schema.sql, scripts/create-complete-schema.sql,
+-- and scripts/setup-database.py (resumes, job_applications, job_analysis,
+-- optimized_resumes, user_profiles, clerk_webhook_events tables)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Enable pgcrypto for gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Create users_sync table
 CREATE TABLE IF NOT EXISTS users_sync (
@@ -34,6 +39,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+-- Ensure idempotent trigger creation
+DROP TRIGGER IF EXISTS update_users_sync_updated_at ON users_sync;
 CREATE TRIGGER update_users_sync_updated_at 
     BEFORE UPDATE ON users_sync 
     FOR EACH ROW 

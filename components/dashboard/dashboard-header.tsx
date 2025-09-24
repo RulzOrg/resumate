@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -6,11 +8,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { RefreshCw, User, Settings, Plus } from "lucide-react"
+import { RefreshCw, Settings, Plus, User } from "lucide-react"
 import Link from "next/link"
 import { LogoutButton } from "./logout-button"
 import { UploadResumeDialog } from "./upload-resume-dialog"
 import type { User as UserType } from "@/lib/db"
+import { UserAvatar } from "./user-avatar"
 
 interface DashboardHeaderProps {
   user: UserType
@@ -39,11 +42,20 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
             </UploadResumeDialog>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full p-0">
-                  <div className="h-9 w-9 rounded-full ring-2 ring-white/10 bg-emerald-500 flex items-center justify-center">
-                    <User className="h-5 w-5 text-white" />
-                  </div>
-                </Button>
+                <div
+                  className="cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Open account menu"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      ;(e.currentTarget as HTMLElement).click()
+                    }
+                  }}
+                >
+                  <UserAvatar user={user} />
+                </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-lg border-white/10" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">

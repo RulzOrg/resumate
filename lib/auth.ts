@@ -1,6 +1,6 @@
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
-import { getUserByClerkId, createUserFromClerk } from "./db"
+import { getOrCreateUser } from "./db"
 
 export async function getSession() {
   const { userId } = await auth()
@@ -9,25 +9,19 @@ export async function getSession() {
     redirect("/auth/login")
   }
 
-  const user = await currentUser()
-  let dbUser = await getUserByClerkId(userId)
+  const dbUser = await getOrCreateUser(userId)
 
-  if (!dbUser && user) {
-    // Create user in our database if they don't exist
-    dbUser = await createUserFromClerk(
-      userId,
-      user.emailAddresses[0]?.emailAddress || "",
-      user.fullName || user.firstName || "User",
-    )
+  if (!dbUser) {
+    redirect("/auth/login")
   }
 
   return {
-    userId: dbUser?.id || userId,
+    userId: dbUser.id,
     clerkId: userId,
-    email: user?.emailAddresses[0]?.emailAddress || "",
-    name: user?.fullName || user?.firstName || "User",
-    subscriptionStatus: dbUser?.subscription_status || "free",
-    subscriptionPlan: dbUser?.subscription_plan || "free",
+    email: dbUser.email,
+    name: dbUser.name,
+    subscriptionStatus: dbUser.subscription_status,
+    subscriptionPlan: dbUser.subscription_plan,
   }
 }
 

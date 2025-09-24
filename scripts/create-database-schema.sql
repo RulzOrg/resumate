@@ -148,9 +148,15 @@ END;
 $$ language 'plpgsql';
 
 -- Apply the trigger to all tables with updated_at columns
+DROP TRIGGER IF EXISTS update_users_sync_updated_at ON users_sync;
 CREATE TRIGGER update_users_sync_updated_at BEFORE UPDATE ON users_sync FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_resumes_updated_at ON resumes;
 CREATE TRIGGER update_resumes_updated_at BEFORE UPDATE ON resumes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_job_applications_updated_at ON job_applications;
 CREATE TRIGGER update_job_applications_updated_at BEFORE UPDATE ON job_applications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_job_analysis_updated_at ON job_analysis;
 CREATE TRIGGER update_job_analysis_updated_at BEFORE UPDATE ON job_analysis FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_optimized_resumes_updated_at ON optimized_resumes;
 CREATE TRIGGER update_optimized_resumes_updated_at BEFORE UPDATE ON optimized_resumes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
 CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

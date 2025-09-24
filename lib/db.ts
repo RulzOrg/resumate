@@ -1,9 +1,79 @@
 import { neon } from "@neondatabase/serverless"
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth, clerkClient } from "@clerk/nextjs/server"
 
-const sql = neon(process.env.DATABASE_URL!)
+const databaseUrl = process.env.DATABASE_URL
+const isDbConfigured = Boolean(databaseUrl)
+
+const sql = databaseUrl ? neon(databaseUrl) : (async () => {
+  throw new Error("DATABASE_URL is not configured. Set it to enable database features.")
+}) as unknown as ReturnType<typeof neon>
 
 export { sql }
+
+// Monitoring and debugging utilities
+export async function logConstraintViolation(
+  operation: string, 
+  error: any, 
+  context: Record<string, any>
+) {
+  const violationType = error.code === "23503" ? "foreign_key" : 
+                       error.code === "23505" ? "unique_constraint" : "unknown"
+  
+  console.error(`[DB_CONSTRAINT_VIOLATION] ${violationType.toUpperCase()}:`, {
+    timestamp: new Date().toISOString(),
+    operation,
+    error_code: error.code,
+    error_message: error.message,
+    context,
+    constraint_name: error.constraint_name || 'unknown'
+  })
+
+  // In production, you might want to send this to a monitoring service
+  // await sendToMonitoringService({ operation, error, context })
+}
+
+// Database health check function
+export async function checkDatabaseHealth() {
+  try {
+    const results = await Promise.all([
+      // Check if we can connect to database
+      sql`SELECT 1 as health_check`,
+      
+      // Check users_sync table structure
+      sql`SELECT COUNT(*) as user_count FROM users_sync WHERE deleted_at IS NULL`,
+      
+      // Check for orphaned records (shouldn't happen with foreign keys)
+      sql`
+        SELECT COUNT(*) as orphaned_job_analyses
+        FROM job_analysis ja
+        LEFT JOIN users_sync u ON ja.user_id = u.id
+        WHERE u.id IS NULL
+      `
+    ])
+
+    const [healthCheck, userCount, orphanedCount] = results
+    
+    console.log('[DB_HEALTH_CHECK] Database health status:', {
+      timestamp: new Date().toISOString(),
+      connection: healthCheck[0]?.health_check === 1 ? 'healthy' : 'unhealthy',
+      user_count: userCount[0]?.user_count || 0,
+      orphaned_job_analyses: orphanedCount[0]?.orphaned_job_analyses || 0
+    })
+
+    return {
+      healthy: true,
+      userCount: userCount[0]?.user_count || 0,
+      orphanedCount: orphanedCount[0]?.orphaned_job_analyses || 0
+    }
+  } catch (error: any) {
+    console.error('[DB_HEALTH_CHECK] Database health check failed:', {
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      code: error.code
+    })
+    return { healthy: false, error: error.message }
+  }
+}
 
 function generateUUID() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
@@ -36,10 +106,20 @@ export interface Resume {
   file_type: string
   file_size: number
   content_text?: string
+  kind: ResumeKind
+  processing_status: ResumeProcessingStatus
+  processing_error?: string | null
+  parsed_sections?: Record<string, any> | null
+  extracted_at?: string | null
+  source_metadata?: Record<string, any> | null
   is_primary: boolean
   created_at: string
   updated_at: string
 }
+
+export type ResumeKind = "uploaded" | "master" | "generated" | "duplicate"
+
+export type ResumeProcessingStatus = "pending" | "processing" | "completed" | "failed"
 
 export interface JobApplication {
   id: string
@@ -74,6 +154,11 @@ export interface JobAnalysis {
     company_culture: string[]
     benefits: string[]
     match_score?: number
+    analysis_quality?: {
+      confidence: number
+      completeness: number
+      content_processed: boolean
+    }
   }
   keywords: string[]
   required_skills: string[]
@@ -136,9 +221,14 @@ export interface ClerkWebhookEvent {
 // User functions
 export async function createUserFromClerk(clerkUserId: string, email: string, name: string) {
   const [user] = await sql`
-    INSERT INTO users_sync (id, clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at)
-    VALUES (${generateUUID()}, ${clerkUserId}, ${email}, ${name}, 'free', 'free', NOW(), NOW())
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at
+    INSERT INTO users_sync (clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at)
+    VALUES (${clerkUserId}, ${email}, ${name}, 'free', 'free', NOW(), NOW())
+    ON CONFLICT (clerk_user_id) DO UPDATE
+      SET email = EXCLUDED.email,
+          name = EXCLUDED.name,
+          deleted_at = NULL,
+          updated_at = NOW()
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, created_at, updated_at
   `
   return user as User
 }
@@ -194,11 +284,57 @@ export async function createResume(data: {
   file_type: string
   file_size: number
   content_text?: string
+  kind?: ResumeKind
+  processing_status?: ResumeProcessingStatus
+  processing_error?: string | null
+  parsed_sections?: Record<string, any> | null
+  extracted_at?: string | Date | null
+  source_metadata?: Record<string, any> | null
   is_primary?: boolean
 }) {
+  const kind = data.kind ?? "uploaded"
+  const processingStatus = data.processing_status ?? "completed"
+  const processedSections = data.parsed_sections ? JSON.stringify(data.parsed_sections) : null
+  const sourceMetadata = data.source_metadata ? JSON.stringify(data.source_metadata) : null
+  const extractedAt = data.extracted_at ? new Date(data.extracted_at) : null
+
   const [resume] = await sql`
-    INSERT INTO resumes (user_id, title, file_name, file_url, file_type, file_size, content_text, is_primary, created_at, updated_at)
-    VALUES (${data.user_id}, ${data.title}, ${data.file_name}, ${data.file_url}, ${data.file_type}, ${data.file_size}, ${data.content_text || null}, ${data.is_primary || false}, NOW(), NOW())
+    INSERT INTO resumes (
+      user_id,
+      title,
+      file_name,
+      file_url,
+      file_type,
+      file_size,
+      content_text,
+      kind,
+      processing_status,
+      processing_error,
+      parsed_sections,
+      extracted_at,
+      source_metadata,
+      is_primary,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${data.user_id},
+      ${data.title},
+      ${data.file_name},
+      ${data.file_url},
+      ${data.file_type},
+      ${data.file_size},
+      ${data.content_text || null},
+      ${kind},
+      ${processingStatus},
+      ${data.processing_error || null},
+      ${processedSections},
+      ${extractedAt},
+      ${sourceMetadata},
+      ${data.is_primary || false},
+      NOW(),
+      NOW()
+    )
     RETURNING *
   `
   return resume as Resume
@@ -211,6 +347,19 @@ export async function getUserResumes(user_id: string) {
     ORDER BY is_primary DESC, created_at DESC
   `
   return resumes as Resume[]
+}
+
+export async function getMasterResume(user_id: string) {
+  const [resume] = await sql`
+    SELECT * FROM resumes
+    WHERE user_id = ${user_id}
+      AND kind = 'master'
+      AND deleted_at IS NULL
+    ORDER BY is_primary DESC, updated_at DESC
+    LIMIT 1
+  `
+
+  return resume as Resume | undefined
 }
 
 export async function getResumeById(id: string, user_id: string) {
@@ -264,8 +413,34 @@ export async function setPrimaryResume(id: string, user_id: string) {
 // Simplified createResume function for duplication
 export async function createResumeDuplicate(user_id: string, title: string, content: string) {
   const [resume] = await sql`
-    INSERT INTO resumes (user_id, title, file_name, file_url, file_type, file_size, content_text, is_primary, created_at, updated_at)
-    VALUES (${user_id}, ${title}, 'duplicated.txt', '', 'text/plain', ${content.length}, ${content}, false, NOW(), NOW())
+    INSERT INTO resumes (
+      user_id,
+      title,
+      file_name,
+      file_url,
+      file_type,
+      file_size,
+      content_text,
+      kind,
+      processing_status,
+      is_primary,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${user_id},
+      ${title},
+      'duplicated.txt',
+      '',
+      'text/plain',
+      ${content.length},
+      ${content},
+      'generated',
+      'completed',
+      false,
+      NOW(),
+      NOW()
+    )
     RETURNING *
   `
   return resume as Resume
@@ -282,6 +457,90 @@ export async function updateResumeContent(id: string, content_text: string) {
     WHERE id = ${id} AND deleted_at IS NULL
     RETURNING *
   `
+  return resume as Resume | undefined
+}
+
+export async function updateResumeAnalysis(
+  id: string,
+  user_id: string,
+  data: {
+    content_text?: string | null
+    parsed_sections?: Record<string, any> | null
+    processing_status?: ResumeProcessingStatus
+    processing_error?: string | null
+    extracted_at?: string | Date | null
+    source_metadata?: Record<string, any> | null
+  },
+) {
+  // If no data to update, just return the current resume
+  if (Object.keys(data).length === 0) {
+    const [resume] = await sql`
+      SELECT * FROM resumes WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+    `
+    return resume as Resume | undefined
+  }
+
+  // Use multiple UPDATE statements to handle optional fields properly
+  let [resume] = await sql`
+    SELECT * FROM resumes WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+  `
+
+  if (!resume) {
+    return undefined
+  }
+
+  // Update each field individually if provided
+  if (data.content_text !== undefined) {
+    [resume] = await sql`
+      UPDATE resumes SET content_text = ${data.content_text}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.parsed_sections !== undefined) {
+    const parsedSections = data.parsed_sections ? JSON.stringify(data.parsed_sections) : null
+    ;[resume] = await sql`
+      UPDATE resumes SET parsed_sections = ${parsedSections}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.processing_status !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET processing_status = ${data.processing_status}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.processing_error !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET processing_error = ${data.processing_error}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.extracted_at !== undefined) {
+    const extractedAt = data.extracted_at ? new Date(data.extracted_at) : null
+    ;[resume] = await sql`
+      UPDATE resumes SET extracted_at = ${extractedAt}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.source_metadata !== undefined) {
+    const sourceMetadata = data.source_metadata ? JSON.stringify(data.source_metadata) : null
+    ;[resume] = await sql`
+      UPDATE resumes SET source_metadata = ${sourceMetadata}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
   return resume as Resume | undefined
 }
 
@@ -313,7 +572,109 @@ export async function getUserJobApplications(user_id: string) {
   return applications as (JobApplication & { resume_title: string })[]
 }
 
-// Job analysis functions
+// Enhanced job analysis creation with user verification
+export async function createJobAnalysisWithVerification(data: {
+  user_id: string
+  job_title: string
+  company_name?: string
+  job_url?: string
+  job_description: string
+  analysis_result: JobAnalysis["analysis_result"]
+}) {
+  console.log('Starting job analysis creation with verification:', {
+    user_id: data.user_id,
+    job_title: data.job_title,
+    company_name: data.company_name
+  })
+
+  try {
+    // Step 1: Verify user exists in database
+    const user = await getUserById(data.user_id)
+    if (!user) {
+      console.error('User not found for job analysis creation:', { user_id: data.user_id })
+      throw new Error(`User not found with ID: ${data.user_id}. Cannot create job analysis.`)
+    }
+
+    console.log('User verification successful:', { 
+      user_id: user.id, 
+      email: user.email, 
+      clerk_user_id: user.clerk_user_id 
+    })
+
+    // Step 2: Validate analysis_result structure
+    if (!data.analysis_result || typeof data.analysis_result !== 'object') {
+      throw new Error('Invalid analysis_result: must be an object')
+    }
+
+    // Step 3: Extract fields safely with fallbacks
+    const keywords = Array.isArray(data.analysis_result.keywords) ? data.analysis_result.keywords : []
+    const required_skills = Array.isArray(data.analysis_result.required_skills) ? data.analysis_result.required_skills : []
+    const preferred_skills = Array.isArray(data.analysis_result.preferred_skills) ? data.analysis_result.preferred_skills : []
+    const experience_level = data.analysis_result.experience_level || null
+    const salary_range = data.analysis_result.salary_range || null
+    const location = data.analysis_result.location || null
+
+    // Step 4: Generate UUID fallback if database doesn't handle it
+    const id = generateUUID()
+
+    console.log('Inserting job analysis into database:', {
+      id,
+      user_id: data.user_id,
+      job_title: data.job_title,
+      analysis_keys: Object.keys(data.analysis_result)
+    })
+
+    // Step 5: Insert with comprehensive error handling
+    const [analysis] = await sql`
+      INSERT INTO job_analysis (
+        id, user_id, job_title, company_name, job_url, job_description, 
+        analysis_result, keywords, required_skills, preferred_skills,
+        experience_level, salary_range, location, created_at, updated_at
+      )
+      VALUES (
+        ${id}, ${data.user_id}, ${data.job_title}, ${data.company_name || null}, 
+        ${data.job_url || null}, ${data.job_description}, ${JSON.stringify(data.analysis_result)},
+        ${keywords}, ${required_skills}, ${preferred_skills}, ${experience_level},
+        ${salary_range}, ${location}, NOW(), NOW()
+      )
+      RETURNING *
+    `
+
+    console.log('Job analysis created successfully:', { 
+      analysis_id: analysis.id, 
+      user_id: analysis.user_id,
+      job_title: analysis.job_title 
+    })
+
+    return analysis as JobAnalysis
+  } catch (error: any) {
+    console.error('Failed to create job analysis with verification:', {
+      error: error.message,
+      code: error.code,
+      user_id: data.user_id,
+      job_title: data.job_title,
+      analysis_structure: data.analysis_result ? Object.keys(data.analysis_result) : 'null'
+    })
+
+    // Enhanced error handling for foreign key constraint violations
+    if (error.code === "23503" || error.code === "23505") {
+      await logConstraintViolation('createJobAnalysis', error, {
+        user_id: data.user_id,
+        job_title: data.job_title,
+        company_name: data.company_name,
+        operation_step: 'job_analysis_insertion'
+      })
+      
+      if (error.code === "23503") {
+        throw new Error(`Cannot create job analysis: User with ID ${data.user_id} does not exist in the database. Please ensure the user is properly created first.`)
+      }
+    }
+
+    throw error
+  }
+}
+
+// Original job analysis function (kept for backward compatibility)
 export async function createJobAnalysis(data: {
   user_id: string
   job_title: string
@@ -322,23 +683,8 @@ export async function createJobAnalysis(data: {
   job_description: string
   analysis_result: JobAnalysis["analysis_result"]
 }) {
-  const [analysis] = await sql`
-    INSERT INTO job_analysis (
-      user_id, job_title, company_name, job_url, job_description, 
-      analysis_result, keywords, required_skills, preferred_skills,
-      experience_level, salary_range, location, created_at, updated_at
-    )
-    VALUES (
-      ${data.user_id}, ${data.job_title}, ${data.company_name || null}, 
-      ${data.job_url || null}, ${data.job_description}, ${JSON.stringify(data.analysis_result)},
-      ${data.analysis_result.keywords}, ${data.analysis_result.required_skills}, 
-      ${data.analysis_result.preferred_skills}, ${data.analysis_result.experience_level || null},
-      ${data.analysis_result.salary_range || null}, ${data.analysis_result.location || null},
-      NOW(), NOW()
-    )
-    RETURNING *
-  `
-  return analysis as JobAnalysis
+  // Delegate to the enhanced version with verification
+  return await createJobAnalysisWithVerification(data)
 }
 
 export async function getUserJobAnalyses(user_id: string) {
@@ -523,24 +869,197 @@ export async function logClerkWebhookEvent(data: {
   return event as ClerkWebhookEvent
 }
 
-// Utility functions
-export async function getOrCreateUser() {
-  const { userId } = await auth()
+// Enhanced user verification function
+export async function ensureUserExists(userId: string): Promise<User | null> {
+  // First, try to get the user from database
+  let dbUser = await getUserByClerkId(userId)
+  
+  // Check if user exists and is not soft-deleted
+  if (dbUser) {
+    console.log('User found in database:', { id: dbUser.id, clerk_user_id: dbUser.clerk_user_id })
+    return dbUser
+  }
 
-  if (!userId) {
+  console.log('User not found in database, attempting to create:', { clerk_user_id: userId })
+
+  // User doesn't exist, try to create them
+  const { clerkUser, email, name } = await fetchClerkUser(userId)
+  if (!clerkUser) {
     return null
   }
 
-  const user = await currentUser()
-  let dbUser = await getUserByClerkId(userId)
+  // Retry logic for user creation with exponential backoff
+  let retryCount = 0
+  const maxRetries = 3
+  let delay = 100 // Start with 100ms
 
-  if (!dbUser && user) {
-    dbUser = await createUserFromClerk(
-      userId,
-      user.emailAddresses[0]?.emailAddress || "",
-      user.fullName || user.firstName || "User",
-    )
+  while (retryCount <= maxRetries) {
+    try {
+      console.log(`Attempting to create user (attempt ${retryCount + 1}/${maxRetries + 1}):`, {
+        clerk_user_id: userId,
+        email,
+        name
+      })
+
+      const newUser = await createUserFromClerk(userId, email, name)
+      console.log('User created successfully:', { id: newUser.id, clerk_user_id: newUser.clerk_user_id })
+      return newUser
+    } catch (error: any) {
+      console.error(`User creation attempt ${retryCount + 1} failed:`, {
+        error: error.message,
+        code: error.code,
+        clerk_user_id: userId
+      })
+
+      if (error.code === "23505") {
+        // Unique constraint violation - user was created concurrently
+        await logConstraintViolation('createUserFromClerk', error, {
+          clerk_user_id: userId,
+          email,
+          name,
+          attempt: retryCount + 1
+        })
+        
+        console.log("User creation race condition detected, fetching existing user")
+        const existingUser = await getUserByClerkId(userId)
+        if (existingUser) {
+          console.log('Found existing user after race condition:', { id: existingUser.id })
+          return existingUser
+        }
+      }
+
+      if (retryCount >= maxRetries) {
+        console.error("Max retries exceeded for user creation:", { clerk_user_id: userId })
+        throw error
+      }
+
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay))
+      delay *= 2
+      retryCount++
+    }
   }
 
-  return dbUser
+  return null
+}
+
+// Utility functions
+export async function getOrCreateUser(passedUserId?: string) {
+  const clerkAuth = passedUserId ? null : await auth()
+  const userId = passedUserId ?? clerkAuth?.userId
+
+  if (!userId) {
+    console.log("No userId available for getOrCreateUser, returning null")
+    return null
+  }
+
+  console.log("Getting or creating user for:", { clerk_user_id: userId })
+
+  // Use enhanced user verification with retry logic
+  try {
+    const user = await ensureUserExists(userId)
+    if (!user) {
+      console.error("Failed to ensure user exists:", { clerk_user_id: userId })
+    }
+    return user
+  } catch (error: any) {
+    console.error("Error in getOrCreateUser:", {
+      error: error.message,
+      code: error.code,
+      clerk_user_id: userId
+    })
+    
+    // Additional fallback for foreign key constraint violations
+    if (error.code === "23503") {
+      console.log("Foreign key constraint error detected, attempting one more user creation")
+      try {
+        // Wait a moment for any database operations to settle
+        await new Promise(resolve => setTimeout(resolve, 200))
+        return await ensureUserExists(userId)
+      } catch (fallbackError: any) {
+        console.error("Fallback user creation also failed:", {
+          error: fallbackError.message,
+          code: fallbackError.code,
+          clerk_user_id: userId
+        })
+      }
+    }
+    
+    throw error
+  }
+}
+
+async function fetchClerkUser(userId: string): Promise<{
+  clerkUser: any | null
+  email: string
+  name: string
+}> {
+  try {
+    const sessionUser = await currentUser()
+    if (sessionUser && sessionUser.id === userId) {
+      const email =
+        sessionUser.emailAddresses?.find((address) => address.id === sessionUser.primaryEmailAddressId)?.emailAddress ||
+        sessionUser.emailAddresses?.[0]?.emailAddress ||
+        ""
+      const name = sessionUser.fullName || sessionUser.firstName || sessionUser.username || "User"
+
+      return { clerkUser: sessionUser, email, name }
+    }
+  } catch (error) {
+    console.warn("currentUser() lookup failed", { userId, error })
+  }
+
+  const secretKey = process.env.CLERK_SECRET_KEY
+  if (!secretKey) {
+    console.error("CLERK_SECRET_KEY not set; cannot fetch user via Clerk API", { userId })
+    return { clerkUser: null, email: "", name: "" }
+  }
+
+  try {
+    const response = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    })
+
+    if (!response.ok) {
+      console.error("Clerk REST API returned non-OK status", { userId, status: response.status })
+      return { clerkUser: null, email: "", name: "" }
+    }
+
+    const clerkUser = await response.json()
+
+    const email = extractPrimaryEmail(clerkUser)
+    const name =
+      clerkUser.full_name ||
+      [clerkUser.first_name, clerkUser.last_name].filter(Boolean).join(" ") ||
+      clerkUser.username ||
+      "User"
+
+    return { clerkUser, email, name }
+  } catch (error) {
+    console.error("Failed to fetch Clerk user via REST API", { userId, error })
+    return { clerkUser: null, email: "", name: "" }
+  }
+}
+
+function extractPrimaryEmail(clerkUser: any): string {
+  if (!clerkUser) return ""
+
+  if (Array.isArray(clerkUser.emailAddresses)) {
+    const match = clerkUser.emailAddresses.find((address: any) => address.id === clerkUser.primaryEmailAddressId)
+    if (match?.emailAddress) return match.emailAddress
+    if (clerkUser.emailAddresses[0]?.emailAddress) return clerkUser.emailAddresses[0].emailAddress
+  }
+
+  if (Array.isArray(clerkUser.email_addresses)) {
+    const primaryId = clerkUser.primary_email_address_id
+    const match = clerkUser.email_addresses.find((address: any) => address.id === primaryId)
+    if (match?.email_address) return match.email_address
+    if (clerkUser.email_addresses[0]?.email_address) return clerkUser.email_addresses[0].email_address
+  }
+
+  return clerkUser.email_address || clerkUser.email || ""
 }

@@ -8,6 +8,12 @@ CREATE TABLE IF NOT EXISTS resumes (
   file_type VARCHAR(50) NOT NULL,
   file_size INTEGER NOT NULL,
   content_text TEXT,
+  kind VARCHAR(32) NOT NULL DEFAULT 'uploaded',
+  processing_status VARCHAR(32) NOT NULL DEFAULT 'completed',
+  processing_error TEXT,
+  parsed_sections JSONB,
+  extracted_at TIMESTAMP WITH TIME ZONE,
+  source_metadata JSONB,
   is_primary BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -19,6 +25,8 @@ CREATE TABLE IF NOT EXISTS resumes (
 -- Create index for faster queries
 CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
 CREATE INDEX IF NOT EXISTS idx_resumes_created_at ON resumes(created_at);
+CREATE INDEX IF NOT EXISTS idx_resumes_kind ON resumes(kind);
+CREATE INDEX IF NOT EXISTS idx_resumes_processing_status ON resumes(processing_status);
 
 -- Create job_applications table for tracking job applications
 CREATE TABLE IF NOT EXISTS job_applications (

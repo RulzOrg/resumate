@@ -15,9 +15,10 @@ import type { Resume, JobAnalysis } from "@/lib/db"
 interface OptimizationWizardProps {
   resumes: Resume[]
   jobAnalyses: JobAnalysis[]
+  canOptimize?: boolean
 }
 
-export function OptimizationWizard({ resumes, jobAnalyses }: OptimizationWizardProps) {
+export function OptimizationWizard({ resumes, jobAnalyses, canOptimize: canOptimizeSubscription = true }: OptimizationWizardProps) {
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
   const [selectedJobAnalysis, setSelectedJobAnalysis] = useState<JobAnalysis | null>(null)
   const [isOptimizing, setIsOptimizing] = useState(false)
@@ -66,7 +67,7 @@ export function OptimizationWizard({ resumes, jobAnalyses }: OptimizationWizardP
     }
   }
 
-  const canOptimize = selectedResume && selectedJobAnalysis && !isOptimizing
+  const canOptimizeAction = selectedResume && selectedJobAnalysis && !isOptimizing && canOptimizeSubscription
 
   return (
     <div className="space-y-8">
@@ -221,7 +222,7 @@ export function OptimizationWizard({ resumes, jobAnalyses }: OptimizationWizardP
               </div>
             )}
 
-            <Button onClick={handleOptimize} disabled={!canOptimize} size="lg" className="w-full">
+            <Button onClick={handleOptimize} disabled={!canOptimizeAction} size="lg" className="w-full">
               {isOptimizing ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />

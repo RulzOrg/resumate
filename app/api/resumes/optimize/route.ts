@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getResumeById, getJobAnalysisById, createOptimizedResume, getOrCreateUser } from "@/lib/db"
+import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
@@ -45,6 +46,15 @@ export async function POST(request: NextRequest) {
       throw new AppError("User not found", 404)
     }
 
+    // Check subscription limits
+    const canOptimize = await canPerformAction('resumeOptimizations')
+    if (!canOptimize) {
+      return NextResponse.json({ 
+        error: "You've reached your monthly resume optimization limit. Upgrade to Pro for unlimited optimizations.",
+        code: "LIMIT_EXCEEDED"
+      }, { status: 403 })
+    }
+
     const { resume_id, job_analysis_id } = await request.json()
 
     if (!resume_id || !job_analysis_id) {
@@ -69,6 +79,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Prefer structured parsed sections from the resume when present
+    const structured = (resume as any).parsed_sections ?? null
+
+    // Safe fallbacks for job analysis arrays/fields
+    const requiredSkills = Array.isArray((jobAnalysis as any).required_skills)
+      ? (jobAnalysis as any).required_skills
+      : []
+    const preferredSkills = Array.isArray((jobAnalysis as any).preferred_skills)
+      ? (jobAnalysis as any).preferred_skills
+      : []
+    const keywords = Array.isArray((jobAnalysis as any).keywords)
+      ? (jobAnalysis as any).keywords
+      : []
+    const keyRequirements = Array.isArray((jobAnalysis as any).analysis_result?.key_requirements)
+      ? (jobAnalysis as any).analysis_result.key_requirements
+      : []
+
+    const structuredBlock = structured
+      ? `\nSTRUCTURED RESUME SECTIONS (JSON) — prefer these fields over free-text:\n${JSON.stringify(structured, null, 2)}\n`
+      : ""
+
     const optimization = await withRetry(
       async () => {
         const { object } = await generateObject({
@@ -79,24 +110,26 @@ export async function POST(request: NextRequest) {
 ORIGINAL RESUME CONTENT:
 ${resume.content_text}
 
+${structuredBlock}
+
 JOB POSTING ANALYSIS:
 Job Title: ${jobAnalysis.job_title}
 Company: ${jobAnalysis.company_name || "Not specified"}
-Required Skills: ${jobAnalysis.required_skills.join(", ")}
-Preferred Skills: ${jobAnalysis.preferred_skills.join(", ")}
-Keywords: ${jobAnalysis.keywords.join(", ")}
-Experience Level: ${jobAnalysis.experience_level}
-Key Requirements: ${jobAnalysis.analysis_result.key_requirements.join(", ")}
+Required Skills: ${requiredSkills.join(", ")}
+Preferred Skills: ${preferredSkills.join(", ")}
+Keywords: ${keywords.join(", ")}
+Experience Level: ${jobAnalysis.experience_level || "Not specified"}
+Key Requirements: ${keyRequirements.join(", ")}
 
 OPTIMIZATION INSTRUCTIONS:
-1. Rewrite the resume to better match the job requirements
-2. Incorporate relevant keywords naturally throughout the content
-3. Highlight skills that match the job requirements
-4. Adjust the professional summary to align with the role
-5. Reorder or emphasize experience that's most relevant
-6. Use action verbs and quantifiable achievements
-7. Ensure ATS compatibility
-8. Maintain professional formatting and readability
+1. If STRUCTURED RESUME SECTIONS is present, treat it as the source of truth; map and rewrite using those fields first (e.g., personal_info, experience.highlights, skills).
+2. Rewrite the resume to better match the job requirements
+3. Incorporate relevant keywords naturally throughout the content
+4. Highlight skills that match the job requirements
+5. Adjust the professional summary to align with the role
+6. Reorder or emphasize experience that's most relevant
+7. Use action verbs and quantifiable achievements
+8. Ensure ATS compatibility and keep a clean markdown layout
 
 Please provide:
 - The complete optimized resume content in markdown format

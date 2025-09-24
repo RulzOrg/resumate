@@ -1,6 +1,7 @@
-import { auth, currentUser } from "@clerk/nextjs/server"
+import { auth } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
-import { getUserByClerkId, createUserFromClerk } from "./db"
+import { getOrCreateUser as getOrCreateUserRecord } from "./db"
+import { currentUser } from "@clerk/nextjs/server"
 
 export async function getAuthenticatedUser() {
   const { userId } = await auth()
@@ -9,26 +10,33 @@ export async function getAuthenticatedUser() {
     redirect("/auth/login")
   }
 
-  const user = await currentUser()
-
-  let dbUser = await getUserByClerkId(userId)
-
-  if (!dbUser && user) {
-    // Create user in our database if they don't exist
-    dbUser = await createUserFromClerk(
-      userId,
-      user.emailAddresses[0]?.emailAddress || "",
-      user.fullName || user.firstName || "User",
-    )
+  const dbUser = await getOrCreateUserRecord()
+  if (!dbUser) {
+    // DB not ready: synthesize minimal user from Clerk so dashboard can render
+    const cUser = await currentUser()
+    return {
+      id: userId,
+      clerkId: userId,
+      email: cUser?.emailAddresses?.[0]?.emailAddress || "",
+      name: cUser?.fullName || cUser?.firstName || cUser?.username || "User",
+      subscription_status: "free",
+      subscription_plan: "free",
+      subscription_period_end: undefined,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
   }
 
   return {
-    id: dbUser?.id || userId,
+    id: dbUser.id,
     clerkId: userId,
-    email: user?.emailAddresses[0]?.emailAddress || "",
-    name: user?.fullName || user?.firstName || "User",
-    subscriptionStatus: dbUser?.subscription_status || "free",
-    subscriptionPlan: dbUser?.subscription_plan || "free",
+    email: dbUser.email,
+    name: dbUser.name,
+    subscription_status: dbUser.subscription_status,
+    subscription_plan: dbUser.subscription_plan,
+    subscription_period_end: dbUser.subscription_period_end,
+    created_at: dbUser.created_at,
+    updated_at: dbUser.updated_at,
   }
 }
 
@@ -43,22 +51,5 @@ export async function requireAuth() {
 }
 
 export async function getOrCreateUser() {
-  const { userId } = await auth()
-
-  if (!userId) {
-    return null
-  }
-
-  const user = await currentUser()
-  let dbUser = await getUserByClerkId(userId)
-
-  if (!dbUser && user) {
-    dbUser = await createUserFromClerk(
-      userId,
-      user.emailAddresses[0]?.emailAddress || "",
-      user.fullName || user.firstName || "User",
-    )
-  }
-
-  return dbUser
+  return getOrCreateUserRecord()
 }

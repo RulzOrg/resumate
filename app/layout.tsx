@@ -6,6 +6,7 @@ import { Space_Grotesk } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { ClerkProvider } from "@clerk/nextjs"
+import { clerkConfig } from "@/lib/clerk-config"
 import { dark } from "@clerk/themes"
 import "./globals.css"
 
@@ -56,6 +57,10 @@ export default function RootLayout({
       <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
         <ClerkProvider
           publishableKey={publishableKey}
+          signInUrl={clerkConfig.signInUrl}
+          signUpUrl={clerkConfig.signUpUrl}
+          afterSignInUrl={clerkConfig.afterSignInUrl}
+          afterSignUpUrl={clerkConfig.afterSignUpUrl}
           appearance={{
             baseTheme: dark,
             variables: {

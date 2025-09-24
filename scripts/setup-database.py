@@ -58,6 +58,12 @@ async def setup_database():
                 file_type VARCHAR(100) NOT NULL,
                 file_size INTEGER NOT NULL,
                 content_text TEXT,
+                kind VARCHAR(32) NOT NULL DEFAULT 'uploaded',
+                processing_status VARCHAR(32) NOT NULL DEFAULT 'completed',
+                processing_error TEXT,
+                parsed_sections JSONB,
+                extracted_at TIMESTAMP WITH TIME ZONE,
+                source_metadata JSONB,
                 is_primary BOOLEAN DEFAULT false,
                 deleted_at TIMESTAMP WITH TIME ZONE,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -70,7 +76,26 @@ async def setup_database():
         await sql("CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id)")
         await sql("CREATE INDEX IF NOT EXISTS idx_resumes_is_primary ON resumes(is_primary)")
         await sql("CREATE INDEX IF NOT EXISTS idx_resumes_deleted_at ON resumes(deleted_at)")
+        await sql("CREATE INDEX IF NOT EXISTS idx_resumes_kind ON resumes(kind)")
+        await sql("CREATE INDEX IF NOT EXISTS idx_resumes_processing_status ON resumes(processing_status)")
         print("✓ Resume table indexes created")
+
+        # Ensure master resume processing columns exist
+        await sql("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS kind VARCHAR(32) DEFAULT 'uploaded'")
+        await sql("ALTER TABLE resumes ALTER COLUMN kind SET DEFAULT 'uploaded'")
+        await sql("UPDATE resumes SET kind = 'uploaded' WHERE kind IS NULL")
+        await sql("ALTER TABLE resumes ALTER COLUMN kind SET NOT NULL")
+
+        await sql("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS processing_status VARCHAR(32) DEFAULT 'completed'")
+        await sql("ALTER TABLE resumes ALTER COLUMN processing_status SET DEFAULT 'completed'")
+        await sql("UPDATE resumes SET processing_status = 'completed' WHERE processing_status IS NULL")
+        await sql("ALTER TABLE resumes ALTER COLUMN processing_status SET NOT NULL")
+
+        await sql("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS processing_error TEXT")
+        await sql("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS parsed_sections JSONB")
+        await sql("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS extracted_at TIMESTAMP WITH TIME ZONE")
+        await sql("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS source_metadata JSONB")
+        print("✓ Master resume columns ensured")
         
         # Create job_analysis table
         await sql("""
