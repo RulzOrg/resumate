@@ -99,7 +99,7 @@ export default function HomePage() {
                     <Star key={i} className="h-4 w-4 text-white fill-current" />
                   ))}
                 </div>
-                <p className="mt-1 text-xs font-medium text-white/70 font-sans">Join 10,000+ successful job seekers</p>
+                <p className="mt-1 text-xs font-medium text-white/70 font-sans">Join 1,000+ successful job seekers</p>
               </div>
             </div>
 
