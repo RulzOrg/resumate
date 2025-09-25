@@ -13,69 +13,99 @@ import {
 } from "@/lib/db"
 import { buildS3Key, uploadBufferToS3 } from "@/lib/storage"
 
+const optionalString = z
+  .string()
+  .optional()
+  .nullable()
+  .transform(value => {
+    if (typeof value === "string") {
+      const trimmed = value.trim()
+      return trimmed.length > 0 ? trimmed : null
+    }
+    return value
+  })
+
+const optionalStringArray = z
+  .array(z.string().optional().nullable())
+  .optional()
+  .nullable()
+  .transform(value => {
+    if (!value) return value
+    const filtered = value.filter(
+      (item): item is string => typeof item === "string" && item.trim().length > 0,
+    )
+    return filtered.length > 0 ? filtered : null
+  })
+
 const StructuredResumeSchema = z.object({
   personal_info: z
     .object({
-      full_name: z.string().optional(),
-      headline: z.string().optional(),
-      email: z.string().optional(),
-      phone: z.string().optional(),
-      location: z.string().optional(),
+      full_name: optionalString,
+      headline: optionalString,
+      email: optionalString,
+      phone: optionalString,
+      location: optionalString,
       links: z
         .array(
           z.object({
-            label: z.string().optional(),
-            url: z.string().optional(),
+            label: optionalString,
+            url: optionalString,
           }),
         )
-        .optional(),
+        .optional()
+        .nullable(),
     })
-    .optional(),
-  summary: z.string().optional(),
+    .optional()
+    .nullable(),
+  summary: optionalString,
   experience: z
     .array(
       z.object({
-        job_title: z.string().optional(),
-        company: z.string().optional(),
-        start_date: z.string().optional(),
-        end_date: z.string().optional(),
-        location: z.string().optional(),
-        highlights: z.array(z.string()).optional(),
-        skills: z.array(z.string()).optional(),
+        job_title: optionalString,
+        company: optionalString,
+        start_date: optionalString,
+        end_date: optionalString,
+        location: optionalString,
+        highlights: optionalStringArray,
+        skills: optionalStringArray,
       }),
     )
-    .optional(),
+    .optional()
+    .nullable(),
   education: z
     .array(
       z.object({
-        institution: z.string().optional(),
-        degree: z.string().optional(),
-        start_date: z.string().optional(),
-        end_date: z.string().optional(),
-        highlights: z.array(z.string()).optional(),
+        institution: optionalString,
+        degree: optionalString,
+        start_date: optionalString,
+        end_date: optionalString,
+        highlights: optionalStringArray,
       }),
     )
-    .optional(),
+    .optional()
+    .nullable(),
   skills: z
     .object({
-      technical: z.array(z.string()).optional(),
-      soft: z.array(z.string()).optional(),
-      tools: z.array(z.string()).optional(),
-      languages: z.array(z.string()).optional(),
+      technical: optionalStringArray,
+      soft: optionalStringArray,
+      tools: optionalStringArray,
+      languages: optionalStringArray,
     })
-    .optional(),
-  certifications: z.array(z.string()).optional(),
+    .optional()
+    .nullable(),
+  certifications: optionalStringArray,
   projects: z
     .array(
       z.object({
-        name: z.string().optional(),
-        description: z.string().optional(),
-        impact: z.array(z.string()).optional(),
-        technologies: z.array(z.string()).optional(),
+        name: optionalString,
+        description: optionalString,
+        impact: optionalStringArray,
+        technologies: optionalStringArray,
       }),
     )
-    .optional(),
-  achievements: z.array(z.string()).optional(),
+    .optional()
+    .nullable(),
+  achievements: optionalStringArray,
 })
 
 export async function POST(request: NextRequest) {
