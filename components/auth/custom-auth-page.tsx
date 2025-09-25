@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useMemo } from "react"
-import { SignIn, SignUp, useSignIn } from "@clerk/nextjs"
-import type { Theme } from "@clerk/types"
+import { useState } from "react"
+import type { FormEvent } from "react"
+import { useRouter } from "next/navigation"
+import { useSignIn, useSignUp } from "@clerk/nextjs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type Tab = "signin" | "signup"
@@ -14,44 +15,157 @@ interface Props {
 
 export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   const [tab, setTab] = useState<Tab>(defaultTab)
-  const { signIn, isLoaded: isSignInLoaded } = useSignIn()
+  const router = useRouter()
+  const { signIn, isLoaded: isSignInLoaded, setActive: setSignInActive } = useSignIn()
+  const { signUp, isLoaded: isSignUpLoaded, setActive: setSignUpActive } = useSignUp()
   const [oauthError, setOauthError] = useState<string | null>(null)
+  const [signInEmail, setSignInEmail] = useState("")
+  const [signInPassword, setSignInPassword] = useState("")
+  const [signInError, setSignInError] = useState<string | null>(null)
+  const [isSigningIn, setIsSigningIn] = useState(false)
 
-  const appearance = useMemo(
-    () => ({
-      layout: {
-        socialButtonsVariant: "iconButton",
-      },
-      variables: {
-        colorPrimary: "#10b981",
-        colorBackground: "#000000",
-        colorInputBackground: "rgba(255,255,255,0.05)",
-        colorInputText: "#ffffff",
-        colorText: "#ffffff",
-        colorTextSecondary: "rgba(255,255,255,0.7)",
-        borderRadius: "9999px",
-      },
-      elements: {
-        rootBox: "w-full",
-        card: "!bg-black !border !border-white/10 !shadow-none",
-        header: "hidden",
-        headerSubtitle: "hidden",
-        form: "mt-0 space-y-4",
-        formFieldInput: "bg-white/5 border border-white/10 text-white rounded-full px-3 py-2 focus:ring-emerald-500 focus:border-emerald-500 placeholder-white/30",
-        formFieldLabel: "text-white/80 mb-1.5",
-        formButtonPrimary: "rounded-full bg-emerald-500 text-black hover:bg-emerald-400",
-        footer: "hidden",
-        footerAction__signIn: "hidden",
-        footerAction__signUp: "hidden",
-        socialButtons: "hidden",
-        dividerRow: "hidden",
-        identityPreview: "hidden",
-      },
-    }) satisfies Theme,
-    []
-  )
+  const [signUpName, setSignUpName] = useState("")
+  const [signUpEmail, setSignUpEmail] = useState("")
+  const [signUpPassword, setSignUpPassword] = useState("")
+  const [signUpError, setSignUpError] = useState<string | null>(null)
+  const [isSigningUp, setIsSigningUp] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [verificationCode, setVerificationCode] = useState("")
+  const [verificationError, setVerificationError] = useState<string | null>(null)
 
-  async function handleOAuth(strategy: "oauth_google" | "oauth_github") {
+  const clearFormState = () => {
+    setSignInEmail("")
+    setSignInPassword("")
+    setSignInError(null)
+    setIsSigningIn(false)
+    setSignUpName("")
+    setSignUpEmail("")
+    setSignUpPassword("")
+    setSignUpError(null)
+    setIsSigningUp(false)
+    setIsVerifying(false)
+    setVerificationCode("")
+    setVerificationError(null)
+    setOauthError(null)
+  }
+
+  const extractClerkError = (error: unknown) => {
+    if (typeof error === "object" && error !== null && "errors" in error) {
+      const clerkError = error as {
+        errors?: Array<{ code?: string; message?: string }>
+      }
+      const message = clerkError.errors?.[0]?.message
+      if (message) return message
+    }
+    if (error instanceof Error) {
+      return error.message
+    }
+    return "Something went wrong. Please try again."
+  }
+
+  const handleSignInSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!isSignInLoaded || !signIn) return
+
+    setIsSigningIn(true)
+    setSignInError(null)
+
+    try {
+      const result = await signIn.create({
+        identifier: signInEmail,
+        password: signInPassword,
+      })
+
+      if (result.status === "complete" && result.createdSessionId) {
+        await setSignInActive({ session: result.createdSessionId })
+        router.push("/dashboard")
+        return
+      }
+
+      if (result.status === "needs_first_factor") {
+        setSignInError("Additional verification is required. Please follow the prompts sent to your email.")
+        return
+      }
+
+      setSignInError("Unable to complete sign in. Please try again.")
+    } catch (error) {
+      setSignInError(extractClerkError(error))
+    } finally {
+      setIsSigningIn(false)
+    }
+  }
+
+  const handleSignUpSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!isSignUpLoaded || !signUp) return
+
+    setIsSigningUp(true)
+    setSignUpError(null)
+
+    const trimmedName = signUpName.trim()
+    const [firstName = "", ...rest] = trimmedName.split(/\s+/)
+    const lastName = rest.join(" ")
+
+    try {
+      const result = await signUp.create({
+        emailAddress: signUpEmail,
+        password: signUpPassword,
+        firstName,
+        lastName,
+      })
+
+      if (result.status === "complete" && result.createdSessionId) {
+        await setSignUpActive({ session: result.createdSessionId })
+        router.push("/dashboard")
+        return
+      }
+
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" })
+      setIsVerifying(true)
+    } catch (error) {
+      setSignUpError(extractClerkError(error))
+    } finally {
+      setIsSigningUp(false)
+    }
+  }
+
+  const handleVerificationSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!isSignUpLoaded || !signUp) return
+
+    setVerificationError(null)
+
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code: verificationCode })
+
+      if (result.status === "complete" && result.createdSessionId) {
+        await setSignUpActive({ session: result.createdSessionId })
+        router.push("/dashboard")
+        return
+      }
+
+      setVerificationError("Verification incomplete. Please check the code and try again.")
+    } catch (error) {
+      setVerificationError(extractClerkError(error))
+    }
+  }
+
+  const handleResendVerification = async () => {
+    if (!isSignUpLoaded || !signUp) return
+    setVerificationError(null)
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" })
+    } catch (error) {
+      setVerificationError(extractClerkError(error))
+    }
+  }
+
+  const handleTabChange = (nextTab: Tab) => {
+    setTab(nextTab)
+    clearFormState()
+  }
+
+  async function handleOAuth(strategy: "oauth_google" | "oauth_linkedin") {
     if (!isSignInLoaded || !signIn) return
     setOauthError(null)
     try {
@@ -137,18 +251,18 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               <div className="mb-6">
                 <div className="flex gap-1 bg-white/5 border-white/10 border rounded-full p-1 backdrop-blur items-center">
                   <button
-                    className={`text-sm font-medium w-full rounded-full py-2 px-4 ${
-                      tab === "signin" ? "text-white bg-white/10" : "text-white/70 hover:text-white"
+                    className={`w-full rounded-full px-4 py-2 text-sm font-medium ${
+                      tab === "signin" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
                     }`}
-                    onClick={() => setTab("signin")}
+                    onClick={() => handleTabChange("signin")}
                   >
                     Sign In
                   </button>
                   <button
-                    className={`text-sm font-medium w-full rounded-full py-2 px-4 ${
-                      tab === "signup" ? "text-white bg-white/10" : "text-white/70 hover:text-white"
+                    className={`w-full rounded-full px-4 py-2 text-sm font-medium ${
+                      tab === "signup" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
                     }`}
-                    onClick={() => setTab("signup")}
+                    onClick={() => handleTabChange("signup")}
                   >
                     Create Account
                   </button>
@@ -157,10 +271,157 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
               {/* Forms */}
               <div className={tab === "signin" ? "block" : "hidden"}>
-                <SignIn routing="hash" signUpUrl="/auth/signup" redirectUrl="/dashboard" appearance={appearance} />
+                <form className="space-y-4" onSubmit={handleSignInSubmit}>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="email-signin">
+                      Email address
+                    </label>
+                    <input
+                      id="email-signin"
+                      type="email"
+                      autoComplete="email"
+                      required
+                      value={signInEmail}
+                      onChange={event => setSignInEmail(event.target.value)}
+                      className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-white/80" htmlFor="password-signin">
+                        Password
+                      </label>
+                      <Link href="/auth/forgot-password" className="text-sm font-medium text-emerald-500 hover:text-emerald-400">
+                        Forgot?
+                      </Link>
+                    </div>
+                    <input
+                      id="password-signin"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={signInPassword}
+                      onChange={event => setSignInPassword(event.target.value)}
+                      className="mt-1.5 block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                    />
+                  </div>
+
+                  {signInError && (
+                    <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                      <AlertDescription>{signInError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSigningIn}
+                    className="mt-2 flex w-full justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:pointer-events-none disabled:opacity-60"
+                  >
+                    {isSigningIn ? "Signing in..." : "Sign In"}
+                  </button>
+                </form>
               </div>
               <div className={tab === "signup" ? "block" : "hidden"}>
-                <SignUp routing="hash" signInUrl="/auth/login" redirectUrl="/dashboard" appearance={appearance} />
+                {!isVerifying ? (
+                  <form className="space-y-4" onSubmit={handleSignUpSubmit}>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="name-signup">
+                        Full Name
+                      </label>
+                      <input
+                        id="name-signup"
+                        type="text"
+                        autoComplete="name"
+                        required
+                        value={signUpName}
+                        onChange={event => setSignUpName(event.target.value)}
+                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="email-signup">
+                        Email address
+                      </label>
+                      <input
+                        id="email-signup"
+                        type="email"
+                        autoComplete="email"
+                        required
+                        value={signUpEmail}
+                        onChange={event => setSignUpEmail(event.target.value)}
+                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="password-signup">
+                        Password
+                      </label>
+                      <input
+                        id="password-signup"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        value={signUpPassword}
+                        onChange={event => setSignUpPassword(event.target.value)}
+                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+
+                    {signUpError && (
+                      <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                        <AlertDescription>{signUpError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isSigningUp}
+                      className="mt-2 flex w-full justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:pointer-events-none disabled:opacity-60"
+                    >
+                      {isSigningUp ? "Creating account..." : "Create Account"}
+                    </button>
+                  </form>
+                ) : (
+                  <form className="space-y-4" onSubmit={handleVerificationSubmit}>
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="verification-code">
+                        Enter the 6-digit code sent to {signUpEmail}
+                      </label>
+                      <input
+                        id="verification-code"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        required
+                        value={verificationCode}
+                        onChange={event => setVerificationCode(event.target.value)}
+                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+
+                    {verificationError && (
+                      <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                        <AlertDescription>{verificationError}</AlertDescription>
+                      </Alert>
+                    )}
+
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={handleResendVerification}
+                        className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+                      >
+                        Resend code
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex flex-1 justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                      >
+                        Verify &amp; Continue
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
 
               {/* Divider */}
@@ -183,7 +444,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => handleOAuth("oauth_google")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/90 shadow-sm hover:bg-white/10 transition-colors"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/90 shadow-sm transition-colors hover:bg-white/10"
                 >
                   <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -195,17 +456,13 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   <span>Google</span>
                 </button>
                 <button
-                  onClick={() => handleOAuth("oauth_github")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/90 shadow-sm hover:bg-white/10 transition-colors"
+                  onClick={() => handleOAuth("oauth_linkedin")}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/90 shadow-sm transition-colors hover:bg-white/10"
                 >
                   <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                    <path
-                      fillRule="evenodd"
-                      d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.491.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.942.359.308.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z"
-                      clipRule="evenodd"
-                    />
+                    <path d="M4.983 3.5C3.334 3.5 2 4.845 2 6.503c0 1.63 1.31 2.998 2.958 2.998h.035c1.676 0 2.983-1.368 2.983-2.998C7.941 4.845 6.658 3.5 4.983 3.5zM2.337 20.5h5.246V9.25H2.337V20.5zM9.337 9.25v11.25h5.04v-6.219c0-1.654.31-3.257 2.365-3.257 2.03 0 2.062 1.877 2.062 3.357V20.5H24v-6.691c0-3.359-.729-5.95-4.676-5.95-1.894 0-3.165 1.04-3.688 2.02h-.053V9.25H9.337z" />
                   </svg>
-                  <span>GitHub</span>
+                  <span>LinkedIn</span>
                 </button>
               </div>
             </div>
@@ -215,5 +472,3 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     </div>
   )
 }
-
-
