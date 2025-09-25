@@ -240,6 +240,34 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
         <div className="flex flex-col min-h-screen sm:p-6 lg:p-8 bg-black p-4 justify-center">
           <div className="mx-auto w-full max-w-sm">
             <div className="text-center">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur w-fit mb-6"
+            >
+              <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
+                {/* Refresh icon */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-4 w-4"
+                >
+                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                  <path d="M21 21v-5h-5" />
+                </svg>
+              </span>
+              <span className="text-base font-medium tracking-tighter" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                ResuMate AI
+              </span>
+            </Link>
               <h1 className="text-3xl font-semibold tracking-tight text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
                 Welcome
               </h1>
