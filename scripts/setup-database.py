@@ -80,6 +80,24 @@ async def setup_database():
         await sql("CREATE INDEX IF NOT EXISTS idx_resumes_processing_status ON resumes(processing_status)")
         print("✓ Resume table indexes created")
 
+        # Create job_targets table for onboarding job URLs
+        await sql("""
+            CREATE TABLE IF NOT EXISTS job_targets (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                user_id VARCHAR(255) NOT NULL REFERENCES users_sync(id) ON DELETE CASCADE,
+                job_url TEXT NOT NULL,
+                job_title VARCHAR(255),
+                company_name VARCHAR(255),
+                status VARCHAR(50) DEFAULT 'pending',
+                notes TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+            )
+        """)
+        await sql("CREATE INDEX IF NOT EXISTS idx_job_targets_user_id ON job_targets(user_id)")
+        await sql("CREATE UNIQUE INDEX IF NOT EXISTS idx_job_targets_user_url ON job_targets(user_id, job_url)")
+        print("✓ Job targets table created")
+
         # Ensure master resume processing columns exist
         await sql("ALTER TABLE resumes ADD COLUMN IF NOT EXISTS kind VARCHAR(32) DEFAULT 'uploaded'")
         await sql("ALTER TABLE resumes ALTER COLUMN kind SET DEFAULT 'uploaded'")
@@ -231,7 +249,7 @@ async def setup_database():
         
         # Create triggers for all tables
         tables_with_updated_at = [
-            'users_sync', 'resumes', 'job_applications', 
+            'users_sync', 'resumes', 'job_targets', 'job_applications', 
             'job_analysis', 'optimized_resumes', 'user_profiles'
         ]
         

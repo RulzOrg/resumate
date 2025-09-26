@@ -25,6 +25,22 @@ CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
 CREATE INDEX IF NOT EXISTS idx_resumes_is_primary ON resumes(is_primary);
 CREATE INDEX IF NOT EXISTS idx_resumes_deleted_at ON resumes(deleted_at);
 
+-- Target job URLs captured during onboarding
+CREATE TABLE IF NOT EXISTS job_targets (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id VARCHAR(255) NOT NULL REFERENCES users_sync(id) ON DELETE CASCADE,
+    job_url TEXT NOT NULL,
+    job_title VARCHAR(255),
+    company_name VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'pending',
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_targets_user_id ON job_targets(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_job_targets_user_url ON job_targets(user_id, job_url);
+
 -- Job applications table
 CREATE TABLE IF NOT EXISTS job_applications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -136,6 +152,7 @@ $$ language 'plpgsql';
 
 -- Apply the trigger to all tables with updated_at columns
 CREATE TRIGGER update_resumes_updated_at BEFORE UPDATE ON resumes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_job_targets_updated_at BEFORE UPDATE ON job_targets FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_job_applications_updated_at BEFORE UPDATE ON job_applications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_job_analysis_updated_at BEFORE UPDATE ON job_analysis FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_optimized_resumes_updated_at BEFORE UPDATE ON optimized_resumes FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
