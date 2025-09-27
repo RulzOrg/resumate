@@ -1,12 +1,16 @@
 import { neon } from "@neondatabase/serverless"
-import { auth, clerkClient } from "@clerk/nextjs/server"
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 
 const databaseUrl = process.env.DATABASE_URL
 const isDbConfigured = Boolean(databaseUrl)
 
-const sql = databaseUrl ? neon(databaseUrl) : (async () => {
-  throw new Error("DATABASE_URL is not configured. Set it to enable database features.")
-}) as unknown as ReturnType<typeof neon>
+type SqlClient = <T = Record<string, any>>(strings: TemplateStringsArray, ...values: any[]) => Promise<T[]>
+
+const sql: SqlClient = databaseUrl
+  ? (neon(databaseUrl) as unknown as SqlClient)
+  : (async () => {
+      throw new Error("DATABASE_URL is not configured. Set it to enable database features.")
+    }) as unknown as SqlClient
 
 export { sql }
 
@@ -131,6 +135,18 @@ export interface JobApplication {
   job_description?: string
   status: string
   applied_at: string
+  created_at: string
+  updated_at: string
+}
+
+export interface JobTarget {
+  id: string
+  user_id: string
+  job_url: string
+  job_title?: string | null
+  company_name?: string | null
+  status: string
+  notes?: string | null
   created_at: string
   updated_at: string
 }
@@ -570,6 +586,76 @@ export async function getUserJobApplications(user_id: string) {
     ORDER BY ja.created_at DESC
   `
   return applications as (JobApplication & { resume_title: string })[]
+}
+
+// Job target functions (onboarding)
+function normalizeJobUrl(url: string) {
+  if (!url) return ""
+  try {
+    const parsed = new URL(url.trim())
+    parsed.hash = ""
+    parsed.hostname = parsed.hostname.toLowerCase()
+    return parsed.toString()
+  } catch {
+    return url.trim()
+  }
+}
+
+export async function createJobTarget(data: {
+  user_id: string
+  job_url: string
+  job_title?: string | null
+  company_name?: string | null
+  status?: string
+  notes?: string | null
+}) {
+  const sanitizedUrl = normalizeJobUrl(data.job_url)
+  if (!sanitizedUrl) {
+    throw new Error("Job URL is required")
+  }
+
+  const [target] = await sql`
+    INSERT INTO job_targets (user_id, job_url, job_title, company_name, status, notes, created_at, updated_at)
+    VALUES (
+      ${data.user_id},
+      ${sanitizedUrl},
+      ${data.job_title || null},
+      ${data.company_name || null},
+      ${data.status ?? null},
+      ${data.notes || null},
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (user_id, job_url)
+    DO UPDATE SET
+      job_title = COALESCE(EXCLUDED.job_title, job_targets.job_title),
+      company_name = COALESCE(EXCLUDED.company_name, job_targets.company_name),
+      status = COALESCE(EXCLUDED.status, job_targets.status),
+      notes = COALESCE(EXCLUDED.notes, job_targets.notes),
+      updated_at = NOW()
+    RETURNING *
+  `
+
+  return target as JobTarget
+}
+
+export async function getUserJobTargets(user_id: string) {
+  const targets = await sql`
+    SELECT *
+    FROM job_targets
+    WHERE user_id = ${user_id}
+    ORDER BY created_at DESC
+  `
+  return targets as JobTarget[]
+}
+
+export async function deleteJobTarget(id: string, user_id: string) {
+  const [target] = await sql`
+    DELETE FROM job_targets
+    WHERE id = ${id} AND user_id = ${user_id}
+    RETURNING *
+  `
+  return target as JobTarget | undefined
 }
 
 // Enhanced job analysis creation with user verification
