@@ -7,10 +7,18 @@ import { Briefcase } from "lucide-react"
 interface TargetJobsCompactListProps {
   analyses: JobAnalysis[]
   limit?: number
+  defaultResumeId?: string
 }
 
-export function TargetJobsCompactList({ analyses, limit = 2 }: TargetJobsCompactListProps) {
+export function TargetJobsCompactList({ analyses, limit = 2, defaultResumeId }: TargetJobsCompactListProps) {
   const items = analyses.slice(0, limit)
+  const createGenerateHref = (jobId: string) => {
+    const params = new URLSearchParams({ jobId })
+    if (defaultResumeId) {
+      params.set("resumeId", defaultResumeId)
+    }
+    return `/dashboard/optimize?${params.toString()}`
+  }
   return (
     <div className="space-y-4">
       {items.map((job) => (
@@ -32,7 +40,7 @@ export function TargetJobsCompactList({ analyses, limit = 2 }: TargetJobsCompact
               View
             </Link>
             <Link
-              href="/dashboard/optimize"
+              href={createGenerateHref(job.id)}
               className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition"
             >
               Generate

@@ -123,7 +123,11 @@ export default async function DashboardPage({
                   </div>
                 ) : (
                   <>
-                    <TargetJobsCompactList analyses={paginatedAnalyses} limit={perPage} />
+                    <TargetJobsCompactList
+                      analyses={paginatedAnalyses}
+                      limit={perPage}
+                      defaultResumeId={resumes.find((r) => r.is_primary)?.id || resumes[0]?.id}
+                    />
                     {/* Pagination Controls */}
                     {totalPages > 1 && (
                       <div className="mt-4 flex items-center justify-between text-sm text-white/70">
