@@ -263,7 +263,11 @@ export default function OptimizerUiOnly({
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
       // Wrap list items
-      html = html.replace(/(<li>[\s\S]*?<\/li>)(\n(?=<li>)|$)/g, '<ul>$1</ul>')
+      html = html.replace(/(?:^|\n)(?:<li>[\s\S]*?<\/li>\s*)+/g, (block) => {
+        const trimmed = block.trim()
+        const prefix = block.startsWith('\n') ? '\n' : ''
+        return `${prefix}<ul>${trimmed}</ul>`
+      })
       // Paragraphs
       html = html
         .split(/\n\n+/)

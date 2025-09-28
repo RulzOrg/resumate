@@ -18,8 +18,14 @@ export default async function OptimizedDetailPage({ params }: { params: { id: st
       <DashboardHeader user={user as any} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
+        <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight">Optimized Resume</h1>
-          <p className="text-muted-foreground text-sm">For {optimized.job_title}{optimized.company_name ? ` at ${optimized.company_name}` : ''}</p>
+          {(optimized.job_title || optimized.company_name) && (
+            <p className="text-muted-foreground text-sm">
+              {optimized.job_title ? `For ${optimized.job_title}` : "For this opening"}
+              {optimized.company_name ? ` at ${optimized.company_name}` : ""}
+            </p>
+          )}
         </div>
         <OptimizedDetailView
           optimizedId={optimized.id}

@@ -20,9 +20,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No subscription found" }, { status: 404 })
     }
 
+    // Validate required environment variable
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    if (!appUrl) {
+      console.error("NEXT_PUBLIC_APP_URL environment variable is not set")
+      return NextResponse.json(
+        { error: "Server configuration error: missing app URL" },
+        { status: 500 }
+      )
+    }
+
     // Create Stripe customer portal session
     const stripe = getStripe()
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripe_customer_id,
       return_url: `${appUrl}/dashboard`,
