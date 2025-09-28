@@ -28,6 +28,30 @@ import {
 
 type Step = 1 | 2 | 3 | 4
 
+type ResumeOption = {
+  id: string
+  label: string
+  fileName?: string
+  fileType?: string
+  fileSize?: number
+  updatedAt?: string
+  isPrimary?: boolean
+}
+
+type JobOption = {
+  id: string
+  jobTitle: string
+  companyName?: string
+  jobDescription: string
+  keywords?: string[]
+  requiredSkills?: string[]
+  niceToHave?: string[]
+  location?: string
+  experienceLevel?: string
+  category?: string
+  matchScore?: number
+}
+
 const initialEditorHtml = `
   <div class="text-lg font-space-grotesk font-semibold tracking-tight">Sarah Johnson</div>
   <div class="text-white/70">Senior Product Manager • sjohnson@example.com • San Francisco, CA</div>
@@ -119,14 +143,88 @@ function extractKeywords(text: string) {
   return top
 }
 
-export default function OptimizerUiOnly() {
+interface OptimizerUiOnlyProps {
+  resumes?: ResumeOption[]
+  initialResume?: ResumeOption | null
+  jobOptions?: JobOption[]
+  initialJob?: JobOption | null
+}
+
+const mockResumeOptions: ResumeOption[] = [
+  {
+    id: "mock-resume-1",
+    label: "Sarah Johnson — Product Leader (Master)",
+    fileName: "Sarah_Johnson_Resume_2024.pdf",
+    fileType: "application/pdf",
+    fileSize: 164 * 1024,
+    updatedAt: new Date().toISOString(),
+    isPrimary: true,
+  },
+  {
+    id: "mock-resume-2",
+    label: "General Tech Resume v2",
+    fileName: "General_Tech_Resume_v2.docx",
+    fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    fileSize: 120 * 1024,
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "mock-resume-3",
+    label: "PM Master V3",
+    fileName: "PM_Master_V3.docx",
+    fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    fileSize: 132 * 1024,
+    updatedAt: new Date().toISOString(),
+  },
+]
+
+const mockJobOptions: JobOption[] = [
+  {
+    id: "mock-job-1",
+    jobTitle: "Senior Product Manager",
+    companyName: "Vercel",
+    jobDescription:
+      "Vercel is seeking a Senior Product Manager to drive the roadmap for our developer experience. You will define strategy, collaborate with engineering and design, and ship products that improve performance, reliability, and developer workflows. Responsibilities include product discovery, roadmap prioritization, A/B testing, and launching user-facing features. Requirements: 6+ years PM experience, strong technical background, familiarity with frontend frameworks, experimentation platforms, SQL, and analytics. Nice to have: experience with platform products, devtools, enterprise customers, and API design.",
+    keywords: ["roadmap", "developer", "experimentation", "frontend", "sql", "platform", "enterprise"],
+    requiredSkills: ["Roadmap", "A/B Testing", "Frontend", "Analytics"],
+    niceToHave: ["API design", "Enterprise"]
+  },
+]
+
+const formatFileMeta = (resume: ResumeOption) => {
+  const parts: string[] = []
+  if (resume.fileType?.toLowerCase().includes("pdf")) {
+    parts.push("PDF")
+  } else if (resume.fileType?.toLowerCase().includes("word")) {
+    parts.push("DOCX")
+  }
+  if (typeof resume.fileSize === "number") {
+    const kb = Math.max(1, Math.round(resume.fileSize / 1024))
+    parts.push(`${kb} KB`)
+  }
+  return parts.join(" • ")
+}
+
+export default function OptimizerUiOnly({
+  resumes,
+  initialResume,
+  jobOptions,
+  initialJob,
+}: OptimizerUiOnlyProps) {
+  const resolvedResumes = resumes && resumes.length > 0 ? resumes : mockResumeOptions
+  const resolvedJobs = jobOptions && jobOptions.length > 0 ? jobOptions : mockJobOptions
+
+  const resolvedInitialResume =
+    initialResume || resolvedResumes.find((r) => r.isPrimary) || resolvedResumes[0] || null
+  const resolvedInitialJob = initialJob || resolvedJobs[0] || null
+
   const [step, setStep] = useState<Step>(1)
-  const [selectedResume, setSelectedResume] = useState<string>("Sarah_Johnson_Resume_2024.pdf")
+  const [selectedResume, setSelectedResume] = useState<string>(resolvedInitialResume?.id ?? mockResumeOptions[0].id)
   const [resumeMenuOpen, setResumeMenuOpen] = useState(false)
   const [jobDesc, setJobDesc] = useState(
-    "Vercel is seeking a Senior Product Manager to drive the roadmap for our developer experience. You will define strategy, collaborate with engineering and design, and ship products that improve performance, reliability, and developer workflows. Responsibilities include product discovery, roadmap prioritization, A/B testing, and launching user-facing features. Requirements: 6+ years PM experience, strong technical background, familiarity with frontend frameworks, experimentation platforms, SQL, and analytics. Nice to have: experience with platform products, devtools, enterprise customers, and API design."
+    resolvedInitialJob?.jobDescription ?? mockJobOptions[0].jobDescription
   )
-  const [keywords, setKeywords] = useState<string[]>([])
+  const [keywords, setKeywords] = useState<string[]>(resolvedInitialJob?.keywords ?? [])
 
   const [editorHtml, setEditorHtml] = useState<string>(initialEditorHtml)
   const [baseEditorHtml] = useState<string>(initialEditorHtml)
@@ -162,6 +260,11 @@ export default function OptimizerUiOnly() {
   useEffect(() => {
     setKeywords(extractKeywords(jobDesc))
   }, [])
+
+  const currentResume = useMemo(
+    () => resolvedResumes.find((r) => r.id === selectedResume) ?? resolvedResumes[0],
+    [selectedResume, resolvedResumes]
+  )
 
   const reanalyze = () => setKeywords(extractKeywords(jobDesc))
   const replaceJD = () => {
@@ -263,7 +366,9 @@ export default function OptimizerUiOnly() {
           </Link>
         </div>
         <h1 className="text-3xl sm:text-4xl tracking-tight font-space-grotesk font-semibold">AI Resume Optimization</h1>
-        <p className="mt-1 text-base text-white/60">Target: Senior Product Manager — Vercel</p>
+        <p className="mt-1 text-base text-white/60">
+          Target: {resolvedInitialJob?.jobTitle ?? "Senior Product Manager"} — {resolvedInitialJob?.companyName ?? "Vercel"}
+        </p>
       </div>
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-4 mb-8">
@@ -307,8 +412,12 @@ export default function OptimizerUiOnly() {
                       <FileText className="h-4 w-4 text-white/70" />
                     </div>
                     <div className="text-left">
-                      <p className="font-medium">{selectedResume}</p>
-                      <p className="text-xs text-white/60">Last updated May 12, 2024</p>
+                      <p className="font-medium">{currentResume?.label ?? "Select resume"}</p>
+                      <p className="text-xs text-white/60">
+                        {currentResume?.updatedAt
+                          ? `Updated ${new Date(currentResume.updatedAt).toLocaleDateString()}`
+                          : "Uploaded resume"}
+                      </p>
                     </div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-white/60" />
@@ -317,16 +426,12 @@ export default function OptimizerUiOnly() {
                 {resumeMenuOpen && (
                   <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-black/90 backdrop-blur-xl shadow-2xl">
                     <div className="p-2">
-                      {[
-                        "Sarah_Johnson_Resume_2024.pdf",
-                        "General_Tech_Resume_v2.docx",
-                        "PM_Master_V3.docx",
-                      ].map((name) => (
+                      {resolvedResumes.map((resume) => (
                         <button
-                          key={name}
+                          key={resume.id}
                           className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition text-left"
                           onClick={() => {
-                            setSelectedResume(name)
+                            setSelectedResume(resume.id)
                             setResumeMenuOpen(false)
                           }}
                         >
@@ -334,8 +439,10 @@ export default function OptimizerUiOnly() {
                             <FileText className="h-4 w-4 text-white/70" />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-medium">{name}</p>
-                            <p className="text-xs text-white/60">{name.endsWith(".pdf") ? "PDF • 164 KB" : "DOCX • 120 KB"}</p>
+                            <p className="text-sm font-medium">{resume.label}</p>
+                            <p className="text-xs text-white/60">
+                              {formatFileMeta(resume) || "Uploaded resume"}
+                            </p>
                           </div>
                         </button>
                       ))}
@@ -721,7 +828,7 @@ export default function OptimizerUiOnly() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-medium text-white/90">Job Summary</h3>
-              <span className="text-xs font-medium text-white/50">Imported</span>
+              <span className="text-xs font-medium text-white/50">{resolvedJobs.length ? "Imported" : "Mock"}</span>
             </div>
             <div className="mt-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -729,8 +836,10 @@ export default function OptimizerUiOnly() {
                   <Briefcase className="h-4 w-4 text-white/70" />
                 </div>
                 <div>
-                  <div className="text-sm font-medium">Senior Product Manager</div>
-                  <div className="text-xs text-white/60">Vercel • Remote</div>
+                  <div className="text-sm font-medium">{resolvedInitialJob?.jobTitle ?? "Job title"}</div>
+                  <div className="text-xs text-white/60">
+                    {(resolvedInitialJob?.companyName || "Company")} {resolvedInitialJob?.location ? `• ${resolvedInitialJob.location}` : ""}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -739,7 +848,7 @@ export default function OptimizerUiOnly() {
                 </div>
                 <div>
                   <div className="text-sm font-medium">Seniority</div>
-                  <div className="text-xs text-white/60">Senior • IC</div>
+                  <div className="text-xs text-white/60">{resolvedInitialJob?.experienceLevel ?? "Senior • IC"}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -748,13 +857,13 @@ export default function OptimizerUiOnly() {
                 </div>
                 <div>
                   <div className="text-sm font-medium">Category</div>
-                  <div className="text-xs text-white/60">Developer Experience • Platform</div>
+                  <div className="text-xs text-white/60">{resolvedInitialJob?.category ?? "Developer Experience • Platform"}</div>
                 </div>
               </div>
               <div className="pt-2">
                 <div className="text-xs text-white/60 mb-1">Top skills</div>
                 <div className="flex flex-wrap gap-2">
-                  {"Roadmap,A/B Testing,Analytics,Frontend,APIs".split(",").map((s) => (
+                  {(resolvedInitialJob?.keywords ?? ["Roadmap", "A/B Testing", "Analytics", "Frontend", "APIs"]).map((s) => (
                     <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
                       {s}
                     </span>
