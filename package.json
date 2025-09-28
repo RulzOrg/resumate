@@ -8,8 +8,8 @@
     "lint": "next lint",
     "start": "next start",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install --with-deps",
-    "postinstall": "playwright install --with-deps || true"
+    "test:e2e:install": "playwright install",
+    "postinstall": "playwright install || true"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",

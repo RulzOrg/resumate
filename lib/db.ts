@@ -920,23 +920,84 @@ export async function updateUserSubscription(
   data: {
     subscription_status?: string
     subscription_plan?: string
-    subscription_period_end?: string
-    stripe_customer_id?: string
-    stripe_subscription_id?: string
+    subscription_period_end?: string | null
+    stripe_customer_id?: string | null
+    stripe_subscription_id?: string | null
   },
 ) {
-  const [user] = await sql`
-    UPDATE users_sync 
-    SET subscription_status = COALESCE(${data.subscription_status}, subscription_status),
-        subscription_plan = COALESCE(${data.subscription_plan}, subscription_plan),
-        subscription_period_end = COALESCE(${data.subscription_period_end}, subscription_period_end),
-        stripe_customer_id = COALESCE(${data.stripe_customer_id}, stripe_customer_id),
-        stripe_subscription_id = COALESCE(${data.stripe_subscription_id}, stripe_subscription_id),
-        updated_at = NOW()
-    WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, 
+  // If no data to update, return current user
+  if (Object.keys(data).length === 0) {
+    const [current] = await sql`
+      SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
              subscription_period_end, stripe_customer_id, stripe_subscription_id
+      FROM users_sync
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+    `
+    return current as User | undefined
+  }
+
+  // Use individual UPDATE statements so that explicit nulls are written as NULL
+  let [user] = await sql`
+    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
+           subscription_period_end, stripe_customer_id, stripe_subscription_id
+    FROM users_sync
+    WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
   `
+
+  if (!user) {
+    return undefined
+  }
+
+  if (data.subscription_status !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET subscription_status = ${data.subscription_status}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.subscription_plan !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET subscription_plan = ${data.subscription_plan}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.subscription_period_end !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET subscription_period_end = ${data.subscription_period_end}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.stripe_customer_id !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET stripe_customer_id = ${data.stripe_customer_id}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.stripe_subscription_id !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET stripe_subscription_id = ${data.stripe_subscription_id}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
   return user as User | undefined
 }
 

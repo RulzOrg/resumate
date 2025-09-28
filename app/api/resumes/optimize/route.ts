@@ -152,7 +152,14 @@ Focus on making the resume highly relevant to this specific job while maintainin
     const userRow = await getUserById(resume.user_id)
     if (!userRow) {
       await sql`INSERT INTO users_sync (id, email, name, subscription_status, subscription_plan, created_at, updated_at)
-                VALUES (${resume.user_id}, ${user.email || ''}, ${user.name || 'User'}, 'free', 'free', NOW(), NOW())
+                VALUES (
+                  ${resume.user_id},
+                  ${user.email || ''},
+                  ${user.name || 'User'},
+                  ${(user as any)?.subscription_status || 'free'},
+                  ${(user as any)?.subscription_plan || 'free'},
+                  NOW(), NOW()
+                )
                 ON CONFLICT (id) DO NOTHING`
     }
 

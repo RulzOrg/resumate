@@ -133,8 +133,8 @@ export async function POST(request: NextRequest) {
             await updateUserSubscription(clerkUserId, {
               subscription_status: "canceled",
               subscription_plan: "free",
-              stripe_subscription_id: undefined,
-              subscription_period_end: undefined,
+              stripe_subscription_id: null,
+              subscription_period_end: null,
             })
             
             console.log(`Successfully canceled subscription for user ${clerkUserId}`)

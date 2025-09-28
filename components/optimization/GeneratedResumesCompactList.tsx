@@ -11,8 +11,11 @@ interface GeneratedResumesCompactListProps {
 
 export function GeneratedResumesCompactList({ resumes, limit = 3 }: GeneratedResumesCompactListProps) {
   const items = resumes.slice(0, limit)
+  const finiteScore = (score?: number | null) => (
+    typeof score === 'number' && Number.isFinite(score) ? score : null
+  )
   const matchClass = (score?: number | null) => {
-    const s = typeof score === 'number' ? score : null
+    const s = finiteScore(score)
     if (s === null) return 'text-white/60'
     if (s === 0) return 'text-red-400'
     if (s < 60) return 'text-amber-400'
@@ -56,7 +59,9 @@ export function GeneratedResumesCompactList({ resumes, limit = 3 }: GeneratedRes
           </div>
           <div className="flex items-center gap-4 self-start sm:self-center">
             <div className="text-center">
-              <p className={`font-medium ${matchClass(resume.match_score)}`}>{(resume.match_score ?? 0)}%</p>
+              <p className={`font-medium ${matchClass(resume.match_score)}`}>
+                {finiteScore(resume.match_score) === null ? '—' : `${finiteScore(resume.match_score)}%`}
+              </p>
               <p className="text-xs text-white/60">Match</p>
             </div>
             <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id)}>

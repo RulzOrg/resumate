@@ -34,7 +34,6 @@ function highlightDiff(base: string, compare: string, mode: 'added' | 'removed')
     const isWord = /\S/.test(t)
     if (!isWord) return <span key={key}>{t}</span>
     const present = baseSet.has(t.toLowerCase())
-    const shouldMark = mode === 'added' ? !present : present === false // explicit
     if (mode === 'added' && !present) {
       return (
         <span key={key} className="bg-emerald-500/20 text-emerald-300 rounded-sm">
@@ -61,7 +60,8 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
 
   const download = (format: 'pdf' | 'docx') => {
     const link = document.createElement('a')
-    link.href = `/api/resumes/download?id=${optimizedId}&format=${format}`
+    const encodedId = encodeURIComponent(optimizedId)
+    link.href = `/api/resumes/download?id=${encodedId}&format=${format}`
     link.target = '_blank'
     link.rel = 'noopener'
     document.body.appendChild(link)

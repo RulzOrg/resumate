@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
 
-// In E2E test mode, disable auth protection to allow harness pages and mocked API
+// E2E test mode: only disable auth when running in a true test env
 const E2E_MODE = process.env.E2E_TEST_MODE === "1"
+const IS_TEST_ENV = process.env.NODE_ENV === "test"
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
@@ -12,7 +13,14 @@ const isProtectedRoute = createRouteMatcher([
   "/api/job-targets(.*)",
 ])
 
-export default E2E_MODE
+// Refuse to start if E2E mode is enabled outside of a test environment
+if (E2E_MODE && !IS_TEST_ENV) {
+  throw new Error(
+    "E2E_TEST_MODE is enabled outside of NODE_ENV=\"test\". Refusing to start.",
+  )
+}
+
+export default E2E_MODE && IS_TEST_ENV
   ? (() => NextResponse.next())
   : clerkMiddleware(async (auth, req) => {
       if (isProtectedRoute(req)) {

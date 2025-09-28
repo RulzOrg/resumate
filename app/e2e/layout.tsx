@@ -5,9 +5,5 @@ export const metadata = {
 }
 
 export default function E2ELayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en" className="dark">
-      <body>{children}</body>
-    </html>
-  )
+  return <div>{children}</div>
 }

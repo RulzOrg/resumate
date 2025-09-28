@@ -134,7 +134,7 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
               <div className="flex items-center gap-2">
                 <TrendingUp className={`w-4 h-4 ${matchClasses(resume.match_score).icon}`} />
                 <Badge variant="secondary" className={matchClasses(resume.match_score).badge}>
-                  {resume.match_score ?? 0}%
+                  {resume.match_score != null ? `${resume.match_score}%` : 'N/A'}
                 </Badge>
               </div>
             </div>
