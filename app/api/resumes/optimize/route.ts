@@ -150,7 +150,6 @@ Focus on making the resume highly relevant to this specific job while maintainin
 
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
-      // Use the authenticated user's database ID for FK constraints
       user_id: user.id,
       original_resume_id: resume_id,
       job_analysis_id: job_analysis_id,
