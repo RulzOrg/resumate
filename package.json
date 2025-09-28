@@ -11,7 +11,7 @@
     "docker:qdrant": "docker run -p 6333:6333 -p 6334:6334 -v $(pwd)/qdrant_storage:/qdrant/storage:z qdrant/qdrant",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install",
-    "postinstall": "playwright install || true"
+    "postinstall": "playwright install || node -e \"process.exit(0)\""
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",

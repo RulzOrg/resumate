@@ -26,15 +26,28 @@ function tokenizeWords(text: string) {
 }
 
 function highlightDiff(base: string, compare: string, mode: 'added' | 'removed') {
-  // lightweight highlight: words present in compare but not in base => added; vice versa => removed
-  const baseSet = new Set(base.toLowerCase().split(/\s+/).filter(Boolean))
+  const baseCounts = base
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .reduce((acc, word) => {
+      acc.set(word, (acc.get(word) ?? 0) + 1)
+      return acc
+    }, new Map<string, number>())
+
   const tokens = tokenizeWords(compare)
   return tokens.map((t, i) => {
     const key = `${i}-${t}`
     const isWord = /\S/.test(t)
     if (!isWord) return <span key={key}>{t}</span>
-    const present = baseSet.has(t.toLowerCase())
-    if (mode === 'added' && !present) {
+
+    const normalized = t.toLowerCase()
+    const available = baseCounts.get(normalized) ?? 0
+    if (available > 0) {
+      baseCounts.set(normalized, available - 1)
+      return <span key={key}>{t}</span>
+    }
+    if (mode === 'added') {
       return (
         <span key={key} className="bg-emerald-500/20 text-emerald-300 rounded-sm">
           {t}

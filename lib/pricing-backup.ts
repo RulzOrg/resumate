@@ -168,6 +168,7 @@ export function isFeatureAvailable(userPlan: string, feature: keyof PricingTier[
   const val = tier.limits[feature] as unknown
   if (val === 'unlimited') return true
   if (typeof val === 'number') return val > 0
+  if (typeof val === 'string') return val.length > 0
   return false
 }
 

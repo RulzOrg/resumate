@@ -43,16 +43,25 @@ test.describe('Optimizer 3-step flow (smoke)', () => {
     await expect(page.getByText('Setup')).toBeVisible()
 
     // Analyze with AI (stubbed)
-    await page.getByRole('button', { name: 'Analyze with AI' }).click()
+   await Promise.all([
+     page.waitForResponse('**/api/jobs/analyze'),
+     page.getByRole('button', { name: 'Analyze with AI' }).click(),
+   ])
 
     // Continue to Step 2
-    await page.getByRole('button', { name: 'Continue' }).click()
+   const continueButton = page.getByRole('button', { name: 'Continue' })
+   await expect(continueButton).toBeEnabled()
+   await continueButton.click()
+
     await expect(page.getByRole('heading', { name: 'Review Job' })).toBeVisible()
+    await Promise.all([
+      page.waitForResponse('**/api/resumes/optimize'),
+      page.getByRole('button', { name: 'Generate Optimized Resume' }).click(),
+    ])
 
-    // Continue to Optimize (Step 3)
-    await page.getByRole('button', { name: 'Continue to Optimize' }).click()
-    await expect(page.getByRole('heading', { name: 'Optimize' })).toBeVisible()
-
+    // Final screen
+    await expect(page.getByRole('heading', { level: 2, name: 'Optimized Resume' })).toBeVisible()
+    await expect(page.getByText('Tailored content for Senior PM at Acme Co.')).toBeVisible()
     // Generate Optimized Resume (stubbed)
     await page.getByRole('button', { name: 'Generate Optimized Resume' }).click()
 
