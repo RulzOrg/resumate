@@ -150,7 +150,9 @@ Focus on making the resume highly relevant to this specific job while maintainin
 
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
-      user_id: user.id,
+      // Use the resume's owner to satisfy FK constraints even if auth user
+      // record isn't yet provisioned in users_sync in some environments.
+      user_id: resume.user_id,
       original_resume_id: resume_id,
       job_analysis_id: job_analysis_id,
       title: `${resume.title} - Optimized for ${jobAnalysis.job_title}`,
