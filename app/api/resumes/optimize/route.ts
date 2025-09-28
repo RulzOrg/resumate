@@ -148,26 +148,10 @@ Focus on making the resume highly relevant to this specific job while maintainin
       2000,
     )
 
-    // Ensure user row exists for FK
-    const userRow = await getUserById(resume.user_id)
-    if (!userRow) {
-      await sql`INSERT INTO users_sync (id, email, name, subscription_status, subscription_plan, created_at, updated_at)
-                VALUES (
-                  ${resume.user_id},
-                  ${user.email || ''},
-                  ${user.name || 'User'},
-                  ${(user as any)?.subscription_status || 'free'},
-                  ${(user as any)?.subscription_plan || 'free'},
-                  NOW(), NOW()
-                )
-                ON CONFLICT (id) DO NOTHING`
-    }
-
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
-      // Use the resume's owner to satisfy FK constraints even if auth user
-      // record isn't yet provisioned in users_sync in some environments.
-      user_id: resume.user_id,
+      // Use the authenticated user's database ID for FK constraints
+      user_id: user.id,
       original_resume_id: resume_id,
       job_analysis_id: job_analysis_id,
       title: `${resume.title} - Optimized for ${jobAnalysis.job_title}`,
