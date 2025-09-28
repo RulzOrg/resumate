@@ -8,6 +8,7 @@
     "lint": "next lint",
     "start": "next start",
     "backfill:users-sync": "dotenv -e .env.local tsx scripts/backfill-users-sync.ts",
+    "docker:qdrant": "docker run -p 6333:6333 -p 6334:6334 -v $(pwd)/qdrant_storage:/qdrant/storage:z qdrant/qdrant",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install",
     "postinstall": "playwright install || true"
