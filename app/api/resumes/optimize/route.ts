@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create user in our database
-    const user = await getOrCreateUser()
+    const user = await getOrCreateUser(userId)
     if (!user) {
       throw new AppError("User not found", 404)
     }

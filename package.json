@@ -7,6 +7,7 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
+    "backfill:users-sync": "dotenv -e .env.local tsx scripts/backfill-users-sync.ts",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install",
     "postinstall": "playwright install || true"
@@ -84,10 +85,12 @@
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "dotenv-cli": "^10.0.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.25",
     "postcss": "^8.5",
     "tailwindcss": "^4.1.9",
+    "tsx": "^4.20.6",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
   }
