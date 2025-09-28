@@ -71,7 +71,7 @@ export default async function OptimizePage({
       : [],
     location: analysis.location || analysis.analysis_result?.location || undefined,
     experienceLevel: analysis.experience_level || analysis.analysis_result?.experience_level || undefined,
-    category: analysis.analysis_result?.category || undefined,
+    category: (analysis.analysis_result as any)?.category || undefined,
     matchScore: analysis.analysis_result?.match_score,
   }))
 

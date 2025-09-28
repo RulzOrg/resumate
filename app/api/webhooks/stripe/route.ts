@@ -1,19 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { headers } from "next/headers"
 import Stripe from "stripe"
+import { getStripe, isStripeConfigured } from "@/lib/stripe"
 import { updateUserSubscription } from "@/lib/db"
 import { getPricingTierByStripePrice } from "@/lib/pricing"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-08-27.basil",
-})
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || ""
 
 export async function POST(request: NextRequest) {
   console.log('🔔 Webhook received!')
   
   try {
+    if (!isStripeConfigured() || !webhookSecret) {
+      console.warn("Stripe webhook not configured; skipping processing")
+      return NextResponse.json({ received: true, skipped: true })
+    }
     const body = await request.text()
     const signature = (await headers()).get("stripe-signature")
 
@@ -28,6 +29,7 @@ export async function POST(request: NextRequest) {
     let event: Stripe.Event
 
     try {
+      const stripe = getStripe()
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err: any) {
       console.error("Webhook signature verification failed:", err?.message || err)
@@ -56,14 +58,16 @@ export async function POST(request: NextRequest) {
 
         try {
           // Get the subscription to determine the plan
+          const stripe = getStripe()
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string)
           const priceTier = getPricingTierByStripePrice(subscription.items.data[0]?.price.id)
           
+          const periodEnd = (subscription as any).current_period_end as number | undefined
           await updateUserSubscription(clerkUserId, {
             subscription_status: "active",
             subscription_plan: priceTier?.id || "pro",
             stripe_subscription_id: session.subscription as string,
-            subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+            subscription_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : undefined,
           })
           
           console.log(`Successfully updated subscription for user ${clerkUserId}`)
@@ -79,6 +83,7 @@ export async function POST(request: NextRequest) {
         console.log(`Subscription updated: ${subscription.id}, status: ${subscription.status}`)
         
         try {
+          const stripe = getStripe()
           const customer = await stripe.customers.retrieve(subscription.customer as string)
 
           if (customer && !customer.deleted) {
@@ -92,10 +97,11 @@ export async function POST(request: NextRequest) {
             // Get the plan from the subscription price
             const priceTier = getPricingTierByStripePrice(subscription.items.data[0]?.price.id)
 
+            const periodEnd2 = (subscription as any).current_period_end as number | undefined
             await updateUserSubscription(clerkUserId, {
               subscription_status: subscription.status,
               subscription_plan: priceTier?.id,
-              subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              subscription_period_end: periodEnd2 ? new Date(periodEnd2 * 1000).toISOString() : undefined,
             })
             
             console.log(`Successfully updated subscription for user ${clerkUserId}: ${subscription.status}`)
@@ -113,6 +119,7 @@ export async function POST(request: NextRequest) {
         console.log(`Subscription deleted: ${subscription.id}`)
         
         try {
+          const stripe = getStripe()
           const customer = await stripe.customers.retrieve(subscription.customer as string)
 
           if (customer && !customer.deleted) {
@@ -126,8 +133,8 @@ export async function POST(request: NextRequest) {
             await updateUserSubscription(clerkUserId, {
               subscription_status: "canceled",
               subscription_plan: "free",
-              stripe_subscription_id: null,
-              subscription_period_end: null,
+              stripe_subscription_id: undefined,
+              subscription_period_end: undefined,
             })
             
             console.log(`Successfully canceled subscription for user ${clerkUserId}`)
@@ -145,6 +152,7 @@ export async function POST(request: NextRequest) {
         console.log(`Payment failed for invoice: ${invoice.id}`)
         
         try {
+          const stripe = getStripe()
           const customer = await stripe.customers.retrieve(invoice.customer as string)
 
           if (customer && !customer.deleted) {
@@ -173,18 +181,20 @@ export async function POST(request: NextRequest) {
         const invoice = event.data.object as Stripe.Invoice
         console.log(`Payment succeeded for invoice: ${invoice.id}`)
         
-        if (invoice.subscription) {
+        if ((invoice as any).subscription) {
           try {
-            const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
+            const stripe = getStripe()
+            const subscription = await stripe.subscriptions.retrieve((invoice as any).subscription as string)
             const customer = await stripe.customers.retrieve(subscription.customer as string)
 
             if (customer && !customer.deleted) {
               const clerkUserId = customer.metadata?.clerkUserId
 
               if (clerkUserId) {
+                const periodEnd3 = (subscription as any).current_period_end as number | undefined
                 await updateUserSubscription(clerkUserId, {
                   subscription_status: "active",
-                  subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                  subscription_period_end: periodEnd3 ? new Date(periodEnd3 * 1000).toISOString() : undefined,
                 })
                 
                 console.log(`Updated subscription to active for user ${clerkUserId}`)

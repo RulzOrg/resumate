@@ -1,14 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getOrCreateUser } from "@/lib/db"
-import Stripe from "stripe"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-08-27.basil",
-})
+import { getStripe, isStripeConfigured } from "@/lib/stripe"
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isStripeConfigured()) {
+      return NextResponse.json({ error: "Billing not configured" }, { status: 503 })
+    }
     const { userId } = await auth()
 
     if (!userId) {
@@ -22,9 +21,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe customer portal session
+    const stripe = getStripe()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripe_customer_id,
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      return_url: `${appUrl}/dashboard`,
     })
 
     return NextResponse.json({ url: session.url })

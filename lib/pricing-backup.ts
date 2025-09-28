@@ -165,7 +165,10 @@ export function isFeatureAvailable(userPlan: string, feature: keyof PricingTier[
   const tier = getPricingTier(userPlan)
   if (!tier) return false
   
-  return tier.limits[feature] === 'unlimited' || tier.limits[feature] > 0
+  const val = tier.limits[feature] as unknown
+  if (val === 'unlimited') return true
+  if (typeof val === 'number') return val > 0
+  return false
 }
 
 export function canUserPerformAction(

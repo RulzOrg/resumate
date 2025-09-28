@@ -263,7 +263,7 @@ export default function OptimizerUiOnly({
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
       // Wrap list items
-      html = html.replace(/(<li>.*<\/li>)(\n(?=<li>)|$)/gs, '<ul>$1</ul>')
+      html = html.replace(/(<li>[\s\S]*?<\/li>)(\n(?=<li>)|$)/g, '<ul>$1</ul>')
       // Paragraphs
       html = html
         .split(/\n\n+/)

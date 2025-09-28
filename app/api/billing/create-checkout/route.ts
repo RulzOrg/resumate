@@ -2,14 +2,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getOrCreateUser, updateUserSubscription } from "@/lib/db"
 import { getPricingTierByStripePrice } from "@/lib/pricing"
-import Stripe from "stripe"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-08-27.basil",
-})
+import { getStripe, isStripeConfigured } from "@/lib/stripe"
 
 export async function POST(request: NextRequest) {
   try {
+    if (!isStripeConfigured()) {
+      return NextResponse.json({ error: "Billing not configured" }, { status: 503 })
+    }
     const { userId } = await auth()
 
     if (!userId) {
@@ -39,6 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create or retrieve Stripe customer
+    const stripe = getStripe()
     let customerId = user.stripe_customer_id
 
     if (!customerId) {
@@ -83,7 +83,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare checkout session configuration
-    const checkoutConfig: Stripe.Checkout.SessionCreateParams = {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
+    const checkoutConfig: any = {
       customer: customerId,
       payment_method_types: ["card"],
       line_items: [
@@ -93,8 +94,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: "subscription",
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true&plan=${pricingTier.id}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
+      success_url: `${appUrl}/dashboard?success=true&plan=${pricingTier.id}`,
+      cancel_url: `${appUrl}/pricing?canceled=true`,
       metadata: {
         clerkUserId: userId,
         userId: user.id,
