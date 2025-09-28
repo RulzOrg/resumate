@@ -276,10 +276,10 @@ export default function OptimizerUiOnly({
   }
 
   const resumeText = useMemo(() => {
-    const tmp = document?.createElement?.("div")
-    if (!tmp) return ""
+    if (typeof document === "undefined") return ""
+    const tmp = document.createElement("div")
     tmp.innerHTML = editorHtml
-    return tmp.textContent || tmp.innerText || ""
+    return tmp.textContent || (tmp as any).innerText || ""
   }, [editorHtml])
 
   const coveredCount = useMemo(() => {
@@ -442,7 +442,7 @@ export default function OptimizerUiOnly({
     )
 
     // Length: short removes last bullet in each list
-    if (config.length === "short") {
+    if (config.length === "short" && typeof document !== "undefined") {
       const tmp = document.createElement("div")
       tmp.innerHTML = html
       tmp.querySelectorAll("ul").forEach((ul) => {

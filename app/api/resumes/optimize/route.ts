@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, getJobAnalysisById, createOptimizedResume, getOrCreateUser } from "@/lib/db"
+import { getResumeById, getJobAnalysisById, createOptimizedResume, getOrCreateUser, getUserById, sql } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
@@ -147,6 +147,14 @@ Focus on making the resume highly relevant to this specific job while maintainin
       3,
       2000,
     )
+
+    // Ensure user row exists for FK
+    const userRow = await getUserById(resume.user_id)
+    if (!userRow) {
+      await sql`INSERT INTO users_sync (id, email, name, subscription_status, subscription_plan, created_at, updated_at)
+                VALUES (${resume.user_id}, ${user.email || ''}, ${user.name || 'User'}, 'free', 'free', NOW(), NOW())
+                ON CONFLICT (id) DO NOTHING`
+    }
 
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
