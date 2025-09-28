@@ -226,10 +226,44 @@ export default function OptimizerUiOnly({
   )
   const [keywords, setKeywords] = useState<string[]>(resolvedInitialJob?.keywords ?? [])
 
+  // Active job selection metadata for API calls and display
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(resolvedInitialJob?.id ?? null)
+  const [selectedJobTitle, setSelectedJobTitle] = useState<string>(resolvedInitialJob?.jobTitle ?? "Target Role")
+  const [selectedCompany, setSelectedCompany] = useState<string>(resolvedInitialJob?.companyName ?? "Company")
+
+  // Async states
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
+  const [isOptimizing, setIsOptimizing] = useState(false)
+  const [optimizeError, setOptimizeError] = useState<string | null>(null)
+
   const [editorHtml, setEditorHtml] = useState<string>(initialEditorHtml)
   const [baseEditorHtml] = useState<string>(initialEditorHtml)
   const editorRef = useRef<HTMLDivElement | null>(null)
   const [editable, setEditable] = useState(false)
+
+  function mdToHtml(md: string): string {
+    try {
+      // Very lightweight markdown-to-HTML for headings, lists, newlines
+      let html = md
+        .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+        .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+        .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>')
+        .replace(/^\*\s+(.*)$/gm, '<li>$1</li>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      // Wrap list items
+      html = html.replace(/(<li>.*<\/li>)(\n(?=<li>)|$)/gs, '<ul>$1</ul>')
+      // Paragraphs
+      html = html
+        .split(/\n\n+/)
+        .map((para) => (/(<h\d|<ul|<li)/.test(para) ? para : `<p>${para.replace(/\n/g, '<br/>')}</p>`))
+        .join('\n')
+      return html
+    } catch {
+      return `<pre>${md.replace(/</g, '&lt;')}</pre>`
+    }
+  }
 
   const resumeText = useMemo(() => {
     const tmp = document?.createElement?.("div")
@@ -273,6 +307,65 @@ export default function OptimizerUiOnly({
   }
 
   const populateEmphasisFromJD = () => setConfig((c) => ({ ...c, emphasize: extractKeywords(jobDesc) }))
+
+  async function handleAnalyzeWithAI() {
+    setAnalyzeError(null)
+    setIsAnalyzing(true)
+    try {
+      const res = await fetch('/api/jobs/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_title: selectedJobTitle || 'Target Role',
+          company_name: selectedCompany || 'Company',
+          job_description: jobDesc,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to analyze job')
+      const analysis = data.analysis
+      const aiKeywords = analysis?.analysis_result?.keywords || analysis?.keywords || []
+      setSelectedJobId(analysis?.id || null)
+      if (Array.isArray(aiKeywords) && aiKeywords.length) setKeywords(aiKeywords)
+      // Update title/company from analysis if present
+      if (analysis?.job_title) setSelectedJobTitle(analysis.job_title)
+      if (analysis?.company_name) setSelectedCompany(analysis.company_name)
+    } catch (e: any) {
+      setAnalyzeError(e?.message || 'Analysis failed')
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  async function handleGenerateOptimized() {
+    setOptimizeError(null)
+    if (!selectedJobId) {
+      setOptimizeError('Please analyze the job first to proceed.')
+      return
+    }
+    setIsOptimizing(true)
+    try {
+      const res = await fetch('/api/resumes/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resume_id: selectedResume, job_analysis_id: selectedJobId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to optimize')
+      const optimized = data.optimized_resume
+      if (optimized?.optimized_content) {
+        setEditorHtml(mdToHtml(optimized.optimized_content))
+      } else {
+        // Fallback to local transform if server returned unexpected shape
+        applyOptimizations()
+      }
+      setStep(4)
+    } catch (e: any) {
+      setOptimizeError(e?.message || 'Optimization failed')
+    } finally {
+      setIsOptimizing(false)
+    }
+  }
 
   const applyOptimizations = () => {
     let html = baseEditorHtml
@@ -367,7 +460,7 @@ export default function OptimizerUiOnly({
         </div>
         <h1 className="text-3xl sm:text-4xl tracking-tight font-space-grotesk font-semibold">AI Resume Optimization</h1>
         <p className="mt-1 text-base text-white/60">
-          Target: {resolvedInitialJob?.jobTitle ?? "Senior Product Manager"} — {resolvedInitialJob?.companyName ?? "Vercel"}
+          Target: {selectedJobTitle} — {selectedCompany}
         </p>
       </div>
 
@@ -491,6 +584,9 @@ export default function OptimizerUiOnly({
                   </button>
                 </div>
               </div>
+              {analyzeError && (
+                <div className="mt-2 text-xs text-red-400">{analyzeError}</div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
@@ -498,15 +594,27 @@ export default function OptimizerUiOnly({
                 <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
                 Ready to optimize
               </div>
-              <button
-                className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors"
-                onClick={() => {
-                  setStep(2)
-                }}
-              >
-                <Wand2 className="h-4 w-4" />
-                Optimize
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-white bg-white/10 rounded-full py-2 px-4 hover:bg-white/20 transition-colors disabled:opacity-60"
+                  onClick={handleAnalyzeWithAI}
+                  disabled={isAnalyzing}
+                  title="Analyze this job with AI to extract keywords and skills"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {isAnalyzing ? 'Analyzing…' : 'Analyze with AI'}
+                </button>
+                <button
+                  className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60"
+                  onClick={() => {
+                    setStep(2)
+                  }}
+                  disabled={isAnalyzing}
+                >
+                  <Wand2 className="h-4 w-4" />
+                  Continue
+                </button>
+              </div>
             </div>
           </div>
 
@@ -702,16 +810,19 @@ export default function OptimizerUiOnly({
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </button>
-              <button
-                className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors"
-                onClick={() => {
-                  applyOptimizations()
-                  setStep(4)
-                }}
-              >
-                <WandSparkles className="h-4 w-4" />
-                Generate Optimized Resume
-              </button>
+              <div className="flex flex-col items-end gap-2">
+                {optimizeError && (
+                  <div className="text-xs text-red-400 self-start">{optimizeError}</div>
+                )}
+                <button
+                  className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60"
+                  onClick={handleGenerateOptimized}
+                  disabled={isOptimizing}
+                >
+                  <WandSparkles className="h-4 w-4" />
+                  {isOptimizing ? 'Generating…' : 'Generate Optimized Resume'}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -720,7 +831,7 @@ export default function OptimizerUiOnly({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Optimized Resume</h2>
-                <p className="text-sm text-white/60 mt-1">Tailored to: Senior Product Manager — Vercel</p>
+                <p className="text-sm text-white/60 mt-1">Tailored to: {selectedJobTitle} — {selectedCompany}</p>
                 {appliedSettingsChips}
               </div>
               <div className="flex items-center gap-2">
