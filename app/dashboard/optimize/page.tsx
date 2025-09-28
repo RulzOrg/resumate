@@ -32,15 +32,24 @@ export default async function OptimizePage({
     getUserJobAnalyses(user.id).catch(() => []),
   ])
 
-  const resumeOptions = resumes.map((resume) => ({
-    id: resume.id,
-    label: resume.title || resume.file_name || "Untitled resume",
-    fileName: resume.file_name || undefined,
-    updatedAt: resume.updated_at || undefined,
-    fileType: resume.file_type || undefined,
-    fileSize: typeof resume.file_size === "number" ? resume.file_size : Number(resume.file_size) || undefined,
-    isPrimary: resume.is_primary,
-  }))
+  const resumeOptions = resumes.map((resume) => {
+    const rawFileSize =
+      typeof resume.file_size === "number"
+        ? resume.file_size
+        : resume.file_size != null
+          ? Number(resume.file_size)
+          : undefined
+
+    return {
+      id: resume.id,
+      label: resume.title || resume.file_name || "Untitled resume",
+      fileName: resume.file_name || undefined,
+      updatedAt: resume.updated_at || undefined,
+      fileType: resume.file_type || undefined,
+      fileSize: Number.isFinite(rawFileSize) ? rawFileSize : undefined,
+      isPrimary: resume.is_primary,
+    }
+  })
 
   const jobOptions = jobAnalyses.map((analysis) => ({
     id: analysis.id,
