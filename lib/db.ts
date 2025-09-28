@@ -234,6 +234,86 @@ export interface ClerkWebhookEvent {
   created_at: string
 }
 
+// Utility to create or update a users_sync record by database id.
+export async function ensureUserSyncRecord(params: {
+  id: string
+  clerkUserId?: string | null
+  email?: string | null
+  name?: string | null
+  subscription_status?: string | null
+  subscription_plan?: string | null
+}) {
+  const safeEmail = params.email && params.email.trim().length > 0 ? params.email : `${params.id}@placeholder.resumate.ai`
+  const safeName = params.name && params.name.trim().length > 0 ? params.name : "ResuMate User"
+
+  try {
+    const [record] = await sql`
+      INSERT INTO users_sync (id, clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at)
+      VALUES (
+        ${params.id},
+        ${params.clerkUserId || null},
+        ${safeEmail},
+        ${safeName},
+        ${params.subscription_status || 'free'},
+        ${params.subscription_plan || 'free'},
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (id) DO UPDATE
+        SET clerk_user_id = COALESCE(EXCLUDED.clerk_user_id, users_sync.clerk_user_id),
+            email = COALESCE(EXCLUDED.email, users_sync.email),
+            name = COALESCE(EXCLUDED.name, users_sync.name),
+            subscription_status = COALESCE(EXCLUDED.subscription_status, users_sync.subscription_status),
+            subscription_plan = COALESCE(EXCLUDED.subscription_plan, users_sync.subscription_plan),
+            updated_at = NOW()
+      RETURNING *
+    `
+
+    return record as User
+  } catch (error: any) {
+    if (error.code === '23505' && error.constraint === 'users_sync_clerk_user_id_key' && params.clerkUserId) {
+      const [existing] = await sql`
+        UPDATE users_sync
+        SET email = COALESCE(${safeEmail}, email),
+            name = COALESCE(${safeName}, name),
+            subscription_status = COALESCE(${params.subscription_status || 'free'}, subscription_status),
+            subscription_plan = COALESCE(${params.subscription_plan || 'free'}, subscription_plan),
+            updated_at = NOW()
+        WHERE clerk_user_id = ${params.clerkUserId}
+        RETURNING *
+      `
+      return existing as User
+    }
+
+    throw error
+  }
+}
+
+// Backfill helper to migrate legacy records that referenced a different user_id
+export async function migrateUserOwnedRecords(legacyUserId: string, newUserId: string) {
+  if (!legacyUserId || !newUserId || legacyUserId === newUserId) {
+    return { resumes: 0, jobAnalyses: 0, optimizedResumes: 0, jobApplications: 0, jobTargets: 0 }
+  }
+
+  const updateStatements = [
+    sql`UPDATE resumes SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE job_analysis SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE optimized_resumes SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE job_applications SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE job_targets SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+  ]
+
+  const [resumesResult, jobAnalysesResult, optimizedResult, applicationsResult, targetsResult] = await Promise.all(updateStatements)
+
+  return {
+    resumes: (resumesResult as any).rowCount || 0,
+    jobAnalyses: (jobAnalysesResult as any).rowCount || 0,
+    optimizedResumes: (optimizedResult as any).rowCount || 0,
+    jobApplications: (applicationsResult as any).rowCount || 0,
+    jobTargets: (targetsResult as any).rowCount || 0,
+  }
+}
+
 // User functions
 export async function createUserFromClerk(clerkUserId: string, email: string, name: string) {
   const [user] = await sql`
@@ -809,22 +889,35 @@ export async function createOptimizedResume(data: {
   optimization_summary: OptimizedResume["optimization_summary"]
   match_score?: number
 }) {
-  const [optimizedResume] = await sql`
-    INSERT INTO optimized_resumes (
-      user_id, original_resume_id, job_analysis_id, title, optimized_content,
-      optimization_summary, match_score, improvements_made, keywords_added, 
-      skills_highlighted, created_at, updated_at
-    )
-    VALUES (
-      ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id}, 
-      ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
-      ${data.match_score || null}, ${data.optimization_summary.changes_made}, 
-      ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
-      NOW(), NOW()
-    )
-    RETURNING *
-  `
-  return optimizedResume as OptimizedResume
+  const insert = async () => {
+    const [optimizedResume] = await sql`
+      INSERT INTO optimized_resumes (
+        user_id, original_resume_id, job_analysis_id, title, optimized_content,
+        optimization_summary, match_score, improvements_made, keywords_added, 
+        skills_highlighted, created_at, updated_at
+      )
+      VALUES (
+        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id}, 
+        ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
+        ${data.match_score || null}, ${data.optimization_summary.changes_made}, 
+        ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
+        NOW(), NOW()
+      )
+      RETURNING *
+    `
+    return optimizedResume as OptimizedResume
+  }
+
+  try {
+    return await insert()
+  } catch (error: any) {
+    if (error.code === "23503" && error.constraint === "optimized_resumes_user_id_fkey") {
+      await ensureUserSyncRecord({ id: data.user_id })
+      return await insert()
+    }
+
+    throw error
+  }
 }
 
 export async function getUserOptimizedResumes(user_id: string) {
@@ -920,23 +1013,84 @@ export async function updateUserSubscription(
   data: {
     subscription_status?: string
     subscription_plan?: string
-    subscription_period_end?: string
-    stripe_customer_id?: string
-    stripe_subscription_id?: string
+    subscription_period_end?: string | null
+    stripe_customer_id?: string | null
+    stripe_subscription_id?: string | null
   },
 ) {
-  const [user] = await sql`
-    UPDATE users_sync 
-    SET subscription_status = COALESCE(${data.subscription_status}, subscription_status),
-        subscription_plan = COALESCE(${data.subscription_plan}, subscription_plan),
-        subscription_period_end = COALESCE(${data.subscription_period_end}, subscription_period_end),
-        stripe_customer_id = COALESCE(${data.stripe_customer_id}, stripe_customer_id),
-        stripe_subscription_id = COALESCE(${data.stripe_subscription_id}, stripe_subscription_id),
-        updated_at = NOW()
-    WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, 
+  // If no data to update, return current user
+  if (Object.keys(data).length === 0) {
+    const [current] = await sql`
+      SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
              subscription_period_end, stripe_customer_id, stripe_subscription_id
+      FROM users_sync
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+    `
+    return current as User | undefined
+  }
+
+  // Use individual UPDATE statements so that explicit nulls are written as NULL
+  let [user] = await sql`
+    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
+           subscription_period_end, stripe_customer_id, stripe_subscription_id
+    FROM users_sync
+    WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
   `
+
+  if (!user) {
+    return undefined
+  }
+
+  if (data.subscription_status !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET subscription_status = ${data.subscription_status}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.subscription_plan !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET subscription_plan = ${data.subscription_plan}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.subscription_period_end !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET subscription_period_end = ${data.subscription_period_end}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.stripe_customer_id !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET stripe_customer_id = ${data.stripe_customer_id}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
+  if (data.stripe_subscription_id !== undefined) {
+    ;[user] = await sql`
+      UPDATE users_sync
+      SET stripe_subscription_id = ${data.stripe_subscription_id}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+                subscription_period_end, stripe_customer_id, stripe_subscription_id
+    `
+  }
+
   return user as User | undefined
 }
 

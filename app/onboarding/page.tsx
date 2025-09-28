@@ -18,7 +18,14 @@ export default async function OnboardingPage() {
   }
 
   const [clerkUser, masterResume, jobTargets] = await Promise.all([
-    clerkClient.users.getUser(userId).catch(() => null),
+    (async () => {
+      try {
+        const cc = typeof clerkClient === 'function' ? await (clerkClient as any)() : (clerkClient as any)
+        return await cc.users.getUser(userId)
+      } catch {
+        return null
+      }
+    })(),
     getMasterResume(user.id),
     getUserJobTargets(user.id),
   ])

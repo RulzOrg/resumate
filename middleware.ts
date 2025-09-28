@@ -1,4 +1,8 @@
+import { NextResponse } from "next/server"
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server"
+
+// E2E test mode: disable auth when explicitly enabled for tests
+const E2E_MODE = process.env.E2E_TEST_MODE === "1"
 
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
@@ -8,11 +12,13 @@ const isProtectedRoute = createRouteMatcher([
   "/api/job-targets(.*)",
 ])
 
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect()
-  }
-})
+export default E2E_MODE
+  ? (() => NextResponse.next())
+  : clerkMiddleware(async (auth, req) => {
+      if (isProtectedRoute(req)) {
+        await auth.protect()
+      }
+    })
 
 export const config = {
   matcher: [

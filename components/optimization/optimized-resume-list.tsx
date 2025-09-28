@@ -24,6 +24,13 @@ interface OptimizedResumeListProps {
 }
 
 export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListProps) {
+  const matchClasses = (score?: number | null) => {
+    const s = typeof score === 'number' ? score : null
+    if (s === null) return { badge: 'bg-white/10 text-white/70', icon: 'text-white/70' }
+    if (s === 0) return { badge: 'bg-red-500/10 text-red-400', icon: 'text-red-400' }
+    if (s < 60) return { badge: 'bg-amber-500/10 text-amber-400', icon: 'text-amber-400' }
+    return { badge: 'bg-emerald-500/10 text-emerald-400', icon: 'text-emerald-400' }
+  }
   const handleDownload = async (resumeId: string, format = "pdf") => {
     try {
       const response = await fetch(`/api/resumes/download?id=${resumeId}&format=${format}`)
@@ -125,9 +132,9 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Match Score:</span>
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-chart-2" />
-                <Badge variant="secondary" className="bg-chart-2/10 text-chart-2">
-                  {resume.match_score || "N/A"}%
+                <TrendingUp className={`w-4 h-4 ${matchClasses(resume.match_score).icon}`} />
+                <Badge variant="secondary" className={matchClasses(resume.match_score).badge}>
+                  {resume.match_score != null ? `${resume.match_score}%` : 'N/A'}
                 </Badge>
               </div>
             </div>

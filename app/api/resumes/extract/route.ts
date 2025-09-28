@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use AI to extract structured content
+    const safeBase64 = base64Data ?? ""
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
       prompt: `Extract and structure the text content from this resume file (${resume.file_type}).
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       
       Format the output as clean, structured text with clear section headers.
       
-      File data: ${base64Data.substring(0, 2000)}...`,
+      File data: ${safeBase64.substring(0, 2000)}...`,
     })
 
     // Update the resume with extracted content
