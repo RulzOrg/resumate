@@ -11,13 +11,14 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'E2E_TEST_MODE=1 NEXT_PUBLIC_APP_URL=http://localhost:3000 npm run dev',
+    command: 'E2E_TEST_MODE=1 NEXT_PUBLIC_APP_URL=http://localhost:3000 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_dummy npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: {
       E2E_TEST_MODE: '1',
       NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_test_dummy',
     },
   },
 })

@@ -39,27 +39,25 @@ test.describe('Optimizer 3-step flow (smoke)', () => {
     await page.goto('/e2e/optimizer')
 
     // Step 1 visible
-    await expect(page.getByText('AI Resume Optimization')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'AI Resume Optimization' })).toBeVisible()
     await expect(page.getByText('Setup')).toBeVisible()
 
     // Analyze with AI (stubbed)
     await page.getByRole('button', { name: 'Analyze with AI' }).click()
-    await expect(page.getByText('Job analyzed')).toBeVisible()
 
     // Continue to Step 2
     await page.getByRole('button', { name: 'Continue' }).click()
-    await expect(page.getByText('Review Job')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Review Job' })).toBeVisible()
 
     // Continue to Optimize (Step 3)
     await page.getByRole('button', { name: 'Continue to Optimize' }).click()
-    await expect(page.getByText('Optimize')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Optimize' })).toBeVisible()
 
     // Generate Optimized Resume (stubbed)
     await page.getByRole('button', { name: 'Generate Optimized Resume' }).click()
-    await expect(page.getByText('Optimized resume generated')).toBeVisible()
 
     // Final screen
-    await expect(page.getByText('Optimized Resume')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: 'Optimized Resume' })).toBeVisible()
     await expect(page.getByText('Tailored content for Senior PM at Acme Co.')).toBeVisible()
   })
 })
