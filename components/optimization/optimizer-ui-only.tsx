@@ -119,7 +119,7 @@ function extractKeywords(text: string) {
 }
 
 export default function OptimizerUiOnly() {
-  const [step, setStep] = useState<Step>(2) // start at Review as per note
+  const [step, setStep] = useState<Step>(1)
   const [selectedResume, setSelectedResume] = useState<string>("Sarah_Johnson_Resume_2024.pdf")
   const [resumeMenuOpen, setResumeMenuOpen] = useState(false)
   const [jobDesc, setJobDesc] = useState(
