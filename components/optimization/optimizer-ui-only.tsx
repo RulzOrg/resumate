@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import Link from "next/link"
 import {
   ArrowLeft,
   AlertTriangle,
@@ -255,6 +256,12 @@ export default function OptimizerUiOnly() {
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
+        <div className="mb-2">
+          <Link href="/dashboard" className="group inline-flex items-center gap-2 text-sm text-white/70 hover:text-white">
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+            Back to Dashboard
+          </Link>
+        </div>
         <h1 className="text-3xl sm:text-4xl tracking-tight font-space-grotesk font-semibold">AI Resume Optimization</h1>
         <p className="mt-1 text-base text-white/60">Target: Senior Product Manager — Vercel</p>
       </div>
