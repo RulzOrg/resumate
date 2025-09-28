@@ -32,6 +32,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  if (process.env.E2E_TEST_MODE === '1') {
+    return (
+      <html lang="en" className="dark">
+        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
+          {children}
+        </body>
+      </html>
+    )
+  }
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
   if (!publishableKey) {
