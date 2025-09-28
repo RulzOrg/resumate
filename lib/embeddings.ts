@@ -1,14 +1,13 @@
+import { embedMany } from "ai"
 import { openai } from "@ai-sdk/openai"
-import { embed } from "ai"
 
-const EMBEDDING_MODEL = "text-embedding-3-large"
+export const EMBEDDING_MODEL = "text-embedding-3-large"
+export const EMBEDDING_DIMENSIONS = 3072
 
-export async function embedText(texts: string[]) {
-  if (!Array.isArray(texts) || texts.length === 0) {
-    return []
-  }
+export async function getEmbeddings(texts: string[]) {
+  if (!texts.length) return []
 
-  const { embeddings } = await embed({
+  const { embeddings } = await embedMany({
     model: openai.embedding(EMBEDDING_MODEL),
     values: texts,
   })
@@ -16,6 +15,12 @@ export async function embedText(texts: string[]) {
   return embeddings.map((item) => item.embedding)
 }
 
+export async function getEmbedding(text: string) {
+  const [embedding] = await getEmbeddings([text])
+  return embedding
+}
+
+// Legacy function for backward compatibility
 export function getEmbeddingDimension() {
-  return 3072
+  return EMBEDDING_DIMENSIONS
 }

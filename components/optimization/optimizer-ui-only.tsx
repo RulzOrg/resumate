@@ -27,6 +27,7 @@ import {
   WandSparkles,
 } from "lucide-react"
 import { toast } from "sonner"
+import { rephraseBullet, rewriteResume, scoreFit, type ScoreResponse } from "@/lib/api"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -240,6 +241,14 @@ export default function OptimizerUiOnly({
   const [selectedJobTitle, setSelectedJobTitle] = useState<string>(resolvedInitialJob?.jobTitle ?? "Target Role")
   const [selectedCompany, setSelectedCompany] = useState<string>(resolvedInitialJob?.companyName ?? "Company")
 
+  const [scoreResult, setScoreResult] = useState<ScoreResponse | null>(null)
+  const [isScoring, setIsScoring] = useState(false)
+  const [scoreError, setScoreError] = useState<string | null>(null)
+  const [evidenceSelection, setEvidenceSelection] = useState<Record<string, boolean>>({})
+  const [isRewriteLoading, setIsRewriteLoading] = useState(false)
+  const [rewriteError, setRewriteError] = useState<string | null>(null)
+  const [rephraseLoading, setRephraseLoading] = useState<string | null>(null)
+
   // Async states
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
@@ -294,6 +303,16 @@ export default function OptimizerUiOnly({
     return Math.round((coveredCount / total) * 100)
   }, [keywords.length, coveredCount])
 
+  const overallMatch = scoreResult?.score.overall ?? matchPct
+  const missingMustHaves = scoreResult?.score.missingMustHaves ?? []
+  const dimensionScores = scoreResult?.score.dimensions
+  const dimensionLabels = {
+    skills: "Skills alignment",
+    responsibilities: "Responsibilities",
+    domain: "Domain expertise",
+    seniority: "Seniority fit",
+  } as const
+
   const [config, setConfig] = useState({
     tone: "neutral" as "neutral" | "impactful" | "executive",
     length: "standard" as "short" | "standard" | "detailed",
@@ -304,6 +323,12 @@ export default function OptimizerUiOnly({
   useEffect(() => {
     setKeywords(extractKeywords(jobDesc))
   }, [])
+
+  useEffect(() => {
+    setScoreResult(null)
+    setScoreError(null)
+    setEvidenceSelection({})
+  }, [selectedResume, selectedJobId])
 
   const currentResume = useMemo(
     () => resolvedResumes.find((r) => r.id === selectedResume) ?? resolvedResumes[0],
@@ -416,6 +441,124 @@ export default function OptimizerUiOnly({
       toast.error(e?.message || 'Optimization failed')
     } finally {
       setIsOptimizing(false)
+    }
+  }
+
+  async function handleScoreEvidence() {
+    if (!selectedJobId) {
+      toast.error("Analyze the job before scoring")
+      return
+    }
+
+    setIsScoring(true)
+    setScoreError(null)
+    try {
+      const result = await scoreFit({
+        job_analysis_id: selectedJobId,
+        resume_id: selectedResume || undefined,
+      })
+      setScoreResult(result)
+      const initialSelections = Object.fromEntries(result.evidence.map((item) => [item.id, true]))
+      setEvidenceSelection(initialSelections)
+      toast.success("Scoring complete")
+    } catch (e: any) {
+      const message = e?.message || "Failed to score resume"
+      setScoreResult(null)
+      setEvidenceSelection({})
+      setScoreError(message)
+      toast.error(message)
+    } finally {
+      setIsScoring(false)
+    }
+  }
+
+  function toggleEvidence(id: string) {
+    setEvidenceSelection((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }))
+  }
+
+  async function handleRewrite() {
+    if (!selectedJobId) {
+      toast.error("Analyze the job before rewriting")
+      return
+    }
+
+    if (!selectedResume) {
+      toast.error("Select a resume before rewriting")
+      return
+    }
+
+    const chosen = Object.entries(evidenceSelection)
+      .filter(([, enabled]) => enabled)
+      .map(([id]) => id)
+
+    if (!chosen.length) {
+      const message = "Select at least one evidence bullet before rewriting"
+      setRewriteError(message)
+      toast.error(message)
+      return
+    }
+
+    setIsRewriteLoading(true)
+    setRewriteError(null)
+    setOptimizeError(null)
+
+    try {
+      const response = await rewriteResume({
+        resume_id: selectedResume,
+        job_analysis_id: selectedJobId,
+        selected_evidence: chosen.map((id) => ({ evidence_id: id })),
+        options: {
+          tone: config.tone,
+          length: config.length,
+        },
+      })
+
+      const optimized = response.optimized_resume
+      if (optimized?.optimized_content) {
+        setEditorHtml(mdToHtml(optimized.optimized_content))
+      }
+
+      setOptimizedId(optimized?.id || null)
+      setStep(4)
+      toast.success("Evidence-based rewrite generated")
+    } catch (e: any) {
+      const message = e?.message || "Failed to rewrite resume"
+      setRewriteError(message)
+      toast.error(message)
+    } finally {
+      setIsRewriteLoading(false)
+    }
+  }
+
+  async function handleRephraseEvidence(id: string) {
+    if (!scoreResult) return
+
+    const style = config.tone === "neutral" ? "concise" : config.tone
+    setRephraseLoading(id)
+    try {
+      const { text } = await rephraseBullet({
+        evidence_id: id,
+        target_keywords: keywords.slice(0, 3),
+        style,
+      })
+
+      setScoreResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              evidence: prev.evidence.map((item) => (item.id === id ? { ...item, text } : item)),
+            }
+          : prev,
+      )
+      toast.success("Bullet rephrased")
+    } catch (e: any) {
+      const message = e?.message || "Failed to rephrase bullet"
+      toast.error(message)
+    } finally {
+      setRephraseLoading(null)
     }
   }
 
@@ -687,16 +830,45 @@ export default function OptimizerUiOnly({
                     <Target className="h-4 w-4" />
                     <span className="text-sm font-medium">Match overview</span>
                   </div>
-                  <span className="text-xs text-white/60">{matchPct}% match</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-white/60">{overallMatch}% match</span>
+                    <button
+                      className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition disabled:opacity-50"
+                      onClick={handleScoreEvidence}
+                      disabled={isScoring || !selectedJobId}
+                    >
+                      <Bot className="h-3 w-3" />
+                      {isScoring ? "Scoring…" : "Score fit"}
+                    </button>
+                  </div>
                 </div>
                 <div className="mt-2">
                   <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
-                    <div className="h-2 bg-emerald-500 rounded-full" style={{ width: `${matchPct}%` }}></div>
+                    <div className="h-2 bg-emerald-500 rounded-full" style={{ width: `${overallMatch}%` }}></div>
                   </div>
-                  <div className="flex items-center justify-between mt-2 text-xs text-white/60">
-                    <span>Keywords coverage</span>
-                    <span>{coveredCount}/{keywords.length || 0}</span>
-                  </div>
+                  {dimensionScores ? (
+                    <div className="mt-3 space-y-2 text-xs text-white/60">
+                      {Object.entries(dimensionScores).map(([key, value]) => (
+                        <div key={key}>
+                          <div className="flex items-center justify-between">
+                            <span>{dimensionLabels[key as keyof typeof dimensionLabels]}</span>
+                            <span>{value}%</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden mt-1">
+                            <div className="h-1.5 bg-white/40 rounded-full" style={{ width: `${value}%` }}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between mt-2 text-xs text-white/60">
+                      <span>Keywords coverage</span>
+                      <span>{coveredCount}/{keywords.length || 0}</span>
+                    </div>
+                  )}
+                  {scoreError && (
+                    <div className="mt-2 text-xs text-red-400">{scoreError}</div>
+                  )}
                 </div>
               </div>
 
@@ -814,6 +986,59 @@ export default function OptimizerUiOnly({
                   })}
                 </div>
               </div>
+
+              {scoreResult && (
+                <div className="md:col-span-2 space-y-4 rounded-xl border border-white/10 bg-black/40 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="inline-flex items-center gap-2">
+                      <ListChecksIcon />
+                      <span className="text-sm font-medium">Evidence matches</span>
+                    </div>
+                    {missingMustHaves.length > 0 && (
+                      <span className="text-xs text-amber-300">Missing must-haves: {missingMustHaves.length}</span>
+                    )}
+                  </div>
+                  {missingMustHaves.length > 0 && (
+                    <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-200">
+                      <span className="font-medium">Missing must-haves:</span> {missingMustHaves.join(", ")}
+                    </div>
+                  )}
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    {scoreResult.evidence.map((item) => {
+                      const selected = evidenceSelection[item.id]
+                      return (
+                        <div
+                          key={item.id}
+                          className={`rounded-lg border ${selected ? "border-emerald-400/60 bg-emerald-500/10" : "border-white/10 bg-white/5"} p-3`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <label className="flex items-start gap-2 text-sm text-white/80 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="mt-1 h-4 w-4 rounded border-white/20 bg-black/40"
+                                checked={selected ?? false}
+                                onChange={() => toggleEvidence(item.id)}
+                              />
+                              <span>{item.text}</span>
+                            </label>
+                            <button
+                              className="inline-flex items-center gap-1 text-xs text-white/70 hover:text-white transition disabled:opacity-50"
+                              onClick={() => handleRephraseEvidence(item.id)}
+                              disabled={rephraseLoading === item.id}
+                            >
+                              <RefreshCcw className="h-3.5 w-3.5" />
+                              {rephraseLoading === item.id ? "Rephrasing…" : "Rephrase"}
+                            </button>
+                          </div>
+                          {item.score != null && (
+                            <div className="mt-2 text-xs text-white/50">Relevance score: {item.score?.toFixed(2)}</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex items-center justify-between">
@@ -827,7 +1052,20 @@ export default function OptimizerUiOnly({
               <button
                 className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors"
                 onClick={() => {
+                  if (!scoreResult) {
+                    toast.error("Run scoring before continuing")
+                    return
+                  }
+
+                  const selected = Object.values(evidenceSelection).some(Boolean)
+                  if (!selected) {
+                    toast.error("Select evidence bullets before continuing")
+                    return
+                  }
+
                   setStep(3)
+                  setRewriteError(null)
+                  setOptimizeError(null)
                   populateEmphasisFromJD()
                 }}
               >
@@ -935,17 +1173,27 @@ export default function OptimizerUiOnly({
                 Back
               </button>
               <div className="flex flex-col items-end gap-2">
-                {optimizeError && (
-                  <div className="text-xs text-red-400 self-start">{optimizeError}</div>
+                {(rewriteError || optimizeError) && (
+                  <div className="text-xs text-red-400 self-start">{rewriteError || optimizeError}</div>
                 )}
-                <button
-                  className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60"
-                  onClick={handleGenerateOptimized}
-                  disabled={isOptimizing}
-                >
-                  <WandSparkles className="h-4 w-4" />
-                  {isOptimizing ? 'Generating…' : 'Generate Optimized Resume'}
-                </button>
+                <div className="flex flex-wrap gap-2 justify-end">
+                  <button
+                    className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60"
+                    onClick={handleRewrite}
+                    disabled={isRewriteLoading || !scoreResult}
+                  >
+                    <Wand2 className="h-4 w-4" />
+                    {isRewriteLoading ? "Rewriting…" : "Generate Evidence Rewrite"}
+                  </button>
+                  <button
+                    className="inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-4 hover:bg-white/20 transition-colors disabled:opacity-60"
+                    onClick={handleGenerateOptimized}
+                    disabled={isOptimizing}
+                  >
+                    <WandSparkles className="h-4 w-4" />
+                    {isOptimizing ? "Generating…" : "Full Optimization"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
