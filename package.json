@@ -8,8 +8,9 @@
     "lint": "next lint",
     "start": "next start",
     "backfill:users-sync": "dotenv -e .env.local tsx scripts/backfill-users-sync.ts",
+    "docker:qdrant": "docker compose -f docker/docker-compose.yml up -d",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install",
+    "test:e2e:install": "playwright install --with-deps",
     "postinstall": "playwright install || true"
   },
   "dependencies": {

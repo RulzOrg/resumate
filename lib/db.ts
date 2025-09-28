@@ -234,6 +234,86 @@ export interface ClerkWebhookEvent {
   created_at: string
 }
 
+// Utility to create or update a users_sync record by database id.
+export async function ensureUserSyncRecord(params: {
+  id: string
+  clerkUserId?: string | null
+  email?: string | null
+  name?: string | null
+  subscription_status?: string | null
+  subscription_plan?: string | null
+}) {
+  const safeEmail = params.email && params.email.trim().length > 0 ? params.email : `${params.id}@placeholder.resumate.ai`
+  const safeName = params.name && params.name.trim().length > 0 ? params.name : "ResuMate User"
+
+  try {
+    const [record] = await sql`
+      INSERT INTO users_sync (id, clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at)
+      VALUES (
+        ${params.id},
+        ${params.clerkUserId || null},
+        ${safeEmail},
+        ${safeName},
+        ${params.subscription_status || 'free'},
+        ${params.subscription_plan || 'free'},
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (id) DO UPDATE
+        SET clerk_user_id = COALESCE(EXCLUDED.clerk_user_id, users_sync.clerk_user_id),
+            email = COALESCE(EXCLUDED.email, users_sync.email),
+            name = COALESCE(EXCLUDED.name, users_sync.name),
+            subscription_status = COALESCE(EXCLUDED.subscription_status, users_sync.subscription_status),
+            subscription_plan = COALESCE(EXCLUDED.subscription_plan, users_sync.subscription_plan),
+            updated_at = NOW()
+      RETURNING *
+    `
+
+    return record as User
+  } catch (error: any) {
+    if (error.code === '23505' && error.constraint === 'users_sync_clerk_user_id_key' && params.clerkUserId) {
+      const [existing] = await sql`
+        UPDATE users_sync
+        SET email = COALESCE(${safeEmail}, email),
+            name = COALESCE(${safeName}, name),
+            subscription_status = COALESCE(${params.subscription_status || 'free'}, subscription_status),
+            subscription_plan = COALESCE(${params.subscription_plan || 'free'}, subscription_plan),
+            updated_at = NOW()
+        WHERE clerk_user_id = ${params.clerkUserId}
+        RETURNING *
+      `
+      return existing as User
+    }
+
+    throw error
+  }
+}
+
+// Backfill helper to migrate legacy records that referenced a different user_id
+export async function migrateUserOwnedRecords(legacyUserId: string, newUserId: string) {
+  if (!legacyUserId || !newUserId || legacyUserId === newUserId) {
+    return { resumes: 0, jobAnalyses: 0, optimizedResumes: 0, jobApplications: 0, jobTargets: 0 }
+  }
+
+  const updateStatements = [
+    sql`UPDATE resumes SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE job_analysis SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE optimized_resumes SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE job_applications SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+    sql`UPDATE job_targets SET user_id = ${newUserId}, updated_at = NOW() WHERE user_id = ${legacyUserId}`,
+  ]
+
+  const [resumesResult, jobAnalysesResult, optimizedResult, applicationsResult, targetsResult] = await Promise.all(updateStatements)
+
+  return {
+    resumes: (resumesResult as any).rowCount || 0,
+    jobAnalyses: (jobAnalysesResult as any).rowCount || 0,
+    optimizedResumes: (optimizedResult as any).rowCount || 0,
+    jobApplications: (applicationsResult as any).rowCount || 0,
+    jobTargets: (targetsResult as any).rowCount || 0,
+  }
+}
+
 // User functions
 export async function createUserFromClerk(clerkUserId: string, email: string, name: string) {
   const [user] = await sql`
@@ -809,22 +889,35 @@ export async function createOptimizedResume(data: {
   optimization_summary: OptimizedResume["optimization_summary"]
   match_score?: number
 }) {
-  const [optimizedResume] = await sql`
-    INSERT INTO optimized_resumes (
-      user_id, original_resume_id, job_analysis_id, title, optimized_content,
-      optimization_summary, match_score, improvements_made, keywords_added, 
-      skills_highlighted, created_at, updated_at
-    )
-    VALUES (
-      ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id}, 
-      ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
-      ${data.match_score || null}, ${data.optimization_summary.changes_made}, 
-      ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
-      NOW(), NOW()
-    )
-    RETURNING *
-  `
-  return optimizedResume as OptimizedResume
+  const insert = async () => {
+    const [optimizedResume] = await sql`
+      INSERT INTO optimized_resumes (
+        user_id, original_resume_id, job_analysis_id, title, optimized_content,
+        optimization_summary, match_score, improvements_made, keywords_added, 
+        skills_highlighted, created_at, updated_at
+      )
+      VALUES (
+        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id}, 
+        ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
+        ${data.match_score || null}, ${data.optimization_summary.changes_made}, 
+        ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
+        NOW(), NOW()
+      )
+      RETURNING *
+    `
+    return optimizedResume as OptimizedResume
+  }
+
+  try {
+    return await insert()
+  } catch (error: any) {
+    if (error.code === "23503" && error.constraint === "optimized_resumes_user_id_fkey") {
+      await ensureUserSyncRecord({ id: data.user_id })
+      return await insert()
+    }
+
+    throw error
+  }
 }
 
 export async function getUserOptimizedResumes(user_id: string) {

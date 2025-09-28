@@ -42,6 +42,7 @@ Optional but used in various features:
 - **STRIPE_SECRET_KEY**, **STRIPE_WEBHOOK_SECRET**
 - **R2_ACCOUNT_ID**, **R2_ACCESS_KEY_ID**, **R2_SECRET_ACCESS_KEY**, **R2_BUCKET_NAME**, **R2_REGION**, **R2_PUBLIC_BASE_URL**
 - or **AWS_ACCESS_KEY_ID**, **AWS_SECRET_ACCESS_KEY**, **AWS_REGION**, **S3_BUCKET_NAME**, **S3_PUBLIC_BASE_URL**
+- **QDRANT_URL**, **QDRANT_API_KEY**: Vector search (local dev defaults to `http://localhost:6333`)
 
 Example `.env.local` (placeholders):
 ```bash
@@ -92,6 +93,7 @@ Visit `http://localhost:3000`.
 - **npm run build**: production build
 - **npm run start**: run production build
 - **npm run lint**: lint with ESLint / TypeScript
+- **npm run docker:qdrant**: start local Qdrant via Docker Compose
 
 Database scripts (under `scripts/`):
 - `setup-database.py`: idempotent setup for tables/indexes/webhook-log
