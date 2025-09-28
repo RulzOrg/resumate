@@ -22,9 +22,11 @@ import {
   Star,
   Target,
   Type,
+  Eye,
   Wand2,
   WandSparkles,
 } from "lucide-react"
+import { toast } from "sonner"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -225,6 +227,13 @@ export default function OptimizerUiOnly({
     resolvedInitialJob?.jobDescription ?? mockJobOptions[0].jobDescription
   )
   const [keywords, setKeywords] = useState<string[]>(resolvedInitialJob?.keywords ?? [])
+  const [reqSkills, setReqSkills] = useState<string[]>(resolvedInitialJob?.requiredSkills ?? [])
+  const [prefSkills, setPrefSkills] = useState<string[]>(resolvedInitialJob?.niceToHave ?? [])
+  const [keyReqs, setKeyReqs] = useState<string[]>([])
+  const [culture, setCulture] = useState<string[]>([])
+  const [benefits, setBenefits] = useState<string[]>([])
+  const [jobLocation, setJobLocation] = useState<string | undefined>(resolvedInitialJob?.location)
+  const [jobSeniority, setJobSeniority] = useState<string | undefined>(resolvedInitialJob?.experienceLevel)
 
   // Active job selection metadata for API calls and display
   const [selectedJobId, setSelectedJobId] = useState<string | null>(resolvedInitialJob?.id ?? null)
@@ -236,6 +245,7 @@ export default function OptimizerUiOnly({
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [optimizeError, setOptimizeError] = useState<string | null>(null)
+  const [optimizedId, setOptimizedId] = useState<string | null>(null)
 
   const [editorHtml, setEditorHtml] = useState<string>(initialEditorHtml)
   const [baseEditorHtml] = useState<string>(initialEditorHtml)
@@ -321,17 +331,47 @@ export default function OptimizerUiOnly({
           job_description: jobDesc,
         }),
       })
+      // Rate limit feedback
+      const remainingHeader = res.headers.get('x-ratelimit-remaining') || res.headers.get('x-rate-limit-remaining') || res.headers.get('ratelimit-remaining')
+      const resetHeader = res.headers.get('x-ratelimit-reset') || res.headers.get('x-rate-limit-reset') || res.headers.get('ratelimit-reset') || res.headers.get('retry-after')
+      const remaining = remainingHeader ? Number(remainingHeader) : NaN
+      if (!res.ok) {
+        if (res.status === 429) {
+          const secs = resetHeader ? Number(resetHeader) : undefined
+          toast.error(`Rate limit reached${secs ? ` — retry in ~${secs}s` : ''}`)
+        }
+      }
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to analyze job')
       const analysis = data.analysis
-      const aiKeywords = analysis?.analysis_result?.keywords || analysis?.keywords || []
+      const result = analysis?.analysis_result || analysis
+      const aiKeywords = result?.keywords || result?.top_keywords || []
+      const must = result?.required_skills || result?.requiredSkills || result?.must_have || []
+      const nice = result?.preferred_skills || result?.preferredSkills || result?.nice_to_have || analysis?.niceToHave || []
+      const reqs = result?.key_requirements || result?.requirements || []
+      const cult = result?.culture || result?.culture_values || []
+      const bens = result?.benefits || []
+      const loc = result?.location || analysis?.location || jobLocation
+      const senior = result?.experience_level || result?.seniority || analysis?.experienceLevel || jobSeniority
       setSelectedJobId(analysis?.id || null)
       if (Array.isArray(aiKeywords) && aiKeywords.length) setKeywords(aiKeywords)
+      setReqSkills(Array.isArray(must) ? must : [])
+      setPrefSkills(Array.isArray(nice) ? nice : [])
+      setKeyReqs(Array.isArray(reqs) ? reqs : [])
+      setCulture(Array.isArray(cult) ? cult : [])
+      setBenefits(Array.isArray(bens) ? bens : [])
+      setJobLocation(typeof loc === 'string' ? loc : jobLocation)
+      setJobSeniority(typeof senior === 'string' ? senior : jobSeniority)
       // Update title/company from analysis if present
       if (analysis?.job_title) setSelectedJobTitle(analysis.job_title)
       if (analysis?.company_name) setSelectedCompany(analysis.company_name)
+      if (!Number.isNaN(remaining) && remaining <= 2) {
+        toast.warning(`Approaching rate limit — ${remaining} request${remaining === 1 ? '' : 's'} left`)
+      }
+      toast.success('Job analyzed')
     } catch (e: any) {
       setAnalyzeError(e?.message || 'Analysis failed')
+      toast.error(e?.message || 'Analysis failed')
     } finally {
       setIsAnalyzing(false)
     }
@@ -341,6 +381,7 @@ export default function OptimizerUiOnly({
     setOptimizeError(null)
     if (!selectedJobId) {
       setOptimizeError('Please analyze the job first to proceed.')
+      toast.error('Analyze the job first')
       return
     }
     setIsOptimizing(true)
@@ -350,6 +391,10 @@ export default function OptimizerUiOnly({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resume_id: selectedResume, job_analysis_id: selectedJobId }),
       })
+      // Rate limit feedback
+      const remainingHeader = res.headers.get('x-ratelimit-remaining') || res.headers.get('x-rate-limit-remaining') || res.headers.get('ratelimit-remaining')
+      const resetHeader = res.headers.get('x-ratelimit-reset') || res.headers.get('x-rate-limit-reset') || res.headers.get('ratelimit-reset') || res.headers.get('retry-after')
+      const remaining = remainingHeader ? Number(remainingHeader) : NaN
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to optimize')
       const optimized = data.optimized_resume
@@ -359,9 +404,16 @@ export default function OptimizerUiOnly({
         // Fallback to local transform if server returned unexpected shape
         applyOptimizations()
       }
+      const oid = optimized?.id || optimized?.optimized_resume_id || data?.id || null
+      if (oid) setOptimizedId(String(oid))
       setStep(4)
+      if (!Number.isNaN(remaining) && remaining <= 2) {
+        toast.warning(`Approaching rate limit — ${remaining} request${remaining === 1 ? '' : 's'} left`)
+      }
+      toast.success('Optimized resume generated')
     } catch (e: any) {
       setOptimizeError(e?.message || 'Optimization failed')
+      toast.error(e?.message || 'Optimization failed')
     } finally {
       setIsOptimizing(false)
     }
@@ -668,6 +720,78 @@ export default function OptimizerUiOnly({
                 </div>
               </div>
 
+              {/* Skills breakdown */}
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                  <div className="inline-flex items-center gap-2 mb-2">
+                    <ListChecksIcon />
+                    <span className="text-sm font-medium">Required skills</span>
+                  </div>
+                  {reqSkills.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {reqSkills.map((s) => (
+                        <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-white/60">Run Analyze with AI to extract required skills.</div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                  <div className="inline-flex items-center gap-2 mb-2">
+                    <ListChecksIcon />
+                    <span className="text-sm font-medium">Preferred skills</span>
+                  </div>
+                  {prefSkills.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {prefSkills.map((s) => (
+                        <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-white/60">Run Analyze with AI to extract preferred skills.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Culture & Benefits */}
+              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                  <div className="inline-flex items-center gap-2 mb-2">
+                    <ListChecksIcon />
+                    <span className="text-sm font-medium">Culture</span>
+                  </div>
+                  {culture.length ? (
+                    <ul className="list-disc pl-5 text-xs text-white/80 space-y-1">
+                      {culture.map((c) => (
+                        <li key={c}>{c}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-white/60">No culture details yet.</div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                  <div className="inline-flex items-center gap-2 mb-2">
+                    <ListChecksIcon />
+                    <span className="text-sm font-medium">Benefits</span>
+                  </div>
+                  {benefits.length ? (
+                    <ul className="list-disc pl-5 text-xs text-white/80 space-y-1">
+                      {benefits.map((b) => (
+                        <li key={b}>{b}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-white/60">No benefits extracted yet.</div>
+                  )}
+                </div>
+              </div>
+
               <div className="md:col-span-2 rounded-xl border border-white/10 bg-black/40 p-4">
                 <div className="inline-flex items-center gap-2 mb-2">
                   <ListChecksIcon />
@@ -889,6 +1013,15 @@ export default function OptimizerUiOnly({
                   <Download className="h-4 w-4" />
                   Download PDF
                 </button>
+                {optimizedId && (
+                  <Link
+                    href={`/dashboard/optimized/${optimizedId}`}
+                    className="inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-3 hover:bg-white/20 transition-colors"
+                  >
+                    <Eye className="h-4 w-4" />
+                    View Details
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -947,10 +1080,8 @@ export default function OptimizerUiOnly({
                   <Briefcase className="h-4 w-4 text-white/70" />
                 </div>
                 <div>
-                  <div className="text-sm font-medium">{resolvedInitialJob?.jobTitle ?? "Job title"}</div>
-                  <div className="text-xs text-white/60">
-                    {(resolvedInitialJob?.companyName || "Company")} {resolvedInitialJob?.location ? `• ${resolvedInitialJob.location}` : ""}
-                  </div>
+                  <div className="text-sm font-medium">{selectedJobTitle || "Job title"}</div>
+                  <div className="text-xs text-white/60">{selectedCompany || "Company"}{jobLocation ? ` • ${jobLocation}` : ""}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -959,7 +1090,7 @@ export default function OptimizerUiOnly({
                 </div>
                 <div>
                   <div className="text-sm font-medium">Seniority</div>
-                  <div className="text-xs text-white/60">{resolvedInitialJob?.experienceLevel ?? "Senior • IC"}</div>
+                  <div className="text-xs text-white/60">{jobSeniority || "Senior • IC"}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -974,7 +1105,7 @@ export default function OptimizerUiOnly({
               <div className="pt-2">
                 <div className="text-xs text-white/60 mb-1">Top skills</div>
                 <div className="flex flex-wrap gap-2">
-                  {(resolvedInitialJob?.keywords ?? ["Roadmap", "A/B Testing", "Analytics", "Frontend", "APIs"]).map((s) => (
+                  {(keywords.length ? keywords : ["Roadmap", "A/B Testing", "Analytics", "Frontend", "APIs"]).map((s) => (
                     <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
                       {s}
                     </span>
