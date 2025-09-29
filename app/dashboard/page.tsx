@@ -46,9 +46,33 @@ export default async function DashboardPage({
   ])
 
   const isDemo = (searchParams?.demo as string) === "1"
-  const pageParam = parseInt((searchParams?.page as string) || "1", 10)
-  const currentPage = Number.isNaN(pageParam) || pageParam < 1 ? 1 : pageParam
-  const perPage = 5
+  const createQueryString = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams()
+    if (searchParams) {
+      Object.entries(searchParams).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach((entry) => {
+            if (typeof entry === "string") {
+              params.append(key, entry)
+            }
+          })
+        } else if (typeof value === "string") {
+          params.set(key, value)
+        }
+      })
+    }
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) {
+        params.delete(key)
+      } else {
+        params.set(key, value)
+      }
+    })
+    return params.toString()
+  }
+  const jobsPerPage = 5
+  const jobPageParam = parseInt((searchParams?.page as string) || "1", 10)
+  const currentJobPage = Number.isNaN(jobPageParam) || jobPageParam < 1 ? 1 : jobPageParam
 
   const demoJobAnalyses = [
     { id: "d1", job_title: "Senior Product Manager", company_name: "Vercel" },
@@ -58,15 +82,24 @@ export default async function DashboardPage({
   const demos = isDemo ? demoJobAnalyses : jobAnalyses
   const allAnalyses = demos
   const totalAnalyses = allAnalyses.length
-  const totalPages = Math.max(1, Math.ceil(totalAnalyses / perPage))
-  const safePage = Math.min(currentPage, totalPages)
-  const start = (safePage - 1) * perPage
-  const paginatedAnalyses = allAnalyses.slice(start, start + perPage)
+  const totalJobPages = Math.max(1, Math.ceil(totalAnalyses / jobsPerPage))
+  const safeJobPage = Math.min(currentJobPage, totalJobPages)
+  const jobStart = (safeJobPage - 1) * jobsPerPage
+  const paginatedAnalyses = allAnalyses.slice(jobStart, jobStart + jobsPerPage)
 
   const demoOptimized = [
     { id: "o1", title: "Linear", created_at: new Date().toISOString(), match_score: 92 },
     { id: "o2", title: "OpenAI", created_at: new Date().toISOString(), match_score: 88 },
   ] as any
+  const generatedPerPage = 5
+  const generatedPageParam = parseInt((searchParams?.generatedPage as string) || "1", 10)
+  const currentGeneratedPage = Number.isNaN(generatedPageParam) || generatedPageParam < 1 ? 1 : generatedPageParam
+  const generatedSource = isDemo ? demoOptimized : optimizedResumes
+  const totalGenerated = generatedSource.length
+  const totalGeneratedPages = Math.max(1, Math.ceil(totalGenerated / generatedPerPage))
+  const safeGeneratedPage = Math.min(currentGeneratedPage, totalGeneratedPages)
+  const generatedStart = (safeGeneratedPage - 1) * generatedPerPage
+  const paginatedGeneratedResumes = generatedSource.slice(generatedStart, generatedStart + generatedPerPage)
 
   return (
     <div className="antialiased text-white bg-black font-geist min-h-screen">
@@ -130,31 +163,33 @@ export default async function DashboardPage({
                   <>
                     <TargetJobsCompactList
                       analyses={paginatedAnalyses}
-                      limit={perPage}
+                      limit={jobsPerPage}
                       defaultResumeId={resumes.find((r) => r.is_primary)?.id || resumes[0]?.id}
                     />
                     {/* Pagination Controls */}
-                    {totalPages > 1 && (
+                    {totalAnalyses > 0 && (
                       <div className="mt-4 flex items-center justify-between text-sm text-white/70">
                         <span>
-                          Showing {Math.min(totalAnalyses === 0 ? 0 : start + 1, totalAnalyses)}–
-                          {Math.min(start + perPage, totalAnalyses)} of {totalAnalyses}
+                          Showing {Math.min(totalAnalyses === 0 ? 0 : jobStart + 1, totalAnalyses)}–
+                          {Math.min(jobStart + jobsPerPage, totalAnalyses)} of {totalAnalyses}
                         </span>
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/dashboard?${new URLSearchParams({ page: String(Math.max(1, safePage - 1)), ...(isDemo ? { demo: '1' } : {}) }).toString()}`}
-                            className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safePage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
-                          >
-                            Prev
-                          </Link>
-                          <span className="opacity-70">Page {safePage} / {totalPages}</span>
-                          <Link
-                            href={`/dashboard?${new URLSearchParams({ page: String(Math.min(totalPages, safePage + 1)), ...(isDemo ? { demo: '1' } : {}) }).toString()}`}
-                            className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safePage >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
-                          >
-                            Next
-                          </Link>
-                        </div>
+                        {totalJobPages > 1 && (
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={`/dashboard?${createQueryString({ page: String(Math.max(1, safeJobPage - 1)) })}`}
+                              className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safeJobPage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
+                            >
+                              Prev
+                            </Link>
+                            <span className="opacity-70">Page {safeJobPage} / {totalJobPages}</span>
+                            <Link
+                              href={`/dashboard?${createQueryString({ page: String(Math.min(totalJobPages, safeJobPage + 1)) })}`}
+                              className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safeJobPage >= totalJobPages ? 'pointer-events-none opacity-50' : ''}`}
+                            >
+                              Next
+                            </Link>
+                          </div>
+                        )}
                       </div>
                     )}
                   </>
@@ -164,7 +199,32 @@ export default async function DashboardPage({
               {(isDemo || optimizedResumes.length > 0) && (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8">
                   <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Generated Resumes</h2>
-                  <GeneratedResumesCompactList resumes={isDemo ? demoOptimized : optimizedResumes} limit={3} />
+                  <GeneratedResumesCompactList resumes={paginatedGeneratedResumes} limit={generatedPerPage} />
+                  {totalGenerated > 0 && (
+                    <div className="mt-4 flex items-center justify-between text-sm text-white/70">
+                      <span>
+                        Showing {Math.min(totalGenerated === 0 ? 0 : generatedStart + 1, totalGenerated)}–
+                        {Math.min(generatedStart + generatedPerPage, totalGenerated)} of {totalGenerated}
+                      </span>
+                      {totalGeneratedPages > 1 && (
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/dashboard?${createQueryString({ generatedPage: String(Math.max(1, safeGeneratedPage - 1)) })}`}
+                            className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safeGeneratedPage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
+                          >
+                            Prev
+                          </Link>
+                          <span className="opacity-70">Page {safeGeneratedPage} / {totalGeneratedPages}</span>
+                          <Link
+                            href={`/dashboard?${createQueryString({ generatedPage: String(Math.min(totalGeneratedPages, safeGeneratedPage + 1)) })}`}
+                            className={`px-3 py-1 rounded border border-white/10 hover:bg-white/10 transition ${safeGeneratedPage >= totalGeneratedPages ? 'pointer-events-none opacity-50' : ''}`}
+                          >
+                            Next
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
