@@ -1,5 +1,6 @@
 import { neon } from "@neondatabase/serverless"
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
+import { normalizeSalaryRange } from "./normalizers"
 
 const databaseUrl = process.env.DATABASE_URL
 const isDbConfigured = Boolean(databaseUrl)
@@ -773,12 +774,17 @@ export async function createJobAnalysisWithVerification(data: {
     }
 
     // Step 3: Extract fields safely with fallbacks
-    const keywords = Array.isArray(data.analysis_result.keywords) ? data.analysis_result.keywords : []
-    const required_skills = Array.isArray(data.analysis_result.required_skills) ? data.analysis_result.required_skills : []
-    const preferred_skills = Array.isArray(data.analysis_result.preferred_skills) ? data.analysis_result.preferred_skills : []
-    const experience_level = data.analysis_result.experience_level || null
-    const salary_range = data.analysis_result.salary_range || null
-    const location = data.analysis_result.location || null
+    const normalizedAnalysisResult = {
+      ...data.analysis_result,
+      salary_range: normalizeSalaryRange(data.analysis_result.salary_range),
+    }
+
+    const keywords = Array.isArray(normalizedAnalysisResult.keywords) ? normalizedAnalysisResult.keywords : []
+    const required_skills = Array.isArray(normalizedAnalysisResult.required_skills) ? normalizedAnalysisResult.required_skills : []
+    const preferred_skills = Array.isArray(normalizedAnalysisResult.preferred_skills) ? normalizedAnalysisResult.preferred_skills : []
+    const experience_level = normalizedAnalysisResult.experience_level || null
+    const salary_range = normalizedAnalysisResult.salary_range || null
+    const location = normalizedAnalysisResult.location || null
 
     // Step 4: Generate UUID fallback if database doesn't handle it
     const id = generateUUID()
@@ -799,7 +805,7 @@ export async function createJobAnalysisWithVerification(data: {
       )
       VALUES (
         ${id}, ${data.user_id}, ${data.job_title}, ${data.company_name || null}, 
-        ${data.job_url || null}, ${data.job_description}, ${JSON.stringify(data.analysis_result)},
+        ${data.job_url || null}, ${data.job_description}, ${JSON.stringify(normalizedAnalysisResult)},
         ${keywords}, ${required_skills}, ${preferred_skills}, ${experience_level},
         ${salary_range}, ${location}, NOW(), NOW()
       )
