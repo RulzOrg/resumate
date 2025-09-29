@@ -109,12 +109,22 @@ export function computeScore(
 ): ScoreBreakdown {
   const texts = (evidence || []).map((e) => (e.text || "").toLowerCase())
 
-  const tok = (s: string) => s.toLowerCase().replace(/[^a-z0-9+.#/ ]+/g, " ").trim()
+  const tok = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9+.#/ ]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
   const includesWhole = (needle: string, hay: string) => {
     const n = tok(needle)
     if (!n) return false
-    const re = new RegExp(`(?<![a-z0-9])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`, "i")
-    return re.test(hay)
+    const h = tok(hay)
+    if (!h) return false
+    const re = new RegExp(
+      `(?<![a-z0-9])${n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`,
+      "i",
+    )
+    return re.test(h)
   }
   const covered = (items: string[]) => {
     const arr = Array.from(new Set((items || []).filter(Boolean)))
