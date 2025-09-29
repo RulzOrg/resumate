@@ -7,10 +7,19 @@ export const clerkConfig = {
   afterSignUpUrl: "/dashboard",
 
   // Protected routes
-  publicRoutes: ["/", "/auth/login", "/auth/signup", "/pricing", "/api/webhooks/clerk"],
+  publicRoutes: [
+    "/",
+    "/auth/login",
+    "/auth/signup",
+    "/sign-in",
+    "/sign-up",
+    "/sso-callback",
+    "/pricing",
+    "/api/webhooks/clerk",
+  ],
 
   // Routes that should redirect to sign-in if not authenticated
-  protectedRoutes: ["/dashboard", "/api/resumes", "/api/jobs"],
+  protectedRoutes: ["/dashboard", "/onboarding", "/api/resumes", "/api/jobs", "/api/job-targets"],
 }
 
 // Helper function to check if a route is protected

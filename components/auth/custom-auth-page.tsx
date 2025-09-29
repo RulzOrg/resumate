@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import type { FormEvent } from "react"
 import { useRouter } from "next/navigation"
-import { useSignIn, useSignUp } from "@clerk/nextjs"
+import { useSignIn, useSignUp, useAuth } from "@clerk/nextjs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 type Tab = "signin" | "signup"
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
+  const { isSignedIn } = useAuth()
   const [tab, setTab] = useState<Tab>(defaultTab)
   const router = useRouter()
   const { signIn, isLoaded: isSignInLoaded, setActive: setSignInActive } = useSignIn()
@@ -47,6 +48,12 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     setVerificationCode("")
     setVerificationError(null)
     setOauthError(null)
+  }
+
+  // If a Clerk session already exists, go to dashboard
+  if (isSignedIn) {
+    if (typeof window !== "undefined") router.replace("/dashboard")
+    return null
   }
 
   const extractClerkError = (error: unknown) => {
@@ -89,7 +96,13 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       setSignInError("Unable to complete sign in. Please try again.")
     } catch (error) {
-      setSignInError(extractClerkError(error))
+      console.error("[Clerk] signIn.create failed", error)
+      const msg = extractClerkError(error)
+      if (/session already exists/i.test(msg)) {
+        router.replace("/dashboard")
+        return
+      }
+      setSignInError(msg)
     } finally {
       setIsSigningIn(false)
     }
@@ -123,7 +136,13 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" })
       setIsVerifying(true)
     } catch (error) {
-      setSignUpError(extractClerkError(error))
+      console.error("[Clerk] signUp.create failed", error)
+      const msg = extractClerkError(error)
+      if (/session already exists/i.test(msg)) {
+        router.replace("/dashboard")
+        return
+      }
+      setSignUpError(msg)
     } finally {
       setIsSigningUp(false)
     }
@@ -146,7 +165,13 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       setVerificationError("Verification incomplete. Please check the code and try again.")
     } catch (error) {
-      setVerificationError(extractClerkError(error))
+      console.error("[Clerk] signUp.attemptEmailAddressVerification failed", error)
+      const msg = extractClerkError(error)
+      if (/session already exists/i.test(msg)) {
+        router.replace("/dashboard")
+        return
+      }
+      setVerificationError(msg)
     }
   }
 
@@ -156,7 +181,13 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     try {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" })
     } catch (error) {
-      setVerificationError(extractClerkError(error))
+      console.error("[Clerk] signUp.prepareEmailAddressVerification failed", error)
+      const msg = extractClerkError(error)
+      if (/session already exists/i.test(msg)) {
+        router.replace("/dashboard")
+        return
+      }
+      setVerificationError(msg)
     }
   }
 
@@ -169,10 +200,11 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     if (!isSignInLoaded || !signIn) return
     setOauthError(null)
     try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
       await signIn.authenticateWithRedirect({
         strategy,
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/dashboard",
+        redirectUrl: origin ? `${origin}/sso-callback` : "/sso-callback",
+        redirectUrlComplete: origin ? `${origin}/dashboard` : "/dashboard",
       })
     } catch (err) {
       // Log detailed error for debugging without exposing internals to users
@@ -183,9 +215,12 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
             ? { name: err.name, message: err.message, stack: err.stack }
             : err,
       })
-      setOauthError(
-        "Authentication failed. Please try again or use another provider.",
-      )
+      const message = extractClerkError(err)
+      if (/session already exists/i.test(message)) {
+        router.replace("/dashboard")
+        return
+      }
+      setOauthError(message)
     }
   }
 
