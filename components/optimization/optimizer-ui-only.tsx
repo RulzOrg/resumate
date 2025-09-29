@@ -27,6 +27,8 @@ import {
   WandSparkles,
 } from "lucide-react"
 import { toast } from "sonner"
+import { scoreFit, rephraseBullet, rewriteResume } from "@/lib/api"
+import type { EvidencePoint, ScoreBreakdown } from "@/lib/match"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -247,6 +249,15 @@ export default function OptimizerUiOnly({
   const [optimizeError, setOptimizeError] = useState<string | null>(null)
   const [optimizedId, setOptimizedId] = useState<string | null>(null)
 
+  // Step 2: evidence & scoring state
+  const [isScoring, setIsScoring] = useState(false)
+  const [scoreError, setScoreError] = useState<string | null>(null)
+  const [evidence, setEvidence] = useState<EvidencePoint[]>([])
+  const [score, setScore] = useState<ScoreBreakdown | null>(null)
+  const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(new Set())
+  const [editedEvidence, setEditedEvidence] = useState<Record<string, string>>({})
+  const [rephrasingId, setRephrasingId] = useState<string | null>(null)
+
   const [editorHtml, setEditorHtml] = useState<string>(initialEditorHtml)
   const [baseEditorHtml] = useState<string>(initialEditorHtml)
   const editorRef = useRef<HTMLDivElement | null>(null)
@@ -304,6 +315,28 @@ export default function OptimizerUiOnly({
   useEffect(() => {
     setKeywords(extractKeywords(jobDesc))
   }, [])
+
+  // Fetch evidence + score when entering Step 2 with a selected job
+  useEffect(() => {
+    async function run() {
+      if (step !== 2 || !selectedJobId) return
+      setIsScoring(true)
+      setScoreError(null)
+      try {
+        const res = await scoreFit({ job_analysis_id: selectedJobId, resume_id: selectedResume, top_k: 5 })
+        setEvidence(res.evidence || [])
+        setScore(res.score || null)
+        setSelectedEvidenceIds(new Set())
+      } catch (e: any) {
+        setScoreError(e?.error || e?.message || 'Failed to score')
+        setEvidence([])
+        setScore(null)
+      } finally {
+        setIsScoring(false)
+      }
+    }
+    run()
+  }, [step, selectedJobId, selectedResume])
 
   const currentResume = useMemo(
     () => resolvedResumes.find((r) => r.id === selectedResume) ?? resolvedResumes[0],
@@ -386,30 +419,35 @@ export default function OptimizerUiOnly({
     }
     setIsOptimizing(true)
     try {
-      const res = await fetch('/api/resumes/optimize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ resume_id: selectedResume, job_analysis_id: selectedJobId }),
-      })
-      // Rate limit feedback
-      const remainingHeader = res.headers.get('x-ratelimit-remaining') || res.headers.get('x-rate-limit-remaining') || res.headers.get('ratelimit-remaining')
-      const resetHeader = res.headers.get('x-ratelimit-reset') || res.headers.get('x-rate-limit-reset') || res.headers.get('ratelimit-reset') || res.headers.get('retry-after')
-      const remaining = remainingHeader ? Number(remainingHeader) : NaN
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed to optimize')
-      const optimized = data.optimized_resume
+      let optimized: any
+      if (selectedEvidenceIds.size > 0) {
+        const payload = {
+          resume_id: selectedResume,
+          job_analysis_id: selectedJobId,
+          selected_evidence: Array.from(selectedEvidenceIds).map((eid) => ({ evidence_id: eid })),
+          options: { tone: config.tone, length: config.length },
+        }
+        const resp = await rewriteResume(payload)
+        optimized = resp.optimized_resume
+      } else {
+        const res = await fetch('/api/resumes/optimize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resume_id: selectedResume, job_analysis_id: selectedJobId }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.error || 'Failed to optimize')
+        optimized = data.optimized_resume
+      }
       if (optimized?.optimized_content) {
         setEditorHtml(mdToHtml(optimized.optimized_content))
       } else {
         // Fallback to local transform if server returned unexpected shape
         applyOptimizations()
       }
-      const oid = optimized?.id || optimized?.optimized_resume_id || data?.id || null
+      const oid = optimized?.id || optimized?.optimized_resume_id || null
       if (oid) setOptimizedId(String(oid))
       setStep(4)
-      if (!Number.isNaN(remaining) && remaining <= 2) {
-        toast.warning(`Approaching rate limit — ${remaining} request${remaining === 1 ? '' : 's'} left`)
-      }
       toast.success('Optimized resume generated')
     } catch (e: any) {
       setOptimizeError(e?.message || 'Optimization failed')
@@ -720,6 +758,91 @@ export default function OptimizerUiOnly({
                 </div>
               </div>
 
+              {/* Evidence & Scoring (server) */}
+              <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="rounded-xl border border-white/10 bg-black/40 p-4 lg:col-span-1">
+                  <div className="inline-flex items-center gap-2 mb-2">
+                    <Target className="h-4 w-4" />
+                    <span className="text-sm font-medium">AI score</span>
+                  </div>
+                  {isScoring ? (
+                    <div className="text-xs text-white/60">Scoring…</div>
+                  ) : score ? (
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between"><span>Overall</span><span className="text-white/80">{score.overall}%</span></div>
+                      {([['skills', 'Skills'], ['responsibilities','Responsibilities'], ['domain','Domain'], ['seniority','Seniority']] as const).map(([k, label]) => (
+                        <div key={k}>
+                          <div className="flex items-center justify-between"><span>{label}</span><span className="text-white/70">{(score.dimensions as any)[k]}%</span></div>
+                          <div className="w-full h-1.5 rounded bg-white/10 overflow-hidden"><div className="h-1.5 bg-emerald-500" style={{ width: `${(score.dimensions as any)[k]}%` }}></div></div>
+                        </div>
+                      ))}
+                      {score.missingMustHaves?.length > 0 && (
+                        <div className="pt-2"><div className="text-white/70 mb-1">Missing must‑haves</div>
+                          <ul className="list-disc pl-5 space-y-0.5">
+                            {score.missingMustHaves.slice(0,6).map((m) => (<li key={m}>{m}</li>))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : scoreError ? (
+                    <div className="text-xs text-red-400">{scoreError}</div>
+                  ) : (
+                    <div className="text-xs text-white/60">No score yet.</div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/40 p-4 lg:col-span-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="inline-flex items-center gap-2"><FileText className="h-4 w-4" /><span className="text-sm font-medium">Evidence</span></div>
+                    <span className="text-xs text-white/60">Selected: {selectedEvidenceIds.size}</span>
+                  </div>
+                  {isScoring ? (
+                    <div className="text-xs text-white/60">Fetching evidence…</div>
+                  ) : evidence.length ? (
+                    <ul className="space-y-2 text-sm">
+                      {evidence.slice(0,20).map((ev) => {
+                        const eid = (ev.metadata as any)?.evidence_id || (ev.id?.includes(":") ? ev.id.split(":")[1] : ev.id)
+                        const shown = editedEvidence[eid] || ev.text
+                        const selected = selectedEvidenceIds.has(eid)
+                        return (
+                          <li key={ev.id} className={`rounded-lg border border-white/10 p-3 bg-white/5 ${selected ? 'ring-1 ring-emerald-500/40' : ''}`}>
+                            <div className="flex items-start gap-3">
+                              <input
+                                type="checkbox"
+                                className="mt-1"
+                                checked={selected}
+                                onChange={() => setSelectedEvidenceIds((s) => { const n = new Set(s); if (selected) n.delete(eid); else n.add(eid); return n })}
+                              />
+                              <div className="flex-1">
+                                <div className="text-white/90">{shown}</div>
+                                <div className="mt-2 flex items-center gap-2 text-xs">
+                                  <button
+                                    className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-1 hover:bg-white/10"
+                                    disabled={rephrasingId === eid}
+                                    onClick={async () => {
+                                      try {
+                                        setRephrasingId(eid)
+                                        const { text } = await rephraseBullet({ evidence_id: eid, target_keywords: keywords.slice(0,5), style: 'concise' })
+                                        setEditedEvidence((m) => ({ ...m, [eid]: text }))
+                                      } catch (e: any) {
+                                        toast.error(e?.error || e?.message || 'Rephrase failed')
+                                      } finally {
+                                        setRephrasingId(null)
+                                      }
+                                    }}
+                                  >{rephrasingId === eid ? 'Rephrasing…' : 'Rephrase'}</button>
+                                </div>
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ) : (
+                    <div className="text-xs text-white/60">No evidence found. Try adjusting queries or ensure resume is indexed.</div>
+                  )}
+                </div>
+              </div>
+
               {/* Skills breakdown */}
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="rounded-xl border border-white/10 bg-black/40 p-4">
@@ -944,7 +1067,7 @@ export default function OptimizerUiOnly({
                   disabled={isOptimizing}
                 >
                   <WandSparkles className="h-4 w-4" />
-                  {isOptimizing ? 'Generating…' : 'Generate Optimized Resume'}
+                  {isOptimizing ? 'Generating…' : selectedEvidenceIds.size > 0 ? 'Rewrite Using Selected Evidence' : 'Generate Optimized Resume'}
                 </button>
               </div>
             </div>
