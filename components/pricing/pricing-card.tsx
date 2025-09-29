@@ -28,11 +28,14 @@ export function PricingCard({
 
   const isCurrentPlan = currentPlan === tier.id
   const isFreeTier = tier.id === 'free'
-  const isEnterprise = tier.id === 'enterprise' || tier.id === 'enterprise-annual'
   
   // Calculate display price based on billing cycle
   const displayPrice = billingCycle === 'annual' && !isFreeTier ? tier.price / 12 : tier.price
-  const annualSavings = billingCycle === 'annual' && !isFreeTier ? Math.round(((tier.price * 12 - tier.price) / (tier.price * 12)) * 100) : 0
+  // Correct annual savings calculation against monthly pricing
+  const monthlyPrice = tier.id === 'pro-annual' ? 19 : tier.price
+  const annualSavings = billingCycle === 'annual' && !isFreeTier
+    ? Math.round((1 - (tier.price / (monthlyPrice * 12))) * 100)
+    : 0
 
   const handleSubscribe = async () => {
     if (!isSignedIn) {
@@ -42,11 +45,6 @@ export function PricingCard({
 
     if (isFreeTier) {
       router.push("/dashboard")
-      return
-    }
-
-    if (isEnterprise) {
-      window.open("mailto:sales@resumeai.com?subject=Enterprise Plan Inquiry", "_blank")
       return
     }
 
@@ -97,7 +95,6 @@ export function PricingCard({
     if (isLoading) return "Loading..."
     if (isCurrentPlan) return "Current Plan"
     if (isFreeTier) return "Get Started Free"
-    if (isEnterprise) return "Contact Sales"
     return `Start ${tier.name} Plan`
   }
 

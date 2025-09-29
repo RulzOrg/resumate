@@ -129,50 +129,38 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
           <div className="mt-12 overflow-x-auto">
             <div className="min-w-full w-max md:w-full">
               {/* Header */}
-              <div className="grid grid-cols-4 gap-4 pb-4 border-b border-white/10">
+              <div className="grid grid-cols-3 gap-4 pb-4 border-b border-white/10">
                 <div className="text-base font-medium text-white/90">Features</div>
                 <div className="text-center text-base font-medium text-white/90">Free</div>
                 <div className="text-center text-base font-medium text-white/90">Pro</div>
-                <div className="text-center text-base font-medium text-white/90">Enterprise</div>
               </div>
 
               {/* Feature Rows */}
               <div className="divide-y divide-white/10">
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
+                <div className="grid grid-cols-3 gap-4 py-5 items-center">
                   <div className="text-sm text-white/80">AI Resume Generations</div>
                   <div className="text-center text-sm text-white/90">3 Total</div>
                   <div className="text-center text-sm text-white/90">Unlimited</div>
-                  <div className="text-center text-sm text-white/90">Unlimited</div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
+                <div className="grid grid-cols-3 gap-4 py-5 items-center">
                   <div className="text-sm text-white/80">AI Cover Letter Generator</div>
                   <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
+                <div className="grid grid-cols-3 gap-4 py-5 items-center">
                   <div className="text-sm text-white/80">Advanced Job Analysis</div>
                   <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
+                <div className="grid grid-cols-3 gap-4 py-5 items-center">
                   <div className="text-sm text-white/80">Premium Templates</div>
                   <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
-                  <div className="text-sm text-white/80">Team Management</div>
-                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
-                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
+                <div className="grid grid-cols-3 gap-4 py-5 items-center">
                   <div className="text-sm text-white/80">Support</div>
                   <div className="text-center text-sm text-white/90">Community</div>
                   <div className="text-center text-sm text-white/90">Priority Email</div>
-                  <div className="text-center text-sm text-white/90">Dedicated Manager</div>
                 </div>
               </div>
             </div>

@@ -35,7 +35,7 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
       <h3 className="text-base font-medium text-white/90">Account Status</h3>
       <p className="text-sm text-white/60 mt-1">
-        {plan === "pro" ? "Pro Plan" : plan === "enterprise" ? "Enterprise Plan" : "Free Plan"}
+        {plan === "pro" || plan === "pro-annual" ? "Pro Plan" : "Free Plan"}
         {status ? <span className="ml-2 text-white/40">({status})</span> : null}
       </p>
       {nextRenewal && plan !== "free" ? (

@@ -149,16 +149,13 @@ export async function isFreePlan(): Promise<boolean> {
  */
 export async function isProPlan(): Promise<boolean> {
   const subscription = await getCurrentSubscription()
-  return subscription?.plan === 'pro' || subscription?.plan === 'pro-annual' || isEnterprisePlan()
+  return subscription?.plan === 'pro' || subscription?.plan === 'pro-annual'
 }
 
 /**
  * Check if user is on enterprise plan
  */
-export async function isEnterprisePlan(): Promise<boolean> {
-  const subscription = await getCurrentSubscription()
-  return subscription?.plan === 'enterprise' || subscription?.plan === 'enterprise-annual'
-}
+// Enterprise plan removed
 
 /**
  * Get plan display name and features

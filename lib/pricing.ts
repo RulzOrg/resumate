@@ -68,34 +68,6 @@ function getPricingTiers(): PricingTier[] {
         supportLevel: 'priority'
       },
       popular: true
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      description: 'For professionals and teams who need the best',
-      price: 49,
-      currency: 'USD',
-      interval: 'month',
-      stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_0987654321',
-      features: [
-        'Everything in Pro',
-        'Team collaboration features',
-        'Custom branding options',
-        'API access for integrations',
-        'Advanced analytics dashboard',
-        'Bulk resume processing',
-        'Dedicated account manager',
-        'Custom integrations support',
-        'SLA guarantee (99.9% uptime)',
-        'White-label options'
-      ],
-      limits: {
-        resumeOptimizations: 'unlimited',
-        jobAnalyses: 'unlimited',
-        resumeVersions: 'unlimited',
-        supportLevel: 'dedicated'
-      },
-      popular: false
     }
   ]
 }
@@ -121,27 +93,6 @@ function getAnnualPricingTiers(): PricingTier[] {
         jobAnalyses: 'unlimited',
         resumeVersions: 'unlimited',
         supportLevel: 'priority'
-      },
-      popular: false
-    },
-    {
-      id: 'enterprise-annual',
-      name: 'Enterprise',
-      description: 'For professionals and teams who need the best',
-      price: 490, // 2 months free (12 * 49 - 98)
-      currency: 'USD',
-      interval: 'year',
-      stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_0987654322',
-      features: [
-        'Everything in Enterprise Monthly',
-        '2 months free (17% savings)',
-        'Quarterly business reviews'
-      ],
-      limits: {
-        resumeOptimizations: 'unlimited',
-        jobAnalyses: 'unlimited',
-        resumeVersions: 'unlimited', 
-        supportLevel: 'dedicated'
       },
       popular: false
     }
