@@ -32,7 +32,11 @@ export default async function OptimizePage({
     getUserJobAnalyses(user.id).catch(() => []),
   ])
 
-  const resumeOptions = resumes.map((resume) => {
+  const masterResumes = resumes.filter((resume) =>
+    resume.kind === "master" || resume.kind === "uploaded"
+  )
+
+  const resumeOptions = masterResumes.map((resume) => {
     const rawFileSize =
       typeof resume.file_size === "number"
         ? resume.file_size
