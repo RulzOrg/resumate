@@ -575,6 +575,20 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
       } else {
         const result = await response.json()
         
+        // Config / infra errors
+        if (result.code === 'OPENAI_CONFIG_ERROR') {
+          setError('AI backend not configured. Please set OPENAI_API_KEY in your environment.')
+          return
+        }
+        if (result.code === 'DB_CONFIG_ERROR') {
+          setError('Database not configured. Please set DATABASE_URL in your environment.')
+          return
+        }
+        if (result.code === 'AUTH_CONFIG_ERROR') {
+          setError('Authentication backend is not fully configured. Please verify Clerk keys.')
+          return
+        }
+
         // Provide more specific error messages
         if (result.error?.includes("confidence too low")) {
           setError("The job description appears too brief or unclear for reliable analysis. Please add more details about requirements, skills, and responsibilities.")

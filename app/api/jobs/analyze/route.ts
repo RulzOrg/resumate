@@ -8,6 +8,18 @@ import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { intelligentTruncate, analyzeContentLength, summarizeContent } from "@/lib/content-processor"
+import { normalizeSalaryRange } from "@/lib/normalizers"
+
+const salaryRangeSchema = z.union([
+  z.string(),
+  z.null(),
+  z.object({
+    min: z.number().optional(),
+    max: z.number().optional(),
+    currency: z.string().optional(),
+    verbatim: z.string().optional(),
+  }),
+])
 
 const jobAnalysisSchema = z.object({
   keywords: z.array(z.string()).describe("Important keywords and phrases from the job posting"),
@@ -16,7 +28,7 @@ const jobAnalysisSchema = z.object({
   experience_level: z.union([z.string(), z.null()]).describe(
     "Required experience level (e.g., Entry Level, Mid Level, Senior) or null",
   ),
-  salary_range: z.union([z.string(), z.null()]).optional().describe("Salary range if mentioned (string or null)"),
+  salary_range: salaryRangeSchema.optional().describe("Salary range if mentioned"),
   location: z.union([z.string(), z.null()]).optional().describe("Job location (string or null)"),
   key_requirements: z.array(z.string()).describe("Key job requirements and responsibilities"),
   nice_to_have: z.array(z.string()).describe("Preferred qualifications and bonus skills"),
@@ -31,6 +43,20 @@ const jobAnalysisSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Preflight configuration checks for clearer errors
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "AI backend not configured. Please set OPENAI_API_KEY.", code: "OPENAI_CONFIG_ERROR" },
+        { status: 500 },
+      )
+    }
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Database not configured. Please set DATABASE_URL.", code: "DB_CONFIG_ERROR" },
+        { status: 500 },
+      )
+    }
+
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -51,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create user in our database with enhanced verification
-    let user = await getOrCreateUser()
+    let user = await getOrCreateUser(userId)
     if (!user) {
       console.error('Failed to get or create user in analyze API')
       throw new AppError("Unable to verify user account. Please try again in a moment.", 500)
@@ -92,7 +118,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const analysis = await withRetry(
+    const rawAnalysis = await withRetry(
       async () => {
         const { object } = await generateObject({
           model: openai("gpt-4o-mini"),
@@ -152,6 +178,11 @@ CONSTRAINTS
       3,
       1000,
     )
+
+    const analysis = {
+      ...rawAnalysis,
+      salary_range: normalizeSalaryRange(rawAnalysis.salary_range),
+    }
 
     // Validate analysis quality before saving
     if (!analysis) {

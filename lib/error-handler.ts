@@ -21,6 +21,33 @@ export function handleApiError(error: unknown) {
   }
 
   if (error instanceof Error) {
+    const msg = error.message.toLowerCase()
+
+    // Configuration-related errors
+    if (msg.includes("database_url") || msg.includes("neon") || msg.includes("connection refused")) {
+      return {
+        error: "Database not configured or unreachable. Please set DATABASE_URL and verify connectivity.",
+        code: "DB_CONFIG_ERROR",
+        statusCode: 500,
+      }
+    }
+
+    if (msg.includes("openai") || msg.includes("api key") || msg.includes("unauthorized")) {
+      return {
+        error: "AI backend not configured or unauthorized. Please verify OPENAI_API_KEY.",
+        code: "OPENAI_CONFIG_ERROR",
+        statusCode: msg.includes("unauthorized") ? 401 : 500,
+      }
+    }
+
+    if (msg.includes("clerk") || msg.includes("authentication")) {
+      return {
+        error: "Authentication backend not fully configured. Please verify Clerk keys.",
+        code: "AUTH_CONFIG_ERROR",
+        statusCode: 500,
+      }
+    }
+
     // Handle specific error types
     if (error.message.includes("rate limit")) {
       return {
