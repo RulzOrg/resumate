@@ -1,0 +1,37 @@
+import { QdrantClient } from "@qdrant/js-client-rest"
+
+export const QDRANT_URL = process.env.QDRANT_URL || "http://localhost:6333"
+export const QDRANT_COLLECTION = "resume_bullets"
+export const EMBEDDING_DIMENSION = 3072
+
+export const qdrant = new QdrantClient({ url: QDRANT_URL })
+
+export async function ensureCollection() {
+  try {
+    const list = await qdrant.getCollections()
+    const exists = list.collections?.some((c: any) => c.name === QDRANT_COLLECTION)
+    if (!exists) {
+      await qdrant.createCollection(QDRANT_COLLECTION, {
+        vectors: { size: EMBEDDING_DIMENSION, distance: "Cosine" },
+      } as any)
+    }
+  } catch (err) {
+    // If list fails (server down), rethrow so callers can handle 503s
+    throw err
+  }
+}
+
+export type UpsertPoint = {
+  id: string | number
+  vector: number[]
+  payload: Record<string, any>
+}
+
+export async function upsertPoints(points: UpsertPoint[]) {
+  if (!points.length) return
+  await ensureCollection()
+  await qdrant.upsert(QDRANT_COLLECTION, {
+    wait: true,
+    points: points.map((p) => ({ id: p.id, vector: p.vector, payload: p.payload })),
+  })
+}
