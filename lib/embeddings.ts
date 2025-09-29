@@ -9,5 +9,5 @@ export async function embedTexts(values: string[]): Promise<number[][]> {
     model: openai.embedding("text-embedding-3-large"),
     values,
   })
-  return embeddings.map((e) => e.values)
+  return embeddings
 }

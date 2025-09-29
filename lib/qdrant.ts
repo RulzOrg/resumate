@@ -11,9 +11,18 @@ export async function ensureCollection() {
     const list = await qdrant.getCollections()
     const exists = list.collections?.some((c: any) => c.name === QDRANT_COLLECTION)
     if (!exists) {
-      await qdrant.createCollection(QDRANT_COLLECTION, {
-        vectors: { size: EMBEDDING_DIMENSION, distance: "Cosine" },
-      } as any)
+      try {
+        await qdrant.createCollection(QDRANT_COLLECTION, {
+          vectors: { size: EMBEDDING_DIMENSION, distance: "Cosine" },
+        } as any)
+      } catch (error: any) {
+        const status = (error && (error.status ?? error.response?.status)) ?? undefined
+        if (status === 409) {
+          // Another worker created the collection concurrently; ignore
+        } else {
+          throw error
+        }
+      }
     }
   } catch (err) {
     // If list fails (server down), rethrow so callers can handle 503s
