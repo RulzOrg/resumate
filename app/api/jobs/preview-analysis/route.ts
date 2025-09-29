@@ -37,6 +37,13 @@ const PREVIEW_LIMITS = {
 
 export async function POST(request: NextRequest) {
   try {
+    // Preflight configuration checks for clearer errors
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "AI backend not configured. Please set OPENAI_API_KEY.", code: "OPENAI_CONFIG_ERROR" },
+        { status: 500 },
+      )
+    }
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })

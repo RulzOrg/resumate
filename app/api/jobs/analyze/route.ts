@@ -31,6 +31,20 @@ const jobAnalysisSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Preflight configuration checks for clearer errors
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "AI backend not configured. Please set OPENAI_API_KEY.", code: "OPENAI_CONFIG_ERROR" },
+        { status: 500 },
+      )
+    }
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Database not configured. Please set DATABASE_URL.", code: "DB_CONFIG_ERROR" },
+        { status: 500 },
+      )
+    }
+
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -51,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or create user in our database with enhanced verification
-    let user = await getOrCreateUser()
+    let user = await getOrCreateUser(userId)
     if (!user) {
       console.error('Failed to get or create user in analyze API')
       throw new AppError("Unable to verify user account. Please try again in a moment.", 500)
