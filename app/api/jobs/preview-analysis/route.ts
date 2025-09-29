@@ -6,13 +6,26 @@ import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { intelligentTruncate, analyzeContentLength } from "@/lib/content-processor"
+import { normalizeSalaryRange } from "@/lib/normalizers"
+
+const salaryRangeSchema = z.union([
+  z.string(),
+  z.null(),
+  z.object({
+    min: z.number().optional(),
+    max: z.number().optional(),
+    currency: z.string().optional(),
+    period: z.string().optional().nullable(),
+    verbatim: z.string().optional().nullable(),
+  }),
+])
 
 const previewAnalysisSchema = z.object({
   keywords: z.array(z.string()).describe("Important keywords from the job posting"),
   required_skills: z.array(z.string()).describe("Must-have technical and soft skills"),
   preferred_skills: z.array(z.string()).describe("Nice-to-have skills"),
   experience_level: z.union([z.string(), z.null()]).describe("Required experience level or null if unspecified"),
-  salary_range: z.union([z.string(), z.null()]).optional().describe("Salary range if mentioned (string or null)"),
+  salary_range: salaryRangeSchema.optional().describe("Salary range if mentioned"),
   location: z.union([z.string(), z.null()]).optional().describe("Job location if mentioned (string or null)"),
   key_requirements: z.array(z.string()).describe("Key job requirements"),
   company_culture: z.array(z.string()).describe("Company culture aspects mentioned"),
@@ -115,6 +128,7 @@ CONFIDENCE
         // Apply defensive caps to avoid schema/consumer overflow
         const capped = {
           ...object,
+          salary_range: normalizeSalaryRange(object.salary_range),
           keywords: Array.isArray(object.keywords) ? object.keywords.slice(0, PREVIEW_LIMITS.keywords) : [],
           required_skills: Array.isArray(object.required_skills)
             ? object.required_skills.slice(0, PREVIEW_LIMITS.required)
