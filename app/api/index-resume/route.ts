@@ -7,6 +7,18 @@
  * - Generates embeddings for evidence items
  * - Upserts to Qdrant with proper ID prefixing
  * - Rate limiting
+ * - Idempotency checks (prevents re-indexing)
+ * - State consistency management between Qdrant and PostgreSQL
+ *
+ * State Transitions:
+ * pending → processing → completed ✓
+ *                     → failed    ✗
+ *
+ * Edge Cases Handled:
+ * 1. Idempotency: Returns success if already indexed
+ * 2. Qdrant failure: Marks resume as "failed" with error message
+ * 3. DB update failure after Qdrant success: Returns PARTIAL_SUCCESS error
+ *    to alert client of inconsistent state
  */
 
 import { NextRequest, NextResponse } from "next/server"
@@ -58,6 +70,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 })
     }
 
+    // Check if already indexed (idempotency)
+    if (resume.processingStatus === "completed" && resume.extractedAt) {
+      console.info("[IndexResume] Resume already indexed:", {
+        userId: userId.substring(0, 8),
+        resumeId: resumeId.substring(0, 8),
+      })
+      return NextResponse.json(
+        {
+          success: true,
+          resumeId,
+          alreadyIndexed: true,
+          extractedAt: resume.extractedAt,
+        },
+        { headers: getRateLimitHeaders(rateLimitResult) }
+      )
+    }
+
     // Extract evidence items
     const parsedSections = resume.parsedSections as any
     const evidences: EvidenceItem[] = parsedSections?.evidences || []
@@ -101,22 +130,70 @@ export async function POST(request: NextRequest) {
       },
     }))
 
+    // Mark as processing before Qdrant upsert
+    try {
+      await prisma.resume.update({
+        where: { id: resumeId },
+        data: {
+          processingStatus: "processing",
+        },
+      })
+    } catch (error: any) {
+      console.error("[IndexResume] Failed to update status to processing:", {
+        resumeId: resumeId.substring(0, 8),
+        error: error.message,
+      })
+      // Continue anyway - not critical
+    }
+
     // Upsert to Qdrant
     try {
       await upsertPoints(points)
     } catch (error: any) {
       console.error("[IndexResume] Qdrant upsert failed:", { error: error.message })
+
+      // Mark as failed in database
+      try {
+        await prisma.resume.update({
+          where: { id: resumeId },
+          data: {
+            processingStatus: "failed",
+            processingError: `Qdrant indexing failed: ${error.message}`,
+          },
+        })
+      } catch (dbError: any) {
+        console.error("[IndexResume] Failed to update error status:", { error: dbError.message })
+      }
+
       return NextResponse.json({ error: "Failed to index evidence" }, { status: 500 })
     }
 
-    // Update resume processing status
-    await prisma.resume.update({
-      where: { id: resumeId },
-      data: {
-        processingStatus: "completed",
-        extractedAt: new Date(),
-      },
-    })
+    // Update resume processing status to completed
+    // CRITICAL: If this fails, vectors are indexed but status won't reflect it
+    try {
+      await prisma.resume.update({
+        where: { id: resumeId },
+        data: {
+          processingStatus: "completed",
+          extractedAt: new Date(),
+        },
+      })
+    } catch (error: any) {
+      console.error("[IndexResume] CRITICAL: Vectors indexed but failed to update resume status:", {
+        resumeId: resumeId.substring(0, 8),
+        error: error.message,
+      })
+      // This is a partial success - vectors are indexed but status is inconsistent
+      // Return an error so client knows to retry or alert
+      return NextResponse.json(
+        {
+          error: "Indexed to Qdrant but failed to update database status",
+          code: "PARTIAL_SUCCESS",
+          resumeId,
+        },
+        { status: 500 }
+      )
+    }
 
     console.info("[IndexResume] Evidence indexed successfully:", {
       userId: userId.substring(0, 8),
