@@ -40,8 +40,31 @@ export async function POST(req: NextRequest) {
     ])
       .filter((s) => typeof s === "string" && s.trim().length > 0)
 
-    const evidence = await searchEvidence(user.id, derivedQueries, top_k)
-    const score = computeScore(analysis as any, evidence)
+    let evidence: any[] = []
+    let score = null
+    
+    try {
+      evidence = await searchEvidence(user.id, derivedQueries, top_k)
+      score = computeScore(analysis as any, evidence)
+    } catch (vectorError: any) {
+      console.error("Vector search error:", vectorError)
+      
+      // Check if it's a Qdrant connection error
+      if (vectorError.message?.includes("ECONNREFUSED") || 
+          vectorError.message?.includes("fetch failed") ||
+          vectorError.code === "ECONNREFUSED") {
+        throw new AppError(
+          "Vector search service unavailable. Please ensure QDRANT_URL is configured in production environment variables.",
+          503
+        )
+      }
+      
+      // For other vector errors, provide helpful message
+      throw new AppError(
+        `Vector search failed: ${vectorError.message || "Unknown error"}. Check Qdrant configuration.`,
+        500
+      )
+    }
 
     return NextResponse.json({ evidence, score })
   } catch (err) {

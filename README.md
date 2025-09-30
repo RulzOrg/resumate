@@ -42,7 +42,11 @@ Optional but used in various features:
 - **STRIPE_SECRET_KEY**, **STRIPE_WEBHOOK_SECRET**
 - **R2_ACCOUNT_ID**, **R2_ACCESS_KEY_ID**, **R2_SECRET_ACCESS_KEY**, **R2_BUCKET_NAME**, **R2_REGION**, **R2_PUBLIC_BASE_URL**
 - or **AWS_ACCESS_KEY_ID**, **AWS_SECRET_ACCESS_KEY**, **AWS_REGION**, **S3_BUCKET_NAME**, **S3_PUBLIC_BASE_URL**
-- **QDRANT_URL**, **QDRANT_API_KEY**: Vector search (local dev defaults to `http://localhost:6333`)
+- **QDRANT_URL**, **QDRANT_API_KEY**: Vector search for AI scoring (required for Step 2 job review feature)
+  - Local dev: `http://localhost:6333` (run `npm run docker:qdrant`)
+  - Production: Use Qdrant Cloud (https://cloud.qdrant.io) or self-hosted instance
+- **QDRANT_COLLECTION**: Collection name (defaults to `resume_bullets`)
+- **OPENAI_API_KEY**: Required for AI features (embeddings and job analysis)
 
 Example `.env.local` (placeholders):
 ```bash
@@ -101,6 +105,40 @@ Database scripts (under `scripts/`):
 
 ---
 
+## Qdrant Setup (Required for AI Scoring)
+
+The Step 2 "Review Job" feature uses Qdrant vector database to search resume evidence and compute match scores. Without Qdrant, the AI scoring will fail.
+
+### Local Development
+```bash
+# Start Qdrant with Docker Compose
+npm run docker:qdrant
+```
+
+This starts Qdrant on `http://localhost:6333`. The app will automatically create the `resume_bullets` collection.
+
+### Production Setup
+
+**Option 1: Qdrant Cloud (Recommended)**
+1. Create a free cluster at https://cloud.qdrant.io
+2. Get your cluster URL and API key
+3. Add to Vercel environment variables:
+   ```
+   QDRANT_URL=https://xyz-example.eu-central.aws.cloud.qdrant.io:6333
+   QDRANT_API_KEY=your_api_key_here
+   QDRANT_COLLECTION=resume_bullets
+   ```
+
+**Option 2: Self-Hosted**
+1. Deploy Qdrant on Railway, Fly.io, or your cloud provider
+2. Set `QDRANT_URL` to your instance URL
+3. Configure authentication as needed
+
+### Health Check
+Visit `/api/health/qdrant` to verify your Qdrant connection status.
+
+---
+
 ## Storage Configuration
 The app reads storage config from env vars in `lib/storage.ts` and works with either Cloudflare **R2** or **AWS S3**. Set one provider’s credentials plus `R2_BUCKET_NAME` or `S3_BUCKET_NAME`. Optionally set a CDN/public base URL via `R2_PUBLIC_BASE_URL` or `S3_PUBLIC_BASE_URL`.
 
@@ -131,6 +169,12 @@ If you see a "frozen lockfile" error related to pnpm, ensure there is no `pnpm-l
 
 - **Storage upload errors**
   - Make sure R2 or S3 credentials and bucket names are set; only one provider needs to be configured
+
+- **AI Scoring fails (Step 2 Review Job)**
+  - Error: "Vector search service unavailable"
+  - Solution: Ensure `QDRANT_URL` and `QDRANT_API_KEY` are set in production
+  - Check health: Visit `/api/health/qdrant` to verify connection
+  - For local dev, run `npm run docker:qdrant` to start Qdrant
 
 ---
 
