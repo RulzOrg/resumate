@@ -6,6 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["public", "neon_auth"]
 }
 
 model UserSync {
@@ -28,6 +29,7 @@ model UserSync {
 
   @@index([clerkUserId])
   @@map("users_sync")
+  @@schema("neon_auth")
 }
 
 model Resume {
@@ -60,6 +62,7 @@ model Resume {
   @@index([processingStatus])
   @@index([fileHash])
   @@map("resumes")
+  @@schema("public")
 }
 
 model JobAnalysis {
@@ -94,6 +97,7 @@ model JobAnalysis {
   @@index([userId])
   @@index([createdAt])
   @@map("job_analysis")
+  @@schema("public")
 }
 
 model JobApplication {
@@ -115,4 +119,5 @@ model JobApplication {
   @@index([userId])
   @@index([resumeId])
   @@map("job_applications")
+  @@schema("public")
 }
