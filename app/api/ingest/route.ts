@@ -15,9 +15,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
-import { uploadResume, calculateFileHash } from "@/lib/r2"
+import { uploadResume, calculateFileHash, getDownloadUrl } from "@/lib/r2"
 import { extractEvidence, isValidResumeContent } from "@/lib/llm"
 import { checkRateLimit, ingestRateLimit, getRateLimitHeaders } from "@/lib/ratelimit"
+import { primaryExtract, fallbackExtract } from "@/lib/extract"
+import type { ExtractResult } from "@/lib/llamaparse"
 import {
   IngestSuccessResponseSchema,
   IngestFallbackResponseSchema,
@@ -32,89 +34,10 @@ const ALLOWED_TYPES = ["application/pdf", "application/vnd.openxmlformats-office
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt"]
 
 /**
- * Extract text content from uploaded file using AI
- * Handles PDF, DOCX, and TXT files
+ * Simple text extraction for TXT files
  */
-async function extractTextFromFile(file: File): Promise<{ text: string; parsed?: any }> {
-  // For text files, just read directly
-  if (file.type === "text/plain") {
-    const text = await file.text()
-    return { text, parsed: {} }
-  }
-
-  // For PDF/DOCX, use AI extraction with vision/document capabilities
-  try {
-    const arrayBuffer = await file.arrayBuffer()
-    const base64Data = Buffer.from(arrayBuffer).toString("base64")
-
-    const { openai } = await import("@ai-sdk/openai")
-    const { generateText } = await import("ai")
-
-    // Use vision-capable model with document as image
-    const { text } = await generateText({
-      model: openai("gpt-4o"),  // Use full gpt-4o for vision/document processing
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `Extract and structure ALL text content from this resume document.
-
-IMPORTANT: Extract COMPLETE information from ALL sections, not summaries.
-
-Please extract all sections clearly:
-
-**PERSONAL INFORMATION**
-- Full name, email, phone, location, LinkedIn/Portfolio URLs
-
-**PROFESSIONAL SUMMARY**
-- Complete professional overview
-
-**WORK EXPERIENCE**
-- ALL job titles, companies, employment dates
-- COMPLETE descriptions of responsibilities and achievements
-- All quantified results and metrics
-- Every bullet point and detail
-
-**EDUCATION**
-- ALL degrees, institutions, graduation dates
-- Complete coursework, honors, GPA if mentioned
-
-**SKILLS**
-- ALL technical skills, soft skills, tools, languages, frameworks, certifications
-
-**ADDITIONAL SECTIONS**
-- ALL projects with complete descriptions
-- ALL publications, awards, honors
-- Volunteer work, languages, etc.
-
-Extract EVERYTHING - do not summarize or truncate. The full content will be used for job-specific resume optimization.`,
-            },
-            {
-              type: "image",
-              image: base64Data,
-              mimeType: file.type,
-            },
-          ],
-        },
-      ],
-    })
-
-    return { text, parsed: {} }
-  } catch (error: any) {
-    console.error("[Ingest] AI extraction failed:", { error: error.message })
-    // Fallback to text extraction if AI fails
-    try {
-      const text = await file.text()
-      if (text && text.length > 50) {
-        return { text, parsed: {} }
-      }
-    } catch (e) {
-      // Ignore fallback errors
-    }
-    throw new Error(`Failed to extract text from ${file.type} file`)
-  }
+async function extractTextFromTextFile(file: File): Promise<string> {
+  return await file.text()
 }
 
 /**
@@ -230,19 +153,66 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Extract text content (with OCR if needed)
+    // Extract text content using LlamaParse with fallback
+    let extractResult: ExtractResult
     let extractedText: string
-    let parsedData: any
-    try {
-      const extraction = await extractTextFromFile(file)
-      extractedText = extraction.text
-      parsedData = extraction.parsed
-    } catch (error: any) {
-      console.error("[Ingest] Text extraction failed:", { error: error.message })
-      return NextResponse.json(
-        { status: "error", error: "Text extraction failed", code: "EXTRACTION_FAILED" } as IngestResponse,
-        { status: 500 }
-      )
+
+    // Handle text files separately (no need for LlamaParse)
+    if (file.type === "text/plain") {
+      try {
+        extractedText = await extractTextFromTextFile(file)
+        extractResult = {
+          text: extractedText,
+          total_chars: extractedText.length,
+          page_count: 1,
+          warnings: [],
+          mode_used: "text_file",
+          truncated: false,
+          coverage: 1,
+        }
+      } catch (error: any) {
+        console.error("[Ingest] Text file extraction failed:", { error: error.message })
+        return NextResponse.json(
+          { status: "error", error: "Text extraction failed", code: "EXTRACTION_FAILED" } as IngestResponse,
+          { status: 500 }
+        )
+      }
+    } else {
+      // Use LlamaParse for PDF/DOCX files
+      try {
+        extractResult = await primaryExtract(fileBuffer, file.type, userId)
+
+        // If LlamaParse fails or has low coverage, try fallback
+        if (extractResult.error || extractResult.coverage < 0.6) {
+          console.warn("[Ingest] Primary extraction insufficient, trying fallback:", {
+            userId: userId.substring(0, 8),
+            error: extractResult.error,
+            coverage: extractResult.coverage,
+          })
+
+          // Get presigned URL for fallback extractor
+          const fileUrl = await getDownloadUrl(uploadResult.key, 3600)
+          const fallbackResult = await fallbackExtract(fileBuffer, file.type, fileUrl)
+
+          // Use result with higher total_chars
+          if (fallbackResult.total_chars > extractResult.total_chars) {
+            console.info("[Ingest] Using fallback extraction:", {
+              userId: userId.substring(0, 8),
+              primaryChars: extractResult.total_chars,
+              fallbackChars: fallbackResult.total_chars,
+            })
+            extractResult = fallbackResult
+          }
+        }
+
+        extractedText = extractResult.text
+      } catch (error: any) {
+        console.error("[Ingest] All extraction methods failed:", { error: error.message })
+        return NextResponse.json(
+          { status: "error", error: "Text extraction failed", code: "EXTRACTION_FAILED" } as IngestResponse,
+          { status: 500 }
+        )
+      }
     }
 
     // Validate extracted content
@@ -262,11 +232,14 @@ export async function POST(request: NextRequest) {
           fileType: file.type,
           fileSize: file.size,
           fileHash,
-          contentText: extractedText,
           kind: "uploaded",
           processingStatus: "failed",
           processingError: "Content too short or invalid",
-          parsedSections: null,
+          parsedSections: undefined,
+          warnings: extractResult.warnings,
+          modeUsed: extractResult.mode_used,
+          truncated: extractResult.truncated,
+          pageCount: extractResult.page_count,
         },
       })
 
@@ -316,11 +289,14 @@ export async function POST(request: NextRequest) {
             fileType: file.type,
             fileSize: file.size,
             fileHash,
-            contentText: extractedText,
             kind: "uploaded",
             processingStatus: "failed",
             processingError: fallbackReason,
-            parsedSections: null,
+            parsedSections: undefined,
+            warnings: extractResult.warnings,
+            modeUsed: extractResult.mode_used,
+            truncated: extractResult.truncated,
+            pageCount: extractResult.page_count,
           },
         })
 
@@ -344,11 +320,14 @@ export async function POST(request: NextRequest) {
           fileType: file.type,
           fileSize: file.size,
           fileHash,
-          contentText: extractedText,
           kind: "uploaded",
           processingStatus: "fallback",
           processingError: fallbackReason,
           parsedSections: { rawParagraphs: paragraphs },
+          warnings: extractResult.warnings,
+          modeUsed: extractResult.mode_used,
+          truncated: extractResult.truncated,
+          pageCount: extractResult.page_count,
         },
       })
 
@@ -380,14 +359,16 @@ export async function POST(request: NextRequest) {
         fileType: file.type,
         fileSize: file.size,
         fileHash,
-        contentText: extractedText,
         kind: "uploaded",
         processingStatus: "completed",
         parsedSections: {
-          ...parsedData,
           evidences: evidenceResult!.evidences,
         },
         extractedAt: new Date(),
+        warnings: extractResult.warnings,
+        modeUsed: extractResult.mode_used,
+        truncated: extractResult.truncated,
+        pageCount: extractResult.page_count,
       },
     })
 
@@ -401,7 +382,7 @@ export async function POST(request: NextRequest) {
       {
         status: "success",
         resumeId: resume.id,
-        parsed: parsedData,
+        parsed: {},
         evidenceCount: evidenceResult!.evidences.length,
         fileHash,
       } as IngestResponse,

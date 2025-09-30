@@ -11,6 +11,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "backfill:users-sync": "dotenv -e .env.local tsx scripts/backfill-users-sync.ts",
+    "migrate:llamaparse": "dotenv -e .env.local tsx scripts/migrate-llamaparse.ts",
+    "check-schema": "dotenv -e .env.local tsx scripts/check-schema.ts",
     "docker:qdrant": "docker compose -f docker/docker-compose.yml up -d",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps",
