@@ -42,7 +42,7 @@ async function extractTextFromFile(file: File): Promise<{ text: string; parsed?:
     return { text, parsed: {} }
   }
 
-  // For PDF/DOCX, use AI extraction (similar to /api/resumes/extract)
+  // For PDF/DOCX, use AI extraction with vision/document capabilities
   try {
     const arrayBuffer = await file.arrayBuffer()
     const base64Data = Buffer.from(arrayBuffer).toString("base64")
@@ -50,20 +50,23 @@ async function extractTextFromFile(file: File): Promise<{ text: string; parsed?:
     const { openai } = await import("@ai-sdk/openai")
     const { generateText } = await import("ai")
 
+    // Use vision-capable model with document as image
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
-      prompt: `Extract and structure ALL text content from this resume file (${file.type}).
+      model: openai("gpt-4o"),  // Use full gpt-4o for vision/document processing
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Extract and structure ALL text content from this resume document.
 
 IMPORTANT: Extract COMPLETE information from ALL sections, not summaries.
 
 Please extract all sections clearly:
 
 **PERSONAL INFORMATION**
-- Full name
-- Email address
-- Phone number
-- Location
-- LinkedIn/Portfolio URLs
+- Full name, email, phone, location, LinkedIn/Portfolio URLs
 
 **PROFESSIONAL SUMMARY**
 - Complete professional overview
@@ -79,19 +82,23 @@ Please extract all sections clearly:
 - Complete coursework, honors, GPA if mentioned
 
 **SKILLS**
-- ALL technical skills
-- ALL soft skills
-- ALL tools, languages, frameworks
-- ALL certifications
+- ALL technical skills, soft skills, tools, languages, frameworks, certifications
 
 **ADDITIONAL SECTIONS**
 - ALL projects with complete descriptions
 - ALL publications, awards, honors
 - Volunteer work, languages, etc.
 
-Extract EVERYTHING - do not summarize or truncate. The full content will be used for job-specific resume optimization.
-
-File data (base64): ${base64Data}`,
+Extract EVERYTHING - do not summarize or truncate. The full content will be used for job-specific resume optimization.`,
+            },
+            {
+              type: "image",
+              image: base64Data,
+              mimeType: file.type,
+            },
+          ],
+        },
+      ],
     })
 
     return { text, parsed: {} }
