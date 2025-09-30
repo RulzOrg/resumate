@@ -1,0 +1,118 @@
+// Prisma schema for AI Resume application
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserSync {
+  id                     String    @id
+  email                  String    @unique
+  name                   String
+  clerkUserId            String?   @unique @map("clerk_user_id")
+  subscriptionStatus     String    @default("free") @map("subscription_status")
+  subscriptionPlan       String    @default("free") @map("subscription_plan")
+  subscriptionPeriodEnd  DateTime? @map("subscription_period_end")
+  stripeCustomerId       String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  deletedAt              DateTime? @map("deleted_at")
+
+  resumes         Resume[]
+  jobAnalyses     JobAnalysis[]
+  jobApplications JobApplication[]
+
+  @@index([clerkUserId])
+  @@map("users_sync")
+}
+
+model Resume {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String    @map("user_id")
+  title            String    @db.VarChar(255)
+  fileName         String    @map("file_name") @db.VarChar(255)
+  fileUrl          String    @map("file_url")
+  fileType         String    @map("file_type") @db.VarChar(50)
+  fileSize         Int       @map("file_size")
+  fileHash         String?   @map("file_hash") @db.VarChar(64)
+  contentText      String?   @map("content_text")
+  kind             String    @default("uploaded") @db.VarChar(32)
+  processingStatus String    @default("completed") @map("processing_status") @db.VarChar(32)
+  processingError  String?   @map("processing_error")
+  parsedSections   Json?     @map("parsed_sections")
+  extractedAt      DateTime? @map("extracted_at")
+  sourceMetadata   Json?     @map("source_metadata")
+  isPrimary        Boolean   @default(false) @map("is_primary")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  user            UserSync         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobApplications JobApplication[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([kind])
+  @@index([processingStatus])
+  @@index([fileHash])
+  @@map("resumes")
+}
+
+model JobAnalysis {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String    @map("user_id")
+  jobUrl            String?   @map("job_url")
+  jobTitle          String    @map("job_title") @db.VarChar(255)
+  companyName       String    @map("company_name") @db.VarChar(255)
+  jobDescription    String?   @map("job_description")
+  parsedData        Json?     @map("parsed_data")
+  requirements      String[]  @default([])
+  preferredSkills   String[]  @default([]) @map("preferred_skills")
+  experienceLevel   String?   @map("experience_level") @db.VarChar(50)
+  employmentType    String?   @map("employment_type") @db.VarChar(50)
+  location          String?   @db.VarChar(255)
+  salaryRangeMin    Int?      @map("salary_range_min")
+  salaryRangeMax    Int?      @map("salary_range_max")
+  salaryCurrency    String?   @map("salary_currency") @db.VarChar(3)
+  benefits          String[]  @default([])
+  companySize       String?   @map("company_size") @db.VarChar(50)
+  industry          String?   @db.VarChar(100)
+  keywords          String[]  @default([])
+  analyzedAt        DateTime? @map("analyzed_at")
+  extractionMethod  String?   @map("extraction_method") @db.VarChar(50)
+  processingError   String?   @map("processing_error")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
+
+  user UserSync @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("job_analysis")
+}
+
+model JobApplication {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @map("user_id")
+  resumeId       String    @map("resume_id") @db.Uuid
+  jobTitle       String    @map("job_title") @db.VarChar(255)
+  companyName    String    @map("company_name") @db.VarChar(255)
+  jobUrl         String?   @map("job_url")
+  jobDescription String?   @map("job_description")
+  status         String    @default("pending") @db.VarChar(50)
+  appliedAt      DateTime  @default(now()) @map("applied_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user   UserSync @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resume Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resumeId])
+  @@map("job_applications")
+}
