@@ -579,6 +579,10 @@ export async function updateResumeAnalysis(
     processing_error?: string | null
     extracted_at?: string | Date | null
     source_metadata?: Record<string, any> | null
+    warnings?: string[]
+    modeUsed?: string | null
+    truncated?: boolean
+    pageCount?: number | null
   },
 ) {
   // If no data to update, just return the current resume
@@ -645,6 +649,38 @@ export async function updateResumeAnalysis(
     const sourceMetadata = data.source_metadata ? JSON.stringify(data.source_metadata) : null
     ;[resume] = await sql`
       UPDATE resumes SET source_metadata = ${sourceMetadata}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.warnings !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET warnings = ${data.warnings}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.modeUsed !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET mode_used = ${data.modeUsed}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.truncated !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET truncated = ${data.truncated}, updated_at = NOW()
+      WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.pageCount !== undefined) {
+    ;[resume] = await sql`
+      UPDATE resumes SET page_count = ${data.pageCount}, updated_at = NOW()
       WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
       RETURNING *
     `

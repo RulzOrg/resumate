@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS resumes (
   file_size INTEGER NOT NULL,
   content_text TEXT,
   kind VARCHAR(32) NOT NULL DEFAULT 'uploaded',
-  processing_status VARCHAR(32) NOT NULL DEFAULT 'completed',
+  processing_status VARCHAR(32) NOT NULL DEFAULT 'pending',
   processing_error TEXT,
   parsed_sections JSONB,
   extracted_at TIMESTAMP WITH TIME ZONE,

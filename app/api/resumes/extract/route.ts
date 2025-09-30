@@ -60,44 +60,56 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Use AI to extract structured content
+    // Use AI to extract structured content with vision/document capabilities
     const safeBase64 = base64Data ?? ""
     const { text } = await generateText({
-      model: openai("gpt-4o-mini"),
-      prompt: `Extract and structure the text content from this resume file (${resume.file_type}).
-      
-      Please extract all sections clearly:
-      
-      **PERSONAL INFORMATION**
-      - Full name
-      - Email address
-      - Phone number
-      - Location
-      - LinkedIn/Portfolio URLs
-      
-      **PROFESSIONAL SUMMARY**
-      - Brief professional overview
-      
-      **WORK EXPERIENCE**
-      - Job titles, companies, dates
-      - Key responsibilities and achievements
-      - Quantified results where possible
-      
-      **EDUCATION**
-      - Degrees, institutions, graduation dates
-      - Relevant coursework, honors
-      
-      **SKILLS**
-      - Technical skills
-      - Soft skills
-      - Certifications
-      
-      **ADDITIONAL SECTIONS**
-      - Projects, publications, awards, etc.
-      
-      Format the output as clean, structured text with clear section headers.
-      
-      File data: ${safeBase64.substring(0, 2000)}...`,
+      model: openai("gpt-4o"),  // Use full gpt-4o for vision/document processing
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Extract and structure ALL text content from this resume document.
+
+IMPORTANT: Extract COMPLETE information from ALL sections, not summaries.
+
+Please extract all sections clearly:
+
+**PERSONAL INFORMATION**
+- Full name, email, phone, location, LinkedIn/Portfolio URLs
+
+**PROFESSIONAL SUMMARY**
+- Complete professional overview
+
+**WORK EXPERIENCE**
+- ALL job titles, companies, employment dates
+- COMPLETE descriptions of responsibilities and achievements
+- All quantified results and metrics
+- Every bullet point and detail
+
+**EDUCATION**
+- ALL degrees, institutions, graduation dates
+- Complete coursework, honors, GPA if mentioned
+
+**SKILLS**
+- ALL technical skills, soft skills, tools, languages, frameworks, certifications
+
+**ADDITIONAL SECTIONS**
+- ALL projects with complete descriptions
+- ALL publications, awards, honors
+- Volunteer work, languages, etc.
+
+Extract EVERYTHING - do not summarize or truncate. The full content will be used for job-specific resume optimization.`,
+            },
+            {
+              type: "image",
+              image: safeBase64,
+              mimeType: resume.file_type,
+            },
+          ],
+        },
+      ],
     })
 
     // Update the resume with extracted content
