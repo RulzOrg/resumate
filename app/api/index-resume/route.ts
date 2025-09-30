@@ -25,7 +25,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 import { embedTexts } from "@/lib/embeddings"
-import { upsertPoints, ensureCollection } from "@/lib/qdrant"
+import { upsertPoints } from "@/lib/qdrant"
 import { checkRateLimit, indexRateLimit, getRateLimitHeaders } from "@/lib/ratelimit"
 import type { EvidenceItem } from "@/lib/schemas"
 
@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+    const uid = userId as string
 
     // Rate limiting
     const rateLimitResult = await checkRateLimit(indexRateLimit, userId)
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     // Check if already indexed (idempotency)
     if (resume.processingStatus === "completed" && resume.extractedAt) {
       console.info("[IndexResume] Resume already indexed:", {
-        userId: userId.substring(0, 8),
+        userId: uid.substring(0, 8),
         resumeId: resumeId.substring(0, 8),
       })
       return NextResponse.json(
@@ -85,41 +86,20 @@ export async function POST(request: NextRequest) {
         },
         { headers: getRateLimitHeaders(rateLimitResult) }
       )
-    try {
-      embeddings = await embedTexts(texts)
-    } catch (error: any) {
-      console.error("[IndexResume] Embedding generation failed:", { error: error.message })
-      return NextResponse.json({ error: "Failed to generate embeddings" }, { status: 500 })
     }
 
-   if (embeddings.length !== evidences.length) {
-     console.error("[IndexResume] Embedding count mismatch:", {
-       expected: evidences.length,
-       received: embeddings.length,
-     })
-     return NextResponse.json({ error: "Embedding generation incomplete" }, { status: 500 })
-   }
-
-    // Prepare points for upsert with prefixed IDs
-    const timestamp = Date.now()
-    const points = evidences.map((evidence, index) => ({
-      id: evidence.evidence_id || `${userId}_${timestamp}_${index}`,
-      vector: embeddings[index],
-      payload: {
-        userId,
-        resumeId,
-        section: evidence.section,
-        text: evidence.text,
-        keywords: evidence.keywords,
-        category: evidence.category,
-        indexedAt: new Date().toISOString(),
-      },
-    }))
-      return NextResponse.json({ error: "Vector database unavailable" }, { status: 503 })
+    // Resolve evidences from parsedSections
+    const parsed: any = (resume as any).parsedSections || {}
+    const evidences: EvidenceItem[] = Array.isArray(parsed.evidences) ? (parsed.evidences as EvidenceItem[]) : []
+    if (!evidences.length) {
+      return NextResponse.json(
+        { error: "No evidences found to index for this resume" },
+        { status: 400 }
+      )
     }
 
     // Generate embeddings for all evidence texts
-    const texts = evidences.map(e => e.text)
+    const texts = evidences.map((e: EvidenceItem) => e.text)
     let embeddings: number[][]
 
     try {
@@ -131,11 +111,11 @@ export async function POST(request: NextRequest) {
 
     // Prepare points for upsert with prefixed IDs
     const timestamp = Date.now()
-    const points = evidences.map((evidence, index) => ({
-      id: evidence.evidence_id || `${userId}_${timestamp}_${index}`,
+    const points = evidences.map((evidence: EvidenceItem, index: number) => ({
+      id: evidence.evidence_id || `${uid}_${timestamp}_${index}`,
       vector: embeddings[index],
       payload: {
-        userId,
+        userId: uid,
         resumeId,
         section: evidence.section,
         text: evidence.text,
@@ -211,7 +191,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.info("[IndexResume] Evidence indexed successfully:", {
-      userId: userId.substring(0, 8),
+      userId: uid.substring(0, 8),
       resumeId: resumeId.substring(0, 8),
       evidenceCount: evidences.length,
     })

@@ -159,6 +159,7 @@ export async function POST(request: NextRequest) {
 
     // Handle text files separately (no need for LlamaParse)
     if (file.type === "text/plain") {
+      console.log("[Ingest] Text file detected, using direct extraction")
       try {
         extractedText = await extractTextFromTextFile(file)
         extractResult = {
@@ -170,6 +171,7 @@ export async function POST(request: NextRequest) {
           truncated: false,
           coverage: 1,
         }
+        console.log("[Ingest] Text file extracted:", { chars: extractedText.length })
       } catch (error: any) {
         console.error("[Ingest] Text file extraction failed:", { error: error.message })
         return NextResponse.json(
@@ -178,6 +180,11 @@ export async function POST(request: NextRequest) {
         )
       }
     } else {
+      console.log("[Ingest] Binary file detected:", { 
+        type: file.type, 
+        size: fileBuffer.length,
+        fileName: file.name 
+      })
       // Use LlamaParse for PDF/DOCX files
       try {
         extractResult = await primaryExtract(fileBuffer, file.type, userId)
@@ -206,6 +213,15 @@ export async function POST(request: NextRequest) {
         }
 
         extractedText = extractResult.text
+        
+        console.log("[Ingest] Extraction complete:", {
+          mode: extractResult.mode_used,
+          chars: extractResult.total_chars,
+          pages: extractResult.page_count,
+          coverage: extractResult.coverage,
+          warnings: extractResult.warnings.length,
+          truncated: extractResult.truncated,
+        })
       } catch (error: any) {
         console.error("[Ingest] All extraction methods failed:", { error: error.message })
         return NextResponse.json(

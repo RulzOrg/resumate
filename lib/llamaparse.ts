@@ -32,9 +32,9 @@ function getConfig() {
   return {
     apiKey: process.env.LLAMACLOUD_API_KEY || "",
     mode: process.env.LLAMAPARSE_MODE || "fast",
-    escalateMode: process.env.LLAMAPARSE_ESCALATE_MODE || "accurate",
-    timeoutMs: parseInt(process.env.LLAMAPARSE_TIMEOUT_MS || "45000", 10),
-    maxPages: parseInt(process.env.LLAMAPARSE_MAX_PAGES || "20", 10),
+    escalateMode: process.env.LLAMAPARSE_ESCALATE_MODE || "premium",
+    timeoutMs: parseInt(process.env.LLAMAPARSE_TIMEOUT_MS || "600000", 10), // 10 minutes default
+    maxPages: parseInt(process.env.LLAMAPARSE_MAX_PAGES || "50", 10),
     minChars: parseInt(process.env.LLAMAPARSE_MIN_CHARS || "100", 10),
     minCharsPerPage: parseInt(process.env.LLAMAPARSE_MIN_CHARS_PER_PAGE || "200", 10),
   }
@@ -50,7 +50,7 @@ function calculateCoverage(totalChars: number, pageCount: number, minCharsPerPag
 }
 
 /**
- * Poll for job completion with timeout
+ * Poll for job completion with timeout and detailed logging
  */
 async function pollJobStatus(
   jobId: string,
@@ -59,33 +59,89 @@ async function pollJobStatus(
 ): Promise<LlamaParseResponse> {
   const startTime = Date.now()
   const pollInterval = 2000 // 2 seconds
+  let pollCount = 0
+
+  console.info("[LlamaParse] Starting poll loop:", {
+    jobId,
+    maxTimeout: `${timeoutMs / 1000}s`,
+    pollInterval: `${pollInterval / 1000}s`,
+  })
 
   while (Date.now() - startTime < timeoutMs) {
-    const response = await fetch(`${LLAMAPARSE_API_BASE}/job/${jobId}`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    })
+    pollCount++
+    const elapsed = Math.floor((Date.now() - startTime) / 1000)
 
-    if (!response.ok) {
-      throw new Error(`Failed to check job status: ${response.statusText}`)
+    try {
+      const response = await fetch(`${LLAMAPARSE_API_BASE}/job/${jobId}`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      })
+
+      if (!response.ok) {
+        console.error("[LlamaParse] Status check failed:", {
+          pollCount,
+          elapsed: `${elapsed}s`,
+          status: response.status,
+          statusText: response.statusText,
+        })
+        throw new Error(`Failed to check job status: ${response.statusText}`)
+      }
+
+      const data: LlamaParseResponse = await response.json()
+
+      // Log every 5 polls (10 seconds) or on status change
+      if (pollCount % 5 === 0 || data.status !== "processing") {
+        console.info("[LlamaParse] Poll status:", {
+          pollCount,
+          elapsed: `${elapsed}s`,
+          status: data.status,
+          hasPages: !!data.pages,
+          hasMarkdown: !!data.markdown,
+          hasText: !!data.text,
+        })
+      }
+
+      // Check status (case-insensitive - API returns uppercase)
+      const statusLower = data.status.toLowerCase()
+      
+      if (statusLower === "success") {
+        console.info("[LlamaParse] Job succeeded!", {
+          pollCount,
+          elapsed: `${elapsed}s`,
+          pages: data.pages,
+        })
+        return data
+      }
+
+      if (statusLower === "error") {
+        console.error("[LlamaParse] Job failed:", {
+          pollCount,
+          elapsed: `${elapsed}s`,
+          error: data.error,
+        })
+        throw new Error(data.error || "LlamaParse job failed")
+      }
+
+      // Still processing, wait before next poll
+      await new Promise((resolve) => setTimeout(resolve, pollInterval))
+    } catch (fetchError: any) {
+      console.error("[LlamaParse] Poll request error:", {
+        pollCount,
+        elapsed: `${elapsed}s`,
+        error: fetchError.message,
+      })
+      throw fetchError
     }
-
-    const data: LlamaParseResponse = await response.json()
-
-    if (data.status === "success") {
-      return data
-    }
-
-    if (data.status === "error") {
-      throw new Error(data.error || "LlamaParse job failed")
-    }
-
-    // Wait before next poll
-    await new Promise((resolve) => setTimeout(resolve, pollInterval))
   }
 
-  throw new Error(`LlamaParse job timed out after ${timeoutMs}ms`)
+  const finalElapsed = Math.floor((Date.now() - startTime) / 1000)
+  console.error("[LlamaParse] Polling timed out!", {
+    pollCount,
+    elapsed: `${finalElapsed}s`,
+    maxTimeout: `${timeoutMs / 1000}s`,
+  })
+  throw new Error(`LlamaParse job timed out after ${timeoutMs}ms (${pollCount} polls)`)
 }
 
 /**
@@ -94,7 +150,7 @@ async function pollJobStatus(
  * @param fileBuffer - Document file buffer
  * @param fileType - MIME type of the document
  * @param userId - User ID for logging
- * @param mode - Extraction mode ("fast" or "accurate")
+ * @param mode - Extraction mode ("fast", "premium", or "accurate")
  * @returns ExtractResult with text and metadata
  */
 export async function llamaParseExtract(
@@ -103,11 +159,20 @@ export async function llamaParseExtract(
   userId: string,
   mode?: string
 ): Promise<ExtractResult> {
+  console.log("[LlamaParse] llamaParseExtract called:", {
+    userId: userId.substring(0, 8),
+    fileSize: fileBuffer.length,
+    fileType,
+    mode,
+  })
+  
   const config = getConfig()
   const extractionMode = mode || config.mode
+  const usePremiumMode = extractionMode === "premium" || extractionMode === "accurate"
 
   // Validate API key
   if (!config.apiKey) {
+    console.error("[LlamaParse] API key not configured!")
     return {
       text: "",
       total_chars: 0,
@@ -128,12 +193,19 @@ export async function llamaParseExtract(
     const formData = new FormData()
     const blob = new Blob([new Uint8Array(fileBuffer)], { type: fileType })
     formData.append("file", blob, "document.pdf")
-    formData.append("parsing_instruction", extractionMode)
+    
+    // Set premium mode if requested (correct parameter name)
+    if (usePremiumMode) {
+      formData.append("premium_mode", "true")
+    }
+    
+    // Specify output format
+    formData.append("result_type", "markdown")
 
     // Upload and start parsing job
     console.info("[LlamaParse] Starting extraction:", {
       userId: userId.substring(0, 8),
-      mode: extractionMode,
+      mode: usePremiumMode ? "premium" : "fast",
       fileSize: fileBuffer.length,
     })
 
@@ -162,11 +234,80 @@ export async function llamaParseExtract(
     }
 
     // Poll for completion
-    const result = await pollJobStatus(jobId, config.apiKey, config.timeoutMs)
+    console.info("[LlamaParse] Polling for job completion:", {
+      userId: userId.substring(0, 8),
+      jobId,
+      timeoutMs: config.timeoutMs,
+    })
+    
+    const jobStatus = await pollJobStatus(jobId, config.apiKey, config.timeoutMs)
 
-    // Extract text from result
-    const extractedText = result.text || result.markdown || ""
-    const pageCount = result.pages || 1
+    // CRITICAL FIX: Fetch the actual parsed result from the result endpoint
+    console.info("[LlamaParse] Job completed, fetching result:", {
+      userId: userId.substring(0, 8),
+      jobId,
+    })
+    
+    const resultUrl = `${LLAMAPARSE_API_BASE}/job/${jobId}/result/markdown`
+    let resultResponse: Response | undefined
+    let retryCount = 0
+    const maxRetries = 3
+
+    // Retry loop for result fetching (sometimes endpoint needs a moment)
+    while (retryCount < maxRetries) {
+      try {
+        resultResponse = await fetch(resultUrl, {
+          headers: {
+            Authorization: `Bearer ${config.apiKey}`,
+          },
+        })
+
+        if (resultResponse.ok) {
+          break // Success!
+        }
+
+        console.warn("[LlamaParse] Result fetch failed, retrying:", {
+          attempt: retryCount + 1,
+          status: resultResponse.status,
+        })
+        retryCount++
+        
+        if (retryCount < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 2000)) // Wait 2s before retry
+        }
+      } catch (fetchError) {
+        console.error("[LlamaParse] Result fetch error:", {
+          attempt: retryCount + 1,
+          error: fetchError instanceof Error ? fetchError.message : fetchError,
+        })
+        retryCount++
+        
+        if (retryCount < maxRetries) {
+          await new Promise((resolve) => setTimeout(resolve, 2000))
+        } else {
+          throw fetchError
+        }
+      }
+    }
+
+    if (!resultResponse || !resultResponse.ok) {
+      const errorText = resultResponse ? await resultResponse.text() : "No response"
+      console.error("[LlamaParse] Failed to fetch result after retries:", {
+        status: resultResponse?.status,
+        error: errorText,
+      })
+      throw new Error(`Failed to fetch result: ${resultResponse?.statusText || "No response"}`)
+    }
+
+    // Get the actual parsed text (this is what we were missing!)
+    const extractedText = await resultResponse.text()
+
+    console.info("[LlamaParse] Result fetched successfully:", {
+      userId: userId.substring(0, 8),
+      chars: extractedText.length,
+      preview: extractedText.substring(0, 100).replace(/\n/g, " "),
+    })
+    const pageCount = jobStatus.pages || 1
     const totalChars = extractedText.length
 
     // Check for truncation
@@ -189,7 +330,7 @@ export async function llamaParseExtract(
 
     console.info("[LlamaParse] Extraction completed:", {
       userId: userId.substring(0, 8),
-      mode: extractionMode,
+      mode: usePremiumMode ? "premium" : "fast",
       chars: totalChars,
       pages: pageCount,
       coverage: coverage.toFixed(2),
@@ -201,14 +342,14 @@ export async function llamaParseExtract(
       total_chars: totalChars,
       page_count: pageCount,
       warnings,
-      mode_used: extractionMode,
+      mode_used: usePremiumMode ? "llamaparse_premium" : "llamaparse_fast",
       truncated,
       coverage,
     }
   } catch (error: any) {
     console.error("[LlamaParse] Extraction failed:", {
       userId: userId.substring(0, 8),
-      mode: extractionMode,
+      mode: usePremiumMode ? "premium" : "fast",
       error: error.message,
     })
 
@@ -217,7 +358,7 @@ export async function llamaParseExtract(
       total_chars: 0,
       page_count: 0,
       warnings: [error.message],
-      mode_used: extractionMode,
+      mode_used: usePremiumMode ? "llamaparse_premium" : "llamaparse_fast",
       truncated: false,
       coverage: 0,
       error: error.message,

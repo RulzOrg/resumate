@@ -22,7 +22,7 @@ export async function primaryExtract(
 ): Promise<ExtractResult> {
   const config = {
     mode: process.env.LLAMAPARSE_MODE || "fast",
-    escalateMode: process.env.LLAMAPARSE_ESCALATE_MODE || "accurate",
+    escalateMode: process.env.LLAMAPARSE_ESCALATE_MODE || "premium",
   }
 
   // First attempt with primary mode
@@ -42,8 +42,8 @@ export async function primaryExtract(
     return firstResult
   }
 
-  // Escalate to higher quality mode if coverage is low
-  console.warn("[Extract] Low coverage, escalating to higher quality mode:", {
+  // Escalate to premium mode if coverage is low
+  console.warn("[Extract] Low coverage, escalating to premium mode:", {
     userId: userId.substring(0, 8),
     firstCoverage: firstResult.coverage.toFixed(2),
     escalateMode: config.escalateMode,
