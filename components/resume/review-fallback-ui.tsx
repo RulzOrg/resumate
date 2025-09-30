@@ -14,12 +14,17 @@ import { AlertCircle, CheckCircle, Loader2 } from "lucide-react"
 import { convertToBullets } from "@/lib/upload-handler"
 
 interface ReviewFallbackUIProps {
+  /** Resume ID - used for associating conversions and future persistence */
   resumeId: string
   rawParagraphs: string[]
   onComplete?: () => void
 }
 
 export function ReviewFallbackUI({ resumeId, rawParagraphs, onComplete }: ReviewFallbackUIProps) {
+  // Track resume ID for potential future features:
+  // - Saving converted bullets back to resume
+  // - Analytics/tracking which resumes need manual review
+  // - Error reporting with resume context
   const [selectedParagraph, setSelectedParagraph] = useState<string>("")
   const [convertedBullets, setConvertedBullets] = useState<string[]>([])
   const [isConverting, setIsConverting] = useState(false)
@@ -33,9 +38,18 @@ export function ReviewFallbackUI({ resumeId, rawParagraphs, onComplete }: Review
     const result = await convertToBullets(paragraph)
 
     if (result.error) {
+      console.error("[ReviewFallbackUI] Conversion failed:", {
+        resumeId: resumeId.substring(0, 8),
+        paragraphLength: paragraph.length,
+        error: result.error,
+      })
       setError(result.error)
       setConvertedBullets([])
     } else {
+      console.info("[ReviewFallbackUI] Conversion successful:", {
+        resumeId: resumeId.substring(0, 8),
+        bulletCount: result.bullets.length,
+      })
       setConvertedBullets(result.bullets)
     }
 
@@ -47,8 +61,15 @@ export function ReviewFallbackUI({ resumeId, rawParagraphs, onComplete }: Review
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Your resume was uploaded successfully, but we couldn't automatically extract structured data.
-          Please review the content below and convert paragraphs to bullet points if needed.
+          <div className="space-y-1">
+            <p>
+              Your resume was uploaded successfully, but we couldn't automatically extract structured data.
+              Please review the content below and convert paragraphs to bullet points if needed.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Resume ID: {resumeId.substring(0, 8)}...
+            </p>
+          </div>
         </AlertDescription>
       </Alert>
 
