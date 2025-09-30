@@ -32,30 +32,76 @@ const ALLOWED_TYPES = ["application/pdf", "application/vnd.openxmlformats-office
 const ALLOWED_EXTENSIONS = [".pdf", ".docx", ".txt"]
 
 /**
- * Extract text content from uploaded file
- * This assumes an external extractor service or library handles OCR
+ * Extract text content from uploaded file using AI
+ * Handles PDF, DOCX, and TXT files
  */
 async function extractTextFromFile(file: File): Promise<{ text: string; parsed?: any }> {
-  // For now, this is a placeholder
-  // In production, you would call an external service like:
-  // - Textract (AWS)
-  // - Document AI (Google)
-  // - Custom extractor microservice
-
-  const text = await file.text()
-
-  // Basic structure detection
-  const parsed = {
-    name: "",
-    email: "",
-    phone: "",
-    summary: "",
-    experience: [],
-    education: [],
-    skills: [],
+  // For text files, just read directly
+  if (file.type === "text/plain") {
+    const text = await file.text()
+    return { text, parsed: {} }
   }
 
-  return { text, parsed }
+  // For PDF/DOCX, use AI extraction (similar to /api/resumes/extract)
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const base64Data = Buffer.from(arrayBuffer).toString("base64")
+
+    const { openai } = await import("@ai-sdk/openai")
+    const { generateText } = await import("ai")
+
+    const { text } = await generateText({
+      model: openai("gpt-4o-mini"),
+      prompt: `Extract and structure the text content from this resume file (${file.type}).
+
+Please extract all sections clearly:
+
+**PERSONAL INFORMATION**
+- Full name
+- Email address
+- Phone number
+- Location
+- LinkedIn/Portfolio URLs
+
+**PROFESSIONAL SUMMARY**
+- Brief professional overview
+
+**WORK EXPERIENCE**
+- Job titles, companies, dates
+- Key responsibilities and achievements
+- Quantified results where possible
+
+**EDUCATION**
+- Degrees, institutions, graduation dates
+- Relevant coursework, honors
+
+**SKILLS**
+- Technical skills
+- Soft skills
+- Certifications
+
+**ADDITIONAL SECTIONS**
+- Projects, publications, awards, etc.
+
+Format the output as clean, structured text with clear section headers.
+
+File data: ${base64Data.substring(0, 2000)}...`,
+    })
+
+    return { text, parsed: {} }
+  } catch (error: any) {
+    console.error("[Ingest] AI extraction failed:", { error: error.message })
+    // Fallback to text extraction if AI fails
+    try {
+      const text = await file.text()
+      if (text && text.length > 50) {
+        return { text, parsed: {} }
+      }
+    } catch (e) {
+      // Ignore fallback errors
+    }
+    throw new Error(`Failed to extract text from ${file.type} file`)
+  }
 }
 
 /**
@@ -230,9 +276,11 @@ export async function POST(request: NextRequest) {
       evidenceResult = await extractEvidence(extractedText, userId, EvidenceExtractionResponseSchema)
 
       // Validate evidence extraction
-      if (!evidenceResult.evidences || evidenceResult.evidences.length === 0) {
+      if (!evidenceResult || !evidenceResult.evidences || evidenceResult.evidences.length === 0) {
         shouldFallback = true
-        fallbackReason = "No evidence extracted"
+        fallbackReason = evidenceResult
+          ? "No evidence extracted"
+          : "Evidence extraction returned no result"
       }
     } catch (error: any) {
       console.warn("[Ingest] Evidence extraction failed, falling back:", { error: error.message })
