@@ -17,7 +17,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { Upload, FileText, X, Loader2, CheckCircle } from "lucide-react"
+import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { uploadResume } from "@/lib/upload-handler"
+import { ReviewFallbackUI } from "@/components/resume/review-fallback-ui"
 
 interface UploadResumeDialogProps {
   children: React.ReactNode
@@ -69,7 +71,8 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null)
   const [uploadedResumeId, setUploadedResumeId] = useState<string | null>(null)
-  const [step, setStep] = useState<"upload" | "analysis">("upload")
+  const [step, setStep] = useState<"upload" | "analysis" | "fallback">("upload")
+  const [rawParagraphs, setRawParagraphs] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -112,65 +115,46 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   }
 
   const handleUpload = async () => {
-    if (!file || !title.trim()) return
+    if (!file) return
 
     setIsUploading(true)
     setUploadProgress(0)
     setError("")
 
     try {
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => Math.min(prev + 10, 90))
-      }, 100)
-
-      const formData = new FormData()
-      formData.append("file", file)
-      formData.append("title", title.trim())
-
-      const response = await fetch("/api/resumes/upload", {
-        method: "POST",
-        body: formData,
+      // Use the new hardened upload pipeline
+      const result = await uploadResume(file, (progress) => {
+        setUploadProgress(progress)
       })
 
-      clearInterval(progressInterval)
-      setUploadProgress(100)
-
-      if (response.ok) {
-        const result = await response.json()
-        setUploadedResumeId(result.resume.id)
-        setStep("analysis")
-        setIsAnalyzing(true)
-
-        try {
-          const analysisResponse = await fetch("/api/resumes/analyze", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ resumeId: result.resume.id }),
-          })
-
-          if (analysisResponse.ok) {
-            const analysisResult = await analysisResponse.json()
-            setAnalysis(analysisResult.analysis)
-            setIsAnalyzing(false)
-            // Proceed directly; job URL step removed
-          } else {
-            const analysisResult = await analysisResponse.json()
-            setError(analysisResult.error || "Analysis failed")
-            setIsAnalyzing(false)
-          }
-        } catch (analysisErr) {
-          setError("An error occurred during analysis")
-          setIsAnalyzing(false)
-        }
-      } else {
-        const result = await response.json()
+      if (!result.success) {
         setError(result.error || "Upload failed")
+        setIsUploading(false)
+        return
       }
-    } catch (err) {
-      setError("An error occurred during upload")
+
+      // Store resume ID
+      setUploadedResumeId(result.resumeId!)
+
+      // Handle different upload statuses
+      if (result.status === "success") {
+        // Success - evidence extracted
+        setStep("analysis")
+        setIsAnalyzing(false)
+        // Optionally run additional analysis here
+        // For now, just show success
+        setTimeout(() => {
+          router.push(`/dashboard/optimize?resumeId=${result.resumeId}`)
+          setOpen(false)
+          resetForm()
+        }, 1500)
+      } else if (result.status === "fallback") {
+        // Fallback - show review UI
+        setRawParagraphs(result.rawParagraphs || [])
+        setStep("fallback")
+      }
+    } catch (err: any) {
+      setError(err.message || "An error occurred during upload")
     } finally {
       setIsUploading(false)
     }
@@ -189,6 +173,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     setUploadProgress(0)
     setAnalysis(null)
     setUploadedResumeId(null)
+    setRawParagraphs([])
     setStep("upload")
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -208,15 +193,16 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
         <DialogHeader>
           <DialogTitle>
             {step === "upload" && "Upload Resume"}
-            {step === "analysis" && "Analyzing Resume"}
-            {/* job-url step removed */}
+            {step === "analysis" && "Resume Uploaded Successfully"}
+            {step === "fallback" && "Review Resume Content"}
           </DialogTitle>
           <DialogDescription>
             {step === "upload" &&
               "Upload your resume in PDF, Word, or plain text format to start optimizing it for job applications."}
             {step === "analysis" &&
-              "We're analyzing your resume to understand your skills, experience, and areas for improvement."}
-            {/* job-url step removed */}
+              "Your resume has been successfully processed and indexed."}
+            {step === "fallback" &&
+              "We've uploaded your resume but need your help to structure the content."}
           </DialogDescription>
         </DialogHeader>
 
@@ -287,8 +273,8 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
                   )}
 
                   <div className="flex gap-2">
-                    <Button onClick={handleUpload} disabled={!title.trim() || isUploading} className="flex-1">
-                      {isUploading ? "Uploading..." : "Upload & Analyze Resume"}
+                    <Button onClick={handleUpload} disabled={isUploading} className="flex-1">
+                      {isUploading ? "Uploading..." : "Upload Resume"}
                     </Button>
                     <Button variant="outline" onClick={resetForm} disabled={isUploading}>
                       Cancel
@@ -303,28 +289,24 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
           {step === "analysis" && (
             <div className="text-center py-8">
               <div className="flex flex-col items-center space-y-4">
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                    <div>
-                      <p className="font-medium">Analyzing your resume...</p>
-                      <p className="text-sm text-muted-foreground">This may take a few moments</p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-12 h-12 text-green-500" />
-                    <div>
-                      <p className="font-medium">Analysis Complete!</p>
-                      <p className="text-sm text-muted-foreground">Your resume has been successfully analyzed</p>
-                    </div>
-                  </>
-                )}
+                <CheckCircle className="w-12 h-12 text-green-500" />
+                <div>
+                  <p className="font-medium">Upload Complete!</p>
+                  <p className="text-sm text-muted-foreground">Your resume has been successfully processed</p>
+                  <p className="text-xs text-muted-foreground mt-2">Redirecting to optimization...</p>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Job URL Step removed */}
+          {/* Fallback Step - Review UI */}
+          {step === "fallback" && uploadedResumeId && (
+            <ReviewFallbackUI
+              resumeId={uploadedResumeId}
+              rawParagraphs={rawParagraphs}
+              onComplete={handleProceedToOptimization}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>
