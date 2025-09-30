@@ -61,11 +61,14 @@ export function validateSchema<T extends z.ZodType>(
     return schema.parse(data)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const issues = error.issues.map(issue => ({
-        path: issue.path.join("."),
-        message: issue.message,
-        code: issue.code,
-      }))
+      const issues = error.issues.map(issue => {
+        const path = issue.path.join(".")
+        return {
+          path: path || "(root)",
+          message: issue.message,
+          code: issue.code,
+        }
+      })
       throw new Error(`Schema validation failed: ${JSON.stringify(issues)}`)
     }
     throw error
@@ -89,9 +92,10 @@ export function safeValidateSchema<T extends z.ZodType>(
     return { success: true, data: result.data }
   }
 
-  const errors = result.error.issues.map(
-    issue => `${issue.path.join(".")}: ${issue.message}`
-  )
+  const errors = result.error.issues.map(issue => {
+    const path = issue.path.join(".")
+    return path ? `${path}: ${issue.message}` : issue.message
+  })
 
   return { success: false, errors }
 }
