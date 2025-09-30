@@ -43,7 +43,7 @@ model Resume {
   fileHash         String?   @map("file_hash") @db.VarChar(64)
   contentText      String?   @map("content_text")
   kind             String    @default("uploaded") @db.VarChar(32)
-  processingStatus String    @default("completed") @map("processing_status") @db.VarChar(32)
+  processingStatus String    @default("pending") @map("processing_status") @db.VarChar(32)
   processingError  String?   @map("processing_error")
   parsedSections   Json?     @map("parsed_sections")
   extractedAt      DateTime? @map("extracted_at")
