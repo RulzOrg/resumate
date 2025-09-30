@@ -17,6 +17,11 @@ export default async function OnboardingPage() {
     redirect("/auth/login")
   }
 
+  // If user has already completed onboarding, redirect to dashboard
+  if (user.onboarding_completed_at) {
+    redirect("/dashboard")
+  }
+
   const [clerkUser, masterResume, jobTargets] = await Promise.all([
     (async () => {
       try {

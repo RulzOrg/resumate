@@ -228,9 +228,22 @@ export function OnboardingFlow({
   const handleFinish = async () => {
     setIsFinishing(true)
     try {
+      // Mark onboarding as complete
+      const response = await fetch("/api/users/complete-onboarding", {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || "Failed to complete onboarding")
+      }
+
+      // Redirect to dashboard
       router.push("/dashboard")
-    } finally {
-      setTimeout(() => setIsFinishing(false), 400)
+    } catch (error: any) {
+      console.error("Failed to complete onboarding:", error)
+      setJobError(error.message || "Failed to complete setup. Please try again.")
+      setIsFinishing(false)
     }
   }
 
@@ -487,12 +500,13 @@ export function OnboardingFlow({
             </div>
 
             <div className="flex flex-col gap-4 rounded-b-2xl border-t border-white/10 bg-black/30 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-              <Link
-                href="/dashboard"
-                className="text-center text-sm text-white/60 transition-colors hover:text-white sm:text-left"
+              <button
+                onClick={handleFinish}
+                disabled={uploadStatus === "uploading" || isFinishing}
+                className="text-center text-sm text-white/60 transition-colors hover:text-white sm:text-left disabled:opacity-50 disabled:pointer-events-none"
               >
                 Skip &amp; go to dashboard
-              </Link>
+              </button>
               <Button
                 onClick={handleFinish}
                 disabled={uploadStatus === "uploading" || isFinishing}

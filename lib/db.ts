@@ -98,6 +98,7 @@ export interface User {
   subscription_period_end?: string
   stripe_customer_id?: string
   stripe_subscription_id?: string
+  onboarding_completed_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -318,14 +319,14 @@ export async function migrateUserOwnedRecords(legacyUserId: string, newUserId: s
 // User functions
 export async function createUserFromClerk(clerkUserId: string, email: string, name: string) {
   const [user] = await sql`
-    INSERT INTO users_sync (clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at)
-    VALUES (${clerkUserId}, ${email}, ${name}, 'free', 'free', NOW(), NOW())
+    INSERT INTO users_sync (clerk_user_id, email, name, subscription_status, subscription_plan, onboarding_completed_at, created_at, updated_at)
+    VALUES (${clerkUserId}, ${email}, ${name}, 'free', 'free', NULL, NOW(), NOW())
     ON CONFLICT (clerk_user_id) DO UPDATE
       SET email = EXCLUDED.email,
           name = EXCLUDED.name,
           deleted_at = NULL,
           updated_at = NOW()
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, created_at, updated_at
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
   `
   return user as User
 }
@@ -333,7 +334,7 @@ export async function createUserFromClerk(clerkUserId: string, email: string, na
 export async function getUserByClerkId(clerkUserId: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan, 
-           subscription_period_end, stripe_customer_id, stripe_subscription_id, created_at, updated_at
+           subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
   `
@@ -343,7 +344,7 @@ export async function getUserByClerkId(clerkUserId: string) {
 export async function getUserById(id: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan, 
-           subscription_period_end, stripe_customer_id, stripe_subscription_id, created_at, updated_at
+           subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE id = ${id} AND deleted_at IS NULL
   `
@@ -357,7 +358,7 @@ export async function updateUserFromClerk(clerkUserId: string, data: { email?: s
         name = COALESCE(${data.name}, name),
         updated_at = NOW()
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, created_at, updated_at
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, onboarding_completed_at, created_at, updated_at
   `
   return user as User | undefined
 }
@@ -368,6 +369,17 @@ export async function deleteUserByClerkId(clerkUserId: string) {
     SET deleted_at = NOW(), updated_at = NOW()
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
     RETURNING id, clerk_user_id, email, name
+  `
+  return user as User | undefined
+}
+
+export async function markUserOnboardingComplete(userId: string) {
+  const [user] = await sql`
+    UPDATE users_sync 
+    SET onboarding_completed_at = NOW(),
+        updated_at = NOW()
+    WHERE id = ${userId} AND deleted_at IS NULL
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
   `
   return user as User | undefined
 }

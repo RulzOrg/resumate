@@ -3,8 +3,8 @@ export const clerkConfig = {
   // Sign in/up pages
   signInUrl: "/auth/login",
   signUpUrl: "/auth/signup",
-  afterSignInUrl: "/dashboard",
-  afterSignUpUrl: "/dashboard",
+  afterSignInUrl: "/onboarding",
+  afterSignUpUrl: "/onboarding",
 
   // Protected routes
   publicRoutes: [

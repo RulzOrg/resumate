@@ -68,7 +68,7 @@ export default function RootLayout({
           publishableKey={publishableKey}
           signInUrl={clerkConfig.signInUrl}
           signUpUrl={clerkConfig.signUpUrl}
-          fallbackRedirectUrl={clerkConfig.afterSignInUrl}
+          signInFallbackRedirectUrl={clerkConfig.afterSignInUrl}
           appearance={{
             baseTheme: dark,
             variables: {

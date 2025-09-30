@@ -50,9 +50,9 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     setOauthError(null)
   }
 
-  // If a Clerk session already exists, go to dashboard
+  // If a Clerk session already exists, go to onboarding (middleware will redirect to dashboard if needed)
   if (isSignedIn) {
-    if (typeof window !== "undefined") router.replace("/dashboard")
+    if (typeof window !== "undefined") router.replace("/onboarding")
     return null
   }
 
@@ -85,7 +85,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       if (result.status === "complete" && result.createdSessionId) {
         await setSignInActive({ session: result.createdSessionId })
-        router.push("/dashboard")
+        router.push("/onboarding")
         return
       }
 
@@ -99,7 +99,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signIn.create failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/dashboard")
+        router.replace("/onboarding")
         return
       }
       setSignInError(msg)
@@ -129,7 +129,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       if (result.status === "complete" && result.createdSessionId) {
         await setSignUpActive({ session: result.createdSessionId })
-        router.push("/dashboard")
+        router.push("/onboarding")
         return
       }
 
@@ -139,7 +139,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signUp.create failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/dashboard")
+        router.replace("/onboarding")
         return
       }
       setSignUpError(msg)
@@ -159,7 +159,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       if (result.status === "complete" && result.createdSessionId) {
         await setSignUpActive({ session: result.createdSessionId })
-        router.push("/dashboard")
+        router.push("/onboarding")
         return
       }
 
@@ -168,7 +168,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signUp.attemptEmailAddressVerification failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/dashboard")
+        router.replace("/onboarding")
         return
       }
       setVerificationError(msg)
@@ -184,7 +184,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signUp.prepareEmailAddressVerification failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/dashboard")
+        router.replace("/onboarding")
         return
       }
       setVerificationError(msg)
@@ -204,7 +204,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: origin ? `${origin}/sso-callback` : "/sso-callback",
-        redirectUrlComplete: origin ? `${origin}/dashboard` : "/dashboard",
+        redirectUrlComplete: origin ? `${origin}/onboarding` : "/onboarding",
       })
     } catch (err) {
       // Log detailed error for debugging without exposing internals to users

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation"
 import { getAuthenticatedUser } from "@/lib/auth-utils"
 import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes } from "@/lib/db"
 import { getCurrentSubscription, getUsageLimits } from "@/lib/subscription"
@@ -25,6 +26,11 @@ export default async function DashboardPage({
   if (!user?.id) {
     // Next will render NotFound if something odd happened
     return null
+  }
+  
+  // Redirect to onboarding if user hasn't completed it
+  if (!user.onboarding_completed_at) {
+    redirect("/onboarding")
   }
   const [
     resumes,
