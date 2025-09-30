@@ -66,15 +66,17 @@ export function generateFileKey(userId: string, originalFilename: string, fileHa
  * @param fileContent - File content buffer
  * @param key - Storage key
  * @param contentType - MIME type
+ * @param fileHash - Optional pre-calculated hash (avoids recalculation)
  * @returns Upload result with key and hash
  */
 export async function uploadFile(
   fileContent: Buffer,
   key: string,
-  contentType: string
+  contentType: string,
+  fileHash?: string
 ): Promise<{ key: string; hash: string; size: number }> {
   const client = getS3Client()
-  const fileHash = calculateFileHash(fileContent)
+  const hash = fileHash || calculateFileHash(fileContent)
 
   try {
     await client.send(
@@ -84,7 +86,7 @@ export async function uploadFile(
         Body: fileContent,
         ContentType: contentType,
         Metadata: {
-          hash: fileHash,
+          hash: hash,
           uploadedAt: new Date().toISOString(),
         },
       })
@@ -93,12 +95,12 @@ export async function uploadFile(
     console.info("[R2] File uploaded successfully:", {
       key: key.substring(0, 50) + "...",
       size: fileContent.length,
-      hash: fileHash.slice(0, 8),
+      hash: hash.slice(0, 8),
     })
 
     return {
       key,
-      hash: fileHash,
+      hash: hash,
       size: fileContent.length,
     }
   } catch (error: any) {
@@ -173,21 +175,19 @@ export async function fileExists(key: string): Promise<boolean> {
  * @param filename - Original filename
  * @param content - File content
  * @param contentType - MIME type
- * @returns Upload result
+ * @returns Upload result with key, hash, and size
  */
 export async function uploadResume(
   userId: string,
   filename: string,
   content: Buffer,
   contentType: string
-): Promise<{ key: string; hash: string; size: number; url?: string }> {
+): Promise<{ key: string; hash: string; size: number }> {
   const fileHash = calculateFileHash(content)
   const key = generateFileKey(userId, filename, fileHash)
 
-  const result = await uploadFile(content, key, contentType)
-
-  // Optionally generate a download URL
-  // const url = await getDownloadUrl(key)
+  // Pass pre-calculated hash to avoid redundant calculation
+  const result = await uploadFile(content, key, contentType, fileHash)
 
   return result
 }
