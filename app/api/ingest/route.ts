@@ -52,7 +52,9 @@ async function extractTextFromFile(file: File): Promise<{ text: string; parsed?:
 
     const { text } = await generateText({
       model: openai("gpt-4o-mini"),
-      prompt: `Extract and structure the text content from this resume file (${file.type}).
+      prompt: `Extract and structure ALL text content from this resume file (${file.type}).
+
+IMPORTANT: Extract COMPLETE information from ALL sections, not summaries.
 
 Please extract all sections clearly:
 
@@ -64,28 +66,32 @@ Please extract all sections clearly:
 - LinkedIn/Portfolio URLs
 
 **PROFESSIONAL SUMMARY**
-- Brief professional overview
+- Complete professional overview
 
 **WORK EXPERIENCE**
-- Job titles, companies, dates
-- Key responsibilities and achievements
-- Quantified results where possible
+- ALL job titles, companies, employment dates
+- COMPLETE descriptions of responsibilities and achievements
+- All quantified results and metrics
+- Every bullet point and detail
 
 **EDUCATION**
-- Degrees, institutions, graduation dates
-- Relevant coursework, honors
+- ALL degrees, institutions, graduation dates
+- Complete coursework, honors, GPA if mentioned
 
 **SKILLS**
-- Technical skills
-- Soft skills
-- Certifications
+- ALL technical skills
+- ALL soft skills
+- ALL tools, languages, frameworks
+- ALL certifications
 
 **ADDITIONAL SECTIONS**
-- Projects, publications, awards, etc.
+- ALL projects with complete descriptions
+- ALL publications, awards, honors
+- Volunteer work, languages, etc.
 
-Format the output as clean, structured text with clear section headers.
+Extract EVERYTHING - do not summarize or truncate. The full content will be used for job-specific resume optimization.
 
-File data: ${base64Data.substring(0, 2000)}...`,
+File data (base64): ${base64Data}`,
     })
 
     return { text, parsed: {} }
