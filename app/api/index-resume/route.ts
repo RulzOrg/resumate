@@ -85,21 +85,36 @@ export async function POST(request: NextRequest) {
         },
         { headers: getRateLimitHeaders(rateLimitResult) }
       )
-    }
-
-    // Extract evidence items
-    const parsedSections = resume.parsedSections as any
-    const evidences: EvidenceItem[] = parsedSections?.evidences || []
-
-    if (evidences.length === 0) {
-      return NextResponse.json({ error: "No evidence items to index" }, { status: 400 })
-    }
-
-    // Ensure Qdrant collection exists
     try {
-      await ensureCollection()
+      embeddings = await embedTexts(texts)
     } catch (error: any) {
-      console.error("[IndexResume] Failed to ensure collection:", { error: error.message })
+      console.error("[IndexResume] Embedding generation failed:", { error: error.message })
+      return NextResponse.json({ error: "Failed to generate embeddings" }, { status: 500 })
+    }
+
+   if (embeddings.length !== evidences.length) {
+     console.error("[IndexResume] Embedding count mismatch:", {
+       expected: evidences.length,
+       received: embeddings.length,
+     })
+     return NextResponse.json({ error: "Embedding generation incomplete" }, { status: 500 })
+   }
+
+    // Prepare points for upsert with prefixed IDs
+    const timestamp = Date.now()
+    const points = evidences.map((evidence, index) => ({
+      id: evidence.evidence_id || `${userId}_${timestamp}_${index}`,
+      vector: embeddings[index],
+      payload: {
+        userId,
+        resumeId,
+        section: evidence.section,
+        text: evidence.text,
+        keywords: evidence.keywords,
+        category: evidence.category,
+        indexedAt: new Date().toISOString(),
+      },
+    }))
       return NextResponse.json({ error: "Vector database unavailable" }, { status: 503 })
     }
 

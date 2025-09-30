@@ -41,25 +41,49 @@ export async function callJsonModel<T extends z.ZodType>(
 ): Promise<z.infer<T>> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config }
 
+  const controller = new AbortController()
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
   try {
+    if (finalConfig.timeout && finalConfig.timeout > 0) {
+      timeoutId = setTimeout(() => controller.abort(), finalConfig.timeout)
+    }
+
     // Use generateObject for structured output with schema
     const result = await generateObject({
       model: openai(finalConfig.model),
       schema,
       prompt,
       temperature: finalConfig.temperature,
-      maxTokens: finalConfig.maxTokens,
+      maxOutputTokens: finalConfig.maxTokens,
+      abortSignal: controller.signal,
     })
 
     // Validate the response against the schema
     return validateSchema(schema, result.object)
   } catch (error: any) {
+    const isAbort =
+      error?.name === "AbortError" ||
+      error?.cause?.name === "AbortError" ||
+      (typeof error?.message === "string" && error.message.toLowerCase().includes("abort"))
+
+    if (isAbort) {
+      console.error("[LLM] JSON model call timed out:", {
+        timeoutMs: finalConfig.timeout,
+        model: finalConfig.model,
+        promptLength: prompt.length,
+      })
+      throw new Error(`LLM call timed out after ${finalConfig.timeout}ms`)
+    }
+
     console.error("[LLM] JSON model call failed:", {
-      error: error.message,
+      error: error?.message ?? String(error),
       model: finalConfig.model,
       promptLength: prompt.length,
     })
-    throw new Error(`LLM call failed: ${error.message}`)
+    throw new Error(`LLM call failed: ${error?.message ?? String(error)}`)
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
   }
 }
 
@@ -137,21 +161,44 @@ export async function callTextModel(
 ): Promise<string> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config }
 
+  const controller = new AbortController()
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+
   try {
+    if (finalConfig.timeout && finalConfig.timeout > 0) {
+      timeoutId = setTimeout(() => controller.abort(), finalConfig.timeout)
+    }
+
     const result = await generateText({
       model: openai(finalConfig.model),
       prompt,
       temperature: finalConfig.temperature,
-      maxTokens: finalConfig.maxTokens,
+      maxOutputTokens: finalConfig.maxTokens,
+      abortSignal: controller.signal,
     })
 
     return result.text
   } catch (error: any) {
+    const isAbort =
+      error?.name === "AbortError" ||
+      error?.cause?.name === "AbortError" ||
+      (typeof error?.message === "string" && error.message.toLowerCase().includes("abort"))
+
+    if (isAbort) {
+      console.error("[LLM] Text model call timed out:", {
+        timeoutMs: finalConfig.timeout,
+        model: finalConfig.model,
+      })
+      throw new Error(`LLM text call timed out after ${finalConfig.timeout}ms`)
+    }
+
     console.error("[LLM] Text model call failed:", {
-      error: error.message,
+      error: error?.message ?? String(error),
       model: finalConfig.model,
     })
-    throw new Error(`LLM text call failed: ${error.message}`)
+    throw new Error(`LLM text call failed: ${error?.message ?? String(error)}`)
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId)
   }
 }
 

@@ -15,6 +15,9 @@ export interface UploadResult {
   evidenceCount?: number
   error?: string
   fileHash?: string
+  // HTTP metadata for error cases
+  httpStatus?: number
+  responseBody?: any
 }
 
 /**
@@ -46,6 +49,33 @@ export async function uploadResume(
 
     if (onProgress) {
       onProgress(50)
+    }
+
+    // Ensure we only parse JSON on success; otherwise surface structured error
+    if (!response.ok) {
+      let errorBody: any
+      try {
+        errorBody = await response.clone().json()
+      } catch {
+        try {
+          errorBody = await response.text()
+        } catch {
+          errorBody = null
+        }
+      }
+
+      const message =
+        (errorBody && (errorBody.error || errorBody.message)) ||
+        (typeof errorBody === "string" && errorBody) ||
+        "Upload failed"
+
+      return {
+        success: false,
+        status: "error",
+        error: `[${response.status}] ${message}`,
+        httpStatus: response.status,
+        responseBody: errorBody,
+      }
     }
 
     const data: IngestResponse = await response.json()

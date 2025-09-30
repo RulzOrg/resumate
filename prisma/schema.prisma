@@ -41,7 +41,7 @@ model Resume {
   fileType         String    @map("file_type") @db.VarChar(50)
   fileSize         Int       @map("file_size")
   fileHash         String?   @map("file_hash") @db.VarChar(64)
-  contentText      String?   @map("content_text")
+  processingStatus String    @default("pending") @map("processing_status") @db.VarChar(32)
   kind             String    @default("uploaded") @db.VarChar(32)
   processingStatus String    @default("pending") @map("processing_status") @db.VarChar(32)
   processingError  String?   @map("processing_error")
