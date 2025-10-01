@@ -170,6 +170,17 @@ export function getPricingTierByStripePrice(stripePriceId: string): PricingTier 
   return [...getPricingTiers(), ...getAnnualPricingTiers()].find(tier => tier.stripePriceId === stripePriceId)
 }
 
+// Provider-agnostic resolver for price IDs
+export function getPriceIdForProvider(tierId: string, provider: 'stripe' | 'polar'): string | undefined {
+  if (provider === 'stripe') {
+    return getPricingTier(tierId)?.stripePriceId
+  }
+  // Polar IDs come from env; we only support Pro tiers for now
+  if (tierId === 'pro') return process.env.POLAR_PRICE_PRO_MONTHLY
+  if (tierId === 'pro-annual') return process.env.POLAR_PRICE_PRO_YEARLY
+  return undefined
+}
+
 export function isFeatureAvailable(userPlan: string, feature: keyof PricingTier['limits']): boolean {
   const tier = getPricingTier(userPlan)
   if (!tier) return false

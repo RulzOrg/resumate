@@ -58,16 +58,13 @@ export function PricingCard({
     setIsLoading(true)
 
     try {
-      console.log('Frontend: Sending price ID:', tier.stripePriceId)
-      console.log('Frontend: Full tier data:', tier)
-      
       const response = await fetch("/api/billing/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          priceId: tier.stripePriceId,
+          planId: tier.id,
           userId: user?.id,
         }),
       })
