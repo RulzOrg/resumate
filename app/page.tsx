@@ -41,6 +41,9 @@ export default function HomePage() {
               <a href="#features" className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white font-sans">
                 Features
               </a>
+              <Link href="/health-check" className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white font-sans">
+                Health Check
+              </Link>
               <a href="#pricing" className="px-4 py-2 text-sm font-medium text-white/80 hover:text-white font-sans">
                 Pricing
               </a>
