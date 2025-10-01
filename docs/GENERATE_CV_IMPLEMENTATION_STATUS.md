@@ -11,9 +11,9 @@
 | Phase | Status | Completion | Priority |
 |-------|--------|------------|----------|
 | **Phase 1: Foundation** | ✅ Complete | 100% | Critical |
-| **Phase 2: Eligibility Gate** | ⏳ Pending | 0% | Critical |
-| **Phase 3: Prompt System** | ⏳ Pending | 0% | Critical |
-| **Phase 4: Variant Generation** | ⏳ Pending | 0% | Critical |
+| **Phase 2: Eligibility Gate** | ✅ Complete | 100% | Critical |
+| **Phase 3: Prompt System** | ✅ Complete | 100% | Critical |
+| **Phase 4: Variant Generation** | ✅ Complete | 100% | Critical |
 | **Phase 5: Must-Hit Keywords** | ⏳ Pending | 0% | High |
 | **Phase 6: Section Locking** | ⏳ Pending | 0% | Medium |
 | **Phase 7: Skills Changelog** | ⏳ Pending | 0% | Medium |
@@ -22,7 +22,7 @@
 | **Phase 10: UI Integration** | ⏳ Pending | 0% | Medium |
 | **Phase 11: Testing** | ⏳ Pending | 0% | High |
 
-**Total Progress:** 🟡 **9% Complete** (1 of 11 phases)
+**Total Progress:** 🟢 **36% Complete** (4 of 11 phases - ALL CRITICAL PHASES DONE!)
 
 ---
 
@@ -163,13 +163,13 @@ const variant = await createCvVariant({
 
 ---
 
-## ⏳ Phase 2: Eligibility Gate (PENDING)
+## ✅ Phase 2: Eligibility Gate (COMPLETE)
 
 ### What Needs to Be Built
 
-#### 1. Eligibility API (`app/api/cv/eligibility/route.ts`)
+#### 1. Eligibility API (`app/api/cv/eligibility/route.ts`) ✅
 
-**Requirements:**
+**Implemented:**
 - Check match score against MIN_SCORE (60%)
 - Validate must-have skill coverage (70% minimum)
 - Return reasons if blocked
@@ -205,9 +205,9 @@ const variant = await createCvVariant({
 }
 ```
 
-#### 2. Eligibility UI Component (`components/cv/eligibility-gate.tsx`)
+#### 2. Eligibility UI Component (`components/cv/eligibility-gate.tsx`) ✅
 
-**Requirements:**
+**Implemented:**
 - Show eligibility status (allowed/blocked)
 - Display match score and skill coverage
 - List missing must-have skills as badges
@@ -222,20 +222,20 @@ const variant = await createCvVariant({
 - Show guidance prominently
 - Allow retry after resume updates
 
-### Files to Create
+### Files Created ✅
 
 ```
-app/api/cv/eligibility/route.ts       (~150 lines)
-components/cv/eligibility-gate.tsx    (~200 lines)
+app/api/cv/eligibility/route.ts       (200 lines) ✅
+components/cv/eligibility-gate.tsx    (262 lines) ✅
 ```
 
 ---
 
-## ⏳ Phase 3: Enhanced Prompt System (PENDING)
+## ✅ Phase 3: Enhanced Prompt System (COMPLETE)
 
-### What Needs to Be Built
+### What Was Built
 
-#### 1. Prompt Builder (`lib/prompts/cv-generation.ts`)
+#### 1. Prompt Builder (`lib/prompts/cv-generation.ts`) ✅
 
 **Core Function:**
 ```typescript
@@ -280,20 +280,21 @@ validateMustHits(draft: CvDraft, mustHits: string[]): ValidationResult
 validateSkillChanges(skills: string[], allowedSkills: Set<string>): boolean
 ```
 
-### Files to Create
+### Files Created ✅
 
 ```
-lib/prompts/cv-generation.ts          (~500 lines)
-lib/validators/cv-validation.ts       (~200 lines)
+lib/prompts/cv-generation.ts          (308 lines) ✅
 ```
+
+**Note:** Validation is embedded in the prompt system via schema enforcement with Zod.
 
 ---
 
-## ⏳ Phase 4: Variant Generation API (PENDING)
+## ✅ Phase 4: Variant Generation API (COMPLETE)
 
-### What Needs to Be Built
+### What Was Built
 
-#### 1. Generation API (`app/api/cv/generate/route.ts`)
+#### 1. Generation API (`app/api/cv/generate/route.ts`) ✅
 
 **Flow:**
 1. Check eligibility (call Phase 2 API)
@@ -377,10 +378,10 @@ const { object: cvDraft } = await generateObject({
 });
 ```
 
-### Files to Create
+### Files Created ✅
 
 ```
-app/api/cv/generate/route.ts          (~400 lines)
+app/api/cv/generate/route.ts          (323 lines) ✅
 ```
 
 ---
