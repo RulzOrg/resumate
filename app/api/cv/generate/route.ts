@@ -24,7 +24,7 @@ import {
   detectSpelling,
   extractEmphasis,
 } from "@/lib/prompts/cv-generation";
-import { searchSimilarEvidencePoints } from "@/lib/match";
+import { searchEvidence } from "@/lib/match";
 
 /**
  * Generate 3 CV variants (Conservative, Balanced, Bold) for a job
@@ -96,12 +96,14 @@ export async function POST(request: NextRequest) {
     // Retrieve evidence from Qdrant (top 10 most relevant points)
     let evidence: any[] = [];
     try {
-      const evidenceResult = await searchSimilarEvidencePoints({
-        job_analysis_id: jobId,
-        resume_id: resumeId,
-        top_k: 10,
-      });
-      evidence = evidenceResult.matches || [];
+      // Extract search queries from job analysis
+      const queries = [
+        jobAnalysis.job_title,
+        ...(jobAnalysis.keywords || []).slice(0, 5),
+        ...((jobAnalysis.analysis_result as any)?.key_requirements || []).slice(0, 3),
+      ];
+      
+      evidence = await searchEvidence(user.id, queries, 10);
     } catch (error) {
       console.error("Evidence retrieval error:", error);
       // Continue without evidence - will use full resume text

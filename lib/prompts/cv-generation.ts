@@ -1,6 +1,5 @@
 import type { Resume, JobAnalysis } from "@/lib/db";
 import type { RewriteOptions, ImmutableFields, GenerationContext } from "@/lib/schemas.generate";
-import type { EvidencePoint } from "@/lib/match";
 
 /**
  * Prompt structure for CV generation
@@ -35,9 +34,10 @@ export function buildCvGenerationPrompt(context: GenerationContext): Prompt {
   };
 
   const evidenceBlock = context.evidence.length > 0
-    ? context.evidence.map((e, i) => 
-        `[${e.evidence_id}] ${e.text}\n  → Source: ${e.company}, ${e.title}, ${e.section}`
-      ).join('\n\n')
+    ? context.evidence.map((e: any, i: number) => {
+        const metadata = e.metadata || {};
+        return `[${e.id || i}] ${e.text}\n  → Source: Resume section: ${metadata.section || 'unknown'}`;
+      }).join('\n\n')
     : "No specific evidence provided. Use only content from master resume.";
 
   const locksBlock = context.locks.sections.length > 0 || context.locks.bullet_ids.length > 0
