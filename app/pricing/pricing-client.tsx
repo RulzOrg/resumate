@@ -79,7 +79,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
           </div>
 
           {/* Toggle */}
-          <div className="flex justify-center mt-10">
+          <div className="flex flex-col items-center gap-3 mt-10">
             <div className="relative flex items-center p-1 bg-white/5 border border-white/10 rounded-full">
               <button
                 onClick={() => setBillingCycle('monthly')}
@@ -97,23 +97,27 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                 className="absolute h-10 w-1/2 bg-white/10 rounded-full transition-transform duration-300 ease-in-out"
                 style={{ transform: toggleTransform }}
               ></div>
-              <span className="absolute top-1/2 -translate-y-1/2 right-4 text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full px-2 py-0.5">
-                Save 17%
-              </span>
             </div>
+            {billingCycle === 'annual' && (
+              <span className="text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full px-3 py-1">
+                Save 17% with annual billing
+              </span>
+            )}
           </div>
 
           {/* Pricing Grid */}
-          <div className="relative max-w-5xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {currentTiers.map((tier, index) => (
-              <PricingCard
-                key={tier.id}
-                tier={tier}
-                billingCycle={billingCycle}
-                currentPlan={currentPlan}
-                popular={tier.popular || index === 1}
-              />
-            ))}
+          <div className="relative max-w-6xl mx-auto mt-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+              {currentTiers.map((tier, index) => (
+                <PricingCard
+                  key={tier.id}
+                  tier={tier}
+                  billingCycle={billingCycle}
+                  currentPlan={currentPlan}
+                  popular={tier.popular}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -127,52 +131,60 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
           </div>
 
           <div className="mt-12 overflow-x-auto">
-            <div className="min-w-full w-max md:w-full">
+            <div className="min-w-full max-w-3xl mx-auto">
               {/* Header */}
-              <div className="grid grid-cols-4 gap-4 pb-4 border-b border-white/10">
+              <div className="grid grid-cols-3 gap-6 pb-4 border-b border-white/10">
                 <div className="text-base font-medium text-white/90">Features</div>
                 <div className="text-center text-base font-medium text-white/90">Free</div>
                 <div className="text-center text-base font-medium text-white/90">Pro</div>
-                <div className="text-center text-base font-medium text-white/90">Enterprise</div>
               </div>
 
               {/* Feature Rows */}
               <div className="divide-y divide-white/10">
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
-                  <div className="text-sm text-white/80">AI Resume Generations</div>
-                  <div className="text-center text-sm text-white/90">3 Total</div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">Resume Optimizations</div>
+                  <div className="text-center text-sm text-white/90">3/month</div>
                   <div className="text-center text-sm text-white/90">Unlimited</div>
+                </div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">Job Analyses</div>
+                  <div className="text-center text-sm text-white/90">5/month</div>
                   <div className="text-center text-sm text-white/90">Unlimited</div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
-                  <div className="text-sm text-white/80">AI Cover Letter Generator</div>
-                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">Resume Health Checker</div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
-                  <div className="text-sm text-white/80">Advanced Job Analysis</div>
-                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">ATS Compatibility Check</div>
+                  <div className="text-center text-sm text-white/90">Basic</div>
+                  <div className="text-center text-sm text-white/90">Advanced</div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
-                  <div className="text-sm text-white/80">Premium Templates</div>
-                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
-                  <div className="text-sm text-white/80">Team Management</div>
-                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">Cover Letter Generation</div>
                   <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
-                <div className="grid grid-cols-4 gap-4 py-5 items-center">
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">Evidence-Based Rewriting</div>
+                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">Resume Version Management</div>
+                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-white/80">Keyword Optimization</div>
+                  <div className="text-center"><Minus className="h-5 w-5 text-white/40 mx-auto" /></div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-white/80">Support</div>
                   <div className="text-center text-sm text-white/90">Community</div>
                   <div className="text-center text-sm text-white/90">Priority Email</div>
-                  <div className="text-center text-sm text-white/90">Dedicated Manager</div>
                 </div>
               </div>
             </div>
