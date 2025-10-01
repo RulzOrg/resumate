@@ -1357,3 +1357,244 @@ function extractPrimaryEmail(clerkUser: any): string {
 
   return clerkUser.email_address || clerkUser.email || ""
 }
+
+// ============================================================================
+// CV Generation Functions (from GENERATE_CV-PRD.md)
+// ============================================================================
+
+import type { CvDraft, CvVariant, VersionedCv, ChangelogEntry } from "./schemas.generate"
+
+/**
+ * Create a new CV version for a specific job
+ */
+export async function createCvVersion(data: {
+  user_id: string
+  job_id: string
+  original_resume_id: string
+  status?: "current" | "archived"
+}): Promise<{ version_id: string }> {
+  const [version] = await sql`
+    INSERT INTO cv_versions (user_id, job_id, original_resume_id, status, created_at, updated_at)
+    VALUES (
+      ${data.user_id},
+      ${data.job_id},
+      ${data.original_resume_id},
+      ${data.status || "current"},
+      NOW(),
+      NOW()
+    )
+    RETURNING version_id
+  `
+  return version as { version_id: string }
+}
+
+/**
+ * Get a CV version with all its variants
+ */
+export async function getCvVersion(version_id: string, user_id: string): Promise<VersionedCv | undefined> {
+  const [version] = await sql`
+    SELECT 
+      cv.version_id,
+      cv.user_id,
+      cv.job_id,
+      cv.original_resume_id,
+      cv.status,
+      cv.created_at,
+      cv.updated_at,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'variant_id', var.variant_id,
+            'label', var.label,
+            'draft', var.draft,
+            'is_selected', var.is_selected,
+            'created_at', var.created_at
+          ) ORDER BY 
+            CASE var.label 
+              WHEN 'Conservative' THEN 1 
+              WHEN 'Balanced' THEN 2 
+              WHEN 'Bold' THEN 3 
+            END
+        ) FILTER (WHERE var.variant_id IS NOT NULL),
+        '[]'::json
+      ) as variants
+    FROM cv_versions cv
+    LEFT JOIN cv_variants var ON cv.version_id = var.version_id
+    WHERE cv.version_id = ${version_id} AND cv.user_id = ${user_id}
+    GROUP BY cv.version_id, cv.user_id, cv.job_id, cv.original_resume_id, cv.status, cv.created_at, cv.updated_at
+  `
+  return version as VersionedCv | undefined
+}
+
+/**
+ * Get all CV versions for a user
+ */
+export async function getUserCvVersions(user_id: string): Promise<Array<VersionedCv & { 
+  job_title?: string
+  company_name?: string
+  resume_title?: string
+}>> {
+  const versions = await sql`
+    SELECT 
+      cv.version_id,
+      cv.user_id,
+      cv.job_id,
+      cv.original_resume_id,
+      cv.status,
+      cv.created_at,
+      cv.updated_at,
+      ja.job_title,
+      ja.company_name,
+      r.title as resume_title,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'variant_id', var.variant_id,
+            'label', var.label,
+            'is_selected', var.is_selected,
+            'created_at', var.created_at
+          ) ORDER BY 
+            CASE var.label 
+              WHEN 'Conservative' THEN 1 
+              WHEN 'Balanced' THEN 2 
+              WHEN 'Bold' THEN 3 
+            END
+        ) FILTER (WHERE var.variant_id IS NOT NULL),
+        '[]'::json
+      ) as variants
+    FROM cv_versions cv
+    LEFT JOIN cv_variants var ON cv.version_id = var.version_id
+    LEFT JOIN job_analysis ja ON cv.job_id = ja.id
+    LEFT JOIN resumes r ON cv.original_resume_id = r.id
+    WHERE cv.user_id = ${user_id}
+    GROUP BY cv.version_id, cv.user_id, cv.job_id, cv.original_resume_id, cv.status, cv.created_at, cv.updated_at, ja.job_title, ja.company_name, r.title
+    ORDER BY cv.created_at DESC
+  `
+  return versions as Array<VersionedCv & { 
+    job_title?: string
+    company_name?: string
+    resume_title?: string
+  }>
+}
+
+/**
+ * Archive all current versions for a user-job pair
+ * Used when creating a new version to replace old ones
+ */
+export async function archivePreviousVersions(user_id: string, job_id: string): Promise<void> {
+  await sql`
+    UPDATE cv_versions
+    SET status = 'archived', updated_at = NOW()
+    WHERE user_id = ${user_id} 
+      AND job_id = ${job_id} 
+      AND status = 'current'
+  `
+}
+
+/**
+ * Create a CV variant for a version
+ */
+export async function createCvVariant(data: {
+  version_id: string
+  label: "Conservative" | "Balanced" | "Bold"
+  draft: CvDraft
+  is_selected?: boolean
+}): Promise<{ variant_id: string }> {
+  const [variant] = await sql`
+    INSERT INTO cv_variants (version_id, label, draft, is_selected, created_at)
+    VALUES (
+      ${data.version_id},
+      ${data.label},
+      ${JSON.stringify(data.draft)},
+      ${data.is_selected || false},
+      NOW()
+    )
+    RETURNING variant_id
+  `
+  return variant as { variant_id: string }
+}
+
+/**
+ * Get a specific CV variant
+ */
+export async function getCvVariant(variant_id: string, user_id: string): Promise<CvVariant | undefined> {
+  const [variant] = await sql`
+    SELECT 
+      var.variant_id,
+      var.label,
+      var.draft,
+      var.is_selected,
+      var.created_at
+    FROM cv_variants var
+    JOIN cv_versions cv ON var.version_id = cv.version_id
+    WHERE var.variant_id = ${variant_id} AND cv.user_id = ${user_id}
+  `
+  return variant as CvVariant | undefined
+}
+
+/**
+ * Select a variant as the user's choice
+ * Deselects all other variants for the same version
+ */
+export async function selectCvVariant(variant_id: string, user_id: string): Promise<void> {
+  // First, get the version_id
+  const [variant] = await sql`
+    SELECT var.version_id
+    FROM cv_variants var
+    JOIN cv_versions cv ON var.version_id = cv.version_id
+    WHERE var.variant_id = ${variant_id} AND cv.user_id = ${user_id}
+  `
+  
+  if (!variant) return
+  
+  // Deselect all variants for this version
+  await sql`
+    UPDATE cv_variants
+    SET is_selected = false
+    WHERE version_id = ${variant.version_id}
+  `
+  
+  // Select this variant
+  await sql`
+    UPDATE cv_variants
+    SET is_selected = true
+    WHERE variant_id = ${variant_id}
+  `
+}
+
+/**
+ * Log a change made during CV generation
+ */
+export async function logCvChange(data: {
+  version_id: string
+  change_type: "skill_added" | "skill_removed" | "section_moved" | "bullet_locked" | "experience_reordered" | "section_trimmed" | "keyword_added"
+  details: Record<string, any>
+}): Promise<void> {
+  await sql`
+    INSERT INTO cv_changelog (version_id, change_type, details, created_at)
+    VALUES (
+      ${data.version_id},
+      ${data.change_type},
+      ${JSON.stringify(data.details)},
+      NOW()
+    )
+  `
+}
+
+/**
+ * Get changelog for a CV version
+ */
+export async function getCvChangelog(version_id: string): Promise<ChangelogEntry[]> {
+  const changelog = await sql`
+    SELECT 
+      changelog_id,
+      version_id,
+      change_type,
+      details,
+      created_at
+    FROM cv_changelog
+    WHERE version_id = ${version_id}
+    ORDER BY created_at DESC
+  `
+  return changelog as ChangelogEntry[]
+}
