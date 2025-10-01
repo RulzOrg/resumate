@@ -1537,29 +1537,46 @@ export async function getCvVariant(variant_id: string, user_id: string): Promise
  * Deselects all other variants for the same version
  */
 export async function selectCvVariant(variant_id: string, user_id: string): Promise<void> {
-  // First, get the version_id
-  const [variant] = await sql`
-    SELECT var.version_id
-    FROM cv_variants var
-    JOIN cv_versions cv ON var.version_id = cv.version_id
-    WHERE var.variant_id = ${variant_id} AND cv.user_id = ${user_id}
-  `
-  
-  if (!variant) return
-  
-  // Deselect all variants for this version
-  await sql`
-    UPDATE cv_variants
-    SET is_selected = false
-    WHERE version_id = ${variant.version_id}
-  `
-  
-  // Select this variant
-  await sql`
-    UPDATE cv_variants
-    SET is_selected = true
-    WHERE variant_id = ${variant_id}
-  `
+  // Start a transaction
+  await sql`BEGIN`
+  try {
+    // First, get and lock the version_id
+    const [variant] = await sql`
+      SELECT var.version_id
+      FROM cv_variants var
+      JOIN cv_versions cv ON var.version_id = cv.version_id
+      WHERE var.variant_id = ${variant_id}
+        AND cv.user_id = ${user_id}
+      FOR UPDATE
+    `
+    
+    if (!variant) {
+      // Nothing to select—rollback and exit
+      await sql`ROLLBACK`
+      return
+    }
+    
+    // Deselect all variants for this version
+    await sql`
+      UPDATE cv_variants
+      SET is_selected = false
+      WHERE version_id = ${variant.version_id}
+    `
+    
+    // Select this variant
+    await sql`
+      UPDATE cv_variants
+      SET is_selected = true
+      WHERE variant_id = ${variant_id}
+    `
+    
+    // Commit the transaction
+    await sql`COMMIT`
+  } catch (error) {
+    // Roll back on any error
+    await sql`ROLLBACK`
+    throw error
+  }
 }
 
 /**

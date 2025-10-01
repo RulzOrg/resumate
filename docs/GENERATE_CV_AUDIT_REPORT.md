@@ -163,7 +163,7 @@ The PRD specifies a complete structured data model with:
 
 ```typescript
 interface ImmutableFields {
-  name: string | undefined
+  name: string | undefined 
   email: string | undefined
   phone: string | undefined
   address?: string

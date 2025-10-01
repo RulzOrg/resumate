@@ -1,11 +1,15 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getOrCreateUser, getCvVariant } from "@/lib/db";
+import { getOrCreateUser, getCvVariant, selectCvVariant } from "@/lib/db";
 import { z } from "zod";
 
 const exportRequestSchema = z.object({
   variant_id: z.string(),
   format: z.enum(["docx", "pdf", "txt"]),
+});
+
+const selectVariantSchema = z.object({
+  variant_id: z.string().min(1, "variant_id is required"),
 });
 
 /**
@@ -46,7 +50,7 @@ export async function POST(request: NextRequest) {
       return new Response(textContent, {
         headers: {
           "Content-Type": "text/plain",
-          "Content-Disposition": `attachment; filename="cv-${variant.label.toLowerCase()}.txt"`,
+          "Content-Disposition": `attachment; filename="cv-${variant.label.toLowerCase().replace(/[^a-z0-9-_]/g, '-')}.txt"`,
         },
       });
     }
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
         format: "docx",
         message: "DOCX generation requires client-side library integration",
         content: draft,
-        filename: `cv-${variant.label.toLowerCase()}.docx`,
+       filename: `cv-${variant.label.toLowerCase().replace(/[^a-z0-9-_]/g, '-')}.docx`,
         instructions: "Use 'docx' library on frontend to generate the file",
       });
     }
@@ -70,7 +74,9 @@ export async function POST(request: NextRequest) {
         format: "pdf",
         message: "PDF generation requires server-side rendering",
         content: draft,
-        filename: `cv-${variant.label.toLowerCase()}.pdf`,
+        filename: `cv-${variant.label
+          .toLowerCase()
+          .replace(/[^a-z0-9-_]/g, '-')}.pdf`,
         instructions: "Use Puppeteer or PDFKit to generate the PDF",
       });
     }
@@ -204,20 +210,32 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const { variant_id } = await request.json();
-    if (!variant_id) {
+    const body = await request.json();
+    const { variant_id } = selectVariantSchema.parse(body);
+
+    // Verify the variant exists and belongs to the authenticated user
+    const variant = await getCvVariant(variant_id, user.id);
+    if (!variant) {
       return NextResponse.json(
-        { error: "variant_id is required" },
-        { status: 400 }
+        { error: "Variant not found" },
+        { status: 404 }
       );
     }
 
-    const { selectCvVariant } = await import("@/lib/db");
+    // Now safe to select the variant
     await selectCvVariant(variant_id, user.id);
 
     return NextResponse.json({ success: true, selected: variant_id });
   } catch (error: any) {
     console.error("Select variant error:", error);
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid request parameters", details: error.errors },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       { error: error.message || "Failed to select variant" },
       { status: 500 }

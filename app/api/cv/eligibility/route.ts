@@ -17,10 +17,15 @@ const eligibilityRequestSchema = z.object({
  * Check if user is eligible to generate CV for a specific job
  * 
  * Eligibility criteria:
- * 1. Match score >= MIN_SCORE (60%)
+ * 1. Match score >= MIN_SCORE (60%) - if scoring succeeds
  * 2. Must-have skill coverage >= 70%
  * 
  * If not eligible, provides actionable guidance to improve
+ * 
+ * API Response:
+ * - score: number | null (null if scoring failed)
+ * - scoring_error?: string (present when scoring fails, describes the error)
+ * - When score is null, eligibility is based solely on must-have coverage
  */
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +56,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Score the resume-job fit
-    let score = 0;
+    let score: number | null = null;
+    let scoringError: string | undefined;
     try {
       const scoreResult = await scoreFit({
         job_analysis_id,
@@ -60,8 +66,10 @@ export async function POST(request: NextRequest) {
       });
       score = scoreResult.score?.overall || 0;
     } catch (error) {
-      console.error("Scoring error:", error);
-      // Continue with score=0 if scoring fails
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Scoring error:", errorMessage, error);
+      scoringError = `Failed to calculate match score: ${errorMessage}`;
+      // score remains null when scoring fails
     }
 
     // Extract must-have skills
@@ -77,19 +85,28 @@ export async function POST(request: NextRequest) {
     if (!resumeText) {
       return NextResponse.json({
         allowed: false,
-        score: 0,
+        score: null,
         must_have_coverage: 0,
         reasons: ["Resume content is empty or not extracted"],
         guidance: [
-          "Please re-upload your resume",
+    const coveredMustHaves = mustHaveSkills.filter(skill =>
+      new RegExp(
+        `\\b${skill.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\          "Please re-upload your resume",
           "Ensure the file is a valid PDF or DOCX document",
           "Check that the resume contains readable text"
         ],
         missing_must_haves: mustHaveSkills,
-      });
+        ...(scoringError && { scoring_error: scoringError }),
+      });')}\\b`
+      ).test(resumeText)
+    );
+    
+    const mustHaveCoverage = mustHaveSkills.length > 0
+      ? coveredMustHaves.length / mustHaveSkills.length
+      : 1; // If no must-haves, coverage is 100%
     }
 
-    const coveredMustHaves = mustHaveSkills.filter(skill =>
+    const coveredMustHaves = mustHaveSkills.filter((skill: string) =>
       resumeText.includes(skill.toLowerCase())
     );
     
@@ -97,19 +114,21 @@ export async function POST(request: NextRequest) {
       ? coveredMustHaves.length / mustHaveSkills.length
       : 1; // If no must-haves, coverage is 100%
 
-    const missingMustHaves = mustHaveSkills.filter(skill =>
+    const missingMustHaves = mustHaveSkills.filter((skill: string) =>
       !coveredMustHaves.includes(skill)
     );
 
     // Determine eligibility
-    const allowed = score >= MIN_SCORE && mustHaveCoverage >= MIN_MUST_HAVE_COVERAGE;
+    // When score is null (scoring failed), base eligibility solely on must-have coverage
+    const scoreCheck = score !== null ? score >= MIN_SCORE : true;
+    const allowed = scoreCheck && mustHaveCoverage >= MIN_MUST_HAVE_COVERAGE;
 
     if (!allowed) {
       const reasons: string[] = [];
       const guidance: string[] = [];
 
       // Score-related feedback
-      if (score < MIN_SCORE) {
+      if (score !== null && score < MIN_SCORE) {
         reasons.push(`Match score is ${score}% (minimum: ${MIN_SCORE}%)`);
         
         guidance.push(
@@ -130,6 +149,9 @@ export async function POST(request: NextRequest) {
             "Add quantifiable results from projects using required technologies"
           );
         }
+      } else if (score === null) {
+        reasons.push("Match score could not be calculated due to a scoring error");
+        guidance.push("Please try again. If the issue persists, contact support.");
       }
 
       // Must-have skills feedback
@@ -139,15 +161,15 @@ export async function POST(request: NextRequest) {
           `Only ${coveragePercent}% of required skills are covered (minimum: ${Math.round(MIN_MUST_HAVE_COVERAGE * 100)}%)`
         );
         
-        // Provide specific guidance for missing skills
-        const topMissing = missingMustHaves.slice(0, 5);
-        topMissing.forEach(skill => {
-          guidance.push(`Add a bullet point demonstrating "${skill}" experience to your resume`);
-        });
-
-        if (missingMustHaves.length > 5) {
-          guidance.push(
-            `Focus on the ${topMissing.length} most critical missing skills first`,
+      return NextResponse.json({
+        allowed: false,
+        score,
+        ...(score < MIN_SCORE && { score_gap: MIN_SCORE - score }),
+        must_have_coverage: Math.round(mustHaveCoverage * 100),
+        reasons,
+        guidance: guidance.slice(0, 6), // Limit to 6 most important items
+        missing_must_haves: missingMustHaves.slice(0, 8), // Show top 8 missing
+      });
             "Consider taking courses or projects to build experience in these areas"
           );
         }
@@ -156,11 +178,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         allowed: false,
         score,
-        min_score_needed: Math.max(0, MIN_SCORE - score),
+        min_score_needed: score !== null ? Math.max(0, MIN_SCORE - score) : null,
         must_have_coverage: Math.round(mustHaveCoverage * 100),
         reasons,
         guidance: guidance.slice(0, 6), // Limit to 6 most important items
         missing_must_haves: missingMustHaves.slice(0, 8), // Show top 8 missing
+        ...(scoringError && { scoring_error: scoringError }),
       });
     }
 
@@ -172,6 +195,7 @@ export async function POST(request: NextRequest) {
       message: "You're qualified for this role! Ready to generate optimized CV variants.",
       covered_must_haves: coveredMustHaves.length,
       total_must_haves: mustHaveSkills.length,
+      ...(scoringError && { scoring_error: scoringError }),
     });
   } catch (error: any) {
     console.error("Eligibility check error:", error);

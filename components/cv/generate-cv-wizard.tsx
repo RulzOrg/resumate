@@ -78,10 +78,19 @@ export function GenerateCvWizard({
         throw new Error(data.error || "Failed to generate variants");
       }
 
+      if (!data.version_id) {
+        throw new Error("No version ID returned from generation");
+      }
+
       // Fetch full variants
       const versionRes = await fetch(
         `/api/cv/generate?version_id=${data.version_id}`
       );
+
+      if (!versionRes.ok) {
+        throw new Error("Failed to fetch variant details");
+      }
+
       const versionData = await versionRes.json();
 
       setVariants(versionData.version.variants || []);
@@ -114,13 +123,18 @@ export function GenerateCvWizard({
     }
   };
 
-  const handleExport = async (variantId: string, format: "docx" | "pdf") => {
+  const handleExport = async (variantId: string, format: "docx" | "pdf" | "txt") => {
     try {
       const res = await fetch("/api/cv/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ variant_id: variantId, format }),
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to export CV");
+      }
 
       if (format === "txt") {
         const text = await res.text();
@@ -133,6 +147,7 @@ export function GenerateCvWizard({
         URL.revokeObjectURL(url);
       } else {
         const data = await res.json();
+        // Consider replacing alert with a proper toast/modal notification
         console.log("Export response:", data);
         alert(data.message + "\n\n" + data.instructions);
       }

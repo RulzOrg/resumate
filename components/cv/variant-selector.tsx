@@ -47,6 +47,12 @@ const variantInfo = {
     description: "Maximum impact with strong action verbs and ATS optimization",
     bestFor: "Competitive roles where you want to stand out",
   },
+  Default: {
+       icon: FileText,
+       color: "gray",
+       description: "Custom variant",
+       bestFor: "Custom use case",
+     },
 };
 
 export function VariantSelector({
@@ -114,23 +120,35 @@ export function VariantSelector({
 
           {variants.map((variant) => {
             const info = variantInfo[variant.label];
-            const Icon = info.icon;
-            const isSelected = variant.variant_id === selectedVariantId;
-
-            return (
-              <TabsContent key={variant.variant_id} value={variant.variant_id} className="space-y-4">
-                {/* Variant info */}
                 <div className={cn(
                   "p-4 rounded-lg border",
-                  `bg-${info.color}-500/10 border-${info.color}-400/30`
+                  info.color === "blue" && "bg-blue-500/10 border-blue-400/30",
+                  info.color === "emerald" && "bg-emerald-500/10 border-emerald-400/30",
+                  info.color === "purple" && "bg-purple-500/10 border-purple-400/30"
                 )}>
                   <div className="flex items-start gap-3">
-                    <Icon className={cn("h-5 w-5 mt-0.5", `text-${info.color}-400`)} />
+                    <Icon className={cn(
+                      "h-5 w-5 mt-0.5",
+                      info.color === "blue" && "text-blue-400",
+                      info.color === "emerald" && "text-emerald-400",
+                      info.color === "purple" && "text-purple-400"
+                    )} />
                     <div className="flex-1">
-                      <h3 className={cn("font-semibold mb-1", `text-${info.color}-200`)}>
+                      <h3 className={cn(
+                        "font-semibold mb-1",
+                        info.color === "blue" && "text-blue-200",
+                        info.color === "emerald" && "text-emerald-200",
+                        info.color === "purple" && "text-purple-200"
+                      )}>
                         {variant.label} Variant
                       </h3>
                       <p className="text-sm text-white/70 mb-2">{info.description}</p>
+                      <p className="text-xs text-white/50">
+                        <strong>Best for:</strong> {info.bestFor}
+                      </p>
+                    </div>
+                  </div>
+                </div>
                       <p className="text-xs text-white/50">
                         <strong>Best for:</strong> {info.bestFor}
                       </p>

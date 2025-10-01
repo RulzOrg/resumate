@@ -30,12 +30,13 @@ def run_cv_migration():
         print("   export DATABASE_URL='postgresql://...'")
         return False
 
-    # Fix potential channel_binding issue with Neon
-    if 'sslmode=require' in database_url and 'channel_binding' not in database_url:
-        # Remove problematic characters and ensure proper formatting
-        database_url = database_url.replace("'", "").strip()
-        if not database_url.endswith('?sslmode=require'):
-            database_url = database_url.rstrip('?&') + '?sslmode=require'
+    # Normalize database URL
+    database_url = database_url.strip().strip("'\"")
+
+    # Add SSL mode if connecting to Neon and not already specified
+    if 'neon.tech' in database_url and 'sslmode=' not in database_url:
+        separator = '&' if '?' in database_url else '?'
+        database_url += f'{separator}sslmode=require'
 
     # Read migration file
     migration_file = 'scripts/migrations/003_cv_generation_tables.sql'
@@ -94,8 +95,6 @@ def run_cv_migration():
         if missing_tables:
             print(f"❌ Required tables missing: {', '.join(missing_tables)}")
             print("   Run scripts/setup-database.py first to create base schema")
-            cursor.close()
-            conn.close()
             return False
 
         print("✓ All prerequisite tables exist")
@@ -175,10 +174,6 @@ def run_cv_migration():
         else:
             print("   ⚠️  No foreign keys found (unexpected)")
 
-        # Close connection
-        cursor.close()
-        conn.close()
-
         print("\n" + "="*60)
         print("✅ CV GENERATION TABLES MIGRATION COMPLETE")
         print("="*60)
@@ -202,6 +197,18 @@ def run_cv_migration():
             conn.rollback()
             print("   Changes rolled back")
         return False
+    finally:
+        # Safely close resources
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass  # Ignore errors during cleanup
 
 if __name__ == '__main__':
     print("=" * 60)

@@ -50,6 +50,11 @@ CREATE TABLE IF NOT EXISTS cv_variants (
   CONSTRAINT unique_variant_label_per_version UNIQUE (version_id, label)
 );
 
+-- Enforce at most one selected variant per version
+CREATE UNIQUE INDEX unique_selected_variant_per_version 
+  ON cv_variants(version_id) 
+  WHERE is_selected = true;
+
 -- Create indexes for cv_variants
 CREATE INDEX IF NOT EXISTS idx_cv_variants_version ON cv_variants(version_id);
 CREATE INDEX IF NOT EXISTS idx_cv_variants_label ON cv_variants(label);
