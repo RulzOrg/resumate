@@ -29,11 +29,12 @@ function getPricingTiers(): PricingTier[] {
       stripePriceId: '', // No Stripe price needed for free tier
       features: [
         '3 resume optimizations per month',
-        'Basic job analysis',
-        'ATS compatibility check',
+        '5 job analyses per month',
+        'Basic ATS compatibility check',
+        'Resume health checker',
         'Standard resume templates',
-        'Community support',
-        'Export to PDF/Word'
+        'Export to PDF/Word',
+        'Community support'
       ],
       limits: {
         resumeOptimizations: 3,
@@ -46,20 +47,23 @@ function getPricingTiers(): PricingTier[] {
     {
       id: 'pro',
       name: 'Pro',
-      description: 'Ideal for active job seekers and career changers',
+      description: 'For serious job seekers who want the best results',
       price: 19,
       currency: 'USD',
       interval: 'month',
       stripePriceId: process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_1234567890',
       features: [
         'Unlimited resume optimizations',
-        'Advanced job analysis with insights',
-        'Premium resume templates',
-        'Cover letter optimization',
+        'Unlimited job analysis',
+        'Advanced ATS scoring & insights',
+        'AI-powered resume health checker',
         'Resume version management',
+        'Evidence-based bullet rewriting',
         'Industry-specific recommendations',
+        'Keyword optimization',
+        'Cover letter generation',
         'Priority email support',
-        'Advanced ATS scoring'
+        'Export to PDF/Word/TXT'
       ],
       limits: {
         resumeOptimizations: 'unlimited',
@@ -68,34 +72,6 @@ function getPricingTiers(): PricingTier[] {
         supportLevel: 'priority'
       },
       popular: true
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      description: 'For professionals and teams who need the best',
-      price: 49,
-      currency: 'USD',
-      interval: 'month',
-      stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE_MONTHLY || 'price_0987654321',
-      features: [
-        'Everything in Pro',
-        'Team collaboration features',
-        'Custom branding options',
-        'API access for integrations',
-        'Advanced analytics dashboard',
-        'Bulk resume processing',
-        'Dedicated account manager',
-        'Custom integrations support',
-        'SLA guarantee (99.9% uptime)',
-        'White-label options'
-      ],
-      limits: {
-        resumeOptimizations: 'unlimited',
-        jobAnalyses: 'unlimited',
-        resumeVersions: 'unlimited',
-        supportLevel: 'dedicated'
-      },
-      popular: false
     }
   ]
 }
@@ -106,15 +82,17 @@ function getAnnualPricingTiers(): PricingTier[] {
     {
       id: 'pro-annual',
       name: 'Pro',
-      description: 'Ideal for active job seekers and career changers',
+      description: 'For serious job seekers who want the best results',
       price: 190, // 2 months free (12 * 19 - 38)
       currency: 'USD',
       interval: 'year',
       stripePriceId: process.env.STRIPE_PRICE_PRO_YEARLY || 'price_1234567891',
       features: [
         'Everything in Pro Monthly',
-        '2 months free (17% savings)',
-        'Annual strategy consultation'
+        'Save 17% with annual billing',
+        '2 months free',
+        'Annual career strategy consultation',
+        'Priority feature requests'
       ],
       limits: {
         resumeOptimizations: 'unlimited',
@@ -122,28 +100,7 @@ function getAnnualPricingTiers(): PricingTier[] {
         resumeVersions: 'unlimited',
         supportLevel: 'priority'
       },
-      popular: false
-    },
-    {
-      id: 'enterprise-annual',
-      name: 'Enterprise',
-      description: 'For professionals and teams who need the best',
-      price: 490, // 2 months free (12 * 49 - 98)
-      currency: 'USD',
-      interval: 'year',
-      stripePriceId: process.env.STRIPE_PRICE_ENTERPRISE_YEARLY || 'price_0987654322',
-      features: [
-        'Everything in Enterprise Monthly',
-        '2 months free (17% savings)',
-        'Quarterly business reviews'
-      ],
-      limits: {
-        resumeOptimizations: 'unlimited',
-        jobAnalyses: 'unlimited',
-        resumeVersions: 'unlimited', 
-        supportLevel: 'dedicated'
-      },
-      popular: false
+      popular: true
     }
   ]
 }
@@ -168,6 +125,17 @@ export function getPricingTier(tierId: string): PricingTier | undefined {
 
 export function getPricingTierByStripePrice(stripePriceId: string): PricingTier | undefined {
   return [...getPricingTiers(), ...getAnnualPricingTiers()].find(tier => tier.stripePriceId === stripePriceId)
+}
+
+// Provider-agnostic resolver for price IDs
+export function getPriceIdForProvider(tierId: string, provider: 'stripe' | 'polar'): string | undefined {
+  if (provider === 'stripe') {
+    return getPricingTier(tierId)?.stripePriceId
+  }
+  // Polar IDs come from env; we only support Pro tiers for now
+  if (tierId === 'pro') return process.env.POLAR_PRICE_PRO_MONTHLY
+  if (tierId === 'pro-annual') return process.env.POLAR_PRICE_PRO_YEARLY
+  return undefined
 }
 
 export function isFeatureAvailable(userPlan: string, feature: keyof PricingTier['limits']): boolean {

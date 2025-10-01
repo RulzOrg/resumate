@@ -1,34 +1,51 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getOrCreateUser, updateUserSubscription } from "@/lib/db"
-import { getPricingTierByStripePrice } from "@/lib/pricing"
+import { getPricingTier, getPricingTierByStripePrice, getPriceIdForProvider } from "@/lib/pricing"
 import { getStripe, isStripeConfigured } from "@/lib/stripe"
+import { getBillingProvider } from "@/lib/billing/config"
+import { createPolarCheckoutSession } from "@/lib/billing/polar"
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isStripeConfigured()) {
-      return NextResponse.json({ error: "Billing not configured" }, { status: 503 })
-    }
+    const provider = getBillingProvider()
     const { userId } = await auth()
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { priceId } = await request.json()
+    const { priceId, planId } = await request.json()
 
-    if (!priceId) {
-      return NextResponse.json({ error: "Price ID is required" }, { status: 400 })
+    // Compute plan based on input
+    const resolvedPlanId = planId || (priceId ? getPricingTierByStripePrice(priceId)?.id : undefined)
+    const pricingTier = resolvedPlanId ? getPricingTier(resolvedPlanId) : undefined
+
+    if (provider === 'polar') {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
+      return await createPolarCheckoutSession({
+        planId: resolvedPlanId,
+        priceId,
+        successUrl: `${appUrl}/dashboard?success=true&plan=${resolvedPlanId || ''}`,
+        cancelUrl: `${appUrl}/pricing?canceled=true`,
+        clerkUserId: userId,
+        request,
+      })
     }
 
-    // Validate that the price ID exists in our pricing configuration
-    const pricingTier = getPricingTierByStripePrice(priceId)
+    if (!isStripeConfigured()) {
+      return NextResponse.json({ error: "Billing not configured" }, { status: 503 })
+    }
+
     if (!pricingTier) {
-      console.error(`Invalid price ID received: ${priceId}`)
       return NextResponse.json({ error: "Invalid pricing plan selected" }, { status: 400 })
     }
+    const stripePriceId = priceId || getPriceIdForProvider(pricingTier.id, 'stripe')
+    if (!stripePriceId) {
+      return NextResponse.json({ error: "Missing Stripe price for selected plan" }, { status: 400 })
+    }
 
-    console.log(`Creating checkout session for plan: ${pricingTier.name} (${priceId})`)
+    console.log(`Creating Stripe checkout for plan: ${pricingTier.name} (${stripePriceId})`)
 
     // Get or create user in our database
     const user = await getOrCreateUser()
@@ -89,7 +106,7 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       line_items: [
         {
-          price: priceId,
+          price: stripePriceId,
           quantity: 1,
         },
       ],

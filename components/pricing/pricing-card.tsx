@@ -29,10 +29,20 @@ export function PricingCard({
   const isCurrentPlan = currentPlan === tier.id
   const isFreeTier = tier.id === 'free'
   const isEnterprise = tier.id === 'enterprise' || tier.id === 'enterprise-annual'
-  
+
   // Calculate display price based on billing cycle
+  // For annual plans: tier.price is the annual total, display as monthly equivalent
   const displayPrice = billingCycle === 'annual' && !isFreeTier ? tier.price / 12 : tier.price
-  const annualSavings = billingCycle === 'annual' && !isFreeTier ? Math.round(((tier.price * 12 - tier.price) / (tier.price * 12)) * 100) : 0
+
+  // Calculate savings: Compare annual price to monthly price × 12
+  // Monthly Pro: $19/month = $228/year
+  // Annual Pro: $190/year (saves $38 = 17%)
+  const monthlyEquivalent = tier.id.includes('annual') ? 19 : tier.price // Base monthly price
+  const annualPrice = tier.id.includes('annual') ? tier.price : tier.price * 12
+  const annualIfMonthly = monthlyEquivalent * 12
+  const annualSavings = billingCycle === 'annual' && !isFreeTier && tier.id.includes('annual')
+    ? Math.round(((annualIfMonthly - annualPrice) / annualIfMonthly) * 100)
+    : 0
 
   const handleSubscribe = async () => {
     if (!isSignedIn) {
@@ -58,16 +68,13 @@ export function PricingCard({
     setIsLoading(true)
 
     try {
-      console.log('Frontend: Sending price ID:', tier.stripePriceId)
-      console.log('Frontend: Full tier data:', tier)
-      
       const response = await fetch("/api/billing/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          priceId: tier.stripePriceId,
+          planId: tier.id,
           userId: user?.id,
         }),
       })
