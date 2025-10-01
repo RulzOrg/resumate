@@ -261,7 +261,7 @@ export default function HealthCheckPage() {
             {/* Health Check Form */}
             <div className="mt-8 max-w-xl mx-auto">
               <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3">
                   {/* Drag & Drop Zone */}
                   <div className="relative">
                     <div
@@ -498,9 +498,9 @@ export default function HealthCheckPage() {
             Upload your CV to get a personalised report by email.
           </h3>
           <p className="mt-2 text-sm text-white/70 font-sans">Takes under a minute to submit.</p>
-          <div className="mt-6 max-w-md mx-auto">
+              <div className="mt-6 max-w-md mx-auto">
             <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 {/* Secondary Drag & Drop Zone */}
                 <div className="relative">
                   <div
