@@ -31,8 +31,10 @@ type HealthCheckForm = z.infer<typeof healthCheckSchema>
 
 export default function HealthCheckPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [isDragging, setIsDragging] = useState(false)
+  const [selectedFileA, setSelectedFileA] = useState<File | null>(null)
+  const [selectedFileB, setSelectedFileB] = useState<File | null>(null)
+  const [isDraggingA, setIsDraggingA] = useState(false)
+  const [isDraggingB, setIsDraggingB] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef2 = useRef<HTMLInputElement>(null)
@@ -45,7 +47,7 @@ export default function HealthCheckPage() {
     setOpenFaq(openFaq === index ? null : index)
   }
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = (file: File, zone: 'A' | 'B') => {
     const allowedTypes = [
       "application/pdf",
       "application/msword",
@@ -64,33 +66,49 @@ export default function HealthCheckPage() {
       return
     }
 
-    setSelectedFile(file)
+    if (zone === 'A') {
+      setSelectedFileA(file)
+    } else {
+      setSelectedFileB(file)
+    }
     setValue("cv", file)
     toast.success(`File selected: ${file.name}`)
   }
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+  const handleDragOver = (zone: 'A' | 'B') => (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-    setIsDragging(true)
-  }
-
-  const handleDragLeave = () => {
-    setIsDragging(false)
-  }
-
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const files = e.dataTransfer.files
-    if (files && files.length > 0) {
-      handleFileSelect(files[0])
+    if (zone === 'A') {
+      setIsDraggingA(true)
+    } else {
+      setIsDraggingB(true)
     }
   }
 
-  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleDragLeave = (zone: 'A' | 'B') => () => {
+    if (zone === 'A') {
+      setIsDraggingA(false)
+    } else {
+      setIsDraggingB(false)
+    }
+  }
+
+  const handleDrop = (zone: 'A' | 'B') => (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (zone === 'A') {
+      setIsDraggingA(false)
+    } else {
+      setIsDraggingB(false)
+    }
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      handleFileSelect(files[0], zone)
+    }
+  }
+
+  const handleFileInputChange = (zone: 'A' | 'B') => (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files && files.length > 0) {
-      handleFileSelect(files[0])
+      handleFileSelect(files[0], zone)
     }
   }
 
@@ -101,7 +119,7 @@ export default function HealthCheckPage() {
   }
 
   const onSubmit = async (data: HealthCheckForm) => {
-    if (!selectedFile) {
+    if (!selectedFileA && !selectedFileB) {
       toast.error("Please upload your CV (PDF, DOC, or DOCX)")
       return
     }
@@ -121,7 +139,8 @@ export default function HealthCheckPage() {
 
     // Reset form
     reset()
-    setSelectedFile(null)
+    setSelectedFileA(null)
+    setSelectedFileB(null)
     if (fileInputRef.current) fileInputRef.current.value = ""
     if (fileInputRef2.current) fileInputRef2.current.value = ""
   }
@@ -229,12 +248,8 @@ export default function HealthCheckPage() {
             </div>
 
             <h1 className="text-4xl tracking-tight sm:text-6xl md:text-7xl mx-auto font-semibold mt-4">
-              <span
-                className="text-white font-semibold"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                AI Resume
-              </span>{" "}
+            AI Resume
+              {" "}
               Health Check
             </h1>
 
@@ -250,12 +265,12 @@ export default function HealthCheckPage() {
                   {/* Drag & Drop Zone */}
                   <div className="relative">
                     <div
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
+                      onDragOver={handleDragOver('A')}
+                      onDragLeave={handleDragLeave('A')}
+                      onDrop={handleDrop('A')}
                       onClick={() => fileInputRef.current?.click()}
                       className={`group relative flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${
-                        isDragging
+                        isDraggingA
                           ? "border-emerald-500/50 bg-emerald-500/5 ring-2 ring-emerald-500/60"
                           : "border-white/15 bg-white/5"
                       } px-4 py-6 text-center hover:border-white/25 transition cursor-pointer`}
@@ -264,16 +279,16 @@ export default function HealthCheckPage() {
                         <UploadCloud className="w-4 h-4 text-white/80" />
                       </div>
                       <div className="text-xs sm:text-sm font-medium text-white/80 font-sans">
-                        {selectedFile ? "Change CV" : "Drag & drop your CV"}
+                        {selectedFileA ? "Change CV" : "Drag & drop your CV"}
                       </div>
                       <div className="text-[11px] text-white/50 font-sans">
-                        {selectedFile ? `${selectedFile.name} · ${formatFileSize(selectedFile.size)}` : "PDF, DOC, DOCX · max 10 MB"}
+                        {selectedFileA ? `${selectedFileA.name} · ${formatFileSize(selectedFileA.size)}` : "PDF, DOC, DOCX · max 10 MB"}
                       </div>
                       <input
                         ref={fileInputRef}
                         type="file"
                         accept=".pdf,.doc,.docx"
-                        onChange={handleFileInputChange}
+                        onChange={handleFileInputChange('A')}
                         className="hidden"
                       />
                     </div>
@@ -489,12 +504,12 @@ export default function HealthCheckPage() {
                 {/* Secondary Drag & Drop Zone */}
                 <div className="relative">
                   <div
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
+                    onDragOver={handleDragOver('B')}
+                    onDragLeave={handleDragLeave('B')}
+                    onDrop={handleDrop('B')}
                     onClick={() => fileInputRef2.current?.click()}
                     className={`group relative flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed ${
-                      isDragging
+                      isDraggingB
                         ? "border-emerald-500/50 bg-emerald-500/5 ring-2 ring-emerald-500/60"
                         : "border-white/15 bg-white/5"
                     } px-4 py-6 text-center hover:border-white/25 transition cursor-pointer`}
@@ -503,16 +518,16 @@ export default function HealthCheckPage() {
                       <UploadCloud className="w-4 h-4 text-white/80" />
                     </div>
                     <div className="text-xs sm:text-sm font-medium text-white/80 font-sans">
-                      {selectedFile ? "Change CV" : "Drag & drop your CV"}
+                      {selectedFileB ? "Change CV" : "Drag & drop your CV"}
                     </div>
                     <div className="text-[11px] text-white/50 font-sans">
-                      {selectedFile ? `${selectedFile.name}` : "PDF, DOC, DOCX · max 10 MB"}
+                      {selectedFileB ? `${selectedFileB.name}` : "PDF, DOC, DOCX · max 10 MB"}
                     </div>
                     <input
                       ref={fileInputRef2}
                       type="file"
                       accept=".pdf,.doc,.docx"
-                      onChange={handleFileInputChange}
+                      onChange={handleFileInputChange('B')}
                       className="hidden"
                     />
                   </div>

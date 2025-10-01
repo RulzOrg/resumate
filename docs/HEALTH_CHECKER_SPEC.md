@@ -347,9 +347,12 @@ export const analyzeHealthCheck = inngest.createFunction(
 );
 ```
 
-**Option B: Inline Processing** (Simpler, but blocks request)
+**Option B: Inline Processing — Development/Testing Only**
+
+> Do not use inline processing in production. Risks: serverless timeouts (10–30s), blocking UX (no progress), and poor scalability under load. Prefer Option A (Inngest). If that's not possible, move analysis/email to a separate async route and return immediately; use client polling or webhooks for completion.
+
 ```typescript
-// Directly in POST /api/health-check
+// Development/Testing Only — do not use in production
 const analysis = await analyzeResumeHealth(extractedText);
 await updateHealthCheck(checkId, { analysis_result: analysis });
 await sendHealthCheckEmail({ email, ...analysis });
