@@ -230,39 +230,239 @@ Create a responsive HTML email template with:
 
 #### Email Service Setup
 
-**Recommended: Resend**
+**Service: Amazon SES (Simple Email Service)**
+
+Amazon SES is a cost-effective, scalable email service for transactional and marketing emails. It integrates well with AWS infrastructure and provides high deliverability rates.
+
+**Prerequisites**
+1. AWS Account with SES access
+2. Domain or email address verified in SES
+3. Request production access (move out of SES sandbox) to send to any email address
+4. Configure SPF, DKIM, and DMARC records for better deliverability
+
+**Installation**
 ```bash
-npm install resend
+npm install @aws-sdk/client-ses
 ```
 
 **Environment Variables**
 ```env
-RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=health-check@resumate.ai
+# AWS Region where SES is configured (e.g., us-east-1, eu-west-1)
+AWS_REGION=us-east-1
+
+# AWS Credentials (use IAM user with SES send permissions)
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+# Verified sender email address
+AWS_SES_FROM_EMAIL=health-check@resumate.ai
+
+# Optional: Configuration set for tracking bounces/complaints
+AWS_SES_CONFIGURATION_SET=health-check-emails
+```
+
+**AWS SES Setup Steps**
+1. **Verify Sender Identity**
+   - Go to AWS SES Console → Verified Identities
+   - Add your domain or email address
+   - Complete verification process (email confirmation or DNS records)
+
+2. **Request Production Access** (if in sandbox)
+   - By default, SES starts in sandbox mode (can only send to verified emails)
+   - Submit a request to move to production access
+   - This allows sending to any recipient
+
+3. **Configure DNS Records** (for domain)
+   - Add DKIM records provided by SES
+   - Configure SPF record: `v=spf1 include:amazonses.com ~all`
+   - Set up DMARC for email authentication
+
+4. **Set Up Configuration Set** (optional but recommended)
+   - Create a configuration set for tracking email events
+   - Configure SNS topics for bounce and complaint notifications
+   - Helps monitor email deliverability and reputation
+
+**IAM Permissions Required**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
 ```
 
 **Implementation**
 ```typescript
 // lib/email-service.ts
-import { Resend } from 'resend';
+import { SESClient, SendEmailCommand, SendEmailCommandInput } from '@aws-sdk/client-ses';
 import { HealthCheckEmailTemplate } from './email-templates/health-check';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize SES client
+const sesClient = new SESClient({
+  region: process.env.AWS_REGION!,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
 
+// For production on AWS (EC2, Lambda, ECS), use IAM roles instead:
+// const sesClient = new SESClient({ region: process.env.AWS_REGION! });
+
+/**
+ * Generate plain text version of email for better compatibility
+ */
+function generatePlainTextEmail(data: {
+  score: number;
+  issues: any[];
+  recommendations: string[];
+}): string {
+  return `
+Your ATS Health Check Results
+
+Score: ${data.score}/100
+
+${data.score >= 90 ? 'Excellent! Your resume is highly ATS-compatible.' : 
+  data.score >= 75 ? 'Good! A few minor improvements will make your resume even better.' :
+  data.score >= 60 ? 'Moderate. Several issues need attention for better ATS compatibility.' :
+  'Needs Work. Significant improvements required for ATS compatibility.'}
+
+Top Issues:
+${data.issues.slice(0, 5).map((issue, i) => `${i + 1}. ${issue.title}: ${issue.description}`).join('\n')}
+
+Recommendations:
+${data.recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}
+
+Want AI-powered resume optimization?
+Sign up for full access: https://resumate.ai/auth/signup
+
+---
+ResuMate AI - Your AI Resume Optimization Platform
+  `.trim();
+}
+
+/**
+ * Send health check results email via Amazon SES
+ */
 export async function sendHealthCheckEmail(data: {
   email: string;
   score: number;
   issues: any[];
   recommendations: string[];
-}) {
-  await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
-    to: data.email,
-    subject: `Your ATS Health Check Results (Score: ${data.score}/100)`,
-    html: HealthCheckEmailTemplate(data),
-  });
+}): Promise<void> {
+  const htmlBody = HealthCheckEmailTemplate(data);
+  const textBody = generatePlainTextEmail(data);
+
+  const params: SendEmailCommandInput = {
+    Source: process.env.AWS_SES_FROM_EMAIL!,
+    Destination: {
+      ToAddresses: [data.email],
+    },
+    Message: {
+      Subject: {
+        Data: `Your ATS Health Check Results (Score: ${data.score}/100)`,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Html: {
+          Data: htmlBody,
+          Charset: 'UTF-8',
+        },
+        Text: {
+          Data: textBody,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    // Optional: Add configuration set for tracking
+    ...(process.env.AWS_SES_CONFIGURATION_SET && {
+      ConfigurationSetName: process.env.AWS_SES_CONFIGURATION_SET,
+    }),
+  };
+
+  try {
+    const command = new SendEmailCommand(params);
+    const response = await sesClient.send(command);
+    console.log('Email sent successfully:', response.MessageId);
+  } catch (error) {
+    console.error('Failed to send email via SES:', error);
+    
+    // Handle specific SES errors
+    if (error instanceof Error) {
+      if (error.name === 'MessageRejected') {
+        throw new Error('Email rejected by SES. Check sender verification.');
+      } else if (error.name === 'MailFromDomainNotVerifiedException') {
+        throw new Error('Sender domain not verified in SES.');
+      } else if (error.name === 'ConfigurationSetDoesNotExistException') {
+        throw new Error('SES configuration set not found.');
+      }
+    }
+    
+    throw error;
+  }
+}
+
+/**
+ * Verify email address format before sending
+ */
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
 }
 ```
+
+**SES Rate Limits & Cost Optimization**
+
+1. **Sending Limits** (default for new accounts)
+   - Sandbox: 200 emails/day, 1 email/second
+   - Production: 50,000 emails/day initially (can request increase)
+   - Sending rate: 14 emails/second initially
+
+2. **Cost Structure** (as of 2025)
+   - First 62,000 emails/month: $0.10 per 1,000 emails (when sent from EC2)
+   - Additional emails: $0.10 per 1,000 emails
+   - Data transfer: First 1 GB/month free, then standard AWS rates
+   - Attachments: Charged separately for data transfer
+
+3. **Optimization Tips**
+   - Use SES from EC2/Lambda for lower costs (vs external calls)
+   - Implement email validation to avoid sending to invalid addresses
+   - Monitor bounce and complaint rates (keep below 5% and 0.1%)
+   - Use templates for bulk emails to reduce payload size
+   - Implement retry logic with exponential backoff for throttling
+
+**Monitoring & Best Practices**
+
+1. **Set Up CloudWatch Alarms**
+   - Monitor bounce rate, complaint rate, and delivery rate
+   - Alert on reputation metrics dropping below thresholds
+   - Track daily sending volume
+
+2. **Handle Bounces & Complaints**
+   - Configure SNS topics for bounce/complaint notifications
+   - Automatically remove hard bounces from recipient list
+   - Investigate complaints and improve email content
+
+3. **Email Content Best Practices**
+   - Always include both HTML and plain text versions
+   - Add unsubscribe link (required for marketing emails)
+   - Include physical mailing address (CAN-SPAM compliance)
+   - Avoid spam trigger words and excessive links
+   - Test emails across different clients (Gmail, Outlook, etc.)
+
+4. **Security Considerations**
+   - Use IAM roles instead of access keys when running on AWS
+   - Rotate access keys regularly if using credentials
+   - Enable SES event publishing for audit trails
+   - Use VPC endpoints for private communication with SES
 
 ### API Routes
 
@@ -480,9 +680,12 @@ export async function updateHealthCheck(id: string, data: Partial<ResumeHealthCh
 ### Environment Variables Required
 
 ```env
-# Email Service (NEW)
-RESEND_API_KEY=re_...
-RESEND_FROM_EMAIL=health-check@resumate.ai
+# Email Service (Amazon SES) - NEW
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS_SES_FROM_EMAIL=health-check@resumate.ai
+AWS_SES_CONFIGURATION_SET=health-check-emails  # Optional
 
 # All other vars already exist:
 # DATABASE_URL (Neon PostgreSQL)
@@ -522,13 +725,16 @@ RESEND_FROM_EMAIL=health-check@resumate.ai
 4. Parse and structure analysis results
 5. Add error handling and retries
 
-### Phase 5: Email Integration
-1. Install Resend: `npm install resend`
-2. Add environment variables
-3. Create `lib/email-service.ts`
-4. Create email template: `lib/email-templates/health-check.tsx`
-5. Implement email sending logic
-6. Add email sent tracking in database
+### Phase 5: Email Integration (Amazon SES)
+1. Install AWS SES SDK: `npm install @aws-sdk/client-ses`
+2. Set up AWS SES account and verify sender email/domain
+3. Request production access (move out of SES sandbox)
+4. Add environment variables (AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_SES_FROM_EMAIL)
+5. Create `lib/email-service.ts` with SES client and send function
+6. Create email template: `lib/email-templates/health-check.tsx`
+7. Implement email sending logic with both HTML and plain text versions
+8. Add email sent tracking in database
+9. Configure CloudWatch monitoring and SNS notifications for bounces/complaints (optional)
 
 ### Phase 6: Inngest Job (Optional)
 1. Create `lib/inngest/functions/analyze-health-check.ts`
@@ -650,42 +856,52 @@ RESEND_FROM_EMAIL=health-check@resumate.ai
 
 1. **Install dependencies**
    ```bash
-   npm install resend
+   npm install @aws-sdk/client-ses
    ```
 
-2. **Add environment variables**
+2. **Set up AWS SES**
+   - Create/login to AWS account
+   - Go to Amazon SES console
+   - Verify sender email or domain
+   - Request production access (to send to any email)
+   - Note your AWS region
+
+3. **Add environment variables**
    ```env
-   RESEND_API_KEY=re_...
-   RESEND_FROM_EMAIL=health-check@resumate.ai
+   AWS_REGION=us-east-1
+   AWS_ACCESS_KEY_ID=your_access_key
+   AWS_SECRET_ACCESS_KEY=your_secret_key
+   AWS_SES_FROM_EMAIL=health-check@resumate.ai
    ```
 
-3. **Run database migration**
+4. **Run database migration**
    ```bash
    psql $DATABASE_URL -f scripts/create-resume-health-checks-table.sql
    ```
 
-4. **Update lib/db.ts**
+5. **Update lib/db.ts**
    - Add TypeScript interfaces
    - Add CRUD functions
 
-5. **Create API route**
+6. **Create API route**
    ```bash
    mkdir -p app/api/health-check
    touch app/api/health-check/route.ts
    ```
 
-6. **Implement AI analyzer**
+7. **Implement AI analyzer**
    ```bash
    touch lib/ats-analyzer.ts
    ```
 
-7. **Create email template**
+8. **Create email service and template**
    ```bash
    mkdir -p lib/email-templates
+   touch lib/email-service.ts
    touch lib/email-templates/health-check.tsx
    ```
 
-8. **Test end-to-end**
+9. **Test end-to-end**
    - Upload test resume
    - Verify database record
    - Check email delivery
