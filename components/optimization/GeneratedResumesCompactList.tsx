@@ -9,8 +9,8 @@ interface GeneratedResumesCompactListProps {
   limit?: number
 }
 
-export function GeneratedResumesCompactList({ resumes, limit = 3 }: GeneratedResumesCompactListProps) {
-  const items = resumes.slice(0, limit)
+export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumesCompactListProps) {
+  const items = typeof limit === "number" ? resumes.slice(0, limit) : resumes
   const finiteScore = (score?: number | null) => (
     typeof score === 'number' && Number.isFinite(score) ? score : null
   )
