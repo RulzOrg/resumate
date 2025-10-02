@@ -45,51 +45,6 @@ export function EligibilityGate({
   const [result, setResult] = useState<EligibilityResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-// at the top of the file, update imports
-import { useState, useEffect, useCallback } from "react";
-
-[...]
-
-const EligibilityGate: React.FC<EligibilityGateProps> = ({
-  jobAnalysisId,
-  resumeId,
-  onEligible,
-  onBlocked,
-}) => {
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // wrap the function in useCallback so it has a stable identity
-  const checkEligibility = useCallback(async () => {
-     setChecking(true);
-     setError(null);
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to check eligibility");
-        return;
-      }
-
-      const data = await res.json();
-           job_analysis_id: jobAnalysisId,
-           resume_id: resumeId,
-         }),
-       });
-       // ... rest of the function
-     } catch (err: any) {
-       console.error("Eligibility check failed:", err);
-       setError(err.message || "Network error. Please try again.");
-     } finally {
-       setChecking(false);
-     }
-  }, [jobAnalysisId, resumeId, onEligible, onBlocked]);
-
-  useEffect(() => {
-    checkEligibility();
-  }, [checkEligibility]);
-
-  // ... rest of component
-};
-
   async function checkEligibility() {
     setChecking(true);
     setError(null);
@@ -125,6 +80,10 @@ const EligibilityGate: React.FC<EligibilityGateProps> = ({
       setChecking(false);
     }
   }
+
+  useEffect(() => {
+    checkEligibility();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Loading state
   if (checking) {

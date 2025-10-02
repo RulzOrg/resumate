@@ -89,21 +89,13 @@ export async function POST(request: NextRequest) {
         must_have_coverage: 0,
         reasons: ["Resume content is empty or not extracted"],
         guidance: [
-    const coveredMustHaves = mustHaveSkills.filter(skill =>
-      new RegExp(
-        `\\b${skill.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\          "Please re-upload your resume",
+          "Please re-upload your resume",
           "Ensure the file is a valid PDF or DOCX document",
           "Check that the resume contains readable text"
         ],
         missing_must_haves: mustHaveSkills,
         ...(scoringError && { scoring_error: scoringError }),
-      });')}\\b`
-      ).test(resumeText)
-    );
-    
-    const mustHaveCoverage = mustHaveSkills.length > 0
-      ? coveredMustHaves.length / mustHaveSkills.length
-      : 1; // If no must-haves, coverage is 100%
+      });
     }
 
     const coveredMustHaves = mustHaveSkills.filter((skill: string) =>
@@ -161,18 +153,10 @@ export async function POST(request: NextRequest) {
           `Only ${coveragePercent}% of required skills are covered (minimum: ${Math.round(MIN_MUST_HAVE_COVERAGE * 100)}%)`
         );
         
-      return NextResponse.json({
-        allowed: false,
-        score,
-        ...(score < MIN_SCORE && { score_gap: MIN_SCORE - score }),
-        must_have_coverage: Math.round(mustHaveCoverage * 100),
-        reasons,
-        guidance: guidance.slice(0, 6), // Limit to 6 most important items
-        missing_must_haves: missingMustHaves.slice(0, 8), // Show top 8 missing
-      });
-            "Consider taking courses or projects to build experience in these areas"
-          );
-        }
+        guidance.push(
+          `Add the following missing skills to your resume: ${missingMustHaves.slice(0, 3).join(", ")}`,
+          "Consider taking courses or projects to build experience in these areas"
+        );
       }
 
       return NextResponse.json({

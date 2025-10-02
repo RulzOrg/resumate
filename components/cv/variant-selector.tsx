@@ -120,6 +120,11 @@ export function VariantSelector({
 
           {variants.map((variant) => {
             const info = variantInfo[variant.label];
+            const Icon = info.icon;
+            const isSelected = variant.variant_id === selectedVariantId;
+            
+            return (
+              <TabsContent key={variant.variant_id} value={variant.variant_id} className="space-y-4">
                 <div className={cn(
                   "p-4 rounded-lg border",
                   info.color === "blue" && "bg-blue-500/10 border-blue-400/30",
@@ -143,12 +148,6 @@ export function VariantSelector({
                         {variant.label} Variant
                       </h3>
                       <p className="text-sm text-white/70 mb-2">{info.description}</p>
-                      <p className="text-xs text-white/50">
-                        <strong>Best for:</strong> {info.bestFor}
-                      </p>
-                    </div>
-                  </div>
-                </div>
                       <p className="text-xs text-white/50">
                         <strong>Best for:</strong> {info.bestFor}
                       </p>
