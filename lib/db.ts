@@ -1357,3 +1357,149 @@ function extractPrimaryEmail(clerkUser: any): string {
 
   return clerkUser.email_address || clerkUser.email || ""
 }
+
+// ============================================================================
+// Resume Health Check Types & Functions
+// ============================================================================
+
+export interface ResumeHealthCheck {
+  id: string
+  email: string
+  file_name: string
+  file_url: string
+  file_type: string
+  file_size: number
+  file_hash?: string
+  analysis_result?: AnalysisResult
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  processing_error?: string
+  email_sent_at?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AnalysisResult {
+  score: number
+  issues: Issue[]
+  recommendations: string[]
+  parsingFlags: ParsingFlags
+  sections: SectionCheck
+  keywordCoverage: KeywordCoverage
+  processedAt: string
+}
+
+export interface Issue {
+  category: 'parsing' | 'formatting' | 'structure' | 'content'
+  severity: 'critical' | 'warning' | 'info'
+  title: string
+  description: string
+}
+
+export interface ParsingFlags {
+  hasTables: boolean
+  hasColumns: boolean
+  hasHeadersFooters: boolean
+  hasImages: boolean
+  hasUnusualFonts: boolean
+  hasTextBoxes: boolean
+}
+
+export interface SectionCheck {
+  hasContact: boolean
+  hasExperience: boolean
+  hasEducation: boolean
+  hasSkills: boolean
+}
+
+export interface KeywordCoverage {
+  technicalSkills: string[]
+  softSkills: string[]
+  industryTerms: string[]
+}
+
+// Create a new health check record
+export async function createHealthCheck(data: {
+  email: string
+  file_name: string
+  file_url: string
+  file_type: string
+  file_size: number
+  file_hash?: string
+  status?: 'pending' | 'processing' | 'completed' | 'failed'
+}): Promise<ResumeHealthCheck> {
+  const [check] = await sql`
+    INSERT INTO resume_health_checks (
+      email, file_name, file_url, file_type, file_size, file_hash, status, created_at, updated_at
+    )
+    VALUES (
+      ${data.email},
+      ${data.file_name},
+      ${data.file_url},
+      ${data.file_type},
+      ${data.file_size},
+      ${data.file_hash || null},
+      ${data.status || 'pending'},
+      NOW(),
+      NOW()
+    )
+    RETURNING *
+  `
+  return check as ResumeHealthCheck
+}
+
+// Get health check by ID
+export async function getHealthCheckById(id: string): Promise<ResumeHealthCheck | undefined> {
+  const [check] = await sql`
+    SELECT * FROM resume_health_checks
+    WHERE id = ${id}
+  `
+  return check as ResumeHealthCheck | undefined
+}
+
+// Get health checks by email
+export async function getHealthChecksByEmail(email: string): Promise<ResumeHealthCheck[]> {
+  const checks = await sql`
+    SELECT * FROM resume_health_checks
+    WHERE email = ${email}
+    ORDER BY created_at DESC
+  `
+  return checks as ResumeHealthCheck[]
+}
+
+// Get health check by file hash (for caching)
+export async function getHealthCheckByFileHash(fileHash: string): Promise<ResumeHealthCheck | undefined> {
+  const [check] = await sql`
+    SELECT * FROM resume_health_checks
+    WHERE file_hash = ${fileHash}
+      AND status = 'completed'
+      AND analysis_result IS NOT NULL
+      AND created_at > NOW() - INTERVAL '30 days'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+  return check as ResumeHealthCheck | undefined
+}
+
+// Update health check with analysis results
+export async function updateHealthCheck(
+  id: string,
+  data: {
+    analysis_result?: AnalysisResult
+    status?: 'pending' | 'processing' | 'completed' | 'failed'
+    processing_error?: string
+    email_sent_at?: string
+  }
+): Promise<ResumeHealthCheck | undefined> {
+  const [check] = await sql`
+    UPDATE resume_health_checks
+    SET
+      analysis_result = COALESCE(${data.analysis_result ? JSON.stringify(data.analysis_result) : null}, analysis_result),
+      status = COALESCE(${data.status || null}, status),
+      processing_error = COALESCE(${data.processing_error || null}, processing_error),
+      email_sent_at = COALESCE(${data.email_sent_at || null}, email_sent_at),
+      updated_at = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `
+  return check as ResumeHealthCheck | undefined
+}
