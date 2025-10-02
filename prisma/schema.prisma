@@ -124,3 +124,26 @@ model JobApplication {
   @@map("job_applications")
   @@schema("public")
 }
+
+model ResumeHealthCheck {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email            String    @db.VarChar(255)
+  fileName         String    @map("file_name") @db.VarChar(255)
+  fileUrl          String    @map("file_url")
+  fileType         String    @map("file_type") @db.VarChar(50)
+  fileSize         Int       @map("file_size")
+  fileHash         String?   @map("file_hash") @db.VarChar(64)
+  analysisResult   Json?     @map("analysis_result") @db.JsonB
+  status           String    @default("pending") @db.VarChar(32)
+  processingError  String?   @map("processing_error")
+  emailSentAt      DateTime? @map("email_sent_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@index([email], map: "idx_resume_health_checks_email")
+  @@index([fileHash], map: "idx_resume_health_checks_file_hash")
+  @@index([status], map: "idx_resume_health_checks_status")
+  @@index([createdAt], map: "idx_resume_health_checks_created_at")
+  @@map("resume_health_checks")
+  @@schema("public")
+}

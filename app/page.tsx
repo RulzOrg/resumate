@@ -53,7 +53,7 @@ export default function HomePage() {
             </div>
 
             <Link
-              href="/auth/signup"
+              href="/health-check"
               className="hidden md:inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full ml-2 py-2 px-4 hover:bg-emerald-400 transition-colors font-sans"
             >
               Optimize My Resume

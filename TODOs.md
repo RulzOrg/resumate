@@ -1,0 +1,3 @@
+- Limit text area in job description
+- Replace textarea with AI loader during AI analysis
+- Research PDF.js
