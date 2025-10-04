@@ -689,6 +689,84 @@ export async function updateResumeAnalysis(
   return resume as Resume | undefined
 }
 
+// Master Resume functions with enhanced metadata
+export async function getMasterResumesWithMetadata(user_id: string) {
+  const resumes = await sql`
+    SELECT * FROM resumes 
+    WHERE user_id = ${user_id} 
+      AND kind IN ('master', 'uploaded', 'duplicate')
+      AND deleted_at IS NULL 
+    ORDER BY is_primary DESC, updated_at DESC
+  `
+  return resumes as Resume[]
+}
+
+export async function duplicateResume(resume_id: string, user_id: string, new_title: string) {
+  // Get the original resume
+  const [original] = await sql`
+    SELECT * FROM resumes 
+    WHERE id = ${resume_id} AND user_id = ${user_id} AND deleted_at IS NULL
+  `
+  
+  if (!original) {
+    throw new Error('Resume not found')
+  }
+
+  // Create the duplicate
+  const [duplicate] = await sql`
+    INSERT INTO resumes (
+      user_id,
+      title,
+      file_name,
+      file_url,
+      file_type,
+      file_size,
+      content_text,
+      parsed_sections,
+      kind,
+      processing_status,
+      is_primary,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      ${user_id},
+      ${new_title},
+      ${'Copy of ' + original.file_name},
+      ${original.file_url || ''},
+      ${original.file_type || 'text/plain'},
+      ${original.file_size || 0},
+      ${original.content_text || ''},
+      ${original.parsed_sections ? JSON.stringify(original.parsed_sections) : null},
+      'duplicate',
+      'completed',
+      false,
+      NOW(),
+      NOW()
+    )
+    RETURNING *
+  `
+  return duplicate as Resume
+}
+
+export async function getMasterResumeActivity(user_id: string, limit: number = 10) {
+  const activities = await sql`
+    SELECT 
+      id,
+      title,
+      updated_at,
+      created_at,
+      kind
+    FROM resumes 
+    WHERE user_id = ${user_id} 
+      AND kind IN ('master', 'uploaded', 'duplicate')
+      AND deleted_at IS NULL 
+    ORDER BY updated_at DESC
+    LIMIT ${limit}
+  `
+  return activities as Resume[]
+}
+
 // Job application functions
 export async function createJobApplication(data: {
   user_id: string
@@ -715,6 +793,93 @@ export async function getUserJobApplications(user_id: string) {
     ORDER BY ja.created_at DESC
   `
   return applications as (JobApplication & { resume_title: string })[]
+}
+
+// Enhanced application functions for new dashboard
+export async function getUserApplicationsWithDetails(user_id: string) {
+  const applications = await sql`
+    SELECT 
+      or_res.id,
+      or_res.title,
+      or_res.created_at,
+      or_res.match_score,
+      ja_analysis.job_title,
+      ja_analysis.company_name,
+      ja_analysis.job_url,
+      r.title as variant_name,
+      'pending' as status
+    FROM optimized_resumes or_res
+    JOIN job_analysis ja_analysis ON or_res.job_analysis_id = ja_analysis.id
+    JOIN resumes r ON or_res.original_resume_id = r.id
+    WHERE or_res.user_id = ${user_id}
+    ORDER BY or_res.created_at DESC
+  `
+  return applications as Array<{
+    id: string
+    title: string
+    created_at: string
+    match_score: number | null
+    job_title: string
+    company_name: string | null
+    job_url: string | null
+    variant_name: string
+    status: string
+  }>
+}
+
+export async function getApplicationStats(user_id: string) {
+  const [stats] = await sql`
+    SELECT 
+      COUNT(DISTINCT or_res.id) as total_applications,
+      COUNT(DISTINCT or_res.id) as total_optimizations,
+      COUNT(DISTINCT or_res.original_resume_id) as total_variants,
+      COALESCE(AVG(or_res.match_score), 0) as avg_match
+    FROM optimized_resumes or_res
+    WHERE or_res.user_id = ${user_id}
+  `
+  return {
+    applications: parseInt(stats?.total_applications || '0'),
+    optimizations: parseInt(stats?.total_optimizations || '0'),
+    variants: parseInt(stats?.total_variants || '0'),
+    avgMatch: Math.round(parseFloat(stats?.avg_match || '0')),
+  }
+}
+
+export async function getActivityFeed(user_id: string, limit: number = 10) {
+  const activities = await sql`
+    SELECT 
+      or_res.id,
+      or_res.title,
+      or_res.created_at,
+      or_res.match_score,
+      ja_analysis.job_title,
+      ja_analysis.company_name,
+      'optimization' as activity_type
+    FROM optimized_resumes or_res
+    JOIN job_analysis ja_analysis ON or_res.job_analysis_id = ja_analysis.id
+    WHERE or_res.user_id = ${user_id}
+    ORDER BY or_res.created_at DESC
+    LIMIT ${limit}
+  `
+  return activities as Array<{
+    id: string
+    title: string
+    created_at: string
+    match_score: number | null
+    job_title: string
+    company_name: string | null
+    activity_type: string
+  }>
+}
+
+export async function updateApplicationStatus(id: string, user_id: string, status: string) {
+  const [application] = await sql`
+    UPDATE job_applications
+    SET status = ${status}, updated_at = NOW()
+    WHERE id = ${id} AND user_id = ${user_id}
+    RETURNING *
+  `
+  return application as JobApplication | undefined
 }
 
 // Job target functions (onboarding)
@@ -933,6 +1098,321 @@ export async function deleteJobAnalysis(id: string, user_id: string) {
   return analysis as JobAnalysis | undefined
 }
 
+// Enhanced job functions for new Jobs page
+export async function getJobStats(user_id: string) {
+  const [stats] = await sql`
+    SELECT 
+      COUNT(DISTINCT ja.id) as jobs_saved,
+      COUNT(DISTINCT or_res.id) as cvs_generated,
+      (
+        SELECT COUNT(DISTINCT unnested_keyword)
+        FROM job_analysis ja2,
+        LATERAL unnest(ja2.keywords) as unnested_keyword
+        WHERE ja2.user_id = ${user_id}
+      ) as keywords_extracted,
+      COALESCE(AVG(or_res.match_score), 0) as avg_match
+    FROM job_analysis ja
+    LEFT JOIN optimized_resumes or_res ON ja.id = or_res.job_analysis_id AND or_res.user_id = ${user_id}
+    WHERE ja.user_id = ${user_id}
+  `
+  
+  return {
+    jobsSaved: parseInt(stats?.jobs_saved || '0'),
+    cvsGenerated: parseInt(stats?.cvs_generated || '0'),
+    keywordsExtracted: parseInt(stats?.keywords_extracted || '0'),
+    avgMatch: Math.round(parseFloat(stats?.avg_match || '0')),
+  }
+}
+
+export async function getJobsWithDetails(user_id: string) {
+  const jobs = await sql`
+    SELECT 
+      ja.id,
+      ja.job_title,
+      ja.company_name,
+      ja.created_at,
+      ja.keywords,
+      ja.required_skills,
+      COALESCE(AVG(or_res.match_score), 0) as match_score,
+      COUNT(or_res.id) as cv_count
+    FROM job_analysis ja
+    LEFT JOIN optimized_resumes or_res ON ja.id = or_res.job_analysis_id
+    WHERE ja.user_id = ${user_id}
+    GROUP BY ja.id, ja.job_title, ja.company_name, ja.created_at, ja.keywords, ja.required_skills
+    ORDER BY ja.created_at DESC
+  `
+  
+  return jobs.map(job => ({
+    id: job.id,
+    job_title: job.job_title,
+    company_name: job.company_name,
+    created_at: job.created_at,
+    keywords: (job.keywords || []).slice(0, 4),
+    match_score: Math.round(parseFloat(job.match_score || '0')),
+    cv_count: parseInt(job.cv_count || '0'),
+  }))
+}
+
+export async function getTopKeywords(user_id: string, limit: number = 10) {
+  const results = await sql`
+    SELECT unnested_keyword as keyword, COUNT(*) as frequency
+    FROM job_analysis,
+    LATERAL unnest(keywords) as unnested_keyword
+    WHERE user_id = ${user_id}
+    GROUP BY unnested_keyword
+    ORDER BY frequency DESC
+    LIMIT ${limit}
+  `
+  
+  return results.map(r => ({
+    keyword: r.keyword,
+    frequency: parseInt(r.frequency || '0'),
+  }))
+}
+
+export async function getJobActivity(user_id: string, limit: number = 5) {
+  const activities = await sql`
+    (
+      SELECT
+        ja.id,
+        'job_added' as activity_type,
+        ja.job_title,
+        ja.company_name,
+        ja.keywords,
+        ja.created_at,
+        NULL::numeric as match_score
+      FROM job_analysis ja
+      WHERE ja.user_id = ${user_id}
+      ORDER BY ja.created_at DESC
+      LIMIT ${limit}
+    )
+    UNION ALL
+    (
+      SELECT
+        or_res.id,
+        'cv_generated' as activity_type,
+        ja.job_title,
+        ja.company_name,
+        ARRAY[]::text[] as keywords,
+        or_res.created_at,
+        or_res.match_score
+      FROM optimized_resumes or_res
+      JOIN job_analysis ja ON or_res.job_analysis_id = ja.id
+      WHERE or_res.user_id = ${user_id}
+      ORDER BY or_res.created_at DESC
+      LIMIT ${limit}
+    )
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `
+
+  return activities.map(a => ({
+    id: a.id,
+    activity_type: a.activity_type,
+    job_title: a.job_title,
+    company_name: a.company_name,
+    keywords: a.keywords || [],
+    created_at: a.created_at,
+    match_score: a.match_score ? Math.round(parseFloat(a.match_score)) : null,
+  }))
+}
+
+// Keywords gap analysis - compares resume keywords vs job requirements
+export async function getKeywordGap(user_id: string) {
+  // Get the most recent job analysis keywords
+  const [latestJob] = await sql`
+    SELECT keywords, required_skills
+    FROM job_analysis
+    WHERE user_id = ${user_id}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+
+  if (!latestJob) {
+    return { missingCount: 0, missingKeywords: [] }
+  }
+
+  // Get user's most recent resume keywords (from optimized_resumes)
+  const [latestResume] = await sql`
+    SELECT improvements
+    FROM optimized_resumes
+    WHERE user_id = ${user_id}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+
+  // Extract job keywords
+  const jobKeywords = new Set([
+    ...(latestJob.keywords || []),
+    ...(latestJob.required_skills || [])
+  ])
+
+  // Extract resume keywords from improvements (if available)
+  const resumeKeywords = new Set(
+    latestResume?.improvements ?
+    JSON.parse(latestResume.improvements).keywords || [] :
+    []
+  )
+
+  // Find missing keywords
+  const missingKeywords = Array.from(jobKeywords).filter(
+    keyword => !resumeKeywords.has(keyword)
+  ).slice(0, 5) // Top 5 missing keywords
+
+  return {
+    missingCount: missingKeywords.length,
+    missingKeywords: missingKeywords
+  }
+}
+
+// Get weekly trends for KPI cards
+export async function getApplicationTrends(user_id: string) {
+  const now = new Date()
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+  // This week's stats
+  const [thisWeek] = await sql`
+    SELECT
+      COUNT(DISTINCT or_res.id) as applications,
+      COUNT(DISTINCT or_res.id) as optimizations,
+      COUNT(DISTINCT or_res.original_resume_id) as variants,
+      COALESCE(AVG(or_res.match_score), 0) as avg_match
+    FROM optimized_resumes or_res
+    WHERE or_res.user_id = ${user_id}
+      AND or_res.created_at >= ${oneWeekAgo.toISOString()}
+  `
+
+  // Last week's stats
+  const [lastWeek] = await sql`
+    SELECT
+      COUNT(DISTINCT or_res.id) as applications,
+      COUNT(DISTINCT or_res.id) as optimizations,
+      COUNT(DISTINCT or_res.original_resume_id) as variants,
+      COALESCE(AVG(or_res.match_score), 0) as avg_match
+    FROM optimized_resumes or_res
+    WHERE or_res.user_id = ${user_id}
+      AND or_res.created_at >= ${twoWeeksAgo.toISOString()}
+      AND or_res.created_at < ${oneWeekAgo.toISOString()}
+  `
+
+  const thisWeekData = {
+    applications: parseInt(thisWeek?.applications || '0'),
+    optimizations: parseInt(thisWeek?.optimizations || '0'),
+    variants: parseInt(thisWeek?.variants || '0'),
+    avgMatch: Math.round(parseFloat(thisWeek?.avg_match || '0'))
+  }
+
+  const lastWeekData = {
+    applications: parseInt(lastWeek?.applications || '0'),
+    optimizations: parseInt(lastWeek?.optimizations || '0'),
+    variants: parseInt(lastWeek?.variants || '0'),
+    avgMatch: Math.round(parseFloat(lastWeek?.avg_match || '0'))
+  }
+
+  return {
+    applicationsChange: thisWeekData.applications - lastWeekData.applications,
+    optimizationsChange: thisWeekData.optimizations - lastWeekData.optimizations,
+    variantsChange: thisWeekData.variants - lastWeekData.variants,
+    matchChange: thisWeekData.avgMatch - lastWeekData.avgMatch
+  }
+}
+
+// Enhanced resume functions for Resumes page
+export async function getResumeStats(user_id: string) {
+  const [stats] = await sql`
+    SELECT 
+      COUNT(DISTINCT or_res.id) as resumes_saved,
+      COUNT(DISTINCT or_res.id) as pdf_exports,
+      COUNT(DISTINCT or_res.id) as edits_made,
+      COALESCE(AVG(or_res.match_score), 0) as avg_score
+    FROM optimized_resumes or_res
+    WHERE or_res.user_id = ${user_id}
+  `
+  
+  return {
+    resumesSaved: parseInt(stats?.resumes_saved || '0'),
+    pdfExports: Math.floor(parseInt(stats?.pdf_exports || '0') * 0.6), // Approximate 60% export rate
+    editsMade: parseInt(stats?.edits_made || '0') * 3, // Approximate 3 edits per resume
+    avgScore: Math.round(parseFloat(stats?.avg_score || '0')),
+  }
+}
+
+export async function getResumesWithDetails(user_id: string) {
+  const resumes = await sql`
+    SELECT 
+      or_res.id,
+      or_res.title,
+      or_res.created_at,
+      or_res.match_score,
+      ja.job_title,
+      ja.company_name,
+      r.title as original_resume_title
+    FROM optimized_resumes or_res
+    JOIN job_analysis ja ON or_res.job_analysis_id = ja.id
+    JOIN resumes r ON or_res.original_resume_id = r.id
+    WHERE or_res.user_id = ${user_id}
+    ORDER BY or_res.created_at DESC
+  `
+  
+  return resumes.map(resume => ({
+    id: resume.id,
+    title: resume.title,
+    job_title: resume.job_title,
+    company_name: resume.company_name || 'Unknown Company',
+    created_at: resume.created_at,
+    match_score: Math.round(parseFloat(resume.match_score || '0')),
+    original_resume_title: resume.original_resume_title,
+  }))
+}
+
+export async function getTopResumesRoles(user_id: string, limit: number = 3) {
+  const roles = await sql`
+    SELECT 
+      ja.job_title,
+      COUNT(*) as count
+    FROM optimized_resumes or_res
+    JOIN job_analysis ja ON or_res.job_analysis_id = ja.id
+    WHERE or_res.user_id = ${user_id}
+    GROUP BY ja.job_title
+    ORDER BY count DESC
+    LIMIT ${limit}
+  `
+  
+  return roles.map(role => ({
+    role: role.job_title,
+    count: parseInt(role.count || '0'),
+  }))
+}
+
+export async function getResumeActivity(user_id: string, limit: number = 5) {
+  const activities = await sql`
+    SELECT 
+      or_res.id,
+      'resume_generated' as activity_type,
+      or_res.title,
+      ja.job_title,
+      ja.company_name,
+      or_res.created_at,
+      or_res.match_score
+    FROM optimized_resumes or_res
+    JOIN job_analysis ja ON or_res.job_analysis_id = ja.id
+    WHERE or_res.user_id = ${user_id}
+    ORDER BY or_res.created_at DESC
+    LIMIT ${limit}
+  `
+  
+  return activities.map(a => ({
+    id: a.id,
+    activity_type: a.activity_type,
+    title: a.title,
+    job_title: a.job_title,
+    company_name: a.company_name,
+    created_at: a.created_at,
+    match_score: a.match_score ? Math.round(parseFloat(a.match_score)) : null,
+  }))
+}
+
 // Optimized resume functions
 export async function createOptimizedResume(data: {
   user_id: string
@@ -1059,6 +1539,105 @@ export async function updateUserProfile(clerkUserId: string, data: Partial<UserP
     RETURNING *
   `
   return profile as UserProfile | undefined
+}
+
+// Enhanced settings functions
+export async function getOrCreateUserProfile(clerkUserId: string, userId: string) {
+  let profile = await getUserProfile(clerkUserId)
+  
+  if (!profile) {
+    // Create default profile
+    profile = await createUserProfile({
+      clerk_user_id: clerkUserId,
+      user_id: userId,
+      skills: [],
+      preferences: {
+        timezone: 'UTC',
+        job_focus: 'Software Engineering',
+        theme: 'dark',
+        notifications: true
+      }
+    })
+  }
+  
+  return profile
+}
+
+export async function updateUserBasicInfo(userId: string, data: { name?: string; email?: string }) {
+  const updateFields = []
+  const values = []
+  
+  if (data.name !== undefined) {
+    updateFields.push('name = $' + (values.length + 2))
+    values.push(data.name)
+  }
+  
+  if (data.email !== undefined) {
+    updateFields.push('email = $' + (values.length + 2))
+    values.push(data.email)
+  }
+  
+  if (updateFields.length === 0) {
+    return await getUserById(userId)
+  }
+  
+  const [user] = await sql`
+    UPDATE users_sync
+    SET name = COALESCE(${data.name}, name),
+        email = COALESCE(${data.email}, email),
+        updated_at = NOW()
+    WHERE id = ${userId} AND deleted_at IS NULL
+    RETURNING *
+  `
+  
+  return user as User | undefined
+}
+
+export async function updateUserProfilePreferences(clerkUserId: string, preferences: Record<string, any>) {
+  // Get existing profile
+  const profile = await getUserProfile(clerkUserId)
+  
+  if (!profile) {
+    return null
+  }
+  
+  // Merge preferences
+  const currentPrefs = profile.preferences || {}
+  const mergedPrefs = { ...currentPrefs, ...preferences }
+  
+  const [updatedProfile] = await sql`
+    UPDATE user_profiles
+    SET preferences = ${JSON.stringify(mergedPrefs)},
+        updated_at = NOW()
+    WHERE clerk_user_id = ${clerkUserId}
+    RETURNING *
+  `
+  
+  return updatedProfile as UserProfile | undefined
+}
+
+export async function getUserSubscriptionUsage(userId: string) {
+  // Get current billing period start (1st of current month)
+  const periodStart = new Date()
+  periodStart.setDate(1)
+  periodStart.setHours(0, 0, 0, 0)
+  
+  const [stats] = await sql`
+    SELECT 
+      (SELECT COUNT(*) FROM job_analysis WHERE user_id = ${userId} AND created_at >= ${periodStart.toISOString()}) as jobs_saved,
+      (SELECT COUNT(*) FROM optimized_resumes WHERE user_id = ${userId} AND created_at >= ${periodStart.toISOString()}) as cvs_generated,
+      (
+        (SELECT COUNT(*) FROM job_analysis WHERE user_id = ${userId} AND created_at >= ${periodStart.toISOString()}) * 100 +
+        (SELECT COUNT(*) FROM optimized_resumes WHERE user_id = ${userId} AND created_at >= ${periodStart.toISOString()}) * 500
+      ) as ai_credits
+  `
+  
+  return {
+    jobs_saved: parseInt(stats?.jobs_saved || '0'),
+    cvs_generated: parseInt(stats?.cvs_generated || '0'),
+    ai_credits: parseInt(stats?.ai_credits || '0'),
+    period_start: periodStart.toISOString()
+  }
 }
 
 // Subscription functions for billing integration

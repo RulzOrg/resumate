@@ -79,6 +79,7 @@
   /* Updated to use Inter as primary font */
   --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
+  --font-geist: var(--font-geist-sans);
   /* Added Space Grotesk font variable */
   --font-space-grotesk: var(--font-space-grotesk);
   --color-background: var(--background);
