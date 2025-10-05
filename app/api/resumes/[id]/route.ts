@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
-import { getOrCreateUser, updateResumeAnalysis, updateResume } from '@/lib/db'
+import { getOrCreateUser, updateResumeAnalysis, updateResume, deleteResume } from '@/lib/db'
 
 export async function PATCH(
   request: NextRequest,
@@ -42,5 +42,33 @@ export async function PATCH(
       { error: 'Failed to update resume' },
       { status: 500 }
     )
+  }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = await auth()
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const user = await getOrCreateUser()
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    const resume = await deleteResume(params.id, user.id)
+    if (!resume) {
+      return NextResponse.json({ error: 'Resume not found' }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting resume:', error)
+    return NextResponse.json({ error: 'Failed to delete resume' }, { status: 500 })
   }
 }
