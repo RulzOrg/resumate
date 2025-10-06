@@ -10,6 +10,31 @@ export interface ApiError {
   suggestion?: string
 }
 
+interface AppErrorOptions {
+  code?: string
+  statusCode?: number
+  suggestion?: string
+  cause?: unknown
+}
+
+export class AppError extends Error {
+  statusCode: number
+  code?: string
+  suggestion?: string
+
+  constructor(message: string, statusCode: number = 500, options: AppErrorOptions = {}) {
+    super(message)
+    this.name = "AppError"
+    this.statusCode = statusCode ?? options.statusCode ?? 500
+    this.code = options.code
+    this.suggestion = options.suggestion
+
+    if (options.cause) {
+      ;(this as any).cause = options.cause
+    }
+  }
+}
+
 /**
  * Parse and enhance API errors with actionable suggestions
  */
@@ -157,6 +182,21 @@ export async function retryWithBackoff<T>(
   throw lastError
 }
 
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  initialDelay = 1000,
+  maxDelay = 10000,
+  onRetry?: (attempt: number, error: any) => void
+): Promise<T> {
+  return retryWithBackoff(fn, {
+    maxRetries,
+    initialDelay,
+    maxDelay,
+    onRetry,
+  })
+}
+
 /**
  * Check if error is retryable
  */
@@ -195,4 +235,30 @@ export function formatErrorMessage(error: any): string {
   }
   
   return apiError.message
+}
+
+export function handleApiError(error: any): {
+  error: string
+  code?: string
+  statusCode: number
+  suggestion?: string
+  details?: any
+} {
+  if (error instanceof AppError) {
+    return {
+      error: error.message,
+      code: error.code,
+      statusCode: error.statusCode ?? 500,
+      suggestion: error.suggestion,
+    }
+  }
+
+  const apiError = parseApiError(error)
+  return {
+    error: apiError.message,
+    code: apiError.code,
+    statusCode: apiError.statusCode ?? 500,
+    suggestion: apiError.suggestion,
+    details: apiError.details,
+  }
 }
