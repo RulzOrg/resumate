@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, Plus, Menu, Home } from "lucide-react"
+import { Search, Plus, Menu, X, Home } from "lucide-react"
 import { UserAvatar } from "@/components/dashboard/user-avatar"
 import { Button } from "@/components/ui/button"
 import { usePathname } from "next/navigation"
@@ -40,13 +40,19 @@ export function Topbar({ onMobileMenuClick, isMobileMenuOpen = false }: TopbarPr
         <div className="flex items-center gap-2">
           <button
             onClick={onMobileMenuClick}
-            className="md:hidden inline-flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5"
-            <input
-              type="text"
-              placeholder="Search..."
-              aria-label="Search"
-              className="w-64 rounded-full bg-white/5 border border-white/15 text-white placeholder-white/40 pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
-            />
+            aria-expanded={isMobileMenuOpen}
+            aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+            className={`md:hidden inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
+              isMobileMenuOpen 
+                ? "border-emerald-500/50 bg-emerald-500/10" 
+                : "border-white/10 bg-white/5"
+            }`}
+          >
+            {isMobileMenuOpen ? (
+              <X className="h-4 w-4 text-white/60" />
+            ) : (
+              <Menu className="h-4 w-4 text-white/60" />
+            )}
           </button>
           <div className="hidden sm:flex items-center gap-2 text-sm text-white/60">
             <Home className="w-4 h-4" />

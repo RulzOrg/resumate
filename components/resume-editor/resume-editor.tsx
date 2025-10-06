@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Save, ArrowLeft } from 'lucide-react'
+import { Save, ArrowLeft, Undo2, Redo2 } from 'lucide-react'
 import { EditorProvider, useEditor } from './editor-provider'
 import { PreviewPanel } from './preview-panel'
 import { ContactSection } from './sections/contact-section'
@@ -12,6 +12,8 @@ import { SkillsSection } from './sections/skills-section'
 import { InterestsSection } from './sections/interests-section'
 import { ExperienceSection } from './sections/experience-section'
 import { EducationSection } from './sections/education-section'
+import { KeyboardShortcutsHelp } from './keyboard-shortcuts-help'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import type { EditorState } from '@/lib/resume-editor-utils'
 
 interface ResumeEditorProps {
@@ -21,17 +23,41 @@ interface ResumeEditorProps {
 }
 
 function EditorContent({ resumeTitle }: { resumeTitle: string }) {
-  const { save, isSaving, isDirty, lastSaved } = useEditor()
+  const { save, isSaving, isDirty, lastSaved, undo, redo, canUndo, canRedo } = useEditor()
   const router = useRouter()
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: 's',
+      ctrl: true,
+      callback: (e) => {
+        e.preventDefault()
+        handleSave()
+      },
+      description: 'Save resume'
+    },
+    {
+      key: 'z',
+      ctrl: true,
+      callback: (e) => {
+        if (e.shiftKey) {
+          redo()
+        } else {
+          undo()
+        }
+      },
+      description: 'Undo/Redo'
+    }
+  ])
 
   const handleSave = async () => {
     setSaveError(null)
     try {
       await save()
-      // Optionally redirect or show success message
     } catch (error) {
-      setSaveError('Failed to save. Please try again.')
+      setSaveError(error instanceof Error ? error.message : 'Failed to save. Please try again.')
     }
   }
 
@@ -54,30 +80,49 @@ function EditorContent({ resumeTitle }: { resumeTitle: string }) {
             <button
               onClick={handleBack}
               className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition"
+              title="Back to resumes"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div>
-              <h1 className="text-lg font-semibold tracking-tight">{resumeTitle}</h1>
-              {lastSaved && (
-                <p className="text-xs text-neutral-500">
-                  Last saved {lastSaved.toLocaleTimeString()}
-                </p>
-              )}
+              <h1 className="text-lg font-semibold tracking-tight font-geist">{resumeTitle}</h1>
+              <div className="flex items-center gap-2 text-xs text-white/60 font-geist">
+                {isDirty && <span className="text-amber-400">Unsaved changes</span>}
+                {!isDirty && lastSaved && (
+                  <span>Last saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                )}
+                {saveError && <span className="text-red-400">{saveError}</span>}
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {isDirty && (
-              <span className="text-xs text-neutral-400 hidden sm:inline">Unsaved changes</span>
-            )}
-            {saveError && (
-              <span className="text-xs text-red-400">{saveError}</span>
-            )}
+            {/* Undo/Redo buttons */}
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Undo (⌘Z)"
+            >
+              <Undo2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Redo (⌘⇧Z)"
+            >
+              <Redo2 className="h-4 w-4" />
+            </button>
+
+            {/* Keyboard shortcuts help */}
+            <KeyboardShortcutsHelp />
+
+            {/* Manual save button */}
             <button
               onClick={handleSave}
               disabled={isSaving || !isDirty}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition font-geist"
             >
               <Save className="h-4 w-4" />
               {isSaving ? 'Saving...' : 'Save'}

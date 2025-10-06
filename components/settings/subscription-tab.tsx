@@ -24,8 +24,8 @@ interface SubscriptionTabProps {
 }
 
 export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTabProps) {
-  const [billingEmail, setBillingEmail] = useState(user.billing_email || '')
-  const [company, setCompany] = useState(user.company || '')
+  const [billingEmail, setBillingEmail] = useState(user.email || '')
+  const [company, setCompany] = useState('')
   const [saving, setSaving] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -40,11 +40,20 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
     
     try {
       const response = await fetch('/api/billing/portal', { method: 'POST' })
-      const data = await response.json()
       
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to access billing portal')
+        let errorMessage = 'Failed to access billing portal'
+        try {
+          const data = await response.json()
+          errorMessage = data.error || errorMessage
+        } catch {
+          // If JSON parsing fails, use statusText or generic message
+          errorMessage = response.statusText || errorMessage
+        }
+        throw new Error(errorMessage)
       }
+      
+      const data = await response.json()
       
       if (data.url) {
         window.location.href = data.url

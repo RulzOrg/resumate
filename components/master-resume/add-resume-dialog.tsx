@@ -60,8 +60,11 @@ export function AddResumeDialog({ onUpload }: AddResumeDialogProps) {
       }
     } else {
       // Return focus to previously focused element
+      // Return focus to previously focused element
       if (previousFocusRef.current) {
-        previousFocusRef.current.focus()
+        if (document.contains(previousFocusRef.current)) {
+          previousFocusRef.current.focus()
+        }
         previousFocusRef.current = null
       }
     }
@@ -90,7 +93,6 @@ export function AddResumeDialog({ onUpload }: AddResumeDialogProps) {
             <div className="flex items-center justify-between mb-4">
               <h3 id="add-resume-dialog-title" className="text-lg font-semibold font-geist">Add Resume</h3>
               <button
-                ref={firstFocusableRef}
                 onClick={() => setIsOpen(false)}
                 aria-label="Close dialog"
                 className="text-white/60 hover:text-white transition"
@@ -105,6 +107,7 @@ export function AddResumeDialog({ onUpload }: AddResumeDialogProps) {
 
             <div className="space-y-3">
               <button
+                ref={firstFocusableRef}
                 onClick={() => {
                   onUpload()
                   setIsOpen(false)

@@ -20,9 +20,9 @@ interface SummaryContext {
   currentSummary?: string
   targetRole?: string
   experience?: Array<{
-    role: string
-    company: string
-    bullets: string[]
+    role?: string
+    company?: string
+    bullets?: string[]
   }>
 }
 
@@ -147,7 +147,7 @@ export async function POST(
 function buildSummaryPrompt(context: SummaryContext): string {
   const experienceText = context.experience
     ?.filter(exp => exp?.role && exp?.company && Array.isArray(exp?.bullets))
-    .map(exp => `${exp.role} at ${exp.company}:\n${exp.bullets.join('\n')}`)
+    .map(exp => `${exp.role} at ${exp.company}:\n${exp.bullets?.join('\n') || ''}`)
     .join('\n\n') || 'No experience provided'
 
   return `Generate 3 professional summary variations for a resume based on:

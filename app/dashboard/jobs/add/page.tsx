@@ -6,7 +6,7 @@ export default async function AddJobPage() {
   const user = await getAuthenticatedUser()
 
   if (!user?.id) {
-    return null
+    redirect("/login")
   }
 
   if (!user.onboarding_completed_at) {

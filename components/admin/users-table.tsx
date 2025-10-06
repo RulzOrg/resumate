@@ -74,7 +74,7 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
                   <TableCell className="font-medium text-white font-geist">
                     <div className="flex items-center gap-3">
                       <img
-                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${user.name}&backgroundColor=10b981`}
+                        src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=10b981`}
                         alt={user.name}
                         className="w-8 h-8 rounded-full"
                       />
@@ -88,7 +88,15 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
                   <TableCell className="text-white/80 font-geist">{user.resume_count}</TableCell>
                   <TableCell className="text-white/80 font-geist">{user.job_analysis_count}</TableCell>
                   <TableCell className="text-white/80 font-geist">
-                    {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
+                    {(() => {
+                      try {
+                        const date = new Date(user.created_at)
+                        if (isNaN(date.getTime())) return "Invalid date"
+                        return formatDistanceToNow(date, { addSuffix: true })
+                      } catch {
+                        return "Invalid date"
+                      }
+                    })()}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -97,6 +105,7 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
                           size="sm"
                           variant="ghost"
                           className="text-white/70 hover:text-white hover:bg-white/10"
+                          aria-label={`View user ${user.name}`}
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -106,6 +115,7 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
                         variant="ghost"
                         onClick={() => handleDeleteClick(user)}
                         className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        aria-label={`Delete user ${user.name}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

@@ -4,7 +4,14 @@ import { getUserProfile, updateUserProfile, getMasterResume, getOrCreateUser } f
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
-import { handleApiError, AppError } from "@/lib/error-handler"
+import { parseApiError } from "@/lib/error-handler"
+
+class ApiError extends Error {
+  constructor(message: string, public statusCode: number = 500) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
 
 const SkillsExtractionSchema = z.object({
   technical_skills: z.array(z.string()).describe("Technical skills like programming languages, frameworks, tools"),
@@ -57,10 +64,12 @@ export async function GET(request: NextRequest) {
       const parsedSections = masterResume.parsed_sections as Record<string, any>
       
       if (parsedSections.skills && Array.isArray(parsedSections.skills)) {
-        const skills = parsedSections.skills
-          .filter(s => typeof s === 'string' || (typeof s === 'object' && s.name))
-          .map(s => typeof s === 'string' ? s.toLowerCase().trim() : s.name.toLowerCase().trim())
-          .filter(Boolean)
+        const skills = [...new Set(
+          parsedSections.skills
+            .filter(s => typeof s === 'string' || (typeof s === 'object' && s.name))
+            .map(s => typeof s === 'string' ? s.toLowerCase().trim() : s.name.toLowerCase().trim())
+            .filter(Boolean)
+        )]
         
         if (skills.length > 0) {
           console.log('Extracted skills from parsed_sections:', { count: skills.length })
@@ -123,10 +132,16 @@ IMPORTANT: Be exhaustive. Extract every identifiable skill, tool, technology, or
     })
   } catch (error) {
     console.error('Error in GET /api/user/skills:', error)
-    const errorInfo = handleApiError(error)
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      )
+    }
+    const errorInfo = parseApiError(error)
     return NextResponse.json(
-      { error: errorInfo.error, code: errorInfo.code },
-      { status: errorInfo.statusCode }
+      { error: errorInfo.message, code: errorInfo.code },
+      { status: errorInfo.statusCode || 500 }
     )
   }
 }
@@ -146,12 +161,14 @@ export async function POST(request: NextRequest) {
     const { skills } = body
 
     if (!Array.isArray(skills)) {
-      throw new AppError("Skills must be an array", 400)
+      throw new ApiError("Skills must be an array", 400)
     }
 
-    const normalizedSkills = skills
-      .map(s => String(s).toLowerCase().trim())
-      .filter(Boolean)
+    const normalizedSkills = [...new Set(
+      skills
+        .map(s => String(s).toLowerCase().trim())
+        .filter(Boolean)
+    )]
 
     await updateUserProfile(userId, { skills: normalizedSkills })
 
@@ -162,10 +179,16 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error in POST /api/user/skills:', error)
-    const errorInfo = handleApiError(error)
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      )
+    }
+    const errorInfo = parseApiError(error)
     return NextResponse.json(
-      { error: errorInfo.error, code: errorInfo.code },
-      { status: errorInfo.statusCode }
+      { error: errorInfo.message, code: errorInfo.code },
+      { status: errorInfo.statusCode || 500 }
     )
   }
 }
@@ -186,10 +209,16 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true, message: "Skills cache cleared" })
   } catch (error) {
     console.error('Error in DELETE /api/user/skills:', error)
-    const errorInfo = handleApiError(error)
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      )
+    }
+    const errorInfo = parseApiError(error)
     return NextResponse.json(
-      { error: errorInfo.error, code: errorInfo.code },
-      { status: errorInfo.statusCode }
+      { error: errorInfo.message, code: errorInfo.code },
+      { status: errorInfo.statusCode || 500 }
     )
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Upload, Trash2, Save, AlertTriangle, Mail, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import type { User, UserProfile } from '@/lib/db'
 import { TIMEZONES, JOB_FOCUS_OPTIONS, isValidEmail } from '@/lib/settings-utils'
@@ -32,12 +32,7 @@ export function AccountTab({ user, profile }: AccountTabProps) {
   const [newEmail, setNewEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
 
-  // Fetch email verification status on mount
-  useEffect(() => {
-    fetchEmailStatus()
-  }, [])
-
-  const fetchEmailStatus = async () => {
+  const fetchEmailStatus = useCallback(async () => {
     setLoadingEmailStatus(true)
     try {
       const response = await fetch('/api/user/email/status')
@@ -50,7 +45,12 @@ export function AccountTab({ user, profile }: AccountTabProps) {
     } finally {
       setLoadingEmailStatus(false)
     }
-  }
+  }, [])
+
+  // Fetch email verification status on mount
+  useEffect(() => {
+    fetchEmailStatus()
+  }, [fetchEmailStatus])
 
   const handleSave = async () => {
     setSaving(true)

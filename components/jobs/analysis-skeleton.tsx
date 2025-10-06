@@ -1,6 +1,10 @@
 export function AnalysisSkeleton() {
   return (
-    <div className="space-y-6 animate-pulse">
+    <div
+      className="space-y-6 animate-pulse"
+      role="status"
+      aria-label="Loading analysis"
+    >
       {/* Match Score Skeleton */}
       <div className="rounded-lg border border-white/10 bg-white/5 p-4">
         <div className="flex items-center justify-between">
@@ -67,6 +71,8 @@ export function AnalysisSkeleton() {
           ))}
         </div>
       </div>
+
+      <span className="sr-only">Loading analysis data...</span>
     </div>
   )
 }

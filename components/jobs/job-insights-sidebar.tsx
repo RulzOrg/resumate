@@ -6,7 +6,7 @@ interface JobInsightsSidebarProps {
   avgMatch: number
 }
 
-export async function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsSidebarProps) {
+export function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsSidebarProps) {
   const displayedKeywords = topKeywords.slice(0, 3)
   const hasKeywords = displayedKeywords.length > 0
   const hasMatchData = avgMatch > 0

@@ -20,8 +20,28 @@ export async function DELETE(
       )
     }
 
-    // Revoke the session using Clerk
+    // Fetch and verify session ownership before revoking
     const client = await clerkClient()
+    
+    // Get the target session to verify it exists and belongs to this user
+    const targetSession = await client.sessions.getSession(params.sessionId)
+    
+    if (!targetSession) {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 }
+      )
+    }
+
+    // Verify the session belongs to the authenticated user
+    if (targetSession.userId !== userId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Cannot revoke another user\'s session' },
+        { status: 403 }
+      )
+    }
+
+    // Revoke the session only after ownership is verified
     await client.sessions.revokeSession(params.sessionId)
 
     return NextResponse.json({ success: true })

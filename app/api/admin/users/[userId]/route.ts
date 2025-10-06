@@ -11,7 +11,7 @@ import { clerkClient } from "@clerk/nextjs/server"
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   const authCheck = await requireAdminAPI()
   if (!authCheck.authorized) {
@@ -22,7 +22,7 @@ export async function GET(
   }
 
   try {
-    const { userId } = params
+    const { userId } = await params
     const userDetails = await getUserDetailsAdmin(userId)
 
     if (!userDetails) {
@@ -53,7 +53,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   const authCheck = await requireAdminAPI()
   if (!authCheck.authorized) {
@@ -64,7 +64,7 @@ export async function PATCH(
   }
 
   try {
-    const { userId } = params
+    const { userId } = await params
     const body = await req.json()
     const { subscription_status, subscription_plan, subscription_period_end } = body
 
@@ -110,7 +110,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   const authCheck = await requireAdminAPI()
   if (!authCheck.authorized) {
@@ -121,7 +121,7 @@ export async function DELETE(
   }
 
   try {
-    const { userId } = params
+    const { userId } = await params
 
     const user = await getUserById(userId)
     if (!user || !user.clerk_user_id) {
@@ -131,18 +131,29 @@ export async function DELETE(
       )
     }
 
+    // Delete from database first
+    let deletedUser
     try {
-      const clerk = await clerkClient()
-      await clerk.users.deleteUser(user.clerk_user_id)
-    } catch (clerkError: any) {
-      console.error("[ADMIN_API] Failed to delete user from Clerk:", clerkError)
+      deletedUser = await deleteUserByClerkId(user.clerk_user_id)
+    } catch (dbError: any) {
+      console.error("[ADMIN_API] Failed to delete user from database:", dbError)
       return NextResponse.json(
-        { error: "Failed to delete user from Clerk" },
+        { error: "Failed to delete user from database" },
         { status: 500 }
       )
     }
 
-    const deletedUser = await deleteUserByClerkId(user.clerk_user_id)
+    // Only delete from Clerk if DB deletion succeeded
+    try {
+      const clerk = await clerkClient()
+      await clerk.users.deleteUser(user.clerk_user_id)
+    } catch (clerkError: any) {
+      console.error("[ADMIN_API] Failed to delete user from Clerk (database entry already removed):", clerkError)
+      return NextResponse.json(
+        { error: "Database entry removed, but failed to delete user from Clerk" },
+        { status: 500 }
+      )
+    }
 
     const adminUserId = await getCurrentAdminUserId()
     if (adminUserId) {

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { z } from 'zod'
 import { getOrCreateUser, getResumeById, updateResumeFieldsAtomic, deleteResume } from '@/lib/db'
-import { ParsedResumeSchema } from '@/lib/schemas'
 
 // Validation schema for PATCH request body
 const UpdateResumeSchema = z.object({
@@ -12,7 +11,7 @@ const UpdateResumeSchema = z.object({
     .max(200, 'Title must not exceed 200 characters')
     .optional(),
   content_text: z.string().optional(),
-  parsed_sections: ParsedResumeSchema.optional(),
+  parsed_sections: z.any().optional(), // Accept any valid JSON for parsed sections
 })
 
 export async function PATCH(

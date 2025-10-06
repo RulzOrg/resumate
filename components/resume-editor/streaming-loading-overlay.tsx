@@ -28,12 +28,14 @@ export function StreamingLoadingOverlay({ section }: StreamingLoadingOverlayProp
 
   // Rotate through messages
   useEffect(() => {
+    setCurrentMessageIndex(0) // Reset to first message when section changes
+    
     const interval = setInterval(() => {
       setCurrentMessageIndex((prev) => (prev + 1) % messages.length)
     }, 1500)
 
     return () => clearInterval(interval)
-  }, [messages.length])
+  }, [section, messages.length])
 
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/80 backdrop-blur-sm rounded-2xl">

@@ -9,6 +9,10 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (!currentSessionId) {
+      return NextResponse.json({ error: 'Invalid or missing sessionId' }, { status: 400 })
+    }
+
     // Fetch all sessions for the user
     const client = await clerkClient()
     const sessions = await client.sessions.getSessionList({

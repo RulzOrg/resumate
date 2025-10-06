@@ -1024,18 +1024,29 @@ export async function createJobAnalysisWithVerification(data: {
     const required_skills = Array.isArray(normalizedAnalysis.required_skills) ? normalizedAnalysis.required_skills : []
     const preferred_skills = Array.isArray(normalizedAnalysis.preferred_skills) ? normalizedAnalysis.preferred_skills : []
     
-    // Truncate fields to fit database constraints (prevent varchar overflow)
+    // Validate field lengths to prevent data loss
     const experience_level = normalizedAnalysis.experience_level 
-      ? String(normalizedAnalysis.experience_level).substring(0, 50) 
+      ? String(normalizedAnalysis.experience_level) 
       : null
     const salary_range = normalizedAnalysis.salary_range 
       ? (typeof normalizedAnalysis.salary_range === 'string' 
-          ? normalizedAnalysis.salary_range.substring(0, 100)
-          : JSON.stringify(normalizedAnalysis.salary_range).substring(0, 100))
+          ? normalizedAnalysis.salary_range
+          : JSON.stringify(normalizedAnalysis.salary_range))
       : null
     const location = normalizedAnalysis.location 
-      ? String(normalizedAnalysis.location).substring(0, 255) 
+      ? String(normalizedAnalysis.location) 
       : null
+
+    // Validate lengths
+    if (experience_level && experience_level.length > 50) {
+      throw new Error(`experience_level exceeds 50 characters: ${experience_level.length}`)
+    }
+    if (salary_range && salary_range.length > 100) {
+      throw new Error(`salary_range exceeds 100 characters: ${salary_range.length}`)
+    }
+    if (location && location.length > 255) {
+      throw new Error(`location exceeds 255 characters: ${location.length}`)
+    }
 
     // Step 4: Generate UUID fallback if database doesn't handle it
     const id = generateUUID()
@@ -2151,8 +2162,34 @@ export async function getAllUsersAdmin(params: {
     sortOrder = 'desc'
   } = params
 
+  // Whitelist allowed columns and sort directions to prevent SQL injection
+  const allowedSortColumns = ['created_at', 'name', 'email'] as const
+  const allowedSortDirections = ['ASC', 'DESC'] as const
+  
+  // Validate and sanitize sortBy
+  const validatedSortBy = allowedSortColumns.includes(sortBy as any) 
+    ? sortBy 
+    : 'created_at'
+  
+  // Validate and sanitize sortOrder
+  const validatedSortOrder = allowedSortDirections.includes(sortOrder.toUpperCase() as any)
+    ? sortOrder.toUpperCase()
+    : 'DESC'
+
   const offset = (page - 1) * limit
   const searchPattern = `%${search}%`
+  
+  // Build ORDER BY fragment based on validated inputs
+  const buildOrderBy = () => {
+    if (validatedSortBy === 'name') {
+      return validatedSortOrder === 'ASC' ? 'u.name ASC' : 'u.name DESC'
+    } else if (validatedSortBy === 'email') {
+      return validatedSortOrder === 'ASC' ? 'u.email ASC' : 'u.email DESC'
+    } else {
+      return validatedSortOrder === 'ASC' ? 'u.created_at ASC' : 'u.created_at DESC'
+    }
+  }
+  const orderByClause = buildOrderBy()
 
   // Build the query dynamically based on filters
   let users: any[]
@@ -2160,29 +2197,20 @@ export async function getAllUsersAdmin(params: {
 
   if (search && subscription_status) {
     // Both search and subscription filter
-    users = await sql`
-      SELECT 
-        u.id,
-        u.email,
-        u.name,
-        u.clerk_user_id,
-        u.subscription_status,
-        u.subscription_plan,
-        u.subscription_period_end,
-        u.created_at,
-        u.updated_at,
-        COUNT(DISTINCT r.id)::int as resume_count,
-        COUNT(DISTINCT ja.id)::int as job_analysis_count
-      FROM users_sync u
-      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
-      LEFT JOIN job_analysis ja ON ja.user_id = u.id
-      WHERE u.deleted_at IS NULL 
-        AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern})
-        AND u.subscription_status = ${subscription_status}
-      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
-      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
-      LIMIT ${limit} OFFSET ${offset}
-    `
+    // Conditionally build ORDER BY based on sort params
+    if (validatedSortBy === 'name' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'name' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at ASC LIMIT ${limit} OFFSET ${offset}`
+    } else {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at DESC LIMIT ${limit} OFFSET ${offset}`
+    }
     countResult = await sql`
       SELECT COUNT(*) as total
       FROM users_sync
@@ -2192,28 +2220,19 @@ export async function getAllUsersAdmin(params: {
     `
   } else if (search) {
     // Only search filter
-    users = await sql`
-      SELECT 
-        u.id,
-        u.email,
-        u.name,
-        u.clerk_user_id,
-        u.subscription_status,
-        u.subscription_plan,
-        u.subscription_period_end,
-        u.created_at,
-        u.updated_at,
-        COUNT(DISTINCT r.id)::int as resume_count,
-        COUNT(DISTINCT ja.id)::int as job_analysis_count
-      FROM users_sync u
-      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
-      LEFT JOIN job_analysis ja ON ja.user_id = u.id
-      WHERE u.deleted_at IS NULL 
-        AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern})
-      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
-      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
-      LIMIT ${limit} OFFSET ${offset}
-    `
+    if (validatedSortBy === 'name' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'name' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at ASC LIMIT ${limit} OFFSET ${offset}`
+    } else {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}) GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at DESC LIMIT ${limit} OFFSET ${offset}`
+    }
     countResult = await sql`
       SELECT COUNT(*) as total
       FROM users_sync
@@ -2222,28 +2241,19 @@ export async function getAllUsersAdmin(params: {
     `
   } else if (subscription_status) {
     // Only subscription filter
-    users = await sql`
-      SELECT 
-        u.id,
-        u.email,
-        u.name,
-        u.clerk_user_id,
-        u.subscription_status,
-        u.subscription_plan,
-        u.subscription_period_end,
-        u.created_at,
-        u.updated_at,
-        COUNT(DISTINCT r.id)::int as resume_count,
-        COUNT(DISTINCT ja.id)::int as job_analysis_count
-      FROM users_sync u
-      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
-      LEFT JOIN job_analysis ja ON ja.user_id = u.id
-      WHERE u.deleted_at IS NULL 
-        AND u.subscription_status = ${subscription_status}
-      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
-      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
-      LIMIT ${limit} OFFSET ${offset}
-    `
+    if (validatedSortBy === 'name' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'name' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at ASC LIMIT ${limit} OFFSET ${offset}`
+    } else {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL AND u.subscription_status = ${subscription_status} GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at DESC LIMIT ${limit} OFFSET ${offset}`
+    }
     countResult = await sql`
       SELECT COUNT(*) as total
       FROM users_sync
@@ -2252,27 +2262,19 @@ export async function getAllUsersAdmin(params: {
     `
   } else {
     // No filters
-    users = await sql`
-      SELECT 
-        u.id,
-        u.email,
-        u.name,
-        u.clerk_user_id,
-        u.subscription_status,
-        u.subscription_plan,
-        u.subscription_period_end,
-        u.created_at,
-        u.updated_at,
-        COUNT(DISTINCT r.id)::int as resume_count,
-        COUNT(DISTINCT ja.id)::int as job_analysis_count
-      FROM users_sync u
-      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
-      LEFT JOIN job_analysis ja ON ja.user_id = u.id
-      WHERE u.deleted_at IS NULL
-      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
-      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
-      LIMIT ${limit} OFFSET ${offset}
-    `
+    if (validatedSortBy === 'name' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'name' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.name DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email ASC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortBy === 'email' && validatedSortOrder === 'DESC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.email DESC LIMIT ${limit} OFFSET ${offset}`
+    } else if (validatedSortOrder === 'ASC') {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at ASC LIMIT ${limit} OFFSET ${offset}`
+    } else {
+      users = await sql`SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at, COUNT(DISTINCT r.id)::int as resume_count, COUNT(DISTINCT ja.id)::int as job_analysis_count FROM users_sync u LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL LEFT JOIN job_analysis ja ON ja.user_id = u.id WHERE u.deleted_at IS NULL GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at ORDER BY u.created_at DESC LIMIT ${limit} OFFSET ${offset}`
+    }
     countResult = await sql`
       SELECT COUNT(*) as total
       FROM users_sync

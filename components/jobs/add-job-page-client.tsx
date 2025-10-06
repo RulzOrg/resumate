@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Sparkles, Loader2, Eraser, FileText, AlertCircle, AlertTriangle, ListChecks, Lightbulb, ShieldCheck, TrendingUp, Bookmark, BookmarkCheck, Wand2, Upload, Check } from "lucide-react"
@@ -73,12 +73,33 @@ export function AddJobPageClient() {
     ats: false
   })
   
+  // Refs for cleanup
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const isMountedRef = useRef(true)
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+      }
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+    }
+  }, [])
+  
   // Debounce utility
   const debounce = (func: (...args: any[]) => void, delay: number) => {
-    let timeoutId: NodeJS.Timeout
     return (...args: any[]) => {
-      clearTimeout(timeoutId)
-      timeoutId = setTimeout(() => func(...args), delay)
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+      }
+      debounceTimeoutRef.current = setTimeout(() => func(...args), delay)
     }
   }
   
@@ -484,9 +505,11 @@ export function AddJobPageClient() {
     setOptimizationProgress(0)
     
     try {
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setOptimizationProgress(prev => Math.min(prev + 10, 90))
+      // Simulate progress with cleanup-safe interval
+      progressIntervalRef.current = setInterval(() => {
+        if (isMountedRef.current) {
+          setOptimizationProgress(prev => Math.min(prev + 10, 90))
+        }
       }, 1000)
       
       const response = await fetch("/api/resumes/optimize", {
@@ -498,7 +521,13 @@ export function AddJobPageClient() {
         })
       })
       
-      clearInterval(progressInterval)
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+      
+      if (!isMountedRef.current) return
+      
       setOptimizationProgress(100)
       
       if (response.ok) {
@@ -507,7 +536,9 @@ export function AddJobPageClient() {
         
         // Short delay to show 100% progress
         setTimeout(() => {
-          router.push(`/dashboard/optimized/${result.optimized_resume.id}`)
+          if (isMountedRef.current) {
+            router.push(`/dashboard/optimized/${result.optimized_resume.id}`)
+          }
         }, 500)
       } else {
         const result = await response.json()
@@ -515,10 +546,18 @@ export function AddJobPageClient() {
         setShowResumePicker(false)
       }
     } catch (error) {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
+      if (!isMountedRef.current) return
+      
       toast.error("An error occurred during optimization")
       setShowResumePicker(false)
     } finally {
-      setIsAnalyzing(false)
+      if (isMountedRef.current) {
+        setIsAnalyzing(false)
+      }
     }
   }
   

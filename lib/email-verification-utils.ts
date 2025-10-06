@@ -78,7 +78,7 @@ export async function isEmailInUse(
   const [result] = await sql`
     SELECT 1 as in_use
     FROM users_sync
-    WHERE (email = ${email} OR pending_email = ${email})
+    WHERE (LOWER(email) = LOWER(${email}) OR LOWER(pending_email) = LOWER(${email}))
       AND deleted_at IS NULL
       ${excludeUserId ? sql`AND id != ${excludeUserId}` : sql``}
   `
@@ -100,7 +100,7 @@ export async function setPendingEmail(
   expiryDate.setHours(expiryDate.getHours() + expiryHours)
 
   try {
-    await sql`
+    const [updated] = await sql`
       UPDATE users_sync
       SET pending_email = ${pendingEmail},
           email_verification_status = 'pending_verification',
@@ -108,7 +108,17 @@ export async function setPendingEmail(
           email_verification_expiry = ${expiryDate.toISOString()},
           updated_at = NOW()
       WHERE id = ${userId} AND deleted_at IS NULL
+      RETURNING id
     `
+
+    if (!updated) {
+      console.error('[EMAIL_VERIFICATION] UPDATE affected 0 rows:', {
+        userId,
+        pendingEmail,
+        message: 'User not found or already deleted'
+      })
+      return { success: false, expiresAt: expiryDate }
+    }
 
     return { success: true, expiresAt: expiryDate }
   } catch (error) {
@@ -162,6 +172,7 @@ export async function commitPendingEmail(
       WHERE id = ${userId}
         AND pending_email = ${expectedPendingEmail}
         AND email_verification_status = 'pending_verification'
+        AND email_verification_expiry > NOW()
         AND deleted_at IS NULL
       RETURNING id, email
     `
@@ -251,6 +262,7 @@ export async function getUserByVerificationToken(
     FROM users_sync
     WHERE email_verification_token = ${verificationToken}
       AND email_verification_status = 'pending_verification'
+      AND (email_verification_expiry IS NULL OR email_verification_expiry > NOW())
       AND deleted_at IS NULL
   `
 

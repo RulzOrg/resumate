@@ -66,16 +66,16 @@ export function MasterResumeList({ resumes }: MasterResumeListProps) {
       })
 
       if (!response.ok) {
-        // Try to get error message from response body
+        // Read body once as text, then try to parse as JSON
+        const bodyText = await response.text()
         let errorMessage = 'Failed to export resume'
         try {
-          const errorData = await response.json()
+          const errorData = JSON.parse(bodyText)
           errorMessage = errorData.error || errorData.message || errorMessage
         } catch {
-          // If JSON parsing fails, try to get text
-          const errorText = await response.text()
-          if (errorText) {
-            errorMessage = errorText
+          // If JSON parsing fails, use raw text
+          if (bodyText) {
+            errorMessage = bodyText
           }
         }
         throw new Error(errorMessage)

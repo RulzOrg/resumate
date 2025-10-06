@@ -49,14 +49,16 @@ export async function DELETE() {
 
     console.log(`[DELETE /api/user/account] Proceeding with deletion for user: ${userId} (subscription status: ${subscription.status})`)
 
-    // Soft delete in database (sets deleted_at timestamp)
-    await deleteUserByClerkId(userId)
-    console.log(`[DELETE /api/user/account] Soft deleted user in database: ${userId}`)
-
-    // Delete from Clerk (this will trigger sign out)
+    // Delete from Clerk first (this will trigger sign out)
+    console.log(`[DELETE /api/user/account] Deleting user from Clerk: ${userId}`)
     const clerk = await clerkClient()
     await clerk.users.deleteUser(userId)
-    console.log(`[DELETE /api/user/account] Deleted user from Clerk: ${userId}`)
+    console.log(`[DELETE /api/user/account] Successfully deleted user from Clerk: ${userId}`)
+
+    // Soft delete in database only after Clerk deletion succeeds (sets deleted_at timestamp)
+    console.log(`[DELETE /api/user/account] Soft deleting user in database: ${userId}`)
+    await deleteUserByClerkId(userId)
+    console.log(`[DELETE /api/user/account] Successfully soft deleted user in database: ${userId}`)
 
     return NextResponse.json({ 
       success: true,

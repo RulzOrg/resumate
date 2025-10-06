@@ -34,21 +34,42 @@ export function DeleteUserDialog({
 
   const handleDelete = async () => {
     setDeleting(true)
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+    
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
-        method: "DELETE"
+        method: "DELETE",
+        signal: controller.signal
       })
 
+      clearTimeout(timeoutId)
+
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to delete user")
+        let errorMessage = `HTTP ${response.status}`
+        try {
+          const data = await response.json()
+          errorMessage = data.error || errorMessage
+        } catch {
+          const text = await response.text()
+          errorMessage = text.trim() || errorMessage
+        }
+        throw new Error(errorMessage)
       }
 
       onSuccess?.()
       onOpenChange(false)
     } catch (error: any) {
-      console.error("Failed to delete user:", error)
-      alert(error.message || "Failed to delete user")
+      clearTimeout(timeoutId)
+      
+      if (error.name === "AbortError") {
+        console.error("Delete user request timed out after 10 seconds")
+        alert("Request timed out. The server took too long to respond. Please try again.")
+      } else {
+        console.error("Failed to delete user:", error)
+        alert(error.message || "Failed to delete user")
+      }
     } finally {
       setDeleting(false)
     }

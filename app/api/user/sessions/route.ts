@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 
 export async function GET() {
@@ -11,17 +11,10 @@ export async function GET() {
 
     // Fetch all sessions for the user from Clerk
     const client = await clerkClient()
-    const sessions = await client.users.getUserList({
-      userId: [userId]
-    }).then(async (users) => {
-      if (users.data.length === 0) return []
-      const user = users.data[0]
-      // Get sessions using the sessions API
-      const sessionList = await client.sessions.getSessionList({
-        userId: userId
-      })
-      return sessionList.data
+    const sessionList = await client.sessions.getSessionList({
+      userId: userId
     })
+    const sessions = sessionList.data
 
     // Format sessions for frontend
     const formattedSessions = sessions.map(session => ({
@@ -31,11 +24,11 @@ export async function GET() {
       expireAt: session.expireAt,
       abandonAt: session.abandonAt,
       clientId: session.clientId,
-      // Parse user agent for display
-      userAgent: parseUserAgent(session.lastActiveToken?.userAgent || 'Unknown'),
-      ipAddress: session.lastActiveToken?.ipAddress || 'Unknown',
-      city: session.lastActiveToken?.city || null,
-      country: session.lastActiveToken?.country || null,
+      // User agent and IP data not available through Clerk Sessions API
+      userAgent: parseUserAgent('Unknown'),
+      ipAddress: 'Unknown',
+      city: null,
+      country: null,
     }))
 
     return NextResponse.json({ sessions: formattedSessions })

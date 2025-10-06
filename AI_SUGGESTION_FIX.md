@@ -63,10 +63,15 @@ onClick={() => {
   } else {
     // This edge case should never happen if summaries are initialized with 1 empty summary
     console.error('No summaries found - this should not happen')
-    // Alternative: If addSummary returns the new ID:
-    // const newId = addSummary()
-    // updateSummary(newId, 'value', suggestion)
-    // updateSummary(newId, 'include', true)
+    // Fallback: add a new summary with the suggestion
+    const newId = addSummary()
+    if (newId) {
+      updateSummary(newId, 'value', suggestion)
+      updateSummary(newId, 'include', true)
+    } else {
+      // If addSummary doesn't return ID, don't remove suggestion
+      return
+    }
   }
   }
   // Remove this suggestion from the list

@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate expiry (24 hours from now)
-    const expiryDate = new Date()
-    expiryDate.setHours(expiryDate.getHours() + 24)
+    const expiryMs = Date.now() + 24 * 60 * 60 * 1000
+    const expiryDate = new Date(expiryMs)
 
     // Step 1: Store pending email in database FIRST
     try {
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       console.log('[EMAIL_CHANGE] Stored pending email in database:', {
         user_id: user.id,
         clerk_user_id: userId,
-        pending_email: newEmail,
+        pending_email: '[REDACTED_EMAIL]',
         expiry: expiryDate.toISOString()
       })
     } catch (dbError: any) {
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
       
       console.log('[EMAIL_CHANGE] Created email address in Clerk:', {
         clerk_email_id: emailAddress.id,
-        email: newEmail,
+        email: '[REDACTED_EMAIL]',
         verified: emailAddress.verification?.status
       })
 
@@ -141,12 +141,7 @@ export async function POST(request: NextRequest) {
         WHERE id = ${user.id} AND deleted_at IS NULL
       `
 
-      // Prepare the email verification (Clerk will send the verification email)
-      await clerk.emailAddresses.update(emailAddress.id, {
-        verified: false,
-      })
-
-      console.log('[EMAIL_CHANGE] Email verification initiated in Clerk')
+      console.log('[EMAIL_CHANGE] Email verification initiated in Clerk (verification email sent automatically)')
 
       return NextResponse.json({
         success: true,
@@ -180,12 +175,15 @@ export async function POST(request: NextRequest) {
         console.error('[EMAIL_CHANGE] Rollback failed:', rollbackError)
       }
 
-      // Determine error message based on Clerk error
+      // Determine error message and status based on Clerk error
       let errorMessage = 'Failed to send verification email'
+      let status = 500
       if (clerkError.status === 422) {
         errorMessage = 'Email address is invalid or already in use'
+        status = 422
       } else if (clerkError.status === 429) {
         errorMessage = 'Too many requests. Please try again later'
+        status = 429
       }
 
       return NextResponse.json(
@@ -193,7 +191,7 @@ export async function POST(request: NextRequest) {
           error: errorMessage,
           details: clerkError.message 
         },
-        { status: 500 }
+        { status }
       )
     }
   } catch (error: any) {
@@ -304,7 +302,7 @@ export async function DELETE() {
 
     console.log('[EMAIL_CANCEL] Cancelled pending email change:', {
       user_id: user.id,
-      cancelled_email: pending.pending_email
+      cancelled_email: '[REDACTED_EMAIL]'
     })
 
     return NextResponse.json({

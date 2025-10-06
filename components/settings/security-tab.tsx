@@ -6,6 +6,16 @@ import type { User } from '@/lib/db'
 import { validatePassword } from '@/lib/settings-utils'
 import { useAuth } from '@clerk/nextjs'
 import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface SecurityTabProps {
   user: User
@@ -38,40 +48,51 @@ export function SecurityTab({ user }: SecurityTabProps) {
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [revokingSession, setRevokingSession] = useState<string | null>(null)
   const [revokingAll, setRevokingAll] = useState(false)
+  const [sessionToRevoke, setSessionToRevoke] = useState<string | null>(null)
+  const [showRevokeAllDialog, setShowRevokeAllDialog] = useState(false)
 
   useEffect(() => {
-    fetchSessions()
+    const controller = new AbortController()
+    fetchSessions(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const fetchSessions = async () => {
+  const fetchSessions = async (signal?: AbortSignal) => {
     try {
       setLoadingSessions(true)
-      const response = await fetch('/api/user/sessions')
-      if (response.ok) {
-        const data = await response.json()
-        setSessions(data.sessions || [])
+      const response = await fetch('/api/user/sessions', { signal })
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sessions: ${response.statusText}`)
       }
+      const data = await response.json()
+      setSessions(data.sessions || [])
     } catch (error) {
-      console.error('Failed to fetch sessions:', error)
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Ignore abort errors (component unmounted)
+        return
+      }
+      toast.error('Failed to load sessions')
     } finally {
       setLoadingSessions(false)
     }
   }
 
   const handleRevokeSession = async (sessionIdToRevoke: string) => {
-    if (!confirm('Are you sure you want to sign out this session?')) {
-      return
-    }
+    setSessionToRevoke(sessionIdToRevoke)
+  }
+
+  const confirmRevokeSession = async () => {
+    if (!sessionToRevoke) return
 
     try {
-      setRevokingSession(sessionIdToRevoke)
-      const response = await fetch(`/api/user/sessions/${sessionIdToRevoke}`, {
+      setRevokingSession(sessionToRevoke)
+      const response = await fetch(`/api/user/sessions/${sessionToRevoke}`, {
         method: 'DELETE',
       })
 
       if (response.ok) {
         // Remove session from state
-        setSessions(prev => prev.filter(s => s.id !== sessionIdToRevoke))
+        setSessions(prev => prev.filter(s => s.id !== sessionToRevoke))
         toast.success('Session signed out successfully')
       } else {
         const data = await response.json()
@@ -82,24 +103,27 @@ export function SecurityTab({ user }: SecurityTabProps) {
       toast.error('Failed to revoke session')
     } finally {
       setRevokingSession(null)
+      setSessionToRevoke(null)
     }
   }
 
   const handleRevokeAllOtherSessions = async () => {
-    if (!confirm('Are you sure you want to sign out of all other sessions?')) {
-      return
-    }
+    setShowRevokeAllDialog(true)
+  }
 
+  const confirmRevokeAllSessions = async () => {
     try {
       setRevokingAll(true)
+      setShowRevokeAllDialog(false)
+      
       const response = await fetch('/api/user/sessions/revoke-all', {
         method: 'POST',
       })
 
       if (response.ok) {
         const data = await response.json()
-        // Refresh sessions list
-        await fetchSessions()
+        // Remove all other sessions from state (same pattern as handleRevokeSession)
+        setSessions(prev => prev.filter(s => s.id === sessionId))
         toast.success(`Successfully signed out ${data.revokedCount} session(s)`)
       } else {
         const data = await response.json()
@@ -346,6 +370,64 @@ export function SecurityTab({ user }: SecurityTabProps) {
           )}
         </div>
       </div>
+
+      {/* Revoke Single Session Confirmation Dialog */}
+      <AlertDialog open={!!sessionToRevoke} onOpenChange={(open) => !open && setSessionToRevoke(null)}>
+        <AlertDialogContent className="bg-black border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white font-geist">
+              Sign out session?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/60 font-geist">
+              This will immediately sign out this session. You'll need to sign in again on that device.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              disabled={!!revokingSession}
+              className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRevokeSession}
+              disabled={!!revokingSession}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              {revokingSession ? 'Signing out...' : 'Sign out'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Revoke All Sessions Confirmation Dialog */}
+      <AlertDialog open={showRevokeAllDialog} onOpenChange={setShowRevokeAllDialog}>
+        <AlertDialogContent className="bg-black border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white font-geist">
+              Sign out of all other sessions?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/60 font-geist">
+              This will sign you out of all sessions except your current one. You'll need to sign in again on those devices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              disabled={revokingAll}
+              className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRevokeAllSessions}
+              disabled={revokingAll}
+              className="bg-red-500 text-white hover:bg-red-600"
+            >
+              {revokingAll ? 'Signing out...' : 'Sign out all'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
@@ -76,11 +76,7 @@ export default function AdminUserDetailsPage() {
   const [subscriptionStatus, setSubscriptionStatus] = useState("")
   const [subscriptionPlan, setSubscriptionPlan] = useState("")
 
-  useEffect(() => {
-    fetchUserDetails()
-  }, [userId])
-
-  const fetchUserDetails = async () => {
+  const fetchUserDetails = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch(`/api/admin/users/${userId}`)
@@ -95,7 +91,11 @@ export default function AdminUserDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [userId])
+
+  useEffect(() => {
+    fetchUserDetails()
+  }, [fetchUserDetails])
 
   const handleUpdateSubscription = async () => {
     if (!userDetails) return

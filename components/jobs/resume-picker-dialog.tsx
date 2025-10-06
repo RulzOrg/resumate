@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -10,6 +10,8 @@ import { Loader2, Wand2, AlertCircle, Upload, Search, FileText, Briefcase } from
 import { formatDistanceToNow } from "date-fns"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
+import { toast } from "sonner"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface RecentOptimization {
   job_title: string
@@ -54,6 +56,7 @@ export function ResumePickerDialog({
   const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearchQuery = useDebounce(searchQuery, 300) // Debounce search for performance
 
   useEffect(() => {
     if (open) {
@@ -79,9 +82,13 @@ export function ResumePickerDialog({
           // Auto-select if only one resume
           setSelectedResume(resumeList[0])
         }
+      } else {
+        console.error("Failed to fetch master resumes:", response.status)
+        toast.error("Failed to load resumes. Please try again.")
       }
     } catch (error) {
       console.error("Failed to fetch master resumes:", error)
+      toast.error("Failed to load resumes. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -92,10 +99,13 @@ export function ResumePickerDialog({
     await onOptimize(selectedResume.id)
   }
 
-  // Filter resumes based on search query
-  const filteredResumes = resumes.filter(resume =>
-    resume.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    resume.file_name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter resumes based on search query (debounced for performance)
+  const filteredResumes = useMemo(() => 
+    resumes.filter(resume =>
+      resume.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+      resume.file_name.toLowerCase().includes(debouncedSearchQuery.toLowerCase())
+    ),
+    [resumes, debouncedSearchQuery]
   )
 
   // Helper to format file size

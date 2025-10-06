@@ -11,8 +11,8 @@ const STOP_WORDS = new Set([
   'each', 'much', 'many', 'per', 'our', 'ours', 'your', 'yours', 'their', 'theirs', 'own',
   'you', 'we', 'they', 'i', 'he', 'she', 'him', 'her', 'his', 'hers', 'them', 'us', 'me',
   'my', 'mine', 'ourselves', 'yourselves', 'themselves', 'myself', 'include', 'includes',
-  'including', 'via', 'vs', 'vs.', 'etc', 'e.g.', 'eg', 'i.e.', 'ie', 'into', 'via', 'across', 'very'
-])
+  'including', 'via', 'vs', 'vs.', 'etc', 'e.g.', 'eg', 'i.e.', 'ie', 'very'
+]);
 
 // Baseline skills for match score calculation (can be customized per user)
 export const BASELINE_SKILLS = new Set([
@@ -34,20 +34,16 @@ export function tokenize(text: string): string[] {
 
 export function countSections(text: string): number {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-  let sections = 0
   
-  lines.forEach(l => {
-    if (/^[-*•]/.test(l)) sections++
-    else if (/^([A-Z][A-Z0-9\s/&-]{2,})(:)?$/.test(l)) sections++ // SHOUTY or title lines
-    else if (/^[A-Za-z].+:\s*$/.test(l)) sections++
-  })
-  
-  // Group into approximate "sections" by heading-like lines
-  const headingLike = lines.filter(l => 
+  // Count only heading-like lines as sections:
+  // - Lines ending with colon (e.g., "Experience:", "Skills:")
+  // - All-caps lines (e.g., "WORK EXPERIENCE", "EDUCATION")
+  const sections = lines.filter(l => 
     /^[A-Za-z].+:\s*$/.test(l) || /^([A-Z][A-Z0-9\s/&-]{2,})(:)?$/.test(l)
   ).length
   
-  return Math.max(headingLike || 1, Math.ceil(sections / 5) || 1)
+  // Ensure at least 1 section
+  return Math.max(sections, 1)
 }
 
 export function extractKeywordsClient(text: string, limit: number = 12): string[] {
@@ -55,7 +51,7 @@ export function extractKeywordsClient(text: string, limit: number = 12): string[
   const freq = new Map<string, number>()
   
   for (const t of tokens) {
-    const norm = t.replace(/(\.+js)$/, ' js').trim() // normalize node.js -> node js
+    const norm = t.replace(/(\.js)$/, ' js').trim() // normalize node.js -> node js
     freq.set(norm, (freq.get(norm) || 0) + 1)
   }
   

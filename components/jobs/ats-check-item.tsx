@@ -1,4 +1,4 @@
-import { Shield, ShieldCheck, AlertTriangle, Info } from "lucide-react"
+import { ShieldCheck, AlertTriangle, Info } from "lucide-react"
 import { KeywordChip } from "./keyword-chip"
 import type { ATSCheck } from "@/lib/client-analysis"
 

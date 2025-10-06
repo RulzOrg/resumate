@@ -2,8 +2,15 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { embedTexts } from "@/lib/embeddings"
 import { cosineSimilarity } from "@/lib/match-utils"
-import { handleApiError, AppError, withRetry } from "@/lib/error-handler"
+import { parseApiError, retryWithBackoff } from "@/lib/error-handler"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
+
+class ApiError extends Error {
+  constructor(message: string, public statusCode: number = 500) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
 
 interface MatchRequest {
   user_skills: string[]
@@ -44,15 +51,15 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!Array.isArray(user_skills)) {
-      throw new AppError("user_skills must be an array", 400)
+      throw new ApiError("user_skills must be an array", 400)
     }
 
     if (!Array.isArray(required_skills)) {
-      throw new AppError("required_skills must be an array", 400)
+      throw new ApiError("required_skills must be an array", 400)
     }
 
     if (!Array.isArray(preferred_skills)) {
-      throw new AppError("preferred_skills must be an array", 400)
+      throw new ApiError("preferred_skills must be an array", 400)
     }
 
     // Handle empty user profile
@@ -76,15 +83,11 @@ export async function POST(request: NextRequest) {
 
     // 1. KEYWORD-BASED MATCHING (exact string matches)
     const requiredOverlap = requiredNormalized.filter(skill => 
-      userSkillsNormalized.some(userSkill => 
-        userSkill.includes(skill) || skill.includes(userSkill)
-      )
+      userSkillsNormalized.includes(skill)
     ).length
 
     const preferredOverlap = preferredNormalized.filter(skill =>
-      userSkillsNormalized.some(userSkill =>
-        userSkill.includes(skill) || skill.includes(userSkill)
-      )
+      userSkillsNormalized.includes(skill)
     ).length
 
     // Calculate keyword score with weights
@@ -122,10 +125,9 @@ export async function POST(request: NextRequest) {
       console.log('Generating embeddings for semantic match...')
 
       // Generate embeddings with retry
-      const embeddings = await withRetry(
+      const embeddings = await retryWithBackoff(
         async () => embedTexts([userSkillsText, jobSkillsText]),
-        2,
-        1000
+        { maxRetries: 2, initialDelay: 1000 }
       )
 
       if (embeddings.length === 2) {
@@ -177,10 +179,16 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error('Error in POST /api/jobs/semantic-match:', error)
-    const errorInfo = handleApiError(error)
+    if (error instanceof ApiError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.statusCode }
+      )
+    }
+    const errorInfo = parseApiError(error)
     return NextResponse.json(
-      { error: errorInfo.error, code: errorInfo.code },
-      { status: errorInfo.statusCode }
+      { error: errorInfo.message, code: errorInfo.code },
+      { status: errorInfo.statusCode || 500 }
     )
   }
 }

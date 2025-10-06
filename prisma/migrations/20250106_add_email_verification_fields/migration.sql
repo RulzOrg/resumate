@@ -15,5 +15,5 @@ CREATE INDEX IF NOT EXISTS idx_users_sync_email_verification_status ON neon_auth
 COMMENT ON COLUMN neon_auth.users_sync.pending_email IS 'Stores new email address during verification process before it becomes the primary email';
 COMMENT ON COLUMN neon_auth.users_sync.email_verification_status IS 'Status of email verification: verified, pending_verification, or expired';
 COMMENT ON COLUMN neon_auth.users_sync.email_verification_token IS 'Token from Clerk to track the verification request';
-COMMENT ON COLUMN neon_auth.users_sync.email_verification_expiry IS 'Expiry timestamp for pending email verification (default 24 hours)';
+COMMENT ON COLUMN neon_auth.users_sync.email_verification_expiry IS 'Expiry timestamp for pending email verification (set by application, typically 24 hours from creation)';
 

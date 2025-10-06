@@ -24,31 +24,36 @@ export async function GET(request: NextRequest) {
     const resumes = await sql`
       SELECT 
         r.*,
-        COUNT(DISTINCT or_res.id) as optimization_count,
-        COALESCE(
-          (
-            SELECT json_agg(
+        (
+          SELECT COUNT(*)::int
+          FROM optimized_resumes
+          WHERE original_resume_id = r.id
+        ) as optimization_count,
+        (
+          SELECT COALESCE(
+            json_agg(
               json_build_object(
-                'job_title', ja.job_title,
-                'company_name', ja.company_name,
-                'created_at', or_res.created_at,
-                'match_score', or_res.match_score
-              )
-            )
+                'job_title', opt.job_title,
+                'company_name', opt.company_name,
+                'created_at', opt.created_at,
+                'match_score', opt.match_score
+              ) ORDER BY opt.created_at DESC
+            ),
+            '[]'::json
+          )
+          FROM (
+            SELECT ja.job_title, ja.company_name, or_res.created_at, or_res.match_score
             FROM optimized_resumes or_res
             JOIN job_analysis ja ON or_res.job_analysis_id = ja.id
             WHERE or_res.original_resume_id = r.id
             ORDER BY or_res.created_at DESC
             LIMIT 3
-          ),
-          '[]'::json
+          ) opt
         ) as recent_optimizations
       FROM resumes r
-      LEFT JOIN optimized_resumes or_res ON or_res.original_resume_id = r.id
       WHERE r.user_id = ${user.id}
         AND r.kind IN ('master', 'uploaded', 'duplicate')
         AND r.deleted_at IS NULL
-      GROUP BY r.id
       ORDER BY r.is_primary DESC, r.updated_at DESC
     `
 

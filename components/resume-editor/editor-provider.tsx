@@ -1,12 +1,19 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react'
 import type { EditorState, ContactField, EditorSummary, EditorSkill, EditorInterest, EditorExperience, EditorBullet, EditorEducation, EditorCertification } from '@/lib/resume-editor-utils'
 import { generatePlainText, countIncludedFields, generateId, convertEditorStateToDatabase } from '@/lib/resume-editor-utils'
+import { useUndoRedo } from '@/hooks/use-undo-redo'
 
 interface EditorContextType {
   state: EditorState
   resumeId: string
+  
+  // Undo/Redo operations
+  undo: () => void
+  redo: () => void
+  canUndo: boolean
+  canRedo: boolean
   
   // Contact operations
   updateContact: (field: keyof EditorState['contact'], key: 'value' | 'include', value: any) => void
@@ -72,10 +79,44 @@ interface EditorProviderProps {
 }
 
 export function EditorProvider({ children, initialState, resumeId }: EditorProviderProps) {
-  const [state, setState] = useState<EditorState>(initialState)
+  // Use undo/redo hook for state management
+  const { 
+    state, 
+    setState: setStateWithHistory, 
+    undo: undoState, 
+    redo: redoState, 
+    canUndo, 
+    canRedo 
+  } = useUndoRedo<EditorState>(initialState, { maxHistory: 50 })
+  
   const [isSaving, setIsSaving] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  
+  // Track if we just saved to prevent immediate dirty marking
+  const justSavedRef = useRef(false)
+  
+  // Wrapper to update state with history and mark as dirty
+  const setState = useCallback((updater: (prev: EditorState) => EditorState) => {
+    setStateWithHistory(updater)
+    // Don't mark dirty if we just saved
+    if (!justSavedRef.current) {
+      setIsDirty(true)
+    }
+  }, [setStateWithHistory])
+  
+  // Wrap undo/redo to mark as dirty
+  const undo = useCallback(() => {
+    undoState()
+    justSavedRef.current = false
+    setIsDirty(true)
+  }, [undoState])
+  
+  const redo = useCallback(() => {
+    redoState()
+    justSavedRef.current = false
+    setIsDirty(true)
+  }, [redoState])
 
   // Update contact field
   const updateContact = useCallback((
@@ -93,8 +134,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         }
       }
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update target title
   const updateTargetTitle = useCallback((key: 'value' | 'include', value: any) => {
@@ -105,8 +145,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         [key]: value
       }
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update summary
   const updateSummary = useCallback((id: string, key: keyof EditorSummary, value: any) => {
@@ -116,8 +155,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         summary.id === id ? { ...summary, [key]: value } : summary
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Add new summary
   const addSummary = useCallback(() => {
@@ -133,9 +171,8 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         }
       ]
     }))
-    setIsDirty(true)
     return newId
-  }, [])
+  }, [setState])
 
   // Remove summary
   const removeSummary = useCallback((id: string) => {
@@ -143,8 +180,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
       ...prev,
       summaries: prev.summaries.filter(summary => summary.id !== id)
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update skill
   const updateSkill = useCallback((id: string, key: keyof EditorSkill, value: any) => {
@@ -154,8 +190,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         skill.id === id ? { ...skill, [key]: value } : skill
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Add skill
   const addSkill = useCallback((value: string) => {
@@ -172,8 +207,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         }
       ]
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Remove skill
   const removeSkill = useCallback((id: string) => {
@@ -181,8 +215,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
       ...prev,
       skills: prev.skills.filter(skill => skill.id !== id)
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update interest
   const updateInterest = useCallback((id: string, key: keyof EditorInterest, value: any) => {
@@ -192,8 +225,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         interest.id === id ? { ...interest, [key]: value } : interest
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Add interest
   const addInterest = useCallback((value: string) => {
@@ -210,8 +242,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         }
       ]
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Remove interest
   const removeInterest = useCallback((id: string) => {
@@ -219,8 +250,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
       ...prev,
       interests: prev.interests.filter(interest => interest.id !== id)
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update experience
   const updateExperience = useCallback((id: string, updates: Partial<EditorExperience>) => {
@@ -230,8 +260,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         exp.id === id ? { ...exp, ...updates } : exp
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Add experience
   const addExperience = useCallback(() => {
@@ -249,8 +278,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         }
       ]
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Remove experience
   const removeExperience = useCallback((id: string) => {
@@ -258,8 +286,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
       ...prev,
       experience: prev.experience.filter(exp => exp.id !== id)
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update bullet
   const updateBullet = useCallback((expId: string, bulletId: string, key: keyof EditorBullet, value: any) => {
@@ -276,8 +303,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
           : exp
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Add bullet
   const addBullet = useCallback((expId: string) => {
@@ -299,8 +325,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
           : exp
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Remove bullet
   const removeBullet = useCallback((expId: string, bulletId: string) => {
@@ -315,8 +340,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
           : exp
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update education
   const updateEducation = useCallback((id: string, updates: Partial<EditorEducation>) => {
@@ -326,8 +350,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         edu.id === id ? { ...edu, ...updates } : edu
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Add education
   const addEducation = useCallback(() => {
@@ -347,8 +370,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         }
       ]
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Remove education
   const removeEducation = useCallback((id: string) => {
@@ -356,8 +378,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
       ...prev,
       education: prev.education.filter(edu => edu.id !== id)
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Update certification
   const updateCertification = useCallback((id: string, updates: Partial<EditorCertification>) => {
@@ -367,8 +388,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         cert.id === id ? { ...cert, ...updates } : cert
       )
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Add certification
   const addCertification = useCallback(() => {
@@ -385,8 +405,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         }
       ]
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Remove certification
   const removeCertification = useCallback((id: string) => {
@@ -394,8 +413,7 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
       ...prev,
       certifications: prev.certifications.filter(cert => cert.id !== id)
     }))
-    setIsDirty(true)
-  }, [])
+  }, [setState])
 
   // Get included count
   const getIncludedCount = useCallback(() => {
@@ -404,6 +422,10 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
 
   // Save to server
   const save = useCallback(async () => {
+    if (isSaving) {
+      return
+    }
+    
     setIsSaving(true)
     try {
       const plainText = generatePlainText(state)
@@ -415,27 +437,39 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
         body: JSON.stringify({
           title: state.targetTitle.value || 'Untitled Resume',
           content_text: plainText,
-          parsed_sections: databaseFormat  // Use converted database format
+          parsed_sections: databaseFormat
         })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save resume')
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || 'Failed to save resume')
       }
 
+      // Mark as just saved and reset dirty flag
+      justSavedRef.current = true
       setIsDirty(false)
       setLastSaved(new Date())
+      
+      // Reset justSaved flag after a short delay
+      setTimeout(() => {
+        justSavedRef.current = false
+      }, 100)
     } catch (error) {
-      console.error('Error saving resume:', error)
+      justSavedRef.current = false
       throw error
     } finally {
       setIsSaving(false)
     }
-  }, [state, resumeId])
+  }, [state, resumeId, isSaving])
 
   const value: EditorContextType = {
     state,
     resumeId,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     updateContact,
     updateTargetTitle,
     updateSummary,

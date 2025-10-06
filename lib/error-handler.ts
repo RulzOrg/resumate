@@ -1,80 +1,198 @@
-export class AppError extends Error {
-  constructor(
-    message: string,
-    public statusCode = 500,
-    public code?: string,
-  ) {
-    super(message)
-    this.name = "AppError"
-  }
+/**
+ * Enhanced error handling utilities
+ */
+
+export interface ApiError {
+  message: string
+  code?: string
+  statusCode?: number
+  details?: any
+  suggestion?: string
 }
 
-export function handleApiError(error: unknown) {
-  console.error("API Error:", error)
-
-  if (error instanceof AppError) {
+/**
+ * Parse and enhance API errors with actionable suggestions
+ */
+export function parseApiError(error: any): ApiError {
+  // Network errors
+  if (error.message === 'Failed to fetch' || error.code === 'ECONNREFUSED') {
     return {
-      error: error.message,
-      code: error.code,
-      statusCode: error.statusCode,
+      message: 'Unable to connect to server',
+      code: 'NETWORK_ERROR',
+      suggestion: 'Please check your internet connection and try again.'
     }
   }
 
-  if (error instanceof Error) {
-    // Handle specific error types
-    if (error.message.includes("rate limit")) {
-      return {
-        error: "Rate limit exceeded. Please try again later.",
-        code: "RATE_LIMIT_EXCEEDED",
-        statusCode: 429,
-      }
-    }
-
-    if (error.message.includes("timeout")) {
-      return {
-        error: "Request timeout. Please try again.",
-        code: "REQUEST_TIMEOUT",
-        statusCode: 408,
-      }
-    }
-
-    if (error.message.includes("unauthorized")) {
-      return {
-        error: "Unauthorized access.",
-        code: "UNAUTHORIZED",
-        statusCode: 401,
-      }
+  // Timeout errors
+  if (error.name === 'AbortError' || error.code === 'ETIMEDOUT') {
+    return {
+      message: 'Request timed out',
+      code: 'TIMEOUT',
+      suggestion: 'The server is taking too long to respond. Please try again.'
     }
   }
 
+  // HTTP errors
+  if (error.response) {
+    const status = error.response.status
+    const data = error.response.data
+
+    switch (status) {
+      case 400:
+        return {
+          message: data?.message || 'Invalid request',
+          code: 'BAD_REQUEST',
+          statusCode: 400,
+          suggestion: 'Please check your input and try again.'
+        }
+      
+      case 401:
+        return {
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED',
+          statusCode: 401,
+          suggestion: 'Please log in to continue.'
+        }
+      
+      case 403:
+        return {
+          message: 'Access denied',
+          code: 'FORBIDDEN',
+          statusCode: 403,
+          suggestion: 'You don\'t have permission to perform this action.'
+        }
+      
+      case 404:
+        return {
+          message: 'Resource not found',
+          code: 'NOT_FOUND',
+          statusCode: 404,
+          suggestion: 'The requested resource could not be found.'
+        }
+      
+      case 429:
+        return {
+          message: 'Too many requests',
+          code: 'RATE_LIMIT',
+          statusCode: 429,
+          suggestion: 'Please wait a moment before trying again.'
+        }
+      
+      case 500:
+      case 502:
+      case 503:
+        return {
+          message: 'Server error',
+          code: 'SERVER_ERROR',
+          statusCode: status,
+          suggestion: 'Our servers are experiencing issues. Please try again in a few moments.'
+        }
+      
+      default:
+        return {
+          message: data?.message || 'An unexpected error occurred',
+          code: 'UNKNOWN',
+          statusCode: status,
+          suggestion: 'Please try again or contact support if the problem persists.'
+        }
+    }
+  }
+
+  // Generic error
   return {
-    error: "An unexpected error occurred. Please try again.",
-    code: "INTERNAL_ERROR",
-    statusCode: 500,
+    message: error.message || 'An unexpected error occurred',
+    code: 'UNKNOWN',
+    suggestion: 'Please try again. If the problem persists, contact support.'
   }
 }
 
-export function withRetry<T>(fn: () => Promise<T>, maxRetries = 3, delay = 1000): Promise<T> {
-  return new Promise(async (resolve, reject) => {
-    let lastError: Error
+/**
+ * Retry function with exponential backoff
+ */
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  options: {
+    maxRetries?: number
+    initialDelay?: number
+    maxDelay?: number
+    onRetry?: (attempt: number, error: any) => void
+  } = {}
+): Promise<T> {
+  const {
+    maxRetries = 3,
+    initialDelay = 1000,
+    maxDelay = 10000,
+    onRetry
+  } = options
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const result = await fn()
-        resolve(result)
-        return
-      } catch (error) {
-        lastError = error as Error
+  let lastError: any
 
-        if (attempt === maxRetries) {
-          reject(lastError)
-          return
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      // Don't retry on client errors (400-499) except 429 (rate limit)
+      const statusCode = (error as any)?.response?.status
+      if (statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
+        throw error
+      }
+
+      if (attempt < maxRetries) {
+        const delay = Math.min(
+          initialDelay * Math.pow(2, attempt),
+          maxDelay
+        )
+        
+        if (onRetry) {
+          onRetry(attempt + 1, error)
         }
 
-        // Exponential backoff
-        const waitTime = delay * Math.pow(2, attempt - 1)
-        await new Promise((resolve) => setTimeout(resolve, waitTime))
+        await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
-  })
+  }
+
+  throw lastError
+}
+
+/**
+ * Check if error is retryable
+ */
+export function isRetryableError(error: any): boolean {
+  // Network errors are retryable
+  if (error.message === 'Failed to fetch' || error.code === 'ECONNREFUSED') {
+    return true
+  }
+
+  // Timeout errors are retryable
+  if (error.name === 'AbortError' || error.code === 'ETIMEDOUT') {
+    return true
+  }
+
+  // Rate limit errors are retryable
+  if (error.response?.status === 429) {
+    return true
+  }
+
+  // Server errors (5xx) are retryable
+  if (error.response?.status >= 500) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * Format error message for display
+ */
+export function formatErrorMessage(error: any): string {
+  const apiError = parseApiError(error)
+  
+  if (apiError.suggestion) {
+    return `${apiError.message}. ${apiError.suggestion}`
+  }
+  
+  return apiError.message
 }
