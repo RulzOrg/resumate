@@ -200,11 +200,12 @@ export default function HomePage() {
               </div>
             </div>
             <div className="relative">
-              <div className="aspect-[4/3] w-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border-white/10 border rounded-2xl flex items-center justify-center">
-                <div className="text-center">
-                  <RefreshCw className="h-16 w-16 text-emerald-400 mx-auto mb-4" />
-                  <p className="text-white/60">AI Resume Platform UI</p>
-                </div>
+              <div className="aspect-[4/3] w-full border border-white/10 rounded-2xl overflow-hidden">
+                <img
+                  src="/images/features/hero-ui.webp"
+                  alt="AI Resume Platform UI"
+                  className="w-full h-full object-cover"
+                />
               </div>
               <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10"></div>
             </div>
@@ -237,9 +238,11 @@ export default function HomePage() {
               </p>
             </div>
             <div className="mt-6 rounded-lg overflow-hidden border border-white/10">
-              <div className="w-full h-32 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
-                <RefreshCw className="h-12 w-12 text-emerald-400" />
-              </div>
+              <img
+                src="/images/features/feature-analysis.webp"
+                alt="AI Resume Platform UI"
+                className="w-full h-auto object-cover"
+              />
             </div>
           </div>
 
@@ -251,13 +254,12 @@ export default function HomePage() {
               Choose from a library of professionally designed templates, all proven to be compatible with modern
               Applicant Tracking Systems.
             </p>
-            <div className="mt-4 rounded-lg overflow-hidden border border-white/10">
-              <div className="aspect-[16/10] w-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-white/20 rounded mx-auto mb-2"></div>
-                  <div className="text-xs text-white/60">Templates</div>
-                </div>
-              </div>
+            <div className="mt-4 aspect-[16/10] w-full rounded-lg overflow-hidden border border-white/10">
+              <img
+                src="/images/features/feature-templates.webp"
+                alt="ATS-Friendly Templates"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
 
@@ -269,10 +271,12 @@ export default function HomePage() {
               Get a real-time score on how well your resume matches a job. Track your improvements and know when it's
               ready.
             </p>
-            <div className="mt-4 rounded-lg overflow-hidden border border-white/10">
-              <div className="aspect-[16/10] w-full bg-gradient-to-br from-emerald-500/20 to-green-500/20 flex items-center justify-center">
-                <div className="text-2xl font-bold text-emerald-400">85%</div>
-              </div>
+            <div className="mt-4 aspect-[16/10] w-full rounded-lg overflow-hidden border border-white/10">
+              <img
+                src="/images/features/feature-analysis.webp"
+                alt="Resume Score Analysis"
+                className="w-full h-full object-cover"
+              />
             </div>
           </div>
 
