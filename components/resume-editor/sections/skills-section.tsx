@@ -15,8 +15,15 @@ export function SkillsSection() {
   const [suggestions, setSuggestions] = useState<string[]>([])
 
   const handleAddSkill = () => {
-    if (inputValue.trim()) {
-      addSkill(inputValue)
+    const trimmedInput = inputValue.trim()
+    if (trimmedInput) {
+      const normalizedInput = trimmedInput.toLowerCase()
+      const isDuplicate = skills.some(skill => skill.value.toLowerCase() === normalizedInput)
+      
+      if (!isDuplicate) {
+        addSkill(trimmedInput)
+      }
+      
       setInputValue('')
       setShowInput(false)
     }
@@ -52,6 +59,10 @@ export function SkillsSection() {
           }
         })
       })
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`)
+      }
       
       const data = await response.json()
       if (data.success && data.suggestions) {
@@ -124,7 +135,10 @@ export function SkillsSection() {
               />
               <button
                 type="button"
-                onClick={handleAddSkill}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  handleAddSkill()
+                }}
                 className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-emerald-600 hover:bg-emerald-500 transition"
                 title="Add skill"
               >
@@ -172,7 +186,13 @@ export function SkillsSection() {
                 <button
                   key={idx}
                   onClick={() => {
-                    addSkill(skill)
+                    const normalizedSuggestion = skill.trim().toLowerCase()
+                    const isDuplicate = skills.some(s => s.value.toLowerCase().trim() === normalizedSuggestion)
+                    
+                    if (!isDuplicate) {
+                      addSkill(skill.trim())
+                    }
+                    
                     setSuggestions(prev => prev.filter((_, i) => i !== idx))
                   }}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-600 bg-emerald-950/40 hover:bg-emerald-900/40 text-sm transition"

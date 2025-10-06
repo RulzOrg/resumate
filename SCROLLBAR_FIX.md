@@ -36,7 +36,7 @@ Modified the layout to use the browser's native scrollbar by allowing the entire
 
 **After:**
 ```tsx
-<div className="w-full min-h-screen relative flex">
+<div className="w-full min-h-screen relative flex overflow-x-hidden">
   <div className="md:pl-72 flex flex-col min-w-0 w-full max-w-full">
     <main className="flex-1">
 ```

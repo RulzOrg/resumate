@@ -16,7 +16,7 @@ interface EditorContextType {
   
   // Summary operations
   updateSummary: (id: string, key: keyof EditorSummary, value: any) => void
-  addSummary: () => void
+  addSummary: () => string
   removeSummary: (id: string) => void
   
   // Skills operations
@@ -121,18 +121,20 @@ export function EditorProvider({ children, initialState, resumeId }: EditorProvi
 
   // Add new summary
   const addSummary = useCallback(() => {
+    const newId = generateId('summary')
     setState(prev => ({
       ...prev,
       summaries: [
         ...prev.summaries,
         {
-          id: `summary-${Date.now()}`,
+          id: newId,
           value: '',
           include: false
         }
       ]
     }))
     setIsDirty(true)
+    return newId
   }, [])
 
   // Remove summary

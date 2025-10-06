@@ -158,7 +158,7 @@ export function MasterResumeCard({
                 <span className="text-sm text-white/90 font-geist">{wordCount}</span>
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <span className="text-[12px] text-white/60 font-geist">Last export</span>
+                <span className="text-[12px] text-white/60 font-geist">Last updated</span>
                 <span className="text-sm text-white/90 font-geist">
                   {formatLastExport(resume.updated_at)}
                 </span>

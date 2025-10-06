@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   LayoutDashboard,
   Briefcase,
@@ -15,8 +15,11 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  FolderIcon,
+  Plus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useUser } from "@clerk/nextjs"
 
 interface SidebarProps {
   className?: string
@@ -30,25 +33,31 @@ const mainNavItems = [
     title: "Overview",
     href: "/dashboard",
     icon: LayoutDashboard,
-    color: "text-emerald-300",
   },
   {
     title: "Jobs",
     href: "/dashboard/jobs",
     icon: Briefcase,
-    color: "text-white",
   },
   {
     title: "Resumes",
     href: "/dashboard/resumes",
     icon: FileText,
-    color: "text-white",
+  },
+  {
+    title: "Projects",
+    href: "/dashboard/projects",
+    icon: FolderIcon,
+  },
+  {
+    title: "New Project",
+    href: "/dashboard/projects/new",
+    icon: Plus,
   },
   {
     title: "Reports",
     href: "/dashboard/reports",
     icon: BarChart3,
-    color: "text-white",
   },
 ]
 
@@ -68,16 +77,26 @@ const accountNavItems = [
 export function Sidebar({ className, isMobileOpen = false, onMobileClose, onCollapsedChange }: SidebarProps) {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
+  const onCollapsedChangeRef = useRef(onCollapsedChange)
+  const { user } = useUser()
+  
+  // Check if user is admin (via Clerk publicMetadata)
+  const isAdmin = user?.publicMetadata?.role === "admin"
 
-  // Load collapsed state from localStorage
+  // Keep ref up to date with latest callback
+  useEffect(() => {
+    onCollapsedChangeRef.current = onCollapsedChange
+  }, [onCollapsedChange])
+
+  // Load collapsed state from localStorage (runs only on mount)
   useEffect(() => {
     const stored = localStorage.getItem("sidebarCollapsed")
     if (stored !== null) {
       const collapsed = stored === "1"
       setIsCollapsed(collapsed)
-      onCollapsedChange?.(collapsed)
+      onCollapsedChangeRef.current?.(collapsed)
     }
-  }, [onCollapsedChange])
+  }, [])
 
   // Save collapsed state to localStorage
   const toggleCollapse = () => {
@@ -100,6 +119,7 @@ export function Sidebar({ className, isMobileOpen = false, onMobileClose, onColl
 
       {/* Sidebar */}
       <aside
+        id="mobile-sidebar"
         className={cn(
           "fixed z-40 top-0 bottom-0 left-0 transition-all duration-300 will-change-transform overflow-x-hidden border-r border-white/10 backdrop-blur-xl bg-black/50",
           isCollapsed ? "w-16" : "w-72",
@@ -109,7 +129,10 @@ export function Sidebar({ className, isMobileOpen = false, onMobileClose, onColl
       >
         <div className="flex flex-col h-full">
           {/* Brand */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
+          <div className={cn(
+            "flex items-center px-4 py-4 border-b border-white/10",
+            isCollapsed ? "justify-center" : "justify-between"
+          )}>
             {!isCollapsed && (
               <Link
                 href="/dashboard"
@@ -124,13 +147,24 @@ export function Sidebar({ className, isMobileOpen = false, onMobileClose, onColl
               </Link>
             )}
             {isCollapsed && (
-              <div className="mx-auto">
-                <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
-                  <Sparkles className="w-4 h-4 text-black/90" />
-                </span>
-              </div>
+              <>
+                <div>
+                  <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
+                    <Sparkles className="w-4 h-4 text-black/90" />
+                  </span>
+                </div>
+                <button
+                  onClick={toggleCollapse}
+                  className="absolute right-4 hidden md:inline-flex items-center justify-center h-8 w-8 rounded-lg border border-white/10 bg-white/5"
+                  aria-label="Expand sidebar"
+                  title="Expand sidebar"
+                >
+                  <ChevronRight className="w-4 h-4 text-white/70" />
+                </button>
+              </>
             )}
-            <div className="inline-flex items-center gap-2">
+            {!isCollapsed && (
+              <div className="inline-flex items-center gap-2">
               <button
                 onClick={toggleCollapse}
                 className="hidden md:inline-flex items-center justify-center h-8 w-8 rounded-lg border border-white/10 bg-white/5"
@@ -149,7 +183,8 @@ export function Sidebar({ className, isMobileOpen = false, onMobileClose, onColl
               >
                 <X className="w-4 h-4 text-white/70" />
               </button>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Nav */}
@@ -180,7 +215,7 @@ export function Sidebar({ className, isMobileOpen = false, onMobileClose, onColl
                     <Icon
                       className={cn(
                         "w-6 h-6",
-                        isActive ? item.color : "text-white"
+                        isActive ? "text-emerald-300" : "text-white"
                       )}
                     />
                     {!isCollapsed && (
@@ -212,13 +247,40 @@ export function Sidebar({ className, isMobileOpen = false, onMobileClose, onColl
                       isCollapsed && "justify-center"
                     )}
                   >
-                    <Icon className="w-[18px] h-[18px]" />
+                    <Icon
+                      className={cn(
+                        "w-[18px] h-[18px]",
+                        isActive ? "text-emerald-300" : "text-white"
+                      )}
+                    />
                     {!isCollapsed && (
                       <span className="font-geist">{item.title}</span>
                     )}
                   </Link>
                 )
               })}
+              
+              {/* Admin Portal - only visible to admin users */}
+              {isAdmin && (
+                <Link
+                  href="/dashboard/admin"
+                  className={cn(
+                    "group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-white/80 hover:text-white hover:bg-white/5 border border-transparent hover:border-white/10 transition-colors",
+                    pathname === "/dashboard/admin" && "text-white bg-white/10 border-white/10",
+                    isCollapsed && "justify-center"
+                  )}
+                >
+                  <ShieldCheck
+                    className={cn(
+                      "w-[18px] h-[18px]",
+                      pathname === "/dashboard/admin" ? "text-emerald-300" : "text-white"
+                    )}
+                  />
+                  {!isCollapsed && (
+                    <span className="font-geist">Admin Portal</span>
+                  )}
+                </Link>
+              )}
             </div>
           </nav>
 

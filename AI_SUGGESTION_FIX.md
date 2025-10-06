@@ -60,14 +60,14 @@ onClick={() => {
     updateSummary(summaries[0].id, 'value', suggestion)
     updateSummary(summaries[0].id, 'include', true)
   } else {
-    // If no summaries exist, add a new one
-    addSummary()
-    setTimeout(() => {
-      if (summaries.length > 0) {
-        updateSummary(summaries[0].id, 'value', suggestion)
-        updateSummary(summaries[0].id, 'include', true)
-      }
-    }, 10)
+  } else {
+    // This edge case should never happen if summaries are initialized with 1 empty summary
+    console.error('No summaries found - this should not happen')
+    // Alternative: If addSummary returns the new ID:
+    // const newId = addSummary()
+    // updateSummary(newId, 'value', suggestion)
+    // updateSummary(newId, 'include', true)
+  }
   }
   // Remove this suggestion from the list
   setSuggestions(prev => prev.filter((_, i) => i !== idx))

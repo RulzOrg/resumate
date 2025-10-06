@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Filter, Download, Wand2, Search } from "lucide-react"
@@ -28,6 +28,15 @@ export function ApplicationsSection({ applications }: ApplicationsSectionProps) 
   
   const currentPage = parseInt(searchParams.get("page") || "1", 10)
   const perPage = 10
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    if (searchQuery && currentPage !== 1) {
+      const params = new URLSearchParams(searchParams.toString())
+      params.set("page", "1")
+      router.push(`?${params.toString()}`)
+    }
+  }, [searchQuery, router, searchParams, currentPage])
 
   // Filter applications based on search query
   const filteredApplications = useMemo(() => {

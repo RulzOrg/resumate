@@ -34,6 +34,9 @@ export function SummarySection() {
         })
       })
       
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`)
+      }
       const data = await response.json()
       if (data.success && data.suggestions) {
         setSuggestions(data.suggestions)
@@ -132,14 +135,10 @@ export function SummarySection() {
                         updateSummary(summaries[0].id, 'value', suggestion)
                         updateSummary(summaries[0].id, 'include', true)
                       } else {
-                        // If no summaries exist, add a new one
-                        addSummary()
-                        setTimeout(() => {
-                          if (summaries.length > 0) {
-                            updateSummary(summaries[0].id, 'value', suggestion)
-                            updateSummary(summaries[0].id, 'include', true)
-                          }
-                        }, 10)
+                        // If no summaries exist, add a new one and use the returned ID
+                        const newId = addSummary()
+                        updateSummary(newId, 'value', suggestion)
+                        updateSummary(newId, 'include', true)
                       }
                       // Remove this suggestion from the list
                       setSuggestions(prev => prev.filter((_, i) => i !== idx))

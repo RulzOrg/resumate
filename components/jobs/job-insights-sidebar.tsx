@@ -1,7 +1,5 @@
 import { ListChecks, Percent, Lightbulb, Plus } from "lucide-react"
-import { AnalyzeJobDialog } from "@/components/jobs/analyze-job-dialog"
-import { getUserJobAnalyses } from "@/lib/db"
-import { getAuthenticatedUser } from "@/lib/auth-utils"
+import Link from "next/link"
 
 interface JobInsightsSidebarProps {
   topKeywords: Array<{ keyword: string; frequency: number }>
@@ -9,8 +7,26 @@ interface JobInsightsSidebarProps {
 }
 
 export async function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsSidebarProps) {
-  const user = await getAuthenticatedUser()
-  const jobAnalyses = await getUserJobAnalyses(user.id)
+  const displayedKeywords = topKeywords.slice(0, 3)
+  const hasKeywords = displayedKeywords.length > 0
+  const hasMatchData = avgMatch > 0
+  const avgMatchDescription = hasMatchData
+    ? "Average match across your generated CVs."
+    : "Generate a tailored CV to see match insights."
+  const avgMatchValue = hasMatchData ? `${avgMatch}%` : "—"
+
+  const suggestionMessage = (() => {
+    if (!hasMatchData) {
+      return "Run an analysis and generate a CV to unlock targeted suggestions."
+    }
+    if (avgMatch >= 80) {
+      return "Strong matches so far—keep iterating for new roles.";
+    }
+    if (avgMatch >= 50) {
+      return "Add missing keywords from recent job descriptions to lift scores.";
+    }
+    return "Regenerate your CV with more tailored achievements to raise match scores.";
+  })()
   
   return (
     <div className="rounded-xl border border-white/10 bg-white/5">
@@ -25,17 +41,25 @@ export async function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsS
           <div className="flex-1">
             <p className="text-sm font-medium font-geist">Top keywords</p>
             <p className="text-xs text-white/60 font-geist mt-0.5">
-              Frameworks, tooling, and domain terms extracted.
+              {hasKeywords
+                ? "Frameworks, tooling, and domain terms extracted."
+                : "Keywords will appear after you analyze a job."}
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {topKeywords.slice(0, 3).map((item, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
-                >
-                  {item.keyword}
+              {hasKeywords ? (
+                displayedKeywords.map((item) => (
+                  <span
+                    key={item.keyword}
+                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
+                  >
+                    {item.keyword}
+                  </span>
+                ))
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/15 bg-white/5 px-2 py-0.5 text-[11px] text-white/60">
+                  No keywords yet
                 </span>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -46,11 +70,9 @@ export async function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsS
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium font-geist">Average match</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
-              Most jobs score between 75–90% with current CV variants.
-            </p>
+            <p className="text-xs text-white/60 font-geist mt-0.5">{avgMatchDescription}</p>
           </div>
-          <span className="text-xs text-emerald-200 font-medium">{avgMatch}%</span>
+          <span className="text-xs text-emerald-200 font-medium">{avgMatchValue}</span>
         </div>
 
         <div className="flex items-start gap-3">
@@ -59,19 +81,18 @@ export async function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsS
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium font-geist">Suggestions</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
-              Add 1–2 missing tools to boost lower-scoring jobs.
-            </p>
+            <p className="text-xs text-white/60 font-geist mt-0.5">{suggestionMessage}</p>
           </div>
           <span className="text-xs text-white/80 font-medium">Action</span>
         </div>
 
-        <AnalyzeJobDialog existingAnalyses={jobAnalyses}>
-          <button className="inline-flex hover:bg-emerald-400 transition text-sm font-medium text-black bg-emerald-500 w-full rounded-full pt-2 pr-3 pb-2 pl-3 gap-x-2 gap-y-2 items-center justify-center">
-            <Plus className="w-4 h-4" />
-            Add Job Description
-          </button>
-        </AnalyzeJobDialog>
+        <Link 
+          href="/dashboard/jobs/add"
+          className="inline-flex hover:bg-emerald-400 transition text-sm font-medium text-black bg-emerald-500 w-full rounded-full pt-2 pr-3 pb-2 pl-3 gap-x-2 gap-y-2 items-center justify-center"
+        >
+          <Plus className="w-4 h-4" />
+          Add Job Description
+        </Link>
       </div>
     </div>
   )

@@ -53,12 +53,22 @@ interface MobileCardProps {
  * Styled to match the table row design
  */
 export function MobileCard({ children, className, onClick }: MobileCardProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault()
+      onClick()
+    }
+  }
+
   return (
     <div
       onClick={onClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={cn(
         "rounded-lg border border-white/10 bg-neutral-900/40 p-4 space-y-3 transition-colors",
-        onClick && "cursor-pointer hover:bg-white/[0.04]",
+        onClick && "cursor-pointer hover:bg-white/[0.04] focus:outline-none focus:ring-2 focus:ring-white/20",
         className
       )}
     >

@@ -174,7 +174,7 @@ Content Match:     pl-72 = 288px → pl-16 = 64px
 
 ## Edge Cases Handled
 
-1. **Fast clicking** - Debounced by React state
+1. **Fast clicking** - Batched by React (multiple updates grouped into single re-render)
 2. **Mobile rotation** - Resize listener handles it
 3. **Initial load** - localStorage value applied immediately
 4. **SSR/Hydration** - No flash of wrong layout

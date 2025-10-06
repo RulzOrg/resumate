@@ -75,7 +75,9 @@ export function ApplicationsTable({ applications }: ApplicationsTableProps) {
               <TableHead>Status</TableHead>
               <TableHead>Applied</TableHead>
               <TableHead>Match</TableHead>
-              <TableHead className="text-right"></TableHead>
+              <TableHead className="text-right">
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

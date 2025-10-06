@@ -25,6 +25,8 @@ export function SectionWrapper({
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${title} section`}
           className="group inline-flex items-center gap-2"
         >
           <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">

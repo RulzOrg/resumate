@@ -37,7 +37,10 @@ export function DashboardLayoutClient({
           paddingLeft: isMobile ? '0' : (isSidebarCollapsed ? '64px' : '288px'),
         }}
       >
-        <Topbar onMobileMenuClick={() => setIsMobileSidebarOpen(true)} />
+        <Topbar 
+          onMobileMenuClick={() => setIsMobileSidebarOpen(true)}
+          isMobileMenuOpen={isMobileSidebarOpen}
+        />
         
         <main className="flex-1">
           {children}

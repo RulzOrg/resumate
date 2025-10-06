@@ -12,7 +12,7 @@ export default async function SettingsPage() {
   const user = await getAuthenticatedUser()
   
   if (!user?.id) {
-    return null
+    redirect(`/login?next=${encodeURIComponent('/dashboard/settings')}`)
   }
   
   if (!user.onboarding_completed_at) {

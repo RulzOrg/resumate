@@ -382,39 +382,11 @@ const isPro = user.subscription_plan !== 'free'
 
 ## API Routes
 
-### POST `/api/user/profile`
+### PATCH `/api/user/profile`
 
 **Purpose:** Update user profile information
 
 **Request Body:**
-```typescript
-{
-  name?: string
-  email?: string
-  timezone?: string
-  job_focus?: string
-}
-```
-
-**Flow:**
-1. Authenticate user via Clerk
-2. Get user from database
-3. Update basic info (name, email) if provided
-4. Update profile preferences if provided
-5. Return success response
-
-**Implementation:**
-```typescript
-// Update basic info
-if (name !== undefined || email !== undefined) {
-  await updateUserBasicInfo(user.id, { name, email })
-}
-
-// Update preferences
-if (timezone !== undefined || job_focus !== undefined) {
-  await updateUserProfilePreferences(userId, { timezone, job_focus })
-}
-```
 
 **TODO:** Sync email changes with Clerk
 
@@ -441,6 +413,30 @@ await clerk.users.deleteUser(userId)
 ```
 
 **Note:** Subscription cancellation should be handled in Polar/Stripe portal before account deletion
+
+---
+
+## Email Verification Flow
+
+**Complete documentation:** See `EMAIL_VERIFICATION_FLOW.md`
+
+The email verification flow implements a secure email change process:
+1. User requests email change → stored in `pending_email` (not primary `email`)
+2. System calls Clerk API to send verification email
+3. On Clerk API failure → automatic rollback of `pending_email`
+4. User clicks verification link → Clerk webhook triggers atomic update
+5. Atomic update moves `pending_email` to `email` (with WHERE clause for safety)
+6. Inngest cleanup job expires unverified emails after 24 hours
+7. Users can continue signing in with old email until verification complete
+
+**Key files:**
+- API: `app/api/user/email/route.ts`
+- Webhook: `app/api/webhooks/clerk/route.ts` (handles `email.updated`)
+- Cleanup: `lib/inngest/functions/email-verification-cleanup.ts`
+- Utils: `lib/email-verification-utils.ts`
+- UI: `components/settings/account-tab.tsx`
+
+**Error handling:** All failures rollback database changes, no account lockout possible.
 
 ---
 
@@ -663,22 +659,24 @@ const statusColors = {
 
 **Client-Side:**
 ```typescript
+import { toast } from 'sonner'
+
 // Email validation
 if (!isValidEmail(formData.email)) {
-  alert('Please enter a valid email address')
+  toast.error('Please enter a valid email address')
   return
 }
 
 // Password validation
 const validation = validatePassword(newPassword)
 if (!validation.valid) {
-  alert(validation.error)
+  toast.error(validation.error)
   return
 }
 
 // Password match
 if (newPassword !== confirmPassword) {
-  alert('New passwords do not match')
+  toast.error('New passwords do not match')
   return
 }
 ```
@@ -704,6 +702,8 @@ try {
 
 **Fetch Wrapper:**
 ```typescript
+import { toast } from 'sonner'
+
 const handleSave = async () => {
   setSaving(true)
   try {
@@ -717,14 +717,34 @@ const handleSave = async () => {
       throw new Error('Failed to update profile')
     }
 
-    alert('Profile updated successfully!')
+    toast.success('Profile updated successfully!')
     window.location.reload()
   } catch (error) {
     console.error('Error:', error)
-    alert('Failed to update profile. Please try again.')
+    toast.error('Failed to update profile. Please try again.')
   } finally {
     setSaving(false)
   }
+}
+```
+
+**Toast Setup:**
+
+Ensure the Toaster component from `sonner` is rendered in your app root layout for toasts to display:
+
+```tsx
+// app/layout.tsx
+import { Toaster } from 'sonner'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <Toaster position="top-right" />
+      </body>
+    </html>
+  )
 }
 ```
 

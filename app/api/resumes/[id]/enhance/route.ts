@@ -4,6 +4,28 @@ import { generateText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { getOrCreateUser } from '@/lib/db'
 
+interface BulletContext {
+  currentBullet: string
+  role?: string
+  company?: string
+}
+
+interface SkillsContext {
+  experience?: { bullets?: string[] }[]
+  education?: { field?: string }[]
+  currentSkills?: string[]
+}
+
+interface SummaryContext {
+  currentSummary?: string
+  targetRole?: string
+  experience?: Array<{
+    role: string
+    company: string
+    bullets: string[]
+  }>
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -26,6 +48,10 @@ export async function POST(
       return NextResponse.json({ error: 'Section is required' }, { status: 400 })
     }
 
+    if (!context || typeof context !== 'object') {
+      return NextResponse.json({ error: 'Context is required' }, { status: 400 })
+    }
+
     let prompt = ''
 
     switch (section) {
@@ -45,25 +71,72 @@ export async function POST(
         return NextResponse.json({ error: 'Invalid section' }, { status: 400 })
     }
 
-    const { text } = await generateText({
-      model: openai('gpt-4o-mini'),
-      prompt,
-      temperature: 0.7
-    })
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
 
-    // Parse response into array of suggestions
-    const suggestions = text
-      .split('\n')
-      .filter(s => s.trim())
-      .map(s => s.replace(/^[-*\d.)\s]+/, '').trim())
-      .filter(s => s.length > 0)
+    try {
+      const { text } = await generateText({
+        model: openai('gpt-4o-mini'),
+        prompt,
+        temperature: 0.7,
+        abortSignal: controller.signal
+      })
 
-    return NextResponse.json({
-      success: true,
-      suggestions: suggestions.slice(0, section === 'skills' || section === 'interests' ? 8 : 3)
-    })
+      clearTimeout(timeoutId)
+
+      // Parse response into array of suggestions
+      const suggestions = text
+        .split('\n')
+        .filter(s => s.trim())
+        .map(s => s.replace(/^[-*\d.)\s]+/, '').trim())
+        .filter(s => s.length > 0)
+
+      return NextResponse.json({
+        success: true,
+        suggestions: suggestions.slice(0, section === 'skills' || section === 'interests' ? 8 : 3)
+      })
+    } catch (innerError: any) {
+      clearTimeout(timeoutId)
+      
+      // Check if error is due to abort/timeout
+      if (innerError.name === 'AbortError' || controller.signal.aborted) {
+        // Sanitized logging - no sensitive data
+        console.error(`Enhancement timeout for resume ${params.id}`, {
+          errorType: 'timeout',
+          section: section
+        })
+        
+        // Send to monitoring service if configured
+        if (typeof (global as any).captureException === 'function') {
+          (global as any).captureException(innerError, {
+            tags: { operation: 'enhance-resume', errorType: 'timeout' },
+            extra: { resumeId: params.id, section }
+          })
+        }
+        
+        return NextResponse.json(
+          { error: 'Request timed out. Please try again.' },
+          { status: 504 }
+        )
+      }
+      
+      throw innerError
+    }
   } catch (error) {
-    console.error('Enhancement error:', error)
+    // Sanitized logging - no sensitive data or stack traces
+    console.error(`Enhancement failed for resume ${params.id}`, {
+      hasError: true,
+      errorName: error instanceof Error ? error.name : 'Unknown'
+    })
+    
+    // Send full error to monitoring service if configured
+    if (typeof (global as any).captureException === 'function') {
+      (global as any).captureException(error, {
+        tags: { operation: 'enhance-resume' },
+        extra: { resumeId: params.id }
+      })
+    }
+    
     return NextResponse.json(
       { error: 'Enhancement failed' },
       { status: 500 }
@@ -71,10 +144,11 @@ export async function POST(
   }
 }
 
-function buildSummaryPrompt(context: any): string {
-  const experienceText = context.experience?.map((exp: any) => 
-    `${exp.role} at ${exp.company}:\n${exp.bullets.join('\n')}`
-  ).join('\n\n') || 'No experience provided'
+function buildSummaryPrompt(context: SummaryContext): string {
+  const experienceText = context.experience
+    ?.filter(exp => exp?.role && exp?.company && Array.isArray(exp?.bullets))
+    .map(exp => `${exp.role} at ${exp.company}:\n${exp.bullets.join('\n')}`)
+    .join('\n\n') || 'No experience provided'
 
   return `Generate 3 professional summary variations for a resume based on:
 
@@ -95,7 +169,11 @@ Requirements:
 Return only the 3 summaries, one per line, no numbering or bullets.`
 }
 
-function buildBulletPrompt(context: any): string {
+function buildBulletPrompt(context: BulletContext): string {
+  if (!context.currentBullet || context.currentBullet.trim().length === 0) {
+    throw new Error('currentBullet is required for bullet enhancement')
+  }
+
   return `Improve this resume bullet point to make it more impactful:
 
 Current: ${context.currentBullet}
@@ -113,10 +191,16 @@ Generate 3 improved versions that:
 Return only the 3 improved bullets, one per line, no numbering or bullets.`
 }
 
-function buildSkillsPrompt(context: any): string {
-  const bullets = context.experience?.flatMap((exp: any) => exp.bullets || []).join('\n') || ''
-  const fields = context.education?.map((edu: any) => edu.field).filter(Boolean).join(', ') || ''
-  const current = context.currentSkills?.join(', ') || ''
+function buildSkillsPrompt(context: SkillsContext): string {
+  const bullets = context.experience && Array.isArray(context.experience)
+    ? context.experience.flatMap((exp) => exp.bullets || []).join('\n')
+    : ''
+  const fields = context.education && Array.isArray(context.education)
+    ? context.education.map((edu) => edu.field).filter(Boolean).join(', ')
+    : ''
+  const current = context.currentSkills && Array.isArray(context.currentSkills)
+    ? context.currentSkills.join(', ')
+    : ''
   
   return `Based on this professional background, suggest 5-8 relevant skills that are NOT already listed:
 

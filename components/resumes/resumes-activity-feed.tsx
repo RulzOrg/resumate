@@ -17,7 +17,16 @@ interface ResumesActivityFeedProps {
 
 export function ResumesActivityFeed({ activities }: ResumesActivityFeedProps) {
   if (activities.length === 0) {
-    return null
+    return (
+      <div className="mt-6 rounded-xl border border-white/10 bg-white/5">
+        <div className="px-4 py-3 border-b border-white/10">
+          <h2 className="text-lg font-medium tracking-tight font-geist">Activity</h2>
+        </div>
+        <div className="px-4 py-10 text-center text-sm text-white/60 font-geist">
+          Generate or edit a resume to see a timeline of activity here.
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -33,7 +42,7 @@ export function ResumesActivityFeed({ activities }: ResumesActivityFeedProps) {
           return (
             <div key={activity.id} className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center">
+                <div>
                   <Icon className="w-[18px] h-[18px] text-white/70" />
                 </div>
                 <div>
@@ -42,7 +51,7 @@ export function ResumesActivityFeed({ activities }: ResumesActivityFeedProps) {
                   </p>
                   <p className="text-xs text-white/60 font-geist">
                     {activity.company_name && `${activity.company_name} • `}
-                    {activity.match_score && `${activity.match_score}% match`}
+                    {activity.match_score !== null ? `${activity.match_score}% match` : "Match score pending"}
                   </p>
                 </div>
               </div>

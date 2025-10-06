@@ -16,7 +16,7 @@ A modern, structured form-based resume editor that replaces the old markdown tex
 
 ### Complete Feature Set
 
-✅ **7 Resume Sections:**
+✅ **8 Resume Sections:**
 1. Contact Information (6 fields)
 2. Target Title (1 field)
 3. Professional Summary (multiple options)

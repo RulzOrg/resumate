@@ -121,7 +121,9 @@ export function InsightsSidebar({ resumes, activities }: InsightsSidebarProps) {
           <div className="mt-2 space-y-2">
             {activities.length > 0 ? (
               activities.slice(0, 5).map((activity) => {
-                const isNew = new Date(activity.created_at).getTime() > new Date(activity.updated_at).getTime() - 60000
+                const createdTs = new Date(activity.created_at).getTime()
+                const updatedTs = new Date(activity.updated_at).getTime()
+                const isNew = Math.abs(createdTs - updatedTs) <= 60000
                 const action = getActivityAction(activity.kind, isNew)
                 
                 return (

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react'
-import { Wallet, Ban, Save } from 'lucide-react'
+import { Wallet, Ban, Save, Loader2, AlertCircle } from 'lucide-react'
 import type { User } from '@/lib/db'
 import { 
   getPlanDisplayName, 
@@ -24,24 +24,47 @@ interface SubscriptionTabProps {
 }
 
 export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTabProps) {
-  const [billingEmail, setBillingEmail] = useState('')
-  const [company, setCompany] = useState('')
+  const [billingEmail, setBillingEmail] = useState(user.billing_email || '')
+  const [company, setCompany] = useState(user.company || '')
   const [saving, setSaving] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const plan = getPricingTier(user.subscription_plan)
   const statusColor = getStatusBadgeColor(user.subscription_status)
 
   const handleManagePayment = async () => {
+    setIsLoading(true)
+    setErrorMessage(null)
+    
     try {
       const response = await fetch('/api/billing/portal', { method: 'POST' })
       const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to access billing portal')
+      }
+      
       if (data.url) {
         window.location.href = data.url
+      } else {
+        throw new Error('No billing portal URL received')
       }
     } catch (error) {
-      console.error('Error opening billing portal:', error)
-      alert('Failed to open billing portal')
+      // Log technical error for debugging
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Billing portal error:', error)
+      }
+      
+      // Set user-friendly error message
+      setErrorMessage(
+        error instanceof Error 
+          ? error.message 
+          : 'Unable to open billing portal. Please try again later.'
+      )
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -58,12 +81,32 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
   }
 
   // Calculate usage percentages
+  const aiCreditsLimit = 5000 // Fallback for AI credits (not yet in plan limits)
   const jobsPercentage = getUsagePercentage(usage.jobs_saved, plan?.limits.jobAnalyses || 0)
   const cvsPercentage = getUsagePercentage(usage.cvs_generated, plan?.limits.resumeOptimizations || 0)
-  const creditsPercentage = getUsagePercentage(usage.ai_credits, 5000)
+  const creditsPercentage = getUsagePercentage(usage.ai_credits, aiCreditsLimit)
 
   return (
     <div className="space-y-6">
+      {/* Error Notification */}
+      {errorMessage && (
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-red-200 font-geist">{errorMessage}</p>
+          </div>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-red-400 hover:text-red-300 transition"
+          >
+            <span className="sr-only">Dismiss</span>
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Plan Section */}
       <div className="rounded-xl border border-white/10 bg-white/5">
         <div className="px-4 py-3 border-b border-white/10">
@@ -94,10 +137,15 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
             <div className="mt-3 flex items-center gap-2">
               <button
                 onClick={handleManagePayment}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition"
+                disabled={isLoading}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Wallet className="w-4 h-4" />
-                Manage payment
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Wallet className="w-4 h-4" />
+                )}
+                {isLoading ? 'Opening...' : 'Manage payment'}
               </button>
               {user.subscription_status !== 'free' && (
                 <button
@@ -147,7 +195,7 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-white/80 font-geist">AI credits</span>
                   <span className="text-sm text-white/70 font-geist">
-                    {usage.ai_credits.toLocaleString()} / 5,000
+                    {usage.ai_credits.toLocaleString()} / {aiCreditsLimit.toLocaleString()}
                   </span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mt-2">
@@ -221,9 +269,11 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
               </button>
               <button
                 onClick={handleManagePayment}
-                className="px-4 py-2 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 text-sm transition"
+                disabled={isLoading}
+                className="px-4 py-2 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
-                Open Billing Portal
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isLoading ? 'Opening...' : 'Open Billing Portal'}
               </button>
             </div>
           </div>

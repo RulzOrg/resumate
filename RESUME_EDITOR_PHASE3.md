@@ -2,7 +2,7 @@
 
 **Date:** December 2024  
 **Status:** ✅ Complete  
-**Phase:** 3 of 4 (FINAL PHASE)
+**Phase:** 3 of 3 (FINAL PHASE)
 
 ---
 
@@ -371,7 +371,7 @@ const experience: EditorExperience[] = (parsed.experience || []).map((exp: any, 
   const role = roleParts.length > 0 ? roleParts.join(' · ') : ''
   
   return {
-    id: `exp-${idx}-${Date.now()}`,
+    id: `exp-${idx}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     include: true,
     company: exp.company || '',
     role: role,

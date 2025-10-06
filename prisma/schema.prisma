@@ -10,18 +10,22 @@ datasource db {
 }
 
 model UserSync {
-  id                     String    @id
-  email                  String    @unique
-  name                   String
-  clerkUserId            String?   @unique @map("clerk_user_id")
-  subscriptionStatus     String    @default("free") @map("subscription_status")
-  subscriptionPlan       String    @default("free") @map("subscription_plan")
-  subscriptionPeriodEnd  DateTime? @map("subscription_period_end")
-  stripeCustomerId       String?   @unique @map("stripe_customer_id")
-  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
-  createdAt              DateTime  @default(now()) @map("created_at")
-  updatedAt              DateTime  @updatedAt @map("updated_at")
-  deletedAt              DateTime? @map("deleted_at")
+  id                        String    @id
+  email                     String    @unique
+  name                      String
+  clerkUserId               String?   @unique @map("clerk_user_id")
+  pendingEmail              String?   @map("pending_email")
+  emailVerificationStatus   String    @default("verified") @map("email_verification_status")
+  emailVerificationToken    String?   @map("email_verification_token")
+  emailVerificationExpiry   DateTime? @map("email_verification_expiry")
+  subscriptionStatus        String    @default("free") @map("subscription_status")
+  subscriptionPlan          String    @default("free") @map("subscription_plan")
+  subscriptionPeriodEnd     DateTime? @map("subscription_period_end")
+  stripeCustomerId          String?   @unique @map("stripe_customer_id")
+  stripeSubscriptionId      String?   @unique @map("stripe_subscription_id")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+  deletedAt                 DateTime? @map("deleted_at")
 
   resumes         Resume[]
   jobAnalyses     JobAnalysis[]

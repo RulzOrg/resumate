@@ -146,7 +146,6 @@ export function calculateATSScore(
  * Get color for ATS score
  */
 export function getATSScoreColor(score: number): string {
-  if (score >= 90) return 'text-emerald-300'
   if (score >= 80) return 'text-emerald-300'
   if (score >= 70) return 'text-yellow-300'
   return 'text-amber-300'

@@ -491,6 +491,34 @@ export async function updateResume(id: string, user_id: string, data: Partial<Re
   return resume as Resume | undefined
 }
 
+export async function updateResumeFieldsAtomic(
+  id: string,
+  user_id: string,
+  data: {
+    content_text?: string
+    parsed_sections?: Record<string, any>
+    processing_status?: ResumeProcessingStatus
+    processing_error?: string | null
+    title?: string
+  }
+) {
+  // Build dynamic UPDATE with only provided fields for single atomic operation
+  const parsedSections = data.parsed_sections !== undefined ? JSON.stringify(data.parsed_sections) : undefined
+  
+  const [resume] = await sql`
+    UPDATE resumes
+    SET content_text = COALESCE(${data.content_text}, content_text),
+        parsed_sections = COALESCE(${parsedSections}, parsed_sections),
+        processing_status = COALESCE(${data.processing_status}, processing_status),
+        processing_error = COALESCE(${data.processing_error}, processing_error),
+        title = COALESCE(${data.title}, title),
+        updated_at = NOW()
+    WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
+    RETURNING *
+  `
+  return resume as Resume | undefined
+}
+
 export async function deleteResume(id: string, user_id: string) {
   const [resume] = await sql`
     UPDATE resumes 
@@ -995,9 +1023,19 @@ export async function createJobAnalysisWithVerification(data: {
     const keywords = Array.isArray(normalizedAnalysis.keywords) ? normalizedAnalysis.keywords : []
     const required_skills = Array.isArray(normalizedAnalysis.required_skills) ? normalizedAnalysis.required_skills : []
     const preferred_skills = Array.isArray(normalizedAnalysis.preferred_skills) ? normalizedAnalysis.preferred_skills : []
-    const experience_level = normalizedAnalysis.experience_level || null
-    const salary_range = normalizedAnalysis.salary_range || null
-    const location = normalizedAnalysis.location || null
+    
+    // Truncate fields to fit database constraints (prevent varchar overflow)
+    const experience_level = normalizedAnalysis.experience_level 
+      ? String(normalizedAnalysis.experience_level).substring(0, 50) 
+      : null
+    const salary_range = normalizedAnalysis.salary_range 
+      ? (typeof normalizedAnalysis.salary_range === 'string' 
+          ? normalizedAnalysis.salary_range.substring(0, 100)
+          : JSON.stringify(normalizedAnalysis.salary_range).substring(0, 100))
+      : null
+    const location = normalizedAnalysis.location 
+      ? String(normalizedAnalysis.location).substring(0, 255) 
+      : null
 
     // Step 4: Generate UUID fallback if database doesn't handle it
     const id = generateUUID()
@@ -1121,6 +1159,50 @@ export async function getJobStats(user_id: string) {
     cvsGenerated: parseInt(stats?.cvs_generated || '0'),
     keywordsExtracted: parseInt(stats?.keywords_extracted || '0'),
     avgMatch: Math.round(parseFloat(stats?.avg_match || '0')),
+  }
+}
+
+export async function getJobTrends(user_id: string) {
+  const now = new Date()
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+  const [trend] = await sql`
+    SELECT
+      (SELECT COUNT(*) FROM job_analysis WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}) AS jobs_saved_this_week,
+      (SELECT COUNT(*) FROM job_analysis WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}) AS jobs_saved_last_week,
+      (SELECT COUNT(*) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}) AS cvs_generated_this_week,
+      (SELECT COUNT(*) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}) AS cvs_generated_last_week,
+      (
+        SELECT COALESCE(SUM(cardinality(COALESCE(keywords, '{}'::text[]))), 0)
+        FROM job_analysis
+        WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}
+      ) AS keywords_this_week,
+      (
+        SELECT COALESCE(SUM(cardinality(COALESCE(keywords, '{}'::text[]))), 0)
+        FROM job_analysis
+        WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}
+      ) AS keywords_last_week,
+      (SELECT COALESCE(AVG(match_score), 0) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}) AS avg_match_this_week,
+      (SELECT COALESCE(AVG(match_score), 0) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}) AS avg_match_last_week
+  `
+
+  const toNumber = (value: any) => Number(value) || 0
+
+  const jobsSavedThisWeek = toNumber(trend?.jobs_saved_this_week)
+  const jobsSavedLastWeek = toNumber(trend?.jobs_saved_last_week)
+  const cvsGeneratedThisWeek = toNumber(trend?.cvs_generated_this_week)
+  const cvsGeneratedLastWeek = toNumber(trend?.cvs_generated_last_week)
+  const keywordsThisWeek = toNumber(trend?.keywords_this_week)
+  const keywordsLastWeek = toNumber(trend?.keywords_last_week)
+  const avgMatchThisWeek = toNumber(trend?.avg_match_this_week)
+  const avgMatchLastWeek = toNumber(trend?.avg_match_last_week)
+
+  return {
+    jobsSavedChange: jobsSavedThisWeek - jobsSavedLastWeek,
+    cvsGeneratedChange: cvsGeneratedThisWeek - cvsGeneratedLastWeek,
+    keywordsExtractedChange: keywordsThisWeek - keywordsLastWeek,
+    avgMatchChange: Math.round(avgMatchThisWeek - avgMatchLastWeek),
   }
 }
 
@@ -1322,18 +1404,32 @@ export async function getApplicationTrends(user_id: string) {
 export async function getResumeStats(user_id: string) {
   const [stats] = await sql`
     SELECT 
-      COUNT(DISTINCT or_res.id) as resumes_saved,
-      COUNT(DISTINCT or_res.id) as pdf_exports,
-      COUNT(DISTINCT or_res.id) as edits_made,
-      COALESCE(AVG(or_res.match_score), 0) as avg_score
-    FROM optimized_resumes or_res
-    WHERE or_res.user_id = ${user_id}
+      COUNT(*) as resumes_saved,
+      COALESCE(SUM(cardinality(COALESCE(improvements_made, '{}'::text[]))), 0) as edits_made,
+      COALESCE(AVG(match_score), 0) as avg_score
+    FROM optimized_resumes
+    WHERE user_id = ${user_id}
   `
-  
+
+  let pdfExports = 0
+  try {
+    const [exportStats] = await sql`
+      SELECT COUNT(*) as export_count
+      FROM resume_exports
+      WHERE user_id = ${user_id}
+    `
+    pdfExports = parseInt(exportStats?.export_count || '0')
+  } catch (error: any) {
+    if (error?.code !== '42P01') {
+      throw error
+    }
+    pdfExports = 0
+  }
+
   return {
     resumesSaved: parseInt(stats?.resumes_saved || '0'),
-    pdfExports: Math.floor(parseInt(stats?.pdf_exports || '0') * 0.6), // Approximate 60% export rate
-    editsMade: parseInt(stats?.edits_made || '0') * 3, // Approximate 3 edits per resume
+    pdfExports,
+    editsMade: parseInt(stats?.edits_made || '0'),
     avgScore: Math.round(parseFloat(stats?.avg_score || '0')),
   }
 }
@@ -1411,6 +1507,62 @@ export async function getResumeActivity(user_id: string, limit: number = 5) {
     created_at: a.created_at,
     match_score: a.match_score ? Math.round(parseFloat(a.match_score)) : null,
   }))
+}
+
+export async function getResumeTrends(user_id: string) {
+  const now = new Date()
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+  const [optimizedStats] = await sql`
+    SELECT
+      (SELECT COUNT(*) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}) AS resumes_this_week,
+      (SELECT COUNT(*) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}) AS resumes_last_week,
+      (
+        SELECT COALESCE(SUM(cardinality(COALESCE(improvements_made, '{}'::text[]))), 0)
+        FROM optimized_resumes
+        WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}
+      ) AS edits_this_week,
+      (
+        SELECT COALESCE(SUM(cardinality(COALESCE(improvements_made, '{}'::text[]))), 0)
+        FROM optimized_resumes
+        WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}
+      ) AS edits_last_week,
+      (SELECT COALESCE(AVG(match_score), 0) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}) AS avg_score_this_week,
+      (SELECT COALESCE(AVG(match_score), 0) FROM optimized_resumes WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}) AS avg_score_last_week
+  `
+
+  let exportsThisWeek = 0
+  let exportsLastWeek = 0
+  try {
+    const [exportStats] = await sql`
+      SELECT
+        (SELECT COUNT(*) FROM resume_exports WHERE user_id = ${user_id} AND created_at >= ${oneWeekAgo.toISOString()}) AS exports_this_week,
+        (SELECT COUNT(*) FROM resume_exports WHERE user_id = ${user_id} AND created_at >= ${twoWeeksAgo.toISOString()} AND created_at < ${oneWeekAgo.toISOString()}) AS exports_last_week
+    `
+    exportsThisWeek = parseInt(exportStats?.exports_this_week || '0')
+    exportsLastWeek = parseInt(exportStats?.exports_last_week || '0')
+  } catch (error: any) {
+    if (error?.code !== '42P01') {
+      throw error
+    }
+  }
+
+  const toNumber = (value: any) => Number(value) || 0
+
+  const resumesThisWeek = toNumber(optimizedStats?.resumes_this_week)
+  const resumesLastWeek = toNumber(optimizedStats?.resumes_last_week)
+  const editsThisWeek = toNumber(optimizedStats?.edits_this_week)
+  const editsLastWeek = toNumber(optimizedStats?.edits_last_week)
+  const avgScoreThisWeek = toNumber(optimizedStats?.avg_score_this_week)
+  const avgScoreLastWeek = toNumber(optimizedStats?.avg_score_last_week)
+
+  return {
+    resumesSavedChange: resumesThisWeek - resumesLastWeek,
+    pdfExportsChange: exportsThisWeek - exportsLastWeek,
+    editsMadeChange: editsThisWeek - editsLastWeek,
+    avgScoreChange: Math.round(avgScoreThisWeek - avgScoreLastWeek),
+  }
 }
 
 // Optimized resume functions
@@ -1935,4 +2087,511 @@ function extractPrimaryEmail(clerkUser: any): string {
   }
 
   return clerkUser.email_address || clerkUser.email || ""
+}
+
+// ===========================
+// Admin Functions
+// ===========================
+
+export interface AdminUserListItem {
+  id: string
+  email: string
+  name: string
+  clerk_user_id?: string
+  subscription_status: string
+  subscription_plan: string
+  subscription_period_end?: string
+  created_at: string
+  updated_at: string
+  resume_count: number
+  job_analysis_count: number
+}
+
+export interface AdminStats {
+  totalUsers: number
+  activeUsers: number
+  freeUsers: number
+  proUsers: number
+  enterpriseUsers: number
+  totalResumes: number
+  totalJobAnalyses: number
+  usersCreatedToday: number
+  usersCreatedThisWeek: number
+  usersCreatedThisMonth: number
+}
+
+export interface AdminAuditLog {
+  id: string
+  admin_user_id: string
+  action: string
+  target_user_id?: string
+  details?: Record<string, any>
+  ip_address?: string
+  user_agent?: string
+  created_at: string
+}
+
+/**
+ * Get all users with pagination and optional search
+ */
+export async function getAllUsersAdmin(params: {
+  page?: number
+  limit?: number
+  search?: string
+  subscription_status?: string
+  sortBy?: 'created_at' | 'name' | 'email'
+  sortOrder?: 'asc' | 'desc'
+}) {
+  const {
+    page = 1,
+    limit = 50,
+    search = '',
+    subscription_status = '',
+    sortBy = 'created_at',
+    sortOrder = 'desc'
+  } = params
+
+  const offset = (page - 1) * limit
+  const searchPattern = `%${search}%`
+
+  // Build the query dynamically based on filters
+  let users: any[]
+  let countResult: any[]
+
+  if (search && subscription_status) {
+    // Both search and subscription filter
+    users = await sql`
+      SELECT 
+        u.id,
+        u.email,
+        u.name,
+        u.clerk_user_id,
+        u.subscription_status,
+        u.subscription_plan,
+        u.subscription_period_end,
+        u.created_at,
+        u.updated_at,
+        COUNT(DISTINCT r.id)::int as resume_count,
+        COUNT(DISTINCT ja.id)::int as job_analysis_count
+      FROM users_sync u
+      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
+      LEFT JOIN job_analysis ja ON ja.user_id = u.id
+      WHERE u.deleted_at IS NULL 
+        AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern})
+        AND u.subscription_status = ${subscription_status}
+      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
+      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM users_sync
+      WHERE deleted_at IS NULL 
+        AND (email ILIKE ${searchPattern} OR name ILIKE ${searchPattern})
+        AND subscription_status = ${subscription_status}
+    `
+  } else if (search) {
+    // Only search filter
+    users = await sql`
+      SELECT 
+        u.id,
+        u.email,
+        u.name,
+        u.clerk_user_id,
+        u.subscription_status,
+        u.subscription_plan,
+        u.subscription_period_end,
+        u.created_at,
+        u.updated_at,
+        COUNT(DISTINCT r.id)::int as resume_count,
+        COUNT(DISTINCT ja.id)::int as job_analysis_count
+      FROM users_sync u
+      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
+      LEFT JOIN job_analysis ja ON ja.user_id = u.id
+      WHERE u.deleted_at IS NULL 
+        AND (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern})
+      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
+      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM users_sync
+      WHERE deleted_at IS NULL 
+        AND (email ILIKE ${searchPattern} OR name ILIKE ${searchPattern})
+    `
+  } else if (subscription_status) {
+    // Only subscription filter
+    users = await sql`
+      SELECT 
+        u.id,
+        u.email,
+        u.name,
+        u.clerk_user_id,
+        u.subscription_status,
+        u.subscription_plan,
+        u.subscription_period_end,
+        u.created_at,
+        u.updated_at,
+        COUNT(DISTINCT r.id)::int as resume_count,
+        COUNT(DISTINCT ja.id)::int as job_analysis_count
+      FROM users_sync u
+      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
+      LEFT JOIN job_analysis ja ON ja.user_id = u.id
+      WHERE u.deleted_at IS NULL 
+        AND u.subscription_status = ${subscription_status}
+      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
+      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM users_sync
+      WHERE deleted_at IS NULL 
+        AND subscription_status = ${subscription_status}
+    `
+  } else {
+    // No filters
+    users = await sql`
+      SELECT 
+        u.id,
+        u.email,
+        u.name,
+        u.clerk_user_id,
+        u.subscription_status,
+        u.subscription_plan,
+        u.subscription_period_end,
+        u.created_at,
+        u.updated_at,
+        COUNT(DISTINCT r.id)::int as resume_count,
+        COUNT(DISTINCT ja.id)::int as job_analysis_count
+      FROM users_sync u
+      LEFT JOIN resumes r ON r.user_id = u.id AND r.deleted_at IS NULL
+      LEFT JOIN job_analysis ja ON ja.user_id = u.id
+      WHERE u.deleted_at IS NULL
+      GROUP BY u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan, u.subscription_period_end, u.created_at, u.updated_at
+      ORDER BY u.${sql.unsafe(sortBy)} ${sql.unsafe(sortOrder.toUpperCase())}
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM users_sync
+      WHERE deleted_at IS NULL
+    `
+  }
+
+  return {
+    users: users as AdminUserListItem[],
+    total: parseInt(countResult[0]?.total || '0'),
+    page,
+    limit,
+    totalPages: Math.ceil(parseInt(countResult[0]?.total || '0') / limit)
+  }
+}
+
+/**
+ * Get detailed user information for admin
+ */
+export async function getUserDetailsAdmin(userId: string) {
+  const [user] = await sql`
+    SELECT 
+      id,
+      email,
+      name,
+      clerk_user_id,
+      subscription_status,
+      subscription_plan,
+      subscription_period_end,
+      stripe_customer_id,
+      stripe_subscription_id,
+      onboarding_completed_at,
+      created_at,
+      updated_at
+    FROM users_sync
+    WHERE id = ${userId} AND deleted_at IS NULL
+  `
+
+  if (!user) return null
+
+  const resumes = await sql`
+    SELECT id, title, file_name, kind, processing_status, created_at
+    FROM resumes
+    WHERE user_id = ${userId} AND deleted_at IS NULL
+    ORDER BY created_at DESC
+  `
+
+  const jobAnalyses = await sql`
+    SELECT id, job_title, company_name, created_at
+    FROM job_analysis
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT 10
+  `
+
+  const applications = await sql`
+    SELECT id, job_title, company_name, status, applied_at
+    FROM job_applications
+    WHERE user_id = ${userId}
+    ORDER BY applied_at DESC
+    LIMIT 10
+  `
+
+  return {
+    user,
+    resumes,
+    jobAnalyses,
+    applications
+  }
+}
+
+/**
+ * Get platform statistics for admin dashboard
+ */
+export async function getAdminStats(): Promise<AdminStats> {
+  const [stats] = await sql`
+    SELECT 
+      COUNT(*) FILTER (WHERE deleted_at IS NULL) as total_users,
+      COUNT(*) FILTER (WHERE deleted_at IS NULL AND onboarding_completed_at IS NOT NULL) as active_users,
+      COUNT(*) FILTER (WHERE deleted_at IS NULL AND subscription_status = 'free') as free_users,
+      COUNT(*) FILTER (WHERE deleted_at IS NULL AND subscription_status = 'active' AND subscription_plan = 'pro') as pro_users,
+      COUNT(*) FILTER (WHERE deleted_at IS NULL AND subscription_status = 'active' AND subscription_plan = 'enterprise') as enterprise_users,
+      COUNT(*) FILTER (WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL '1 day') as users_today,
+      COUNT(*) FILTER (WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL '7 days') as users_week,
+      COUNT(*) FILTER (WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL '30 days') as users_month
+    FROM users_sync
+  `
+
+  const [resumeStats] = await sql`
+    SELECT COUNT(*) as total_resumes
+    FROM resumes
+    WHERE deleted_at IS NULL
+  `
+
+  const [jobStats] = await sql`
+    SELECT COUNT(*) as total_job_analyses
+    FROM job_analysis
+  `
+
+  return {
+    totalUsers: parseInt(stats?.total_users || '0'),
+    activeUsers: parseInt(stats?.active_users || '0'),
+    freeUsers: parseInt(stats?.free_users || '0'),
+    proUsers: parseInt(stats?.pro_users || '0'),
+    enterpriseUsers: parseInt(stats?.enterprise_users || '0'),
+    totalResumes: parseInt(resumeStats?.total_resumes || '0'),
+    totalJobAnalyses: parseInt(jobStats?.total_job_analyses || '0'),
+    usersCreatedToday: parseInt(stats?.users_today || '0'),
+    usersCreatedThisWeek: parseInt(stats?.users_week || '0'),
+    usersCreatedThisMonth: parseInt(stats?.users_month || '0')
+  }
+}
+
+/**
+ * Log admin action for audit trail
+ */
+export async function logAdminAction(data: {
+  admin_user_id: string
+  action: string
+  target_user_id?: string
+  details?: Record<string, any>
+  ip_address?: string
+  user_agent?: string
+}) {
+  try {
+    await sql`
+      INSERT INTO admin_audit_logs (
+        admin_user_id,
+        action,
+        target_user_id,
+        details,
+        ip_address,
+        user_agent,
+        created_at
+      )
+      VALUES (
+        ${data.admin_user_id},
+        ${data.action},
+        ${data.target_user_id || null},
+        ${data.details ? JSON.stringify(data.details) : null},
+        ${data.ip_address || null},
+        ${data.user_agent || null},
+        NOW()
+      )
+    `
+  } catch (error) {
+    console.error('[ADMIN_AUDIT] Failed to log admin action:', error)
+  }
+}
+
+/**
+ * Get admin audit logs with pagination
+ */
+export async function getAdminAuditLogs(params: {
+  page?: number
+  limit?: number
+  admin_user_id?: string
+  target_user_id?: string
+  action?: string
+}) {
+  const {
+    page = 1,
+    limit = 50,
+    admin_user_id = '',
+    target_user_id = '',
+    action = ''
+  } = params
+
+  const offset = (page - 1) * limit
+
+  // Build query based on filters
+  let logs: any[]
+  let countResult: any[]
+
+  const hasAdminFilter = !!admin_user_id
+  const hasTargetFilter = !!target_user_id
+  const hasActionFilter = !!action
+
+  if (hasAdminFilter && hasTargetFilter && hasActionFilter) {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+        AND target_user_id = ${target_user_id}
+        AND action = ${action}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+        AND target_user_id = ${target_user_id}
+        AND action = ${action}
+    `
+  } else if (hasAdminFilter && hasTargetFilter) {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+        AND target_user_id = ${target_user_id}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+        AND target_user_id = ${target_user_id}
+    `
+  } else if (hasAdminFilter && hasActionFilter) {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+        AND action = ${action}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+        AND action = ${action}
+    `
+  } else if (hasTargetFilter && hasActionFilter) {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      WHERE target_user_id = ${target_user_id}
+        AND action = ${action}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+      WHERE target_user_id = ${target_user_id}
+        AND action = ${action}
+    `
+  } else if (hasAdminFilter) {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+      WHERE admin_user_id = ${admin_user_id}
+    `
+  } else if (hasTargetFilter) {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      WHERE target_user_id = ${target_user_id}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+      WHERE target_user_id = ${target_user_id}
+    `
+  } else if (hasActionFilter) {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      WHERE action = ${action}
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+      WHERE action = ${action}
+    `
+  } else {
+    logs = await sql`
+      SELECT id, admin_user_id, action, target_user_id, details, ip_address, user_agent, created_at
+      FROM admin_audit_logs
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
+    countResult = await sql`
+      SELECT COUNT(*) as total
+      FROM admin_audit_logs
+    `
+  }
+
+  return {
+    logs: logs as AdminAuditLog[],
+    total: parseInt(countResult[0]?.total || '0'),
+    page,
+    limit,
+    totalPages: Math.ceil(parseInt(countResult[0]?.total || '0') / limit)
+  }
+}
+
+/**
+ * Update user subscription status (admin only)
+ */
+export async function updateUserSubscriptionAdmin(userId: string, data: {
+  subscription_status: string
+  subscription_plan?: string
+  subscription_period_end?: string | null
+}) {
+  const [user] = await sql`
+    UPDATE users_sync
+    SET 
+      subscription_status = ${data.subscription_status},
+      subscription_plan = COALESCE(${data.subscription_plan}, subscription_plan),
+      subscription_period_end = ${data.subscription_period_end || null},
+      updated_at = NOW()
+    WHERE id = ${userId} AND deleted_at IS NULL
+    RETURNING id, email, name, subscription_status, subscription_plan, subscription_period_end
+  `
+
+  return user as User | undefined
 }

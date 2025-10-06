@@ -1,6 +1,6 @@
 "use client"
 
-import { FileDown } from "lucide-react"
+import { FileDown, Edit } from "lucide-react"
 import { getResumeIcon, getMatchScoreColor } from "@/lib/resume-utils"
 import { formatDistanceToNow } from "date-fns"
 import {
@@ -73,7 +73,8 @@ export function ResumesTable({ resumes }: ResumesTableProps) {
           <TableBody>
           {resumes.map((resume, idx) => {
             const ResumeIcon = getResumeIcon(resume.job_title)
-            const matchColor = getMatchScoreColor(resume.match_score)
+            const safeScore = Math.min(100, Math.max(0, Number(resume.match_score) || 0))
+            const matchColor = getMatchScoreColor(safeScore)
             
             return (
               <TableRow key={resume.id}>
@@ -87,17 +88,22 @@ export function ResumesTable({ resumes }: ResumesTableProps) {
                   {resume.company_name}
                 </TableCell>
                 <TableCell className="text-white/70">
-                  {formatDistanceToNow(new Date(resume.created_at), { addSuffix: false })}
+                  {(() => {
+                    const date = new Date(resume.created_at)
+                    return isNaN(date.getTime())
+                      ? 'Unknown'
+                      : formatDistanceToNow(date, { addSuffix: false })
+                  })()}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="h-1.5 w-20 rounded-full bg-white/10 overflow-hidden">
                       <div
                         className={`h-full ${matchColor}`}
-                        style={{ width: `${resume.match_score}%` }}
+                        style={{ width: `${safeScore}%` }}
                       />
                     </div>
-                    <span className="text-white/80">{resume.match_score}%</span>
+                    <span className="text-white/80">{safeScore}%</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -105,21 +111,7 @@ export function ResumesTable({ resumes }: ResumesTableProps) {
                     onClick={() => handleEdit(resume.id)}
                     className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-white/90 hover:text-white hover:bg-white/10 transition"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="w-[14px] h-[14px]"
-                    >
-                      <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
-                    </svg>
+                    <Edit className="w-3.5 h-3.5" />
                     Edit Resume
                   </button>
                 </TableCell>
@@ -143,7 +135,8 @@ export function ResumesTable({ resumes }: ResumesTableProps) {
       <MobileCardList>
         {resumes.map((resume) => {
           const ResumeIcon = getResumeIcon(resume.job_title)
-          const matchColor = getMatchScoreColor(resume.match_score)
+          const safeScore = Math.min(100, Math.max(0, Number(resume.match_score) || 0))
+          const matchColor = getMatchScoreColor(safeScore)
           
           return (
             <MobileCard key={resume.id}>
@@ -159,7 +152,12 @@ export function ResumesTable({ resumes }: ResumesTableProps) {
               {/* Details */}
               <div className="space-y-2">
                 <MobileCardRow label="Added">
-                  {formatDistanceToNow(new Date(resume.created_at), { addSuffix: false })}
+                  {(() => {
+                    const date = new Date(resume.created_at)
+                    return isNaN(date.getTime())
+                      ? 'Unknown'
+                      : formatDistanceToNow(date, { addSuffix: false })
+                  })()}
                 </MobileCardRow>
 
                 <MobileCardRow label="Score">
@@ -167,10 +165,10 @@ export function ResumesTable({ resumes }: ResumesTableProps) {
                     <div className="h-1.5 w-20 rounded-full bg-white/10 overflow-hidden">
                       <div
                         className={`h-full ${matchColor}`}
-                        style={{ width: `${resume.match_score}%` }}
+                        style={{ width: `${safeScore}%` }}
                       />
                     </div>
-                    <span className="text-white/80 text-sm font-medium">{resume.match_score}%</span>
+                    <span className="text-white/80 text-sm font-medium">{safeScore}%</span>
                   </div>
                 </MobileCardRow>
               </div>
@@ -181,21 +179,7 @@ export function ResumesTable({ resumes }: ResumesTableProps) {
                   onClick={() => handleEdit(resume.id)}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 hover:text-white hover:bg-white/10 transition"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-[14px] h-[14px]"
-                  >
-                    <path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z" />
-                  </svg>
+                  <Edit className="w-4 h-4" />
                   Edit
                 </button>
                 <button

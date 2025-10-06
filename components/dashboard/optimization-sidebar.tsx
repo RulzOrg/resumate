@@ -31,10 +31,14 @@ export function OptimizationSidebar({
           <div className="flex-1">
             <p className="text-sm font-medium font-geist">Variants</p>
             <p className="text-xs text-white/60 font-geist mt-0.5">
-              {variantCount} tailored versions in use.
+              {variantCount === 0
+                ? "No variants created yet."
+                : `${variantCount} tailored ${variantCount === 1 ? "version" : "versions"} in use.`}
             </p>
           </div>
-          <span className="text-xs text-emerald-200 font-medium">Active</span>
+          {variantCount > 0 && (
+            <span className="text-xs text-emerald-200 font-medium">Active</span>
+          )}
         </div>
 
         <div className="flex items-start gap-3">

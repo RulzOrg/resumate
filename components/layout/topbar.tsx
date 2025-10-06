@@ -7,9 +7,10 @@ import { usePathname } from "next/navigation"
 
 interface TopbarProps {
   onMobileMenuClick?: () => void
+  isMobileMenuOpen?: boolean
 }
 
-export function Topbar({ onMobileMenuClick }: TopbarProps) {
+export function Topbar({ onMobileMenuClick, isMobileMenuOpen = false }: TopbarProps) {
   const pathname = usePathname()
 
   // Generate breadcrumb from pathname
@@ -17,9 +18,21 @@ export function Topbar({ onMobileMenuClick }: TopbarProps) {
     const segments = pathname.split("/").filter(Boolean)
     if (segments.length === 1) return "Dashboard"
     
+    // Handle nested routes like /dashboard/jobs/add
+    if (segments.length > 2) {
+      const parent = segments[segments.length - 2]
+      const current = segments[segments.length - 1]
+      return {
+        parent: parent.charAt(0).toUpperCase() + parent.slice(1),
+        current: current.charAt(0).toUpperCase() + current.slice(1)
+      }
+    }
+    
     const current = segments[segments.length - 1]
     return current.charAt(0).toUpperCase() + current.slice(1)
   }
+  
+  const breadcrumb = getBreadcrumb()
 
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-black/50 backdrop-blur">
@@ -28,14 +41,26 @@ export function Topbar({ onMobileMenuClick }: TopbarProps) {
           <button
             onClick={onMobileMenuClick}
             className="md:hidden inline-flex items-center justify-center h-9 w-9 rounded-lg border border-white/10 bg-white/5"
-          >
-            <Menu className="w-[18px] h-[18px] text-white/80" />
+            <input
+              type="text"
+              placeholder="Search..."
+              aria-label="Search"
+              className="w-64 rounded-full bg-white/5 border border-white/15 text-white placeholder-white/40 pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
+            />
           </button>
           <div className="hidden sm:flex items-center gap-2 text-sm text-white/60">
             <Home className="w-4 h-4" />
             <span className="font-geist">Dashboard</span>
             <span className="text-white/30">/</span>
-            <span className="font-geist text-white/80">{getBreadcrumb()}</span>
+            {typeof breadcrumb === 'object' ? (
+              <>
+                <span className="font-geist">{breadcrumb.parent}</span>
+                <span className="text-white/30">/</span>
+                <span className="font-geist text-white/80">{breadcrumb.current}</span>
+              </>
+            ) : (
+              <span className="font-geist text-white/80">{breadcrumb}</span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">

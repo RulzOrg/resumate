@@ -1,12 +1,40 @@
+'use client'
+
 import { ListChecks, Percent, Lightbulb, Plus } from "lucide-react"
 import { extractRoleName } from "@/lib/resume-utils"
 
 interface ResumeInsightsSidebarProps {
   topRoles: Array<{ role: string; count: number }>
   avgScore: number
+  onNewResume?: () => void
 }
 
-export function ResumeInsightsSidebar({ topRoles, avgScore }: ResumeInsightsSidebarProps) {
+export function ResumeInsightsSidebar({ topRoles, avgScore, onNewResume }: ResumeInsightsSidebarProps) {
+  const hasAvgScore = avgScore > 0
+  const scoreDescription = hasAvgScore
+    ? "Average match across your generated resumes."
+    : "Generate a resume to see match scores here."
+  const avgScoreValue = hasAvgScore ? `${avgScore}%` : "—"
+
+  const suggestionMessage = (() => {
+    if (!hasAvgScore) {
+      return "Create a tailored resume to unlock suggestions."
+    }
+    if (avgScore >= 80) {
+      return "Great work—keep iterating for upcoming roles."
+    }
+    if (avgScore >= 50) {
+      return "Incorporate missing achievements or keywords to improve matches."
+    }
+    return "Refresh your resume content to lift low match scores."
+  })()
+
+  const handleNewResume = () => {
+    if (onNewResume) {
+      onNewResume()
+    }
+  }
+
   return (
     <div className="rounded-xl border border-white/10 bg-white/5">
       <div className="px-4 py-3 border-b border-white/10">
@@ -24,12 +52,13 @@ export function ResumeInsightsSidebar({ topRoles, avgScore }: ResumeInsightsSide
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {topRoles.length > 0 ? (
-                topRoles.map((item, idx) => (
+                topRoles.map((item) => (
                   <span
-                    key={idx}
+                    key={item.role}
                     className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
+                    aria-label={`${extractRoleName(item.role)} - ${item.count} resume${item.count !== 1 ? 's' : ''}`}
                   >
-                    {extractRoleName(item.role)}
+                    {extractRoleName(item.role)} ({item.count})
                   </span>
                 ))
               ) : (
@@ -47,11 +76,9 @@ export function ResumeInsightsSidebar({ topRoles, avgScore }: ResumeInsightsSide
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium font-geist">Average score</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
-              Most resumes score between 75–90% after edits.
-            </p>
+            <p className="text-xs text-white/60 font-geist mt-0.5">{scoreDescription}</p>
           </div>
-          <span className="text-xs text-emerald-200 font-medium">{avgScore}%</span>
+          <span className="text-xs text-emerald-200 font-medium">{avgScoreValue}</span>
         </div>
 
         <div className="flex items-start gap-3">
@@ -60,14 +87,16 @@ export function ResumeInsightsSidebar({ topRoles, avgScore }: ResumeInsightsSide
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium font-geist">Suggestions</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
-              Tweak top sections and add missing tools to lift lower scores.
-            </p>
+            <p className="text-xs text-white/60 font-geist mt-0.5">{suggestionMessage}</p>
           </div>
           <span className="text-xs text-white/80 font-medium">Action</span>
         </div>
 
-        <button className="inline-flex hover:bg-emerald-400 transition text-sm font-medium text-black bg-emerald-500 w-full rounded-full pt-2 pr-3 pb-2 pl-3 gap-x-2 gap-y-2 items-center justify-center">
+        <button
+          onClick={handleNewResume}
+          className="inline-flex hover:bg-emerald-400 transition text-sm font-medium text-black bg-emerald-500 w-full rounded-full pt-2 pr-3 pb-2 pl-3 gap-x-2 gap-y-2 items-center justify-center disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={!onNewResume}
+        >
           <Plus className="w-4 h-4" />
           New Resume
         </button>

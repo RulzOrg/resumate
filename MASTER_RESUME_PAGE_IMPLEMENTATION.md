@@ -764,7 +764,7 @@ WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
 ### Functional Testing
 
 - [ ] **Display resumes**
-  - [ ] Shows all master/uploaded/generated resumes
+  - [ ] Shows all master/uploaded/duplicate resumes
   - [ ] Primary badge appears on is_primary=true
   - [ ] Variant badge appears on others
   - [ ] Empty state shows when no resumes

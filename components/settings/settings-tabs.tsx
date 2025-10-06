@@ -41,9 +41,12 @@ export function SettingsTabs({ user, profile, usage, billingProvider }: Settings
     <div className="rounded-xl border border-white/10 bg-white/5">
       {/* Tabs */}
       <div className="px-3 sm:px-4 pt-3 border-b border-white/10">
-        <nav className="flex flex-wrap gap-1">
+        <nav className="flex flex-wrap gap-1" role="tablist">
           <button
             onClick={() => switchTab('account')}
+            role="tab"
+            aria-selected={activeTab === 'account'}
+            aria-controls="account-panel"
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
               activeTab === 'account'
                 ? 'border border-white/10 bg-white/10 text-white font-medium'
@@ -55,6 +58,9 @@ export function SettingsTabs({ user, profile, usage, billingProvider }: Settings
           </button>
           <button
             onClick={() => switchTab('subscription')}
+            role="tab"
+            aria-selected={activeTab === 'subscription'}
+            aria-controls="subscription-panel"
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
               activeTab === 'subscription'
                 ? 'border border-white/10 bg-white/10 text-white font-medium'
@@ -66,6 +72,9 @@ export function SettingsTabs({ user, profile, usage, billingProvider }: Settings
           </button>
           <button
             onClick={() => switchTab('security')}
+            role="tab"
+            aria-selected={activeTab === 'security'}
+            aria-controls="security-panel"
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
               activeTab === 'security'
                 ? 'border border-white/10 bg-white/10 text-white font-medium'

@@ -20,18 +20,58 @@ interface FormattingCheckResult {
  * Check if resume content is ATS-compatible
  * Looks for common blockers like tables, images, complex formatting
  */
-export async function checkATSCompatibility(content: string): Promise<ATSCheckResult> {
+export function checkATSCompatibility(content: string): ATSCheckResult {
+  // Validate input
+  if (content === null || content === undefined || typeof content !== 'string' || content.trim() === '') {
+    return {
+      healthy: false,
+      issues: ['Invalid or empty resume content'],
+      score: 0
+    }
+  }
+
   const issues: string[] = []
   let score = 100
 
-  // Check for table indicators (common ATS blocker)
-  if (content.includes('|') || /\t{2,}/.test(content)) {
+  // Check for Markdown table indicators (common ATS blocker)
+  // Strip code blocks, inline code, and URLs to avoid false positives
+  const cleanedContent = content
+    .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+    .replace(/`[^`\n]+`/g, '') // Remove inline code
+    .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
+
+  // Detect Markdown tables: lines with pipes that form table structure
+  // Look for lines that have multiple pipes (columns) and consecutive table rows
+  const cleanedLines = cleanedContent.split('\n')
+  const tableLikeLines = cleanedLines.filter(line => {
+    const trimmed = line.trim()
+    // Match lines with at least 2 pipes (indicating 3+ columns) or lines starting/ending with pipe
+    return trimmed.includes('|') && (
+      (trimmed.match(/\|/g) || []).length >= 2 ||
+      (trimmed.startsWith('|') && trimmed.endsWith('|'))
+    )
+  })
+
+  // Check if we have consecutive table rows (indicates actual table)
+  let hasMarkdownTable = false
+  for (let i = 0; i < cleanedLines.length - 1; i++) {
+    const current = cleanedLines[i].trim()
+    const next = cleanedLines[i + 1].trim()
+    if (current.includes('|') && next.includes('|') && 
+        (current.match(/\|/g) || []).length >= 2 &&
+        (next.match(/\|/g) || []).length >= 2) {
+      hasMarkdownTable = true
+      break
+    }
+  }
+
+  if (hasMarkdownTable || tableLikeLines.length >= 3 || /\t{2,}/.test(content)) {
     issues.push('Possible table formatting detected - use bullet points instead')
     score -= 25
   }
 
-  // Check for image/graphic indicators
-  if (/\[image\]|\[graphic\]|\[photo\]/i.test(content)) {
+  // Check for image/graphic indicators (placeholders, markdown, HTML)
+  if (/\[image\]|\[graphic\]|\[photo\]|!\[.*?\]\(.*?\)|<img\s/i.test(content)) {
     issues.push('Images or graphics detected - ATS cannot parse visual content')
     score -= 30
   }
@@ -75,7 +115,16 @@ export async function checkATSCompatibility(content: string): Promise<ATSCheckRe
  * Check resume formatting consistency
  * Analyzes heading structure, bullet points, date formatting
  */
-export async function checkFormatting(content: string): Promise<FormattingCheckResult> {
+export function checkFormatting(content: string): FormattingCheckResult {
+  // Validate input
+  if (content === null || content === undefined || typeof content !== 'string' || content.trim() === '') {
+    return {
+      good: false,
+      issues: ['Invalid or empty resume content'],
+      score: 0
+    }
+  }
+
   const issues: string[] = []
   let score = 100
   const lines = content.split('\n')
@@ -154,11 +203,9 @@ export async function checkFormatting(content: string): Promise<FormattingCheckR
 /**
  * Combined ATS health check - returns overall compatibility status
  */
-export async function getATSHealthStatus(content: string) {
-  const [atsResult, formattingResult] = await Promise.all([
-    checkATSCompatibility(content),
-    checkFormatting(content)
-  ])
+export function getATSHealthStatus(content: string) {
+  const atsResult = checkATSCompatibility(content)
+  const formattingResult = checkFormatting(content)
 
   const overallScore = Math.round((atsResult.score + formattingResult.score) / 2)
   const allIssues = [...atsResult.issues, ...formattingResult.issues]

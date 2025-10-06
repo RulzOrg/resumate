@@ -13,6 +13,11 @@ const isProtectedRoute = createRouteMatcher([
   "/api/job-targets(.*)",
 ])
 
+const isAdminRoute = createRouteMatcher([
+  "/dashboard/admin(.*)",
+  "/api/admin(.*)",
+])
+
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"])
 
 export default E2E_MODE
@@ -21,9 +26,30 @@ export default E2E_MODE
       if (isProtectedRoute(req)) {
         await auth.protect()
         
-        // Check if user needs onboarding (except for onboarding routes and API routes)
+        // Check admin access for admin routes
+        if (isAdminRoute(req)) {
+          const { userId } = await auth()
+          if (userId) {
+            try {
+              const { clerkClient } = await import("@clerk/nextjs/server")
+              const clerk = await clerkClient()
+              const user = await clerk.users.getUser(userId)
+              
+              if (user.publicMetadata?.role !== "admin") {
+                const dashboardUrl = new URL("/dashboard", req.url)
+                return NextResponse.redirect(dashboardUrl)
+              }
+            } catch (error) {
+              console.error("Error checking admin status:", error)
+              const dashboardUrl = new URL("/dashboard", req.url)
+              return NextResponse.redirect(dashboardUrl)
+            }
+          }
+        }
+        
+        // Check if user needs onboarding (except for onboarding routes, admin routes, and API routes)
         const { userId } = await auth()
-        if (userId && !isOnboardingRoute(req) && !req.nextUrl.pathname.startsWith("/api/")) {
+        if (userId && !isOnboardingRoute(req) && !isAdminRoute(req) && !req.nextUrl.pathname.startsWith("/api/")) {
           try {
             const user = await getUserByClerkId(userId)
             

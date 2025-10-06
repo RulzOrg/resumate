@@ -48,6 +48,24 @@ export function InterestsSection() {
         })
       })
       
+      // Check response status before parsing
+      if (!response.ok) {
+        let errorMessage = `Server error (${response.status})`
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch {
+          try {
+            errorMessage = await response.text() || errorMessage
+          } catch {
+            // Use default error message
+          }
+        }
+        console.error('Enhancement failed:', errorMessage)
+        alert(`Failed to generate suggestions: ${errorMessage}`)
+        return
+      }
+      
       const data = await response.json()
       if (data.success && data.suggestions) {
         setSuggestions(data.suggestions)
@@ -119,7 +137,7 @@ export function InterestsSection() {
               />
               <button
                 type="button"
-                onClick={handleAddInterest}
+                onMouseDown={handleAddInterest}
                 className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-emerald-600 hover:bg-emerald-500 transition"
                 title="Add interest"
               >
@@ -127,7 +145,7 @@ export function InterestsSection() {
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onMouseDown={() => {
                   setInputValue('')
                   setShowInput(false)
                 }}

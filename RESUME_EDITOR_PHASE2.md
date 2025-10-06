@@ -163,7 +163,6 @@ Same as SkillsSection but for interests:
 **New Sections Added:**
 
 **Skills Preview:**
-```tsx
 {/* Skills */}
 {state.skills.filter(s => s.include).length > 0 && (
   <>
@@ -174,14 +173,16 @@ Same as SkillsSection but for interests:
       {state.skills
         .filter(s => s.include && s.value)
         .map(skill => (
-          <span className="inline-flex items-center px-2 py-1 rounded-md bg-neutral-800 text-xs">
+          <span
+            key={skill.id}
+            className="inline-flex items-center px-2 py-1 rounded-md bg-neutral-800 text-xs"
+          >
             {skill.value}
           </span>
         ))}
     </div>
   </>
 )}
-```
 
 **Interests Preview:**
 ```tsx

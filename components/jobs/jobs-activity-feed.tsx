@@ -16,7 +16,18 @@ interface JobsActivityFeedProps {
 }
 
 export function JobsActivityFeed({ activities }: JobsActivityFeedProps) {
-  if (activities.length === 0) return null
+  if (activities.length === 0) {
+    return (
+      <div className="mt-6 rounded-xl border border-white/10 bg-white/5">
+        <div className="px-4 py-3 border-b border-white/10">
+          <h2 className="text-lg font-medium tracking-tight font-geist">Activity</h2>
+        </div>
+        <div className="px-4 py-10 text-center text-sm text-white/60 font-geist">
+          Activity from job analyses and generated CVs will appear here once you get started.
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-6 rounded-xl border border-white/10 bg-white/5">
@@ -30,9 +41,10 @@ export function JobsActivityFeed({ activities }: JobsActivityFeedProps) {
             activity.activity_type === "job_added"
               ? `Extracted keywords for "${activity.job_title}"`
               : `Generated CV for "${activity.job_title}"`
-          const detail =
-            activity.activity_type === "job_added"
-              ? activity.keywords.slice(0, 3).join(", ")
+          const detail = activity.activity_type === "job_added"
+            ? activity.keywords.slice(0, 3).join(", ") || "No keywords captured yet"
+            : activity.match_score == null
+              ? "Match N/A • adjusted achievements"
               : `Match ${activity.match_score}% • adjusted achievements`
 
           return (

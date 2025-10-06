@@ -51,10 +51,11 @@ export default async function DashboardPage() {
   if (applications.length > 0) {
     // In production, you'd fetch the actual resume content here
     // For now, we'll use a placeholder
-    atsHealth = await getATSHealthStatus("").catch(() => ({
-      atsHealthy: true,
-      formattingGood: true,
-    })) as { atsHealthy: boolean; formattingGood: boolean }
+    const healthStatus = getATSHealthStatus("")
+    atsHealth = {
+      atsHealthy: healthStatus.atsHealthy,
+      formattingGood: healthStatus.formattingGood,
+    }
   }
 
   // Format trend subtitles

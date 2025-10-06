@@ -5,6 +5,7 @@ import {
   getResumesWithDetails,
   getTopResumesRoles,
   getResumeActivity,
+  getResumeTrends,
 } from "@/lib/db"
 import { ResumesKpiSection } from "@/components/resumes/resumes-kpi-section"
 import { ResumesTableSection } from "@/components/resumes/resumes-table-section"
@@ -15,14 +16,14 @@ export default async function ResumesPage() {
   const user = await getAuthenticatedUser()
   
   if (!user?.id) {
-    return null
+    redirect("/login")
   }
   
   if (!user.onboarding_completed_at) {
     redirect("/onboarding")
   }
 
-  const [stats, resumes, topRoles, activity] = await Promise.all([
+  const [stats, resumes, topRoles, activity, resumeTrends] = await Promise.all([
     getResumeStats(user.id).catch(() => ({
       resumesSaved: 0,
       pdfExports: 0,
@@ -32,6 +33,12 @@ export default async function ResumesPage() {
     getResumesWithDetails(user.id).catch(() => []),
     getTopResumesRoles(user.id, 3).catch(() => []),
     getResumeActivity(user.id, 2).catch(() => []),
+    getResumeTrends(user.id).catch(() => ({
+      resumesSavedChange: 0,
+      pdfExportsChange: 0,
+      editsMadeChange: 0,
+      avgScoreChange: 0,
+    })),
   ])
 
   return (
@@ -47,7 +54,7 @@ export default async function ResumesPage() {
       </div>
 
       {/* KPIs */}
-      <ResumesKpiSection stats={stats} />
+      <ResumesKpiSection stats={stats} trends={resumeTrends} />
 
       {/* Main content area */}
       <div className="mt-6 grid gap-6 xl:grid-cols-3">

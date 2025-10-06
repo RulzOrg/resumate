@@ -34,8 +34,8 @@ export function ExperienceSection() {
                     onChange={(e) => updateExperience(exp.id, { include: e.target.checked })}
                     className="peer sr-only"
                   />
-                  <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
-                    <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
+                  <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 peer-checked:[&>svg]:opacity-100 transition">
+                    <Check className="h-3.5 w-3.5 text-white opacity-0 transition" />
                   </span>
                 </label>
                 <div className="flex-1 min-w-0">
@@ -104,9 +104,8 @@ export function ExperienceSection() {
                         onChange={(e) => updateBullet(exp.id, bullet.id, 'include', e.target.checked)}
                         className="peer sr-only"
                       />
-                      <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
-                        <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
-                      </span>
+                      <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition" />
+                      <Check className="absolute left-0.5 top-2.5 h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition pointer-events-none" />
                     </label>
                     <textarea
                       value={bullet.value}

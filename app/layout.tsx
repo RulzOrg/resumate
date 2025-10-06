@@ -9,6 +9,7 @@ import { Suspense } from "react"
 import { ClerkProvider } from "@clerk/nextjs"
 import { clerkConfig } from "@/lib/clerk-config"
 import { dark } from "@clerk/themes"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 const inter = Inter({
@@ -97,6 +98,7 @@ export default function RootLayout({
           }}
         >
           <Suspense fallback={null}>{children}</Suspense>
+          <Toaster position="bottom-right" theme="dark" />
         </ClerkProvider>
         <Analytics />
       </body>

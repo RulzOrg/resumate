@@ -21,8 +21,13 @@ export function TargetTitleSection() {
           <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
             <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
           </span>
+          <span className="sr-only">Include target title</span>
+        </label>
+        <label htmlFor="target-title" className="sr-only">
+          Target job title
         </label>
         <input
+          id="target-title"
           type="text"
           value={targetTitle.value}
           onChange={(e) => updateTargetTitle('value', e.target.value)}

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { BookUser } from 'lucide-react'
 import type { Resume } from '@/lib/db'
 import { MasterResumeCard } from './master-resume-card'
-import { AddResumeDialog } from './add-resume-dialog'
+
 import { UploadMasterResumeDialog } from '@/components/dashboard/master-resume-dialog'
 
 interface MasterResumeListProps {
@@ -17,6 +17,10 @@ export function MasterResumeList({ resumes }: MasterResumeListProps) {
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this resume? This action cannot be undone.")) {
+      return
+    }
+
     try {
       const response = await fetch(`/api/resumes/${id}`, {
         method: 'DELETE'
@@ -61,17 +65,28 @@ export function MasterResumeList({ resumes }: MasterResumeListProps) {
         method: 'POST'
       })
 
+      if (!response.ok) {
+        // Try to get error message from response body
+        let errorMessage = 'Failed to export resume'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.message || errorMessage
+        } catch {
+          // If JSON parsing fails, try to get text
+          const errorText = await response.text()
+          if (errorText) {
+            errorMessage = errorText
+          }
+        }
+        throw new Error(errorMessage)
+      }
+
       const data = await response.json()
       alert(data.message || 'Export feature coming soon!')
     } catch (error) {
       console.error('Error exporting resume:', error)
-      alert('Failed to export resume. Please try again.')
+      alert(error instanceof Error ? error.message : 'Failed to export resume. Please try again.')
     }
-  }
-
-  const handleUpload = () => {
-    // This will be handled by the UploadMasterResumeDialog
-    router.refresh()
   }
 
   return (

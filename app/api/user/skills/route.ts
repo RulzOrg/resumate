@@ -1,0 +1,195 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { auth } from "@clerk/nextjs/server"
+import { getUserProfile, updateUserProfile, getMasterResume, getOrCreateUser } from "@/lib/db"
+import { openai } from "@ai-sdk/openai"
+import { generateObject } from "ai"
+import { z } from "zod"
+import { handleApiError, AppError } from "@/lib/error-handler"
+
+const SkillsExtractionSchema = z.object({
+  technical_skills: z.array(z.string()).describe("Technical skills like programming languages, frameworks, tools"),
+  soft_skills: z.array(z.string()).describe("Soft skills like leadership, communication, teamwork"),
+  tools: z.array(z.string()).describe("Tools and software proficiency"),
+  domain_expertise: z.array(z.string()).describe("Domain knowledge like UX design, product management, data science"),
+  all_skills: z.array(z.string()).describe("Complete comprehensive list of all skills combined")
+})
+
+/**
+ * GET /api/user/skills
+ * Fetches user's skills from cache or extracts from master resume
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await getOrCreateUser()
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // 1. Check if skills already cached in user_profile
+    const profile = await getUserProfile(userId)
+    if (profile?.skills && profile.skills.length > 0) {
+      console.log('Returning cached skills:', { count: profile.skills.length })
+      return NextResponse.json({ 
+        skills: profile.skills, 
+        source: "cached",
+        count: profile.skills.length
+      })
+    }
+
+    // 2. Get master resume
+    const masterResume = await getMasterResume(user.id)
+    if (!masterResume) {
+      console.log('No master resume found for user:', user.id)
+      return NextResponse.json({ 
+        skills: [], 
+        needsProfile: true,
+        message: "No master resume found. Please upload your resume to get personalized match scores."
+      })
+    }
+
+    // 3. Try parsed_sections first (fast path)
+    if (masterResume.parsed_sections && typeof masterResume.parsed_sections === 'object') {
+      const parsedSections = masterResume.parsed_sections as Record<string, any>
+      
+      if (parsedSections.skills && Array.isArray(parsedSections.skills)) {
+        const skills = parsedSections.skills
+          .filter(s => typeof s === 'string' || (typeof s === 'object' && s.name))
+          .map(s => typeof s === 'string' ? s.toLowerCase().trim() : s.name.toLowerCase().trim())
+          .filter(Boolean)
+        
+        if (skills.length > 0) {
+          console.log('Extracted skills from parsed_sections:', { count: skills.length })
+          await updateUserProfile(userId, { skills })
+          return NextResponse.json({ 
+            skills, 
+            source: "parsed_sections",
+            count: skills.length
+          })
+        }
+      }
+    }
+
+    // 4. Extract via AI from content_text (slow path)
+    if (!masterResume.content_text || masterResume.content_text.trim().length < 100) {
+      return NextResponse.json({ 
+        skills: [], 
+        needsProfile: true,
+        message: "Resume content is too short. Please upload a complete resume."
+      })
+    }
+
+    console.log('Extracting skills via AI from content_text')
+    
+    const { object } = await generateObject({
+      model: openai("gpt-4o-mini"),
+      schema: SkillsExtractionSchema,
+      prompt: `Extract ALL skills from this resume. Be comprehensive and include:
+
+- Technical skills (programming languages, frameworks, libraries, technologies)
+- Design skills (Figma, Sketch, Adobe XD, Phototyping, Wireframing, etc.)
+- Soft skills (leadership, communication, problem-solving, etc.)
+- Tools and software (Microsoft Office, Jira, Slack, etc.)
+- Domain expertise (UX design, product management, data analysis, marketing, etc.)
+- Methodologies (Agile, Scrum, Design Thinking, etc.)
+
+Return a comprehensive list. Include both specific tools (e.g., "Figma") and broader skills (e.g., "UI/UX Design").
+
+Resume:
+${masterResume.content_text.slice(0, 8000)}
+
+IMPORTANT: Be exhaustive. Extract every identifiable skill, tool, technology, or expertise area.`,
+    })
+
+    const skills = [...new Set(object.all_skills)]
+      .map(s => s.toLowerCase().trim())
+      .filter(Boolean)
+
+    console.log('AI extracted skills:', { count: skills.length, sample: skills.slice(0, 10) })
+
+    // 5. Cache in user profile
+    if (skills.length > 0) {
+      await updateUserProfile(userId, { skills })
+    }
+
+    return NextResponse.json({ 
+      skills, 
+      source: "ai_extracted",
+      count: skills.length
+    })
+  } catch (error) {
+    console.error('Error in GET /api/user/skills:', error)
+    const errorInfo = handleApiError(error)
+    return NextResponse.json(
+      { error: errorInfo.error, code: errorInfo.code },
+      { status: errorInfo.statusCode }
+    )
+  }
+}
+
+/**
+ * POST /api/user/skills
+ * Manually update user's skills
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const { skills } = body
+
+    if (!Array.isArray(skills)) {
+      throw new AppError("Skills must be an array", 400)
+    }
+
+    const normalizedSkills = skills
+      .map(s => String(s).toLowerCase().trim())
+      .filter(Boolean)
+
+    await updateUserProfile(userId, { skills: normalizedSkills })
+
+    return NextResponse.json({ 
+      success: true, 
+      skills: normalizedSkills,
+      count: normalizedSkills.length
+    })
+  } catch (error) {
+    console.error('Error in POST /api/user/skills:', error)
+    const errorInfo = handleApiError(error)
+    return NextResponse.json(
+      { error: errorInfo.error, code: errorInfo.code },
+      { status: errorInfo.statusCode }
+    )
+  }
+}
+
+/**
+ * DELETE /api/user/skills
+ * Clear cached skills (forces re-extraction)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    await updateUserProfile(userId, { skills: [] })
+
+    return NextResponse.json({ success: true, message: "Skills cache cleared" })
+  } catch (error) {
+    console.error('Error in DELETE /api/user/skills:', error)
+    const errorInfo = handleApiError(error)
+    return NextResponse.json(
+      { error: errorInfo.error, code: errorInfo.code },
+      { status: errorInfo.statusCode }
+    )
+  }
+}

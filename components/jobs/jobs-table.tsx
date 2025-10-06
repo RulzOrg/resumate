@@ -46,13 +46,14 @@ export function JobsTable({ jobs }: JobsTableProps) {
               <TableHead>Added</TableHead>
               <TableHead>Keywords</TableHead>
               <TableHead>Match</TableHead>
-              <TableHead className="text-right"></TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
           {jobs.map((job, idx) => {
             const JobIcon = getJobIcon(job.job_title)
-            const matchColor = getMatchScoreColor(job.match_score)
+            const clampedScore = Math.max(0, Math.min(100, Number(job.match_score) || 0))
+            const matchColor = getMatchScoreColor(clampedScore)
             
             return (
               <TableRow key={job.id}>
@@ -86,10 +87,14 @@ export function JobsTable({ jobs }: JobsTableProps) {
                     <div className="h-1.5 w-20 rounded-full bg-white/10 overflow-hidden">
                       <div
                         className={`h-full ${matchColor}`}
-                        style={{ width: `${job.match_score}%` }}
+                        style={{ width: `${clampedScore}%` }}
+                        role="progressbar"
+                        aria-valuenow={clampedScore}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
                       />
                     </div>
-                    <span className="text-white/80">{job.match_score}%</span>
+                    <span className="text-white/80">{clampedScore}%</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
@@ -112,7 +117,8 @@ export function JobsTable({ jobs }: JobsTableProps) {
       <MobileCardList>
         {jobs.map((job) => {
           const JobIcon = getJobIcon(job.job_title)
-          const matchColor = getMatchScoreColor(job.match_score)
+          const clampedScore = Math.max(0, Math.min(100, Number(job.match_score) || 0))
+          const matchColor = getMatchScoreColor(clampedScore)
           
           return (
             <MobileCard key={job.id}>
@@ -150,10 +156,14 @@ export function JobsTable({ jobs }: JobsTableProps) {
                     <div className="h-1.5 w-20 rounded-full bg-white/10 overflow-hidden">
                       <div
                         className={`h-full ${matchColor}`}
-                        style={{ width: `${job.match_score}%` }}
+                        style={{ width: `${clampedScore}%` }}
+                        role="progressbar"
+                        aria-valuenow={clampedScore}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
                       />
                     </div>
-                    <span className="text-white/80 text-sm font-medium">{job.match_score}%</span>
+                    <span className="text-white/80 text-sm font-medium">{clampedScore}%</span>
                   </div>
                 </MobileCardRow>
               </div>

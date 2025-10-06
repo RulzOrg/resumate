@@ -5,6 +5,7 @@ import {
   getJobsWithDetails,
   getTopKeywords,
   getJobActivity,
+  getJobTrends,
 } from "@/lib/db"
 import { JobsKpiSection } from "@/components/jobs/jobs-kpi-section"
 import { JobsTableSection } from "@/components/jobs/jobs-table-section"
@@ -22,7 +23,7 @@ export default async function JobsPage() {
     redirect("/onboarding")
   }
 
-  const [stats, jobs, topKeywords, activity] = await Promise.all([
+  const [stats, jobs, topKeywords, activity, trends] = await Promise.all([
     getJobStats(user.id).catch(() => ({
       jobsSaved: 0,
       cvsGenerated: 0,
@@ -32,6 +33,12 @@ export default async function JobsPage() {
     getJobsWithDetails(user.id).catch(() => []),
     getTopKeywords(user.id, 3).catch(() => []),
     getJobActivity(user.id, 2).catch(() => []),
+    getJobTrends(user.id).catch(() => ({
+      jobsSavedChange: 0,
+      cvsGeneratedChange: 0,
+      keywordsExtractedChange: 0,
+      avgMatchChange: 0,
+    })),
   ])
 
   return (
@@ -47,7 +54,7 @@ export default async function JobsPage() {
       </div>
 
       {/* KPIs */}
-      <JobsKpiSection stats={stats} />
+      <JobsKpiSection stats={stats} trends={trends} />
 
       {/* Main content area */}
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
