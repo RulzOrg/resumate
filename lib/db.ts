@@ -1007,6 +1007,28 @@ export async function getOptimizedResumeById(id: string, user_id: string) {
     | undefined
 }
 
+export async function updateOptimizedResume(
+  id: string,
+  user_id: string,
+  data: {
+    optimized_content?: string
+    optimization_summary?: OptimizedResume["optimization_summary"]
+    match_score?: number
+  }
+) {
+  const [optimizedResume] = await sql`
+    UPDATE optimized_resumes
+    SET 
+      optimized_content = COALESCE(${data.optimized_content || null}, optimized_content),
+      optimization_summary = COALESCE(${data.optimization_summary ? JSON.stringify(data.optimization_summary) : null}::jsonb, optimization_summary),
+      match_score = COALESCE(${data.match_score || null}, match_score),
+      updated_at = NOW()
+    WHERE id = ${id} AND user_id = ${user_id}
+    RETURNING *
+  `
+  return optimizedResume as OptimizedResume | undefined
+}
+
 export async function deleteOptimizedResume(id: string, user_id: string) {
   const [optimizedResume] = await sql`
     DELETE FROM optimized_resumes 
