@@ -15,19 +15,16 @@ const DynamicUserButton = dynamic(
     ),
   }
 )
-import { UploadCloud, Link2, Plus, Trash2, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
+import { UploadCloud, CheckCircle2, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { JobTarget } from "@/lib/db"
 import { cn } from "@/lib/utils"
 
 interface OnboardingFlowProps {
   userName: string
   hasMasterResume: boolean
   masterResumeTitle?: string | null
-  initialJobTargets: JobTarget[]
 }
 
 type UploadStatus = "idle" | "uploading" | "success" | "error"
@@ -41,22 +38,10 @@ const ALLOWED_TYPES = [
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
-function formatJobUrl(url: string) {
-  try {
-    const parsed = new URL(url)
-    const host = parsed.hostname.replace(/^www\./, "")
-    const path = parsed.pathname.replace(/\/+$/, "")
-    return path && path !== "/" ? `${host}${path.length > 40 ? `${path.slice(0, 37)}…` : path}` : host
-  } catch {
-    return url
-  }
-}
-
 export function OnboardingFlow({
   userName,
   hasMasterResume,
   masterResumeTitle,
-  initialJobTargets,
 }: OnboardingFlowProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -72,12 +57,7 @@ export function OnboardingFlow({
   )
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isFinishing, setIsFinishing] = useState(false)
-
-  const [jobUrl, setJobUrl] = useState("")
-  const [jobTargets, setJobTargets] = useState<JobTarget[]>(initialJobTargets)
-  const [jobError, setJobError] = useState<string | null>(null)
-  const [isSavingJob, setIsSavingJob] = useState(false)
-  const [removingJobId, setRemovingJobId] = useState<string | null>(null)
+  const [completionError, setCompletionError] = useState<string | null>(null)
 
   const resetUploadTimers = () => {
     if (uploadProgressTimer.current) {
@@ -188,69 +168,9 @@ export function OnboardingFlow({
     [performUpload],
   )
 
-  const handleJobAdd = async () => {
-    const trimmed = jobUrl.trim()
-    setJobError(null)
-
-    if (!trimmed) {
-      setJobError("Enter a job URL to add it")
-      return
-    }
-
-    try {
-      setIsSavingJob(true)
-      const response = await fetch("/api/job-targets", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_url: trimmed }),
-      })
-
-      const payload = await response.json().catch(() => ({}))
-
-      if (!response.ok) {
-        throw new Error(payload.error || "Unable to save job")
-      }
-
-      if (payload.target) {
-        setJobTargets((prev) => {
-          const filtered = prev.filter((target) => target.id !== payload.target.id)
-          return [payload.target, ...filtered]
-        })
-      }
-
-      setJobUrl("")
-      router.refresh()
-    } catch (error: any) {
-      console.error("Failed to save job target", error)
-      setJobError(error.message || "Unable to save job. Try again.")
-    } finally {
-      setIsSavingJob(false)
-    }
-  }
-
-  const handleJobDelete = async (id: string) => {
-    try {
-      setJobError(null)
-      setRemovingJobId(id)
-      const response = await fetch(`/api/job-targets?id=${id}`, {
-        method: "DELETE",
-      })
-      const payload = await response.json().catch(() => ({}))
-      if (!response.ok) {
-        throw new Error(payload.error || "Unable to remove job")
-      }
-      setJobTargets((prev) => prev.filter((target) => target.id !== id))
-      router.refresh()
-    } catch (error: any) {
-      console.error("Failed to delete job target", error)
-      setJobError(error.message || "Unable to remove job. Try again.")
-    } finally {
-      setRemovingJobId(null)
-    }
-  }
-
   const handleFinish = async () => {
     setIsFinishing(true)
+    setCompletionError(null)
     try {
       // Mark onboarding as complete
       const response = await fetch("/api/users/complete-onboarding", {
@@ -266,7 +186,7 @@ export function OnboardingFlow({
       router.push("/dashboard")
     } catch (error: any) {
       console.error("Failed to complete onboarding:", error)
-      setJobError(error.message || "Failed to complete setup. Please try again.")
+      setCompletionError(error.message || "Failed to complete setup. Please try again.")
       setIsFinishing(false)
     }
   }
@@ -325,28 +245,23 @@ export function OnboardingFlow({
               {`Welcome to ResuMate AI${userName ? `, ${userName}` : ""}`}
             </h1>
             <p className="mt-2 text-base text-white/60">
-              Let&apos;s set up your profile so we can tailor every resume to the roles you love.
+              Upload your resume to get started with AI-powered optimization.
             </p>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] shadow-2xl">
             <div className="space-y-8 p-6 sm:p-8">
               <section>
-                <div className="mb-5 flex items-center gap-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-emerald-500 bg-emerald-500/20 text-sm font-semibold text-emerald-300">
-                    1
-                  </div>
-                  <div>
-                    <h2
-                      className="text-lg font-medium tracking-tight"
-                      style={{ fontFamily: "var(--font-space-grotesk)" }}
-                    >
-                      Upload Your Master Resume
-                    </h2>
-                    <p className="text-sm text-white/60">
-                      This becomes the baseline for every AI-generated resume. We support PDF, DOCX, and TXT up to 10MB.
-                    </p>
-                  </div>
+                <div className="mb-5">
+                  <h2
+                    className="text-lg font-medium tracking-tight"
+                    style={{ fontFamily: "var(--font-space-grotesk)" }}
+                  >
+                    Upload Your Master Resume
+                  </h2>
+                  <p className="text-sm text-white/60">
+                    <span className="text-emerald-400 font-medium">Required:</span> This becomes the baseline for every AI-generated resume. We support PDF, DOCX, and TXT up to 10MB.
+                  </p>
                 </div>
 
                 <div
@@ -423,121 +338,28 @@ export function OnboardingFlow({
                   </Alert>
                 )}
               </section>
-
-              <div className="border-t border-white/10" />
-
-              <section>
-                <div className="mb-5 flex items-center gap-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/20 bg-white/5 text-sm font-semibold text-white/60">
-                    2
-                  </div>
-                  <div>
-                    <h2
-                      className="text-lg font-medium tracking-tight"
-                      style={{ fontFamily: "var(--font-space-grotesk)" }}
-                    >
-                      Add Your Target Jobs
-                    </h2>
-                    <p className="text-sm text-white/60">
-                      Paste job post URLs you&apos;re excited about. We&apos;ll keep them handy so you can optimize in a click.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <div className="relative flex-grow">
-                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-white/40">
-                      <Link2 className="h-5 w-5" />
-                    </span>
-                    <Input
-                      type="url"
-                      value={jobUrl}
-                      onChange={(event) => setJobUrl(event.target.value)}
-                      placeholder="Paste job URL (LinkedIn, Indeed, company site…)"
-                      className="w-full rounded-lg border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-white placeholder:text-white/40 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/40"
-                      disabled={isSavingJob}
-                    />
-                  </div>
-                  <Button
-                    onClick={handleJobAdd}
-                    disabled={isSavingJob}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-white/10 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/20 sm:w-auto"
-                  >
-                    {isSavingJob ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" /> Saving…
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="h-4 w-4" /> Add Job
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {jobError && (
-                  <div className="mt-3 flex items-center gap-2 text-sm text-red-300">
-                    <AlertCircle className="h-4 w-4" />
-                    {jobError}
-                  </div>
-                )}
-
-                <div className="mt-4 rounded-lg bg-black/30 p-4">
-                  {jobTargets.length === 0 ? (
-                    <p className="text-center text-sm text-white/50">
-                      Your target jobs will appear here after you add them.
-                    </p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {jobTargets.map((target) => (
-                        <li
-                          key={target.id}
-                          className="flex items-center justify-between rounded-lg border border-white/10 bg-black/40 px-4 py-3 text-sm text-white/80"
-                        >
-                          <div>
-                            <p className="font-medium text-white/90">
-                              {target.job_title || formatJobUrl(target.job_url)}
-                            </p>
-                            <p className="text-xs text-white/50">
-                              {target.company_name || target.job_url}
-                            </p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleJobDelete(target.id)}
-                            disabled={removingJobId === target.id}
-                            className="text-white/60 hover:text-red-400"
-                          >
-                            {removingJobId === target.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </section>
             </div>
 
-            <div className="flex flex-col gap-4 rounded-b-2xl border-t border-white/10 bg-black/30 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-              <button
-                onClick={handleFinish}
-                disabled={uploadStatus === "uploading" || isFinishing}
-                className="text-center text-sm text-white/60 transition-colors hover:text-white sm:text-left disabled:opacity-50 disabled:pointer-events-none"
-              >
-                Skip &amp; go to dashboard
-              </button>
-              <Button
-                onClick={handleFinish}
-                disabled={uploadStatus === "uploading" || isFinishing}
-                className="w-full rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-emerald-400 sm:w-auto"
-              >
-                {isFinishing ? "Opening dashboard…" : "Finish Setup & View Dashboard"}
-              </Button>
+            <div className="rounded-b-2xl border-t border-white/10 bg-black/30 px-6 py-5 sm:px-8">
+              {completionError && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertDescription>{completionError}</AlertDescription>
+                </Alert>
+              )}
+              <div className="flex flex-col items-center gap-3">
+                <Button
+                  onClick={handleFinish}
+                  disabled={uploadStatus !== "success" || isFinishing}
+                  className="w-full rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-emerald-400 disabled:bg-white/10 disabled:text-white/40 sm:w-auto"
+                >
+                  {isFinishing ? "Opening dashboard…" : "Finish Setup & View Dashboard"}
+                </Button>
+                {uploadStatus !== "success" && !isFinishing && (
+                  <p className="text-xs text-white/50 text-center">
+                    Upload your resume to continue
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
