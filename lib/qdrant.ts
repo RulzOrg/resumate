@@ -28,6 +28,21 @@ export async function ensureCollection() {
         }
       }
     }
+
+    // Ensure userId index exists for filtering
+    try {
+      await qdrant.createPayloadIndex(QDRANT_COLLECTION, {
+        field_name: "userId",
+        field_schema: "keyword",
+      } as any)
+    } catch (error: any) {
+      const status = (error && (error.status ?? error.response?.status)) ?? undefined
+      // 409 means index already exists, which is fine
+      if (status !== 409) {
+        console.warn("Failed to create userId index:", error.message || error)
+        // Don't throw - index might already exist or be in progress
+      }
+    }
   } catch (err) {
     // If list fails (server down), rethrow so callers can handle 503s
     throw err
