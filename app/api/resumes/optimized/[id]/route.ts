@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
     const { optimized_content, optimization_summary, match_score } = body
 
-    if (!optimized_content && !optimization_summary && match_score === undefined) {
+    if (optimized_content === undefined && optimization_summary === undefined && match_score === undefined) {
       return NextResponse.json({ error: "No update fields provided" }, { status: 400 })
     }
 

@@ -1019,9 +1019,21 @@ export async function updateOptimizedResume(
   const [optimizedResume] = await sql`
     UPDATE optimized_resumes
     SET 
-      optimized_content = COALESCE(${data.optimized_content || null}, optimized_content),
-      optimization_summary = COALESCE(${data.optimization_summary ? JSON.stringify(data.optimization_summary) : null}::jsonb, optimization_summary),
-      match_score = COALESCE(${data.match_score || null}, match_score),
+      optimized_content = CASE 
+        WHEN ${data.optimized_content === undefined}::boolean 
+        THEN optimized_content 
+        ELSE ${data.optimized_content} 
+      END,
+      optimization_summary = CASE 
+        WHEN ${data.optimization_summary === undefined}::boolean 
+        THEN optimization_summary 
+        ELSE ${JSON.stringify(data.optimization_summary)}::jsonb 
+      END,
+      match_score = CASE 
+        WHEN ${data.match_score === undefined}::boolean 
+        THEN match_score 
+        ELSE ${data.match_score} 
+      END,
       updated_at = NOW()
     WHERE id = ${id} AND user_id = ${user_id}
     RETURNING *

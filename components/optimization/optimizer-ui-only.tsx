@@ -574,8 +574,8 @@ export default function OptimizerUiOnly({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
-        <div className="lg:col-span-2 space-y-8">
+      <div className={`grid grid-cols-1 ${step !== 4 ? 'lg:grid-cols-3' : ''} lg:gap-8`}>
+        <div className={`${step !== 4 ? 'lg:col-span-2' : ''} space-y-8`}>
           {/* Setup (Step 1) */}
           <div className={`${step === 1 ? "block" : "hidden"} relative rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8`}>
             <div className="flex items-start justify-between mb-6">
@@ -1085,9 +1085,10 @@ export default function OptimizerUiOnly({
           )}
         </div>
 
-        {/* Right column */}
-        <div className="space-y-8 mt-8 lg:mt-0">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+        {/* Right column - Job Summary (hidden on Step 4) */}
+        {step !== 4 && (
+          <div className="space-y-8 mt-8 lg:mt-0">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-medium text-white/90">Job Summary</h3>
               <span className="text-xs font-medium text-white/50">{resolvedJobs.length ? "Imported" : "Mock"}</span>
@@ -1133,18 +1134,19 @@ export default function OptimizerUiOnly({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-dashed border-white/20 bg-transparent p-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center">
-                <Star className="h-5 w-5 text-white/80" />
-              </div>
-              <div>
-                <div className="text-sm font-medium">Tip</div>
-                <div className="text-xs text-white/60">Mirror role language, quantify outcomes, and prioritize relevant projects.</div>
+            <div className="rounded-2xl border border-dashed border-white/20 bg-transparent p-6">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center">
+                  <Star className="h-5 w-5 text-white/80" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium">Tip</div>
+                  <div className="text-xs text-white/60">Mirror role language, quantify outcomes, and prioritize relevant projects.</div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )

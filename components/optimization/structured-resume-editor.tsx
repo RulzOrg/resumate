@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
-import { ChevronDown, Wand2, Plus, Trash2, Save, Download, FileText, Copy as CopyIcon, Check } from "lucide-react"
+import { ChevronDown, Wand2, Plus, Trash2, Save, Download, FileText, Copy as CopyIcon, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx"
 import { saveAs } from "file-saver"
@@ -14,7 +14,13 @@ interface ContactInfo {
   phone: string
   linkedin: string
   location: string
-  included: boolean
+  // Individual inclusion flags for each field
+  firstNameIncluded: boolean
+  lastNameIncluded: boolean
+  emailIncluded: boolean
+  phoneIncluded: boolean
+  linkedinIncluded: boolean
+  locationIncluded: boolean
 }
 
 interface Summary {
@@ -97,7 +103,7 @@ function generateId(): string {
 }
 
 function parseMarkdownToStructured(markdown: string): ResumeData {
-  const lines = markdown.split('\n').filter(line => line.trim())
+  const lines = markdown.split('\n')
   
   // Default structure
   const data: ResumeData = {
@@ -108,7 +114,12 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       phone: '',
       linkedin: '',
       location: '',
-      included: true
+      firstNameIncluded: true,
+      lastNameIncluded: true,
+      emailIncluded: true,
+      phoneIncluded: true,
+      linkedinIncluded: true,
+      locationIncluded: true
     },
     targetTitle: { text: '', included: true },
     summaries: [],
@@ -119,97 +130,317 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
     interests: []
   }
 
-  // Parse contact info from first few lines
-  if (lines[0]) {
-    const nameParts = lines[0].replace(/^#+\s*/, '').trim().split(' ')
-    data.contactInfo.firstName = nameParts[0] || ''
-    data.contactInfo.lastName = nameParts.slice(1).join(' ') || ''
+  // Extract contact info from first few lines
+  const emailRegex = /[\w.-]+@[\w.-]+\.\w+/
+  const phoneRegex = /(\+\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/
+  const linkedinRegex = /(linkedin\.com\/in\/[\w-]+|in\/[\w-]+)/i
+  const locationRegex = /([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z]{2,}(?:\s*\d{5})?)/  // City, STATE or City, Country
+  
+  // Get name from first heading or first line
+  let nameFound = false
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    const line = lines[i].trim()
+    if (line.startsWith('#')) {
+      const name = line.replace(/^#+\s*/, '').trim()
+      const nameParts = name.split(' ')
+      data.contactInfo.firstName = nameParts[0] || ''
+      data.contactInfo.lastName = nameParts.slice(1).join(' ') || ''
+      nameFound = true
+      break
+    } else if (i === 0 && line && !emailRegex.test(line)) {
+      const nameParts = line.split(' ')
+      data.contactInfo.firstName = nameParts[0] || ''
+      data.contactInfo.lastName = nameParts.slice(1).join(' ') || ''
+      nameFound = true
+      break
+    }
   }
 
-  // Parse the rest section by section
+  // Extract contact details from first 10 lines
+  // Handle both pipe-separated (email | phone | linkedin | location) and line-separated formats
+  const headerSection = lines.slice(0, 10).join('\n')
+  
+  if (!data.contactInfo.email && emailRegex.test(headerSection)) {
+    const match = headerSection.match(emailRegex)
+    if (match) data.contactInfo.email = match[0]
+  }
+  
+  if (!data.contactInfo.phone && phoneRegex.test(headerSection)) {
+    const match = headerSection.match(phoneRegex)
+    if (match) data.contactInfo.phone = match[0].trim()
+  }
+  
+  if (!data.contactInfo.linkedin && linkedinRegex.test(headerSection)) {
+    const match = headerSection.match(linkedinRegex)
+    if (match) {
+      data.contactInfo.linkedin = match[0].includes('linkedin.com') 
+        ? match[0] 
+        : `linkedin.com/${match[0]}`
+    }
+  }
+  
+  if (!data.contactInfo.location && locationRegex.test(headerSection)) {
+    const match = headerSection.match(locationRegex)
+    if (match) data.contactInfo.location = match[0].trim()
+  }
+  
+  // If no location found with regex, try extracting from pipe-separated line
+  if (!data.contactInfo.location) {
+    for (let i = 0; i < Math.min(10, lines.length); i++) {
+      const line = lines[i].trim()
+      if (line.includes('|')) {
+        const parts = line.split('|').map(p => p.trim())
+        // Location is usually the last part that's not email/phone/linkedin
+        for (const part of parts.reverse()) {
+          if (!emailRegex.test(part) && !phoneRegex.test(part) && !linkedinRegex.test(part) && part.length > 0) {
+            data.contactInfo.location = part
+            break
+          }
+        }
+        if (data.contactInfo.location) break
+      }
+    }
+  }
+
+  // Parse section by section
   let currentSection = ''
   let currentExperience: WorkExperience | null = null
   let currentEducation: Education | null = null
+  let summaryLines: string[] = []
+  let titleFound = false
   
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
+    if (!line) continue
     
     // Check for section headers
-    if (line.match(/^#+\s*(professional\s*summary|summary)/i)) {
+    if (line.match(/^##\s*(professional\s*summary|summary|about)/i)) {
+      if (currentExperience) data.workExperience.push(currentExperience)
+      if (currentEducation) data.education.push(currentEducation)
+      currentExperience = null
+      currentEducation = null
       currentSection = 'summary'
+      summaryLines = []
       continue
-    } else if (line.match(/^#+\s*(work\s*experience|experience)/i)) {
+    } else if (line.match(/^##\s*(work\s*experience|experience|employment)/i)) {
+      if (summaryLines.length > 0 && data.summaries.length === 0) {
+        data.summaries.push({
+          id: generateId(),
+          text: summaryLines.join(' '),
+          included: true
+        })
+      }
+      if (currentExperience) data.workExperience.push(currentExperience)
+      if (currentEducation) data.education.push(currentEducation)
+      currentExperience = null
+      currentEducation = null
       currentSection = 'experience'
       continue
-    } else if (line.match(/^#+\s*education/i)) {
+    } else if (line.match(/^##\s*(education|academic)/i)) {
+      if (currentExperience) data.workExperience.push(currentExperience)
+      if (currentEducation) data.education.push(currentEducation)
+      currentExperience = null
+      currentEducation = null
       currentSection = 'education'
       continue
-    } else if (line.match(/^#+\s*skills/i)) {
+    } else if (line.match(/^##\s*(skills|technical\s*skills|core\s*competencies)/i)) {
+      if (currentExperience) data.workExperience.push(currentExperience)
+      if (currentEducation) data.education.push(currentEducation)
+      currentExperience = null
+      currentEducation = null
       currentSection = 'skills'
       continue
-    } else if (line.match(/^#+\s*interests/i)) {
+    } else if (line.match(/^##\s*(interests|hobbies)/i)) {
+      if (currentExperience) data.workExperience.push(currentExperience)
+      if (currentEducation) data.education.push(currentEducation)
+      currentExperience = null
+      currentEducation = null
       currentSection = 'interests'
       continue
     }
 
+    // Extract target title (first ## heading that's not a section)
+    if (!titleFound && line.match(/^##\s+/) && !line.match(/^##\s*(professional\s*summary|summary|experience|education|skills|interests|about)/i)) {
+      data.targetTitle.text = line.replace(/^##\s+/, '').trim()
+      titleFound = true
+      continue
+    }
+
     // Parse based on current section
-    if (currentSection === 'summary' && line && !line.startsWith('#')) {
-      data.summaries.push({
-        id: generateId(),
-        text: line.replace(/^[*-]\s*/, ''),
-        included: true
-      })
+    if (currentSection === 'summary') {
+      if (line && !line.startsWith('#')) {
+        summaryLines.push(line.replace(/^[*-]\s*/, ''))
+      }
     } else if (currentSection === 'experience') {
-      if (line.match(/^###\s/) || (line && !line.startsWith('-') && !line.startsWith('*') && currentExperience === null)) {
-        // New experience entry
+      if (line.match(/^###\s+/)) {
+        // Save previous experience
         if (currentExperience) {
           data.workExperience.push(currentExperience)
         }
+        // Parse company and role from heading
+        const heading = line.replace(/^###\s+/, '').trim()
+        const parts = heading.split(/[—–|]/)
         currentExperience = {
           id: generateId(),
-          company: line.replace(/^###\s*/, '').split('—')[0]?.trim() || '',
-          role: line.replace(/^###\s*/, '').split('—')[1]?.trim() || '',
+          company: parts[0]?.trim() || '',
+          role: parts[1]?.trim() || '',
           dates: '',
           location: '',
           bullets: [],
           included: true
         }
-      } else if (line.startsWith('-') || line.startsWith('*')) {
+      } else if (currentExperience && !line.startsWith('*') && !line.startsWith('-') && !line.startsWith('#')) {
+        // This line likely contains dates and/or location metadata
+        // Common formats:
+        // "Jan 2021 – Present | Remote"
+        // "2020-2023 • San Francisco, CA"
+        // "January 2021 - December 2023"
+        
+        // Try to extract dates (various formats)
+        const datePatterns = [
+          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*[A-Za-z]{3,}\s+\d{4})/i,  // "January 2021 – December 2023"
+          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*Present)/i,               // "Jan 2021 – Present"
+          /(\d{4}\s*[-–]\s*\d{4})/,                                  // "2020-2023"
+          /(\d{4}\s*[-–]\s*Present)/i,                               // "2020-Present"
+        ]
+        
+        let dateMatch = null
+        for (const pattern of datePatterns) {
+          dateMatch = line.match(pattern)
+          if (dateMatch) break
+        }
+        
+        if (dateMatch) {
+          currentExperience.dates = dateMatch[0].trim()
+          // Everything after dates (separated by | • or ·) is location
+          const remainder = line.replace(dateMatch[0], '').replace(/^[\s|•·,]+/, '').replace(/[\s|•·,]+$/, '').trim()
+          if (remainder) currentExperience.location = remainder
+        } else if (line.includes('|') || line.includes('•') || line.includes('·')) {
+          // Pipe/bullet separated metadata line without clear dates
+          const parts = line.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
+          if (parts.length >= 2) {
+            currentExperience.dates = parts[0]
+            currentExperience.location = parts.slice(1).join(' • ')
+          } else if (parts.length === 1) {
+            // Could be dates or location, prefer dates if it has numbers
+            if (/\d/.test(parts[0])) {
+              currentExperience.dates = parts[0]
+            } else {
+              currentExperience.location = parts[0]
+            }
+          }
+        }
+      } else if (currentExperience && (line.startsWith('*') || line.startsWith('-'))) {
         // Bullet point
-        if (currentExperience) {
+        const bulletText = line.replace(/^[*-]\s*/, '').trim()
+        if (bulletText) {
           currentExperience.bullets.push({
             id: generateId(),
-            text: line.replace(/^[*-]\s*/, ''),
+            text: bulletText,
             included: true
           })
         }
       }
-    } else if (currentSection === 'skills' && line) {
-      // Parse comma-separated skills
-      const skillText = line.replace(/^[*-]\s*/, '')
-      skillText.split(',').forEach(skill => {
-        const trimmed = skill.trim()
-        if (trimmed) {
-          data.skills.push({
-            id: generateId(),
-            name: trimmed,
-            included: true
-          })
+    } else if (currentSection === 'education') {
+      if (line.match(/^###\s+/)) {
+        // Save previous education
+        if (currentEducation) {
+          data.education.push(currentEducation)
         }
-      })
+        currentEducation = {
+          id: generateId(),
+          institution: line.replace(/^###\s+/, '').trim(),
+          degree: '',
+          field: '',
+          location: '',
+          start: '',
+          end: '',
+          notes: '',
+          included: true
+        }
+      } else if (currentEducation && !line.startsWith('*') && !line.startsWith('-')) {
+        // Try to parse degree, field, dates, location
+        if (line.match(/(bachelor|master|phd|doctorate|associate|b\.s\.|m\.s\.|mba)/i)) {
+          const parts = line.split(/\s+in\s+|\s+of\s+|·|•|\|/)
+          currentEducation.degree = parts[0]?.trim() || ''
+          if (parts.length > 1) {
+            currentEducation.field = parts[1]?.trim() || ''
+            if (parts.length > 2) {
+              currentEducation.location = parts[2]?.trim() || ''
+            }
+          }
+        } else if (line.match(/\d{4}/)) {
+          const dateMatch = line.match(/(\d{4})\s*[-–]\s*(\d{4}|Present)/i)
+          if (dateMatch) {
+            currentEducation.start = dateMatch[1]
+            currentEducation.end = dateMatch[2]
+          }
+        } else if (!currentEducation.location) {
+          currentEducation.location = line.trim()
+        }
+      }
+    } else if (currentSection === 'skills') {
+      if (line && !line.startsWith('#')) {
+        // Parse skills from comma-separated list or bullets
+        const skillText = line.replace(/^[*-]\s*/, '')
+        const skills = skillText.split(/[,;|·•]/)
+        skills.forEach(skill => {
+          const trimmed = skill.trim()
+          if (trimmed && !data.skills.find(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
+            data.skills.push({
+              id: generateId(),
+              name: trimmed,
+              included: true
+            })
+          }
+        })
+      }
+    } else if (currentSection === 'interests') {
+      if (line && !line.startsWith('#')) {
+        const interestText = line.replace(/^[*-]\s*/, '')
+        const interests = interestText.split(/[,;|·•]/)
+        interests.forEach(interest => {
+          const trimmed = interest.trim()
+          if (trimmed && !data.interests.find(i => i.name.toLowerCase() === trimmed.toLowerCase())) {
+            data.interests.push({
+              id: generateId(),
+              name: trimmed,
+              included: true
+            })
+          }
+        })
+      }
     }
   }
 
-  // Add last experience if exists
-  if (currentExperience) {
-    data.workExperience.push(currentExperience)
+  // Save last items
+  if (currentExperience) data.workExperience.push(currentExperience)
+  if (currentEducation) data.education.push(currentEducation)
+  if (summaryLines.length > 0 && data.summaries.length === 0) {
+    data.summaries.push({
+      id: generateId(),
+      text: summaryLines.join(' '),
+      included: true
+    })
   }
 
-  // Add default summary if none found
+  // Add default entries if empty
   if (data.summaries.length === 0) {
     data.summaries.push({
       id: generateId(),
-      text: markdown.slice(0, 500),
+      text: '',
+      included: true
+    })
+  }
+
+  if (data.workExperience.length === 0) {
+    data.workExperience.push({
+      id: generateId(),
+      company: '',
+      role: '',
+      dates: '',
+      location: '',
+      bullets: [{ id: generateId(), text: '', included: true }],
       included: true
     })
   }
@@ -220,16 +451,33 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
 function convertToMarkdown(data: ResumeData): string {
   let md = ''
 
-  // Contact info
-  if (data.contactInfo.included) {
-    md += `# ${data.contactInfo.firstName} ${data.contactInfo.lastName}\n\n`
-    const contact = [
-      data.contactInfo.email,
-      data.contactInfo.phone,
-      data.contactInfo.linkedin,
-      data.contactInfo.location
-    ].filter(Boolean).join(' • ')
-    md += `${contact}\n\n`
+  // Contact info - respect individual field inclusion
+  const nameParts = []
+  if (data.contactInfo.firstNameIncluded && data.contactInfo.firstName) {
+    nameParts.push(data.contactInfo.firstName)
+  }
+  if (data.contactInfo.lastNameIncluded && data.contactInfo.lastName) {
+    nameParts.push(data.contactInfo.lastName)
+  }
+  if (nameParts.length > 0) {
+    md += `# ${nameParts.join(' ')}\n\n`
+  }
+  
+  const contactParts = []
+  if (data.contactInfo.emailIncluded && data.contactInfo.email) {
+    contactParts.push(data.contactInfo.email)
+  }
+  if (data.contactInfo.phoneIncluded && data.contactInfo.phone) {
+    contactParts.push(data.contactInfo.phone)
+  }
+  if (data.contactInfo.linkedinIncluded && data.contactInfo.linkedin) {
+    contactParts.push(data.contactInfo.linkedin)
+  }
+  if (data.contactInfo.locationIncluded && data.contactInfo.location) {
+    contactParts.push(data.contactInfo.location)
+  }
+  if (contactParts.length > 0) {
+    md += `${contactParts.join(' • ')}\n\n`
   }
 
   // Target title
@@ -334,16 +582,33 @@ export default function StructuredResumeEditor({
 
     let html = ''
 
-    // Contact info
-    if (resumeData.contactInfo.included) {
-      html += `<div class="text-2xl font-semibold tracking-tight mb-1">${resumeData.contactInfo.firstName} ${resumeData.contactInfo.lastName}</div>`
-      const contact = [
-        resumeData.contactInfo.email,
-        resumeData.contactInfo.phone,
-        resumeData.contactInfo.linkedin,
-        resumeData.contactInfo.location
-      ].filter(Boolean).join(' • ')
-      html += `<div class="text-sm text-neutral-400 mb-4">${contact}</div>`
+    // Contact info - check individual field inclusion
+    const nameParts = []
+    if (resumeData.contactInfo.firstNameIncluded && resumeData.contactInfo.firstName) {
+      nameParts.push(resumeData.contactInfo.firstName)
+    }
+    if (resumeData.contactInfo.lastNameIncluded && resumeData.contactInfo.lastName) {
+      nameParts.push(resumeData.contactInfo.lastName)
+    }
+    if (nameParts.length > 0) {
+      html += `<div class="text-2xl font-semibold tracking-tight mb-1">${nameParts.join(' ')}</div>`
+    }
+    
+    const contactParts = []
+    if (resumeData.contactInfo.emailIncluded && resumeData.contactInfo.email) {
+      contactParts.push(resumeData.contactInfo.email)
+    }
+    if (resumeData.contactInfo.phoneIncluded && resumeData.contactInfo.phone) {
+      contactParts.push(resumeData.contactInfo.phone)
+    }
+    if (resumeData.contactInfo.linkedinIncluded && resumeData.contactInfo.linkedin) {
+      contactParts.push(resumeData.contactInfo.linkedin)
+    }
+    if (resumeData.contactInfo.locationIncluded && resumeData.contactInfo.location) {
+      contactParts.push(resumeData.contactInfo.location)
+    }
+    if (contactParts.length > 0) {
+      html += `<div class="text-sm text-neutral-400 mb-4">${contactParts.join(' • ')}</div>`
     }
 
     // Target title
@@ -791,7 +1056,7 @@ export default function StructuredResumeEditor({
   }
 
   return (
-    <div className="mx-auto max-w-full px-4 sm:px-6 lg:px-8 pt-8 pb-8">
+    <>
       {/* Header with actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
@@ -840,19 +1105,19 @@ export default function StructuredResumeEditor({
         {/* LEFT: Editor Panel */}
         <section className="space-y-6">
           {/* Contact Information */}
-          <div className="rounded-2xl border border-white/10 bg-white/5">
-            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10">
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
               <button
                 type="button"
                 onClick={() => toggleSection('contact')}
                 className="group inline-flex items-center gap-3"
               >
-                <span className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center">
+                <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">
                   <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.contact ? '' : '-rotate-90'}`} />
                 </span>
                 <h3 className="text-lg sm:text-xl tracking-tight font-semibold">Contact Information</h3>
               </button>
-              <button className="inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-sm font-medium">
+              <button className="inline-flex items-center gap-2 rounded-md bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 text-sm font-medium">
                 <Wand2 className="h-4 w-4" />
                 Enhance
               </button>
@@ -860,16 +1125,16 @@ export default function StructuredResumeEditor({
             {expandedSections.contact && (
               <div className="px-4 sm:px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-white/60 mb-2">First name</label>
+                  <label className="block text-sm text-neutral-300 mb-2">First name</label>
                   <div className="flex items-center gap-2">
                     <label className="relative inline-flex items-center">
                       <input
                         type="checkbox"
                         className="peer sr-only"
-                        checked={resumeData.contactInfo.included}
-                        onChange={(e) => updateContactInfo('included', e.target.checked)}
+                        checked={resumeData.contactInfo.firstNameIncluded}
+                        onChange={(e) => updateContactInfo('firstNameIncluded', e.target.checked)}
                       />
-                      <span className="h-5 w-5 rounded-md border border-white/20 bg-black/40 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                      <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                         <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
                       </span>
                     </label>
@@ -877,21 +1142,21 @@ export default function StructuredResumeEditor({
                       type="text"
                       value={resumeData.contactInfo.firstName}
                       onChange={(e) => updateContactInfo('firstName', e.target.value)}
-                      className="w-full rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
+                      className="w-full rounded-lg bg-neutral-900 border border-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-white/60 mb-2">Last name</label>
+                  <label className="block text-sm text-neutral-300 mb-2">Last name</label>
                   <div className="flex items-center gap-2">
                     <label className="relative inline-flex items-center">
                       <input
                         type="checkbox"
                         className="peer sr-only"
-                        checked={resumeData.contactInfo.included}
-                        onChange={(e) => updateContactInfo('included', e.target.checked)}
+                        checked={resumeData.contactInfo.lastNameIncluded}
+                        onChange={(e) => updateContactInfo('lastNameIncluded', e.target.checked)}
                       />
-                      <span className="h-5 w-5 rounded-md border border-white/20 bg-black/40 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                      <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                         <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
                       </span>
                     </label>
@@ -899,43 +1164,59 @@ export default function StructuredResumeEditor({
                       type="text"
                       value={resumeData.contactInfo.lastName}
                       onChange={(e) => updateContactInfo('lastName', e.target.value)}
-                      className="w-full rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
+                      className="w-full rounded-lg bg-neutral-900 border border-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
                     />
                   </div>
                 </div>
 
                 {/* Contact details */}
                 <div className="sm:col-span-2 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                  {(['email', 'phone', 'linkedin', 'location'] as const).map(field => (
-                    <div key={field}>
-                      <label className="block text-sm text-white/60 mb-2 capitalize">{field}</label>
-                      <input
-                        type="text"
-                        value={resumeData.contactInfo[field]}
-                        onChange={(e) => updateContactInfo(field, e.target.value)}
-                        className="w-full rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
-                      />
-                    </div>
-                  ))}
+                  {(['email', 'phone', 'linkedin', 'location'] as const).map(field => {
+                    const includedField = `${field}Included` as keyof ContactInfo
+                    return (
+                      <div key={field}>
+                        <label className="block text-sm text-neutral-300 mb-2 capitalize">{field}</label>
+                        <div className="flex items-center gap-2">
+                          <label className="relative inline-flex items-center">
+                            <input
+                              type="checkbox"
+                              className="peer sr-only"
+                              checked={resumeData.contactInfo[includedField] as boolean}
+                              onChange={(e) => updateContactInfo(includedField, e.target.checked)}
+                            />
+                            <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                              <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
+                            </span>
+                          </label>
+                          <input
+                            type="text"
+                            value={resumeData.contactInfo[field]}
+                            onChange={(e) => updateContactInfo(field, e.target.value)}
+                            className="w-full rounded-lg bg-neutral-900 border border-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
           </div>
 
           {/* Target Title */}
-          <div className="rounded-2xl border border-white/10 bg-white/5">
-            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10">
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
               <button
                 type="button"
                 onClick={() => toggleSection('title')}
                 className="group inline-flex items-center gap-3"
               >
-                <span className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center">
+                <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">
                   <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.title ? '' : '-rotate-90'}`} />
                 </span>
                 <h3 className="text-lg sm:text-xl tracking-tight font-semibold">Target Title</h3>
               </button>
-              <button className="inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-sm font-medium">
+              <button className="inline-flex items-center gap-2 rounded-md bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 text-sm font-medium">
                 <Wand2 className="h-4 w-4" />
                 Suggest
               </button>
@@ -950,7 +1231,7 @@ export default function StructuredResumeEditor({
                       checked={resumeData.targetTitle.included}
                       onChange={(e) => setResumeData({ ...resumeData, targetTitle: { ...resumeData.targetTitle, included: e.target.checked } })}
                     />
-                    <span className="h-5 w-5 rounded-md border border-white/20 bg-black/40 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                    <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                       <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
                     </span>
                   </label>
@@ -958,28 +1239,98 @@ export default function StructuredResumeEditor({
                     type="text"
                     value={resumeData.targetTitle.text}
                     onChange={(e) => setResumeData({ ...resumeData, targetTitle: { ...resumeData.targetTitle, text: e.target.value } })}
-                    className="w-full rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
-                    placeholder="e.g., Senior Product Manager"
+                    className="w-full rounded-lg bg-neutral-900 border border-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
+                    placeholder="e.g., Senior UX Designer"
                   />
                 </div>
               </div>
             )}
           </div>
 
+          {/* Professional Summary */}
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
+              <button
+                type="button"
+                onClick={() => toggleSection('summary')}
+                className="group inline-flex items-center gap-3"
+              >
+                <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.summary ? '' : '-rotate-90'}`} />
+                </span>
+                <h3 className="text-lg sm:text-xl tracking-tight font-semibold">Professional Summary</h3>
+              </button>
+              <button className="inline-flex items-center gap-2 rounded-md bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 text-sm font-medium">
+                <Wand2 className="h-4 w-4" />
+                Generate
+              </button>
+            </div>
+            {expandedSections.summary && (
+              <div className="px-4 sm:px-6 py-5 space-y-4">
+                {resumeData.summaries.map((summary, idx) => (
+                  <div key={summary.id} className="space-y-2">
+                    <div className="flex items-start gap-2">
+                      <label className="relative inline-flex items-center mt-1">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={summary.included}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            summaries: resumeData.summaries.map((s, i) =>
+                              i === idx ? { ...s, included: e.target.checked } : s
+                            )
+                          })}
+                        />
+                        <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                          <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
+                        </span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={summary.text}
+                        onChange={(e) => setResumeData({
+                          ...resumeData,
+                          summaries: resumeData.summaries.map((s, i) =>
+                            i === idx ? { ...s, text: e.target.value } : s
+                          )
+                        })}
+                        className="w-full rounded-lg bg-neutral-900 border border-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
+                        placeholder={idx === 0 ? "Professional summary" : "Alternative summary (optional)"}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {resumeData.summaries.length < 3 && (
+                  <button
+                    onClick={() => setResumeData({
+                      ...resumeData,
+                      summaries: [...resumeData.summaries, { id: generateId(), text: '', included: false }]
+                    })}
+                    className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add alternative summary
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Work Experience */}
-          <div className="rounded-2xl border border-white/10 bg-white/5">
-            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10">
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
               <button
                 type="button"
                 onClick={() => toggleSection('work')}
                 className="group inline-flex items-center gap-3"
               >
-                <span className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center">
+                <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">
                   <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.work ? '' : '-rotate-90'}`} />
                 </span>
                 <h3 className="text-lg sm:text-xl tracking-tight font-semibold">Work Experience</h3>
               </button>
-              <button className="inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-sm font-medium">
+              <button className="inline-flex items-center gap-2 rounded-md bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 text-sm font-medium">
                 <Wand2 className="h-4 w-4" />
                 Generate bullets
               </button>
@@ -987,8 +1338,8 @@ export default function StructuredResumeEditor({
             {expandedSections.work && (
               <div className="px-4 sm:px-6 py-5 space-y-5">
                 {resumeData.workExperience.map((exp, idx) => (
-                  <div key={exp.id} className="rounded-xl border border-white/10 bg-black/40">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                  <div key={exp.id} className="rounded-xl border border-neutral-800 bg-neutral-950/40">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800 px-4 py-3">
                       <div className="flex items-center gap-3">
                         <label className="relative inline-flex items-center">
                           <input
@@ -1002,7 +1353,7 @@ export default function StructuredResumeEditor({
                               )
                             })}
                           />
-                          <span className="h-5 w-5 rounded-md border border-white/20 bg-black/40 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                          <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                             <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
                           </span>
                         </label>
@@ -1015,7 +1366,7 @@ export default function StructuredResumeEditor({
                               i === idx ? { ...w, company: e.target.value } : w
                             )
                           })}
-                          className="bg-transparent border border-white/10 rounded-md px-2.5 py-1.5 text-sm"
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
                           placeholder="Company"
                         />
                       </div>
@@ -1029,7 +1380,7 @@ export default function StructuredResumeEditor({
                               i === idx ? { ...w, role: e.target.value } : w
                             )
                           })}
-                          className="bg-transparent border border-white/10 rounded-md px-2.5 py-1.5 text-sm"
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
                           placeholder="Role"
                         />
                         <input
@@ -1041,7 +1392,7 @@ export default function StructuredResumeEditor({
                               i === idx ? { ...w, dates: e.target.value } : w
                             )
                           })}
-                          className="bg-transparent border border-white/10 rounded-md px-2.5 py-1.5 text-sm"
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
                           placeholder="Dates"
                         />
                       </div>
@@ -1067,7 +1418,7 @@ export default function StructuredResumeEditor({
                                 )
                               })}
                             />
-                            <span className="h-5 w-5 rounded-md border border-white/20 bg-black/40 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                            <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                               <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
                             </span>
                           </label>
@@ -1075,12 +1426,12 @@ export default function StructuredResumeEditor({
                             rows={2}
                             value={bullet.text}
                             onChange={(e) => updateWorkBullet(exp.id, bullet.id, e.target.value)}
-                            className="w-full rounded-lg bg-black/40 border border-white/10 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
+                            className="w-full rounded-lg bg-neutral-900 border border-neutral-800 focus:outline-none focus:ring-2 focus:ring-emerald-600/60 px-3 py-2 text-sm"
                             placeholder="Describe your achievement or responsibility"
                           />
                           <button
                             onClick={() => removeWorkBullet(exp.id, bullet.id)}
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-md text-white/70 hover:text-white hover:bg-white/10 mt-1"
+                            className="inline-flex items-center justify-center h-8 w-8 rounded-md text-neutral-300 hover:text-white hover:bg-neutral-800 mt-1"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -1090,7 +1441,7 @@ export default function StructuredResumeEditor({
                       <div className="flex pt-2 items-center justify-between">
                         <button
                           onClick={() => addWorkBullet(exp.id)}
-                          className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
+                          className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white"
                         >
                           <Plus className="h-4 w-4" />
                           Add bullet
@@ -1104,32 +1455,48 @@ export default function StructuredResumeEditor({
           </div>
 
           {/* Skills */}
-          <div className="rounded-2xl border border-white/10 bg-white/5">
-            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-white/10">
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
               <button
                 type="button"
                 onClick={() => toggleSection('skills')}
                 className="group inline-flex items-center gap-3"
               >
-                <span className="h-7 w-7 rounded-md bg-white/10 flex items-center justify-center">
+                <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">
                   <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.skills ? '' : '-rotate-90'}`} />
                 </span>
                 <h3 className="text-lg sm:text-xl tracking-tight font-semibold">Skills</h3>
               </button>
-              <button className="inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 py-1.5 text-sm font-medium">
+              <button 
+                onClick={() => {
+                  // Generate skills
+                  const suggestions = ['Usability Testing', 'A/B Testing', 'Information Architecture', 'Accessibility (WCAG)', 'Journey Mapping']
+                  const currentSkills = new Set(resumeData.skills.map(s => s.name.toLowerCase()))
+                  let added = 0
+                  for (const skill of suggestions) {
+                    if (!currentSkills.has(skill.toLowerCase())) {
+                      addSkill(skill)
+                      added++
+                      if (added >= 3) break
+                    }
+                  }
+                  if (added > 0) toast.success(`Added ${added} skill${added > 1 ? 's' : ''}`)
+                }}
+                className="inline-flex items-center gap-2 rounded-md bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 text-sm font-medium"
+              >
                 <Wand2 className="h-4 w-4" />
-                Generate
+                Generate skills
               </button>
             </div>
             {expandedSections.skills && (
               <div className="px-4 sm:px-6 py-5 space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {resumeData.skills.map((skill) => (
-                    <div key={skill.id} className="group relative">
+                    <div key={skill.id} className="skill-row group relative">
                       <label className="inline-block cursor-pointer">
                         <input
                           type="checkbox"
-                          className="peer sr-only"
+                          className="peer sr-only include-checkbox"
                           checked={skill.included}
                           onChange={(e) => setResumeData({
                             ...resumeData,
@@ -1138,15 +1505,34 @@ export default function StructuredResumeEditor({
                             )
                           })}
                         />
-                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-white/20 bg-black/40 hover:bg-white/10 text-sm transition peer-checked:border-emerald-600 peer-checked:ring-1 peer-checked:ring-emerald-600/40">
-                          {skill.name}
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral-700 ring-1 ring-inset ring-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm text-neutral-100 transition peer-checked:border-emerald-600 peer-checked:ring-emerald-600/40">
+                          <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                            <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
+                          </span>
+                          <span 
+                            className="skill-label"
+                            onDoubleClick={() => {
+                              const newName = prompt('Edit skill', skill.name)
+                              if (newName && newName.trim()) {
+                                setResumeData({
+                                  ...resumeData,
+                                  skills: resumeData.skills.map(s =>
+                                    s.id === skill.id ? { ...s, name: newName.trim() } : s
+                                  )
+                                })
+                              }
+                            }}
+                          >
+                            {skill.name}
+                          </span>
                         </span>
                       </label>
                       <button
                         onClick={() => removeSkill(skill.id)}
-                        className="absolute -top-2 -right-2 hidden group-hover:inline-flex items-center justify-center h-6 w-6 rounded-md text-white/70 hover:text-white hover:bg-white/20"
+                        className="absolute -top-2 -right-2 hidden group-hover:inline-flex items-center justify-center h-6 w-6 rounded-md text-neutral-300 hover:text-white hover:bg-neutral-800"
+                        title="Remove"
                       >
-                        <Trash2 className="h-3 w-3" />
+                        <X className="h-4 w-4" />
                       </button>
                     </div>
                   ))}
@@ -1156,12 +1542,122 @@ export default function StructuredResumeEditor({
                   <button
                     onClick={() => {
                       const name = prompt('Add skill')
-                      if (name) addSkill(name)
+                      if (name && name.trim()) addSkill(name.trim())
                     }}
-                    className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white"
+                    className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white"
                   >
                     <Plus className="h-4 w-4" />
                     Add skill
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Interests */}
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
+              <button
+                type="button"
+                onClick={() => toggleSection('interests')}
+                className="group inline-flex items-center gap-3"
+              >
+                <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.interests ? '' : '-rotate-90'}`} />
+                </span>
+                <h3 className="text-lg sm:text-xl tracking-tight font-semibold">Interests</h3>
+              </button>
+              <button 
+                onClick={() => {
+                  const suggestions = ['Photography', 'Hiking', 'Reading', 'Chess', 'Cooking']
+                  const currentInterests = new Set(resumeData.interests.map(i => i.name.toLowerCase()))
+                  let added = 0
+                  for (const interest of suggestions) {
+                    if (!currentInterests.has(interest.toLowerCase())) {
+                      setResumeData({
+                        ...resumeData,
+                        interests: [...resumeData.interests, { id: generateId(), name: interest, included: true }]
+                      })
+                      added++
+                      if (added >= 3) break
+                    }
+                  }
+                  if (added > 0) toast.success(`Added ${added} interest${added > 1 ? 's' : ''}`)
+                }}
+                className="inline-flex items-center gap-2 rounded-md bg-neutral-800 hover:bg-neutral-700 px-3 py-1.5 text-sm font-medium"
+              >
+                <Wand2 className="h-4 w-4" />
+                Generate interests
+              </button>
+            </div>
+            {expandedSections.interests && (
+              <div className="px-4 sm:px-6 py-5 space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {resumeData.interests.map((interest) => (
+                    <div key={interest.id} className="interest-row group relative">
+                      <label className="inline-block cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only include-checkbox"
+                          checked={interest.included}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            interests: resumeData.interests.map(i =>
+                              i.id === interest.id ? { ...i, included: e.target.checked } : i
+                            )
+                          })}
+                        />
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral-700 ring-1 ring-inset ring-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm text-neutral-100 transition peer-checked:border-emerald-600 peer-checked:ring-emerald-600/40">
+                          <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                            <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
+                          </span>
+                          <span 
+                            className="interest-label"
+                            onDoubleClick={() => {
+                              const newName = prompt('Edit interest', interest.name)
+                              if (newName && newName.trim()) {
+                                setResumeData({
+                                  ...resumeData,
+                                  interests: resumeData.interests.map(i =>
+                                    i.id === interest.id ? { ...i, name: newName.trim() } : i
+                                  )
+                                })
+                              }
+                            }}
+                          >
+                            {interest.name}
+                          </span>
+                        </span>
+                      </label>
+                      <button
+                        onClick={() => setResumeData({
+                          ...resumeData,
+                          interests: resumeData.interests.filter(i => i.id !== interest.id)
+                        })}
+                        className="absolute -top-2 -right-2 hidden group-hover:inline-flex items-center justify-center h-6 w-6 rounded-md text-neutral-300 hover:text-white hover:bg-neutral-800"
+                        title="Remove"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex pt-2">
+                  <button
+                    onClick={() => {
+                      const name = prompt('Add interest')
+                      if (name && name.trim()) {
+                        setResumeData({
+                          ...resumeData,
+                          interests: [...resumeData.interests, { id: generateId(), name: name.trim(), included: true }]
+                        })
+                      }
+                    }}
+                    className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add interest
                   </button>
                 </div>
               </div>
@@ -1204,6 +1700,6 @@ export default function StructuredResumeEditor({
           </div>
         </aside>
       </div>
-    </div>
+    </>
   )
 }
