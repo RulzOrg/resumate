@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { auth, clerkClient } from "@clerk/nextjs/server"
 
 import { OnboardingFlow } from "@/components/onboarding/onboarding-flow"
-import { getMasterResume, getOrCreateUser, getUserJobTargets } from "@/lib/db"
+import { getMasterResume, getOrCreateUser } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
@@ -22,7 +22,7 @@ export default async function OnboardingPage() {
     redirect("/dashboard")
   }
 
-  const [clerkUser, masterResume, jobTargets] = await Promise.all([
+  const [clerkUser, masterResume] = await Promise.all([
     (async () => {
       try {
         const cc = typeof clerkClient === 'function' ? await (clerkClient as any)() : (clerkClient as any)
@@ -32,7 +32,6 @@ export default async function OnboardingPage() {
       }
     })(),
     getMasterResume(user.id),
-    getUserJobTargets(user.id),
   ])
 
   const displayName =
@@ -44,7 +43,6 @@ export default async function OnboardingPage() {
       userName={displayName}
       hasMasterResume={Boolean(masterResume)}
       masterResumeTitle={masterResume?.title}
-      initialJobTargets={jobTargets}
     />
   )
 }
