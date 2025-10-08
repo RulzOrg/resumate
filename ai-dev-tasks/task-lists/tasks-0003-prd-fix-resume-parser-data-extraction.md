@@ -14,7 +14,7 @@
 
 ## Tasks
 
-### 1.0 Fix Work Experience Parsing
+### 1.0 Fix Work Experience Parsing ✅
 - [x] **1.1** Add enhanced logging for Work Experience section detection
 - [x] **1.2** Fix regex pattern to match `### Company — Role` format (handle `—`, `–`, `|` separators)
 - [x] **1.3** Extract company name from heading (everything before separator)
@@ -24,18 +24,18 @@
 - [x] **1.7** Create WorkExperience objects with all extracted fields
 - [x] **1.8** Test with example markdown containing multiple work entries
 
-### 2.0 Fix Education Parsing
-- [ ] **2.1** Add enhanced logging for Education section detection
-- [ ] **2.2** Fix heading detection to match `### Institution Name` format
-- [ ] **2.3** Extract institution name from heading
-- [ ] **2.4** Parse degree and field from lines like "Bachelor of Science in Computer Science"
-- [ ] **2.5** Extract dates in formats: `2016-2020`, `2016 – 2020`, `September 2016 – June 2020`
-- [ ] **2.6** Split dates into `start` and `end` fields
-- [ ] **2.7** Parse location from metadata line
-- [ ] **2.8** Extract GPA from patterns: `GPA: 3.8/4.0` or `(3.8/4.0)`
-- [ ] **2.9** Extract notes from bullet points (Dean's List, coursework, etc.)
-- [ ] **2.10** Create Education objects with all extracted fields
-- [ ] **2.11** Test with example markdown containing education entries
+### 2.0 Fix Education Parsing ✅
+- [x] **2.1** Add enhanced logging for Education section detection
+- [x] **2.2** Fix heading detection to match `### Degree — Institution` format
+- [x] **2.3** Extract institution name from heading
+- [x] **2.4** Parse degree and field from heading using "in" and "of" separators
+- [x] **2.5** Extract dates in formats: `2016-2020`, `2016 – 2020`, `September 2016 – June 2020`
+- [x] **2.6** Split dates into `start` and `end` fields
+- [x] **2.7** Parse location from metadata line
+- [x] **2.8** Extract GPA from patterns: `GPA: 3.8/4.0` or `(3.8/4.0)`
+- [x] **2.9** Extract notes from bullet points (Dean's List, coursework, etc.)
+- [x] **2.10** Create Education objects with all extracted fields
+- [x] **2.11** Test with example markdown containing education entries
 
 ### 3.0 Fix Certifications Parsing (Remove Fabrication)
 - [ ] **3.1** Add enhanced logging for Certifications section detection

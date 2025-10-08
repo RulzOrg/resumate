@@ -442,16 +442,54 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       if (line.match(/^###\s+/)) {
         // Save previous education
         if (currentEducation) {
-          console.log('[Parser] Saving completed education:', currentEducation)
+          console.log('[Parser] Saving completed education:', {
+            institution: currentEducation.institution,
+            degree: currentEducation.degree,
+            field: currentEducation.field
+          })
           data.education.push(currentEducation)
         }
-        const institution = line.replace(/^###\s+/, '').trim()
-        console.log('[Parser] Found education institution:', institution)
+        // Parse heading format: "Degree in Field — Institution" or just "Institution"
+        // Remove markdown formatting (**, *, etc.) and clean up
+        const heading = line.replace(/^###\s+/, '').replace(/\*+$/, '').replace(/\*+/g, '').trim()
+        console.log('[Parser] Found education heading:', heading)
+
+        let institution = ''
+        let degree = ''
+        let field = ''
+
+        // Try to extract degree and institution from heading
+        if (heading.includes('—') || heading.includes('–')) {
+          // Format: "Degree in Field — Institution"
+          const parts = heading.split(/\s*[—–]\s*/)
+          const degreeFieldPart = parts[0]?.trim() || ''
+          institution = parts[1]?.trim() || ''
+
+          // Extract degree and field
+          if (degreeFieldPart.includes(' in ')) {
+            const degreeFieldParts = degreeFieldPart.split(/\s+in\s+/i)
+            degree = degreeFieldParts[0]?.trim() || ''
+            field = degreeFieldParts[1]?.trim() || ''
+          } else if (degreeFieldPart.includes(' of ')) {
+            const degreeFieldParts = degreeFieldPart.split(/\s+of\s+/i)
+            degree = degreeFieldParts[0]?.trim() || ''
+            field = degreeFieldParts[1]?.trim() || ''
+          } else {
+            // No field, just degree
+            degree = degreeFieldPart
+          }
+          console.log('[Parser] Extracted via em-dash:', { degree, field, institution })
+        } else {
+          // No separator, treat whole thing as institution
+          institution = heading
+          console.log('[Parser] Extracted as institution only:', { institution })
+        }
+
         currentEducation = {
           id: generateId(),
           institution,
-          degree: '',
-          field: '',
+          degree,
+          field,
           location: '',
           start: '',
           end: '',
@@ -459,42 +497,71 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           included: true
         }
       } else if (currentEducation && !line.startsWith('*') && !line.startsWith('-') && !line.startsWith('#')) {
-        // Try to parse degree and field
-        const degreeMatch = line.match(/(?:bachelor|master|phd|doctorate|associate|b\.?s\.?|m\.?s\.?|mba|ma|ba)/i)
-        if (degreeMatch && !currentEducation.degree) {
-          const parts = line.split(/\s+in\s+|\s+of\s+|·|•|\|/)
-          currentEducation.degree = parts[0]?.trim() || ''
-          if (parts.length > 1) {
-            // Extract field, removing any trailing location
-            currentEducation.field = parts[1]?.trim().split(/[|•·]/)[0]?.trim() || ''
-            if (parts.length > 2) {
-              currentEducation.location = parts[2]?.trim() || ''
+        // This line likely contains dates and/or location metadata
+        // Common formats:
+        // "2010 - 2014 | Stanford, CA"
+        // "September 2016 – June 2020"
+        // Clean markdown formatting from metadata line
+        const cleanLine = line.replace(/\*+$/, '').replace(/\*+/g, '').trim()
+        console.log('[Parser] Parsing education metadata line:', cleanLine)
+
+        // Try to parse dates first
+        if (cleanLine.match(/\d{4}/) && !currentEducation.start) {
+          // Date patterns for education
+          const datePatterns = [
+            /([A-Za-z]{3,}\s+\d{4})\s*[-–]\s*([A-Za-z]{3,}\s+\d{4})/i,  // "September 2016 – June 2020"
+            /(\d{4})\s*[-–]\s*(\d{4})/,                                   // "2010 - 2014"
+            /(\d{4})\s*[-–]\s*(Present|Expected\s+\d{4})/i,              // "2020 - Present"
+          ]
+
+          let dateMatch = null
+          for (const pattern of datePatterns) {
+            dateMatch = cleanLine.match(pattern)
+            if (dateMatch) {
+              currentEducation.start = dateMatch[1].trim()
+              currentEducation.end = dateMatch[2].trim()
+              console.log('[Parser] Extracted dates:', { start: currentEducation.start, end: currentEducation.end })
+
+              // Extract location from remainder (after dates, separated by | or •)
+              const remainder = cleanLine.replace(dateMatch[0], '').replace(/^[\s|•·,]+/, '').replace(/[\s|•·,]+$/, '').trim()
+              if (remainder) {
+                currentEducation.location = remainder
+                console.log('[Parser] Extracted location:', currentEducation.location)
+              }
+              break
             }
           }
         }
-        // Try to parse dates
-        else if (line.match(/\d{4}/) && !currentEducation.start) {
-          const dateMatch = line.match(/(\d{4})\s*[-–]\s*(\d{4}|Present|Expected\s+\d{4})/i)
-          if (dateMatch) {
-            currentEducation.start = dateMatch[1]
-            currentEducation.end = dateMatch[2]
+        // Try to parse degree and field if not already set (fallback for alternative formats)
+        else if (!currentEducation.degree) {
+          const degreeMatch = cleanLine.match(/(?:bachelor|master|phd|doctorate|associate|b\.?s\.?|m\.?s\.?|mba|ma|ba)/i)
+          if (degreeMatch) {
+            const parts = cleanLine.split(/\s+in\s+|\s+of\s+|·|•|\|/)
+            currentEducation.degree = parts[0]?.trim() || ''
+            if (parts.length > 1) {
+              currentEducation.field = parts[1]?.trim().split(/[|•·]/)[0]?.trim() || ''
+            }
+            console.log('[Parser] Extracted degree/field from metadata:', { degree: currentEducation.degree, field: currentEducation.field })
           }
         }
         // Try to parse GPA
-        else if (line.toLowerCase().includes('gpa') && !currentEducation.gpa) {
-          const gpaMatch = line.match(/GPA:?\s*(\d\.\d+)/i) || line.match(/\((\d\.\d+)\/\d\.\d+\)/)
+        else if (cleanLine.toLowerCase().includes('gpa') && !currentEducation.gpa) {
+          const gpaMatch = cleanLine.match(/GPA:?\s*(\d\.\d+)/i) || cleanLine.match(/\((\d\.\d+)\/\d\.\d+\)/)
           if (gpaMatch) {
             currentEducation.gpa = gpaMatch[1]
+            console.log('[Parser] Extracted GPA:', currentEducation.gpa)
           }
         }
-        // Otherwise might be location
-        else if (!currentEducation.location && line.match(/[A-Z][a-z]+/)) {
-          currentEducation.location = line.trim()
+        // Otherwise might be location (if dates already set)
+        else if (!currentEducation.location && cleanLine.match(/[A-Z][a-z]+/)) {
+          currentEducation.location = cleanLine.trim()
+          console.log('[Parser] Extracted location:', currentEducation.location)
         }
       } else if (currentEducation && (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/))) {
         // Bullet point - add to notes (honors, thesis, etc.)
         const note = line.replace(/^[\s]*[*-]\s*/, '').trim()
         if (note) {
+          console.log('[Parser] Adding note to education:', note)
           currentEducation.notes += (currentEducation.notes ? '\n' : '') + note
         }
       }
