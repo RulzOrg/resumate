@@ -425,25 +425,44 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           notes: '',
           included: true
         }
-      } else if (currentEducation && !line.startsWith('*') && !line.startsWith('-')) {
-        // Try to parse degree, field, dates, location
-        if (line.match(/(bachelor|master|phd|doctorate|associate|b\.s\.|m\.s\.|mba)/i)) {
+      } else if (currentEducation && !line.startsWith('*') && !line.startsWith('-') && !line.startsWith('#')) {
+        // Try to parse degree and field
+        const degreeMatch = line.match(/(?:bachelor|master|phd|doctorate|associate|b\.?s\.?|m\.?s\.?|mba|ma|ba)/i)
+        if (degreeMatch && !currentEducation.degree) {
           const parts = line.split(/\s+in\s+|\s+of\s+|·|•|\|/)
           currentEducation.degree = parts[0]?.trim() || ''
           if (parts.length > 1) {
-            currentEducation.field = parts[1]?.trim() || ''
+            // Extract field, removing any trailing location
+            currentEducation.field = parts[1]?.trim().split(/[|•·]/)[0]?.trim() || ''
             if (parts.length > 2) {
               currentEducation.location = parts[2]?.trim() || ''
             }
           }
-        } else if (line.match(/\d{4}/)) {
-          const dateMatch = line.match(/(\d{4})\s*[-–]\s*(\d{4}|Present)/i)
+        }
+        // Try to parse dates
+        else if (line.match(/\d{4}/) && !currentEducation.start) {
+          const dateMatch = line.match(/(\d{4})\s*[-–]\s*(\d{4}|Present|Expected\s+\d{4})/i)
           if (dateMatch) {
             currentEducation.start = dateMatch[1]
             currentEducation.end = dateMatch[2]
           }
-        } else if (!currentEducation.location) {
+        }
+        // Try to parse GPA
+        else if (line.toLowerCase().includes('gpa') && !currentEducation.gpa) {
+          const gpaMatch = line.match(/GPA:?\s*(\d\.\d+)/i) || line.match(/\((\d\.\d+)\/\d\.\d+\)/)
+          if (gpaMatch) {
+            currentEducation.gpa = gpaMatch[1]
+          }
+        }
+        // Otherwise might be location
+        else if (!currentEducation.location && line.match(/[A-Z][a-z]+/)) {
           currentEducation.location = line.trim()
+        }
+      } else if (currentEducation && (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/))) {
+        // Bullet point - add to notes (honors, thesis, etc.)
+        const note = line.replace(/^[\s]*[*-]\s*/, '').trim()
+        if (note) {
+          currentEducation.notes += (currentEducation.notes ? '\n' : '') + note
         }
       }
     } else if (currentSection === 'skills') {

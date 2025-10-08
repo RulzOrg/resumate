@@ -45,13 +45,13 @@
   - [x] 2.5 Handle experience entries without bullets (paragraph format)
   - [x] 2.6 Ensure last experience entry is saved
 
-- [ ] **3.0 Fix Education Parsing**
-  - [ ] 3.1 Fix degree extraction from various patterns
-  - [ ] 3.2 Fix field of study extraction
-  - [ ] 3.3 Fix date extraction for education
-  - [ ] 3.4 Fix GPA extraction
-  - [ ] 3.5 Extract honors/notes from bullet points under education
-  - [ ] 3.6 Handle multiple education entries
+- [x] **3.0 Fix Education Parsing**
+  - [x] 3.1 Fix degree extraction from various patterns
+  - [x] 3.2 Fix field of study extraction
+  - [x] 3.3 Fix date extraction for education
+  - [x] 3.4 Fix GPA extraction
+  - [x] 3.5 Extract honors/notes from bullet points under education
+  - [x] 3.6 Handle multiple education entries
 
 - [ ] **4.0 Implement Certifications Parsing (Missing)**
   - [ ] 4.1 Add certifications section detection
