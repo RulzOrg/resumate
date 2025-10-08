@@ -693,8 +693,21 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
   }
 
   // Save last items
-  if (currentExperience) data.workExperience.push(currentExperience)
-  if (currentEducation) data.education.push(currentEducation)
+  if (currentExperience) {
+    console.log('[Parser] Saving final work experience:', {
+      company: currentExperience.company,
+      role: currentExperience.role,
+      bullets: currentExperience.bullets.length
+    })
+    data.workExperience.push(currentExperience)
+  }
+  if (currentEducation) {
+    console.log('[Parser] Saving final education:', {
+      institution: currentEducation.institution,
+      degree: currentEducation.degree
+    })
+    data.education.push(currentEducation)
+  }
   if (summaryLines.length > 0 && data.summaries.length === 0) {
     data.summaries.push({
       id: generateId(),
@@ -703,36 +716,56 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
     })
   }
 
-  // Add default entries if empty
-  if (data.summaries.length === 0) {
-    data.summaries.push({
-      id: generateId(),
-      text: '',
-      included: true
-    })
-  }
+  // Remove empty entries (entries with no meaningful data)
+  data.workExperience = data.workExperience.filter(exp => {
+    const hasData = exp.company || exp.role || exp.bullets.some(b => b.text)
+    if (!hasData) {
+      console.log('[Parser] Removing empty work experience entry')
+    }
+    return hasData
+  })
 
-  if (data.workExperience.length === 0) {
-    data.workExperience.push({
-      id: generateId(),
-      company: '',
-      role: '',
-      dates: '',
-      location: '',
-      bullets: [{ id: generateId(), text: '', included: true }],
-      included: true
-    })
-  }
+  data.education = data.education.filter(edu => {
+    const hasData = edu.institution || edu.degree
+    if (!hasData) {
+      console.log('[Parser] Removing empty education entry')
+    }
+    return hasData
+  })
 
-    console.log('[Parser] Parse complete:', {
-      hasContact: !!(data.contactInfo.firstName || data.contactInfo.email),
-      summaries: data.summaries.length,
-      experience: data.workExperience.length,
-      education: data.education.length,
-      certifications: data.certifications.length,
-      skills: data.skills.length,
-      interests: data.interests.length
-    })
+  data.certifications = data.certifications.filter(cert => {
+    const hasData = cert.name
+    if (!hasData) {
+      console.log('[Parser] Removing empty certification entry')
+    }
+    return hasData
+  })
+
+  data.skills = data.skills.filter(skill => {
+    const hasData = skill.name
+    if (!hasData) {
+      console.log('[Parser] Removing empty skill entry')
+    }
+    return hasData
+  })
+
+  data.interests = data.interests.filter(interest => {
+    const hasData = interest.name
+    if (!hasData) {
+      console.log('[Parser] Removing empty interest entry')
+    }
+    return hasData
+  })
+
+  console.log('[Parser] Parse complete:', {
+    hasContact: !!(data.contactInfo.firstName || data.contactInfo.email),
+    summaries: data.summaries.length,
+    experience: data.workExperience.length,
+    education: data.education.length,
+    certifications: data.certifications.length,
+    skills: data.skills.length,
+    interests: data.interests.length
+  })
 
     return data
   } catch (error: any) {
