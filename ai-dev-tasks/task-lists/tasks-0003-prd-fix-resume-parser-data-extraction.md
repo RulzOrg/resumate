@@ -37,16 +37,16 @@
 - [x] **2.10** Create Education objects with all extracted fields
 - [x] **2.11** Test with example markdown containing education entries
 
-### 3.0 Fix Certifications Parsing (Remove Fabrication)
-- [ ] **3.1** Add enhanced logging for Certifications section detection
-- [ ] **3.2** Remove any default/placeholder certification data
-- [ ] **3.3** Parse heading format: `### Cert Name — Issuer (Year)`
-- [ ] **3.4** Parse bullet format: `* Cert Name | Issuer | Year`
-- [ ] **3.5** Parse parentheses format: `- Cert Name (Issuer, Year)`
-- [ ] **3.6** Extract certification name, issuer, and date from each format
-- [ ] **3.7** Create Certification objects only from parsed markdown
-- [ ] **3.8** Return empty array if no certifications found in markdown
-- [ ] **3.9** Test with markdown containing certifications and without certifications
+### 3.0 Fix Certifications Parsing (Remove Fabrication) ✅
+- [x] **3.1** Add enhanced logging for Certifications section detection
+- [x] **3.2** Remove any default/placeholder certification data
+- [x] **3.3** Parse heading format: `### Cert Name — Issuer (Year)`
+- [x] **3.4** Parse bullet format: `* Cert Name | Issuer | Year`
+- [x] **3.5** Parse parentheses format: `- Cert Name (Issuer, Year)`
+- [x] **3.6** Extract certification name, issuer, and date from each format
+- [x] **3.7** Create Certification objects only from parsed markdown
+- [x] **3.8** Return empty array if no certifications found in markdown
+- [x] **3.9** Test with markdown containing certifications and without certifications
 
 ### 4.0 Fix Skills Parsing (Remove Fabrication)
 - [ ] **4.1** Add enhanced logging for Skills section detection

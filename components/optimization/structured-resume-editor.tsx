@@ -568,7 +568,9 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
     } else if (currentSection === 'certifications') {
       if (line.match(/^###\s+/)) {
         // Format: ### Certification Name — Issuer (Year)
-        const heading = line.replace(/^###\s+/, '').trim()
+        // Remove markdown formatting (**, *, etc.) and clean up
+        const heading = line.replace(/^###\s+/, '').replace(/\*+$/, '').replace(/\*+/g, '').trim()
+        console.log('[Parser] Found certification heading:', heading)
         let name = heading
         let issuer = ''
         let date = ''
@@ -576,7 +578,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         // Try to extract issuer and date from heading
         // Pattern: "Name — Issuer (Year)" or "Name | Issuer | Year"
         if (heading.includes('—') || heading.includes('–')) {
-          const parts = heading.split(/[—–]/)
+          const parts = heading.split(/\s*[—–]\s*/)
           name = parts[0]?.trim() || ''
           const remainder = parts[1]?.trim() || ''
           // Check for date in parentheses
@@ -587,11 +589,15 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           } else {
             issuer = remainder
           }
+          console.log('[Parser] Extracted via em-dash:', { name, issuer, date })
         } else if (heading.includes('|')) {
-          const parts = heading.split('|').map(p => p.trim())
+          const parts = heading.split(/\s*\|\s*/).map(p => p.trim())
           name = parts[0] || ''
           issuer = parts[1] || ''
           date = parts[2] || ''
+          console.log('[Parser] Extracted via pipe:', { name, issuer, date })
+        } else {
+          console.log('[Parser] Extracted as name only:', { name })
         }
 
         data.certifications.push({
@@ -604,15 +610,17 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       } else if (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/)) {
         // Bullet format: "- Cert Name | Issuer | Year" or "- Cert (Issuer, Year)"
         const text = line.replace(/^[\s]*[*-]\s*/, '').trim()
+        console.log('[Parser] Found certification bullet:', text)
         let name = text
         let issuer = ''
         let date = ''
 
         if (text.includes('|')) {
-          const parts = text.split('|').map(p => p.trim())
+          const parts = text.split(/\s*\|\s*/).map(p => p.trim())
           name = parts[0] || ''
           issuer = parts[1] || ''
           date = parts[2] || ''
+          console.log('[Parser] Extracted via pipe:', { name, issuer, date })
         } else if (text.includes('(') && text.includes(')')) {
           const match = text.match(/^(.+?)\s*\((.+?)\)$/)
           if (match) {
@@ -620,7 +628,10 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
             const details = match[2].split(',').map(p => p.trim())
             issuer = details[0] || ''
             date = details[1] || ''
+            console.log('[Parser] Extracted via parentheses:', { name, issuer, date })
           }
+        } else {
+          console.log('[Parser] Extracted as name only:', { name })
         }
 
         data.certifications.push({
