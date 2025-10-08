@@ -788,6 +788,7 @@ export default function StructuredResumeEditor({
   onSave
 }: StructuredResumeEditorProps) {
   const [resumeData, setResumeData] = useState<ResumeData | null>(null)
+  const [parseError, setParseError] = useState<string | null>(null)
   const [expandedSections, setExpandedSections] = useState({
     contact: true,
     title: true,
@@ -821,8 +822,24 @@ export default function StructuredResumeEditor({
   // Initialize resume data from markdown
   useEffect(() => {
     if (optimizedContent && !resumeData) {
-      const parsed = parseMarkdownToStructured(optimizedContent)
-      setResumeData(parsed)
+      try {
+        const parsed = parseMarkdownToStructured(optimizedContent)
+        setResumeData(parsed)
+        setParseError(null)
+
+        // Check if parse was successful (has at least contact info or summaries)
+        const hasData = parsed.contactInfo.firstName || parsed.contactInfo.email || parsed.summaries.length > 0
+        if (!hasData) {
+          const errorMsg = 'Resume parser returned empty data. Check console for details.'
+          setParseError(errorMsg)
+          toast.error(errorMsg)
+        }
+      } catch (error: any) {
+        const errorMsg = `Failed to parse resume: ${error?.message || 'Unknown error'}`
+        setParseError(errorMsg)
+        toast.error(errorMsg)
+        console.error('[Editor] Parse error:', error)
+      }
     }
   }, [optimizedContent, resumeData])
 
@@ -1322,6 +1339,24 @@ export default function StructuredResumeEditor({
 
   if (!resumeData) {
     return <div className="text-center py-12">Loading resume data...</div>
+  }
+
+  // Fallback: Show raw markdown if there's a critical parse error
+  if (parseError && !resumeData.contactInfo.firstName && resumeData.summaries.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-red-900/20 border border-red-500 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-red-400 mb-2">Parse Error</h3>
+          <p className="text-sm text-red-300 mb-4">{parseError}</p>
+          <p className="text-xs text-neutral-400">Showing raw markdown below. Check browser console for detailed error logs.</p>
+        </div>
+        <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-6 overflow-auto">
+          <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-mono">
+            {optimizedContent}
+          </pre>
+        </div>
+      </div>
+    )
   }
 
   return (
