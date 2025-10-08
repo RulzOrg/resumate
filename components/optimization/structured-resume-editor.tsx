@@ -253,6 +253,14 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       currentEducation = null
       currentSection = 'education'
       continue
+    } else if (line.match(/^##\s*(certifications?|certificates|professional\s*certifications)/i)) {
+      console.log('[Parser] Found section: Certifications')
+      if (currentExperience) data.workExperience.push(currentExperience)
+      if (currentEducation) data.education.push(currentEducation)
+      currentExperience = null
+      currentEducation = null
+      currentSection = 'certifications'
+      continue
     } else if (line.match(/^##\s*(skills|technical\s*skills|core\s*competencies)/i)) {
       console.log('[Parser] Found section: Skills')
       if (currentExperience) data.workExperience.push(currentExperience)
@@ -465,6 +473,72 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           currentEducation.notes += (currentEducation.notes ? '\n' : '') + note
         }
       }
+    } else if (currentSection === 'certifications') {
+      if (line.match(/^###\s+/)) {
+        // Format: ### Certification Name — Issuer (Year)
+        const heading = line.replace(/^###\s+/, '').trim()
+        let name = heading
+        let issuer = ''
+        let date = ''
+
+        // Try to extract issuer and date from heading
+        // Pattern: "Name — Issuer (Year)" or "Name | Issuer | Year"
+        if (heading.includes('—') || heading.includes('–')) {
+          const parts = heading.split(/[—–]/)
+          name = parts[0]?.trim() || ''
+          const remainder = parts[1]?.trim() || ''
+          // Check for date in parentheses
+          const dateMatch = remainder.match(/\((\d{4})\)/)
+          if (dateMatch) {
+            date = dateMatch[1]
+            issuer = remainder.replace(/\(\d{4}\)/, '').trim()
+          } else {
+            issuer = remainder
+          }
+        } else if (heading.includes('|')) {
+          const parts = heading.split('|').map(p => p.trim())
+          name = parts[0] || ''
+          issuer = parts[1] || ''
+          date = parts[2] || ''
+        }
+
+        data.certifications.push({
+          id: generateId(),
+          name,
+          issuer,
+          date,
+          included: true
+        })
+      } else if (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/)) {
+        // Bullet format: "- Cert Name | Issuer | Year" or "- Cert (Issuer, Year)"
+        const text = line.replace(/^[\s]*[*-]\s*/, '').trim()
+        let name = text
+        let issuer = ''
+        let date = ''
+
+        if (text.includes('|')) {
+          const parts = text.split('|').map(p => p.trim())
+          name = parts[0] || ''
+          issuer = parts[1] || ''
+          date = parts[2] || ''
+        } else if (text.includes('(') && text.includes(')')) {
+          const match = text.match(/^(.+?)\s*\((.+?)\)$/)
+          if (match) {
+            name = match[1].trim()
+            const details = match[2].split(',').map(p => p.trim())
+            issuer = details[0] || ''
+            date = details[1] || ''
+          }
+        }
+
+        data.certifications.push({
+          id: generateId(),
+          name,
+          issuer,
+          date,
+          included: true
+        })
+      }
     } else if (currentSection === 'skills') {
       if (line && !line.startsWith('#')) {
         // Parse skills from comma-separated list or bullets
@@ -656,6 +730,21 @@ function convertToMarkdown(data: ResumeData): string {
     })
   }
 
+  // Certifications
+  const includedCertifications = data.certifications.filter(c => c.included)
+  if (includedCertifications.length > 0) {
+    md += `## Certifications\n\n`
+    includedCertifications.forEach(cert => {
+      if (cert.issuer && cert.date) {
+        md += `### ${cert.name} — ${cert.issuer} (${cert.date})\n\n`
+      } else if (cert.issuer) {
+        md += `### ${cert.name} — ${cert.issuer}\n\n`
+      } else {
+        md += `### ${cert.name}\n\n`
+      }
+    })
+  }
+
   // Skills
   const includedSkills = data.skills.filter(s => s.included)
   if (includedSkills.length > 0) {
@@ -797,6 +886,19 @@ export default function StructuredResumeEditor({
           <div class="text-neutral-300">${edu.degree}${edu.field ? ` • ${edu.field}` : ''}</div>
           <div class="text-xs text-neutral-500">${[edu.start, edu.end].filter(Boolean).join(' – ')}${edu.location ? ` • ${edu.location}` : ''}</div>
           ${edu.notes ? `<p class="text-sm text-neutral-200 mt-1">${edu.notes}</p>` : ''}
+        </div>`
+      })
+    }
+
+    // Certifications
+    const includedCertifications = resumeData.certifications.filter(c => c.included)
+    if (includedCertifications.length > 0) {
+      html += `<div class="pt-4 text-sm font-medium text-neutral-300">Certifications</div>`
+      includedCertifications.forEach(cert => {
+        html += `<div class="mt-2">
+          <div class="font-medium">${cert.name}</div>
+          ${cert.issuer ? `<div class="text-neutral-300">${cert.issuer}</div>` : ''}
+          ${cert.date ? `<div class="text-xs text-neutral-500">${cert.date}</div>` : ''}
         </div>`
       })
     }

@@ -53,14 +53,14 @@
   - [x] 3.5 Extract honors/notes from bullet points under education
   - [x] 3.6 Handle multiple education entries
 
-- [ ] **4.0 Implement Certifications Parsing (Missing)**
-  - [ ] 4.1 Add certifications section detection
-  - [ ] 4.2 Create certification parser for heading format
-  - [ ] 4.3 Parse certification from bullet format
-  - [ ] 4.4 Extract certification name, issuer, and date
-  - [ ] 4.5 Handle certifications without issuer or date
-  - [ ] 4.6 Add certifications to markdown converter
-  - [ ] 4.7 Add certifications to preview HTML
+- [x] **4.0 Implement Certifications Parsing (Missing)**
+  - [x] 4.1 Add certifications section detection
+  - [x] 4.2 Create certification parser for heading format
+  - [x] 4.3 Parse certification from bullet format
+  - [x] 4.4 Extract certification name, issuer, and date
+  - [x] 4.5 Handle certifications without issuer or date
+  - [x] 4.6 Add certifications to markdown converter
+  - [x] 4.7 Add certifications to preview HTML
 
 - [ ] **5.0 Fix Skills and Interests Parsing**
   - [ ] 5.1 Enhance skills parser to handle multiple separators
