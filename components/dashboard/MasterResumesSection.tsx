@@ -77,7 +77,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
               <div className="flex items-center gap-3">
                 <FileCheck className="h-5 w-5 flex-shrink-0 text-white/70" />
                 <div className="flex flex-1 flex-col gap-0.5 text-left">
-                  <p className="truncate text-sm font-medium text-white/90">{resume.file_name}</p>
+                  <p className="truncate text-sm font-medium text-white/90">{resume.title}</p>
                   <p className="text-xs text-white/50">
                     {resume.processing_status === "completed"
                       ? `Last updated ${formatDistanceToNow(new Date(resume.updated_at), { addSuffix: true })}`
