@@ -25,6 +25,7 @@ interface UploadMasterResumeDialogProps {
 export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [isOpening, setIsOpening] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
   const [isUploading, setIsUploading] = useState(false)
@@ -48,11 +49,23 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
   }
 
   const handleFileSelect = (selectedFile: File) => {
+    // Check file size first (10MB limit)
     if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("File size must be less than 10MB")
+      setError(`File size is ${(selectedFile.size / 1024 / 1024).toFixed(1)}MB. Please upload a file smaller than 10MB.`)
       return
     }
 
+    // Check file extension (more reliable than MIME type)
+    const fileName = selectedFile.name.toLowerCase()
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+    
+    if (!hasValidExtension) {
+      setError("Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported.")
+      return
+    }
+
+    // Double-check with MIME type for additional security
     const allowedTypes = [
       "application/pdf",
       "application/msword",
@@ -140,8 +153,12 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        if (isOpening && nextOpen) return // Prevent rapid opening
         setOpen(nextOpen)
-        if (!nextOpen) {
+        if (nextOpen) {
+          setIsOpening(true)
+          setTimeout(() => setIsOpening(false), 500) // Debounce for 500ms
+        } else {
           resetState()
         }
       }}
@@ -230,8 +247,26 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                   />
                 </div>
                 {file && (
-                  <div className="text-xs text-white/60">
-                    Selected: <span className="text-white/80">{file.name}</span>
+                  <div className="flex items-center justify-between text-xs text-white/60 bg-white/10 rounded-lg p-3 mt-3">
+                    <div>
+                      <span className="text-white/80">{file.name}</span>
+                      <span className="ml-2">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFile(null)
+                        setTitle("")
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = ""
+                        }
+                      }}
+                      disabled={isUploading}
+                      className="text-white/60 hover:text-red-400 transition-colors disabled:opacity-50"
+                      title="Remove file"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -251,7 +286,7 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
+                onClick={(e) => {
                   if (isUploading) {
                     // Abort in-flight request and cleanup
                     if (uploadAbortRef.current) {
@@ -268,6 +303,12 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                   } else {
                     setOpen(false)
                   }
+                  e.stopPropagation()
+                        setFile(null)
+                        setTitle("")
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = ""
+                        }
                 }}
                 className="text-white/70"
               >

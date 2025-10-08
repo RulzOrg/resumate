@@ -85,12 +85,25 @@ export function OnboardingFlow({
   )
 
   const validateFile = (file: File) => {
+    // Check file size first (10MB limit)
     if (file.size > MAX_FILE_SIZE) {
-      return "File size must be less than 10MB"
+      return `File size is ${(file.size / 1024 / 1024).toFixed(1)}MB. Please upload a file smaller than 10MB.`
     }
+
+    // Check file extension (more reliable than MIME type)
+    const fileName = file.name.toLowerCase()
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+    
+    if (!hasValidExtension) {
+      return "Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported."
+    }
+
+    // Double-check with MIME type for additional security
     if (!ALLOWED_TYPES.includes(file.type)) {
       return "Upload a PDF, Word, or plain text resume"
     }
+    
     return null
   }
 
