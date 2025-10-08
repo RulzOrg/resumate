@@ -248,7 +248,10 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
     } else if (line.match(/^##\s*(education|academic)/i)) {
       console.log('[Parser] Found section: Education')
       if (currentExperience) data.workExperience.push(currentExperience)
-      if (currentEducation) data.education.push(currentEducation)
+      if (currentEducation) {
+        console.log('[Parser] Saving previous education:', currentEducation)
+        data.education.push(currentEducation)
+      }
       currentExperience = null
       currentEducation = null
       currentSection = 'education'
@@ -295,33 +298,46 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       if (line.match(/^###\s+/)) {
         // Save previous experience
         if (currentExperience) {
+          console.log('[Parser] Saving completed work experience:', {
+            company: currentExperience.company,
+            role: currentExperience.role,
+            bullets: currentExperience.bullets.length
+          })
           data.workExperience.push(currentExperience)
         }
         // Parse company and role from heading
-        const heading = line.replace(/^###\s+/, '').trim()
+        // Remove markdown formatting (**, *, etc.) and clean up
+        const heading = line.replace(/^###\s+/, '').replace(/\*+$/, '').replace(/\*+/g, '').trim()
+        console.log('[Parser] Found work experience heading:', heading)
         let company = ''
         let role = ''
 
-        // Try different patterns
+        // Try different patterns (handle both em-dash — and en-dash –)
         if (heading.includes('—') || heading.includes('–')) {
-          // Format: "Company — Role" or "Role — Company"
-          const parts = heading.split(/[—–]/)
-          company = parts[0]?.trim() || ''
-          role = parts[1]?.trim() || ''
+          // Format: "Role — Company" or "Company — Role"
+          const parts = heading.split(/\s*[—–]\s*/)
+          // Based on PRD example: "Senior Product Designer — ABC Design Corp"
+          // First part is role, second is company
+          role = parts[0]?.trim() || ''
+          company = parts[1]?.trim() || ''
+          console.log('[Parser] Extracted via em-dash:', { role, company })
         } else if (heading.toLowerCase().includes(' at ')) {
           // Format: "Role at Company"
           const parts = heading.split(/\s+at\s+/i)
           role = parts[0]?.trim() || ''
           company = parts[1]?.trim() || ''
+          console.log('[Parser] Extracted via "at":', { role, company })
         } else if (heading.includes('|')) {
-          // Format: "Company | Role"
-          const parts = heading.split('|')
-          company = parts[0]?.trim() || ''
-          role = parts[1]?.trim() || ''
+          // Format: "Role | Company"
+          const parts = heading.split(/\s*\|\s*/)
+          role = parts[0]?.trim() || ''
+          company = parts[1]?.trim() || ''
+          console.log('[Parser] Extracted via pipe:', { role, company })
         } else {
-          // Default: treat whole thing as company (role might be on next line)
-          company = heading
-          role = ''
+          // Default: treat whole thing as role (company might be on next line)
+          role = heading
+          company = ''
+          console.log('[Parser] Extracted as role only:', { role })
         }
 
         currentExperience = {
@@ -339,7 +355,10 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         // "Jan 2021 – Present | Remote"
         // "2020-2023 • San Francisco, CA"
         // "January 2021 - December 2023"
-        
+        // Clean markdown formatting from metadata line
+        const cleanLine = line.replace(/\*+$/, '').replace(/\*+/g, '').trim()
+        console.log('[Parser] Parsing metadata line:', cleanLine)
+
         // Try to extract dates (various formats)
         const datePatterns = [
           /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*[A-Za-z]{3,}\s+\d{4})/i,  // "January 2021 – December 2023"
@@ -354,23 +373,25 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
 
         let dateMatch = null
         for (const pattern of datePatterns) {
-          dateMatch = line.match(pattern)
+          dateMatch = cleanLine.match(pattern)
           if (dateMatch) {
             currentExperience.dates = dateMatch[0].trim()
+            console.log('[Parser] Extracted dates:', currentExperience.dates)
             break
           }
         }
 
         if (dateMatch) {
           // Everything after dates (separated by | • or ·) is location
-          const remainder = line.replace(dateMatch[0], '').replace(/^[\s|•·,]+/, '').replace(/[\s|•·,]+$/, '').trim()
+          const remainder = cleanLine.replace(dateMatch[0], '').replace(/^[\s|•·,]+/, '').replace(/[\s|•·,]+$/, '').trim()
           if (remainder) {
             currentExperience.location = remainder
+            console.log('[Parser] Extracted location:', currentExperience.location)
           }
         } else {
           // No dates found, try to extract location from pipe/bullet separated line
-          if (line.includes('|') || line.includes('•') || line.includes('·')) {
-            const parts = line.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
+          if (cleanLine.includes('|') || cleanLine.includes('•') || cleanLine.includes('·')) {
+            const parts = cleanLine.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
             if (parts.length >= 1) {
               // Assume last part is location if it looks like a place (has capital letters or "remote")
               const lastPart = parts[parts.length - 1]
@@ -401,6 +422,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         // Bullet point - handle nested bullets by stripping indentation
         const bulletText = line.replace(/^[\s]*[*-]\s*/, '').trim()
         if (bulletText) {
+          console.log('[Parser] Adding bullet point:', bulletText.substring(0, 50) + (bulletText.length > 50 ? '...' : ''))
           currentExperience.bullets.push({
             id: generateId(),
             text: bulletText,
@@ -420,11 +442,14 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       if (line.match(/^###\s+/)) {
         // Save previous education
         if (currentEducation) {
+          console.log('[Parser] Saving completed education:', currentEducation)
           data.education.push(currentEducation)
         }
+        const institution = line.replace(/^###\s+/, '').trim()
+        console.log('[Parser] Found education institution:', institution)
         currentEducation = {
           id: generateId(),
-          institution: line.replace(/^###\s+/, '').trim(),
+          institution,
           degree: '',
           field: '',
           location: '',
@@ -1321,6 +1346,33 @@ export default function StructuredResumeEditor({
     })
   }
 
+  const addEducation = () => {
+    if (!resumeData) return
+    setResumeData({
+      ...resumeData,
+      education: [...resumeData.education, {
+        id: generateId(),
+        institution: '',
+        degree: '',
+        field: '',
+        start: '',
+        end: '',
+        location: '',
+        gpa: '',
+        notes: '',
+        included: true
+      }]
+    })
+  }
+
+  const removeEducation = (id: string) => {
+    if (!resumeData) return
+    setResumeData({
+      ...resumeData,
+      education: resumeData.education.filter(e => e.id !== id)
+    })
+  }
+
   const addSkill = (name: string) => {
     if (!resumeData || !name.trim()) return
     setResumeData({
@@ -1754,6 +1806,173 @@ export default function StructuredResumeEditor({
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* Education */}
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-neutral-800">
+              <button
+                type="button"
+                onClick={() => toggleSection('education')}
+                className="group inline-flex items-center gap-3"
+              >
+                <span className="h-7 w-7 rounded-md bg-neutral-800 flex items-center justify-center">
+                  <ChevronDown className={`h-4 w-4 transition-transform ${expandedSections.education ? '' : '-rotate-90'}`} />
+                </span>
+                <h3 className="text-lg sm:text-xl tracking-tight font-semibold">Education</h3>
+              </button>
+            </div>
+            {expandedSections.education && (
+              <div className="px-4 sm:px-6 py-5 space-y-5">
+                {resumeData.education.map((edu, idx) => (
+                  <div key={edu.id} className="rounded-xl border border-neutral-800 bg-neutral-950/40">
+                    <div className="flex flex-col gap-3 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <label className="relative inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            className="peer sr-only"
+                            checked={edu.included}
+                            onChange={(e) => setResumeData({
+                              ...resumeData,
+                              education: resumeData.education.map((ed, i) =>
+                                i === idx ? { ...ed, included: e.target.checked } : ed
+                              )
+                            })}
+                          />
+                          <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
+                            <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
+                          </span>
+                        </label>
+                        <input
+                          type="text"
+                          value={edu.institution}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.map((ed, i) =>
+                              i === idx ? { ...ed, institution: e.target.value } : ed
+                            )
+                          })}
+                          className="flex-1 bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
+                          placeholder="School or Institution"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={edu.degree}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.map((ed, i) =>
+                              i === idx ? { ...ed, degree: e.target.value } : ed
+                            )
+                          })}
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
+                          placeholder="Degree"
+                        />
+                        <input
+                          type="text"
+                          value={edu.field}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.map((ed, i) =>
+                              i === idx ? { ...ed, field: e.target.value } : ed
+                            )
+                          })}
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
+                          placeholder="Field of Study"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                        <input
+                          type="text"
+                          value={edu.start}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.map((ed, i) =>
+                              i === idx ? { ...ed, start: e.target.value } : ed
+                            )
+                          })}
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
+                          placeholder="Start (e.g., 2016)"
+                        />
+                        <input
+                          type="text"
+                          value={edu.end}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.map((ed, i) =>
+                              i === idx ? { ...ed, end: e.target.value } : ed
+                            )
+                          })}
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
+                          placeholder="End (e.g., 2020)"
+                        />
+                        <input
+                          type="text"
+                          value={edu.location}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.map((ed, i) =>
+                              i === idx ? { ...ed, location: e.target.value } : ed
+                            )
+                          })}
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
+                          placeholder="Location"
+                        />
+                        <input
+                          type="text"
+                          value={edu.gpa || ''}
+                          onChange={(e) => setResumeData({
+                            ...resumeData,
+                            education: resumeData.education.map((ed, i) =>
+                              i === idx ? { ...ed, gpa: e.target.value } : ed
+                            )
+                          })}
+                          className="bg-transparent border border-neutral-800 rounded-md px-2.5 py-1.5 text-sm"
+                          placeholder="GPA (optional)"
+                        />
+                      </div>
+
+                      <textarea
+                        value={edu.notes}
+                        onChange={(e) => setResumeData({
+                          ...resumeData,
+                          education: resumeData.education.map((ed, i) =>
+                            i === idx ? { ...ed, notes: e.target.value } : ed
+                          )
+                        })}
+                        className="w-full bg-neutral-900 border border-neutral-800 rounded-md px-3 py-2 text-sm"
+                        rows={3}
+                        placeholder="Additional Information (e.g., Dean's List, relevant coursework, or academic awards)"
+                      />
+
+                      <div className="flex items-center justify-end">
+                        <button
+                          onClick={() => removeEducation(edu.id)}
+                          className="inline-flex items-center gap-1 text-sm text-neutral-400 hover:text-red-400 transition"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  onClick={addEducation}
+                  className="w-full rounded-xl border border-dashed border-neutral-700 bg-neutral-950/40 px-4 py-6 text-sm text-neutral-400 hover:text-neutral-300 hover:border-neutral-600 transition"
+                >
+                  <div className="inline-flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Education
+                  </div>
+                </button>
               </div>
             )}
           </div>
