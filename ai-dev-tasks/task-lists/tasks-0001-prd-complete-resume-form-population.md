@@ -79,14 +79,14 @@
   - [x] 6.6 Log parse errors to console with context (already complete from Task 1.4)
 
 - [ ] **7.0 Testing and Validation**
-  - [ ] 7.1 Create test fixtures directory
-  - [ ] 7.2 Create unit test file for parser
-  - [ ] 7.3 Write test: Complete resume with all sections
-  - [ ] 7.4 Write test: Minimal resume (name + email only)
-  - [ ] 7.5 Write test: Certifications parsing
-  - [ ] 7.6 Write test: Date format variations
-  - [ ] 7.7 Write test: Skills/interests with multiple separators
-  - [ ] 7.8 Write test: Malformed markdown (error handling)
+  - [x] 7.1 Create test fixtures directory
+  - [x] 7.2 Create unit test file for parser
+  - [x] 7.3 Write test: Complete resume with all sections
+  - [x] 7.4 Write test: Minimal resume (name + email only)
+  - [x] 7.5 Write test: Certifications parsing
+  - [x] 7.6 Write test: Date format variations
+  - [x] 7.7 Write test: Skills/interests with multiple separators
+  - [x] 7.8 Write test: Malformed markdown (error handling)
   - [ ] 7.9 Manual testing: Run dev server and test complete workflow
   - [ ] 7.10 Validation: Check console logs in browser
 
