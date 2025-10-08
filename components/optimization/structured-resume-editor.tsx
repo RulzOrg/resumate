@@ -291,11 +291,35 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         }
         // Parse company and role from heading
         const heading = line.replace(/^###\s+/, '').trim()
-        const parts = heading.split(/[—–|]/)
+        let company = ''
+        let role = ''
+
+        // Try different patterns
+        if (heading.includes('—') || heading.includes('–')) {
+          // Format: "Company — Role" or "Role — Company"
+          const parts = heading.split(/[—–]/)
+          company = parts[0]?.trim() || ''
+          role = parts[1]?.trim() || ''
+        } else if (heading.toLowerCase().includes(' at ')) {
+          // Format: "Role at Company"
+          const parts = heading.split(/\s+at\s+/i)
+          role = parts[0]?.trim() || ''
+          company = parts[1]?.trim() || ''
+        } else if (heading.includes('|')) {
+          // Format: "Company | Role"
+          const parts = heading.split('|')
+          company = parts[0]?.trim() || ''
+          role = parts[1]?.trim() || ''
+        } else {
+          // Default: treat whole thing as company (role might be on next line)
+          company = heading
+          role = ''
+        }
+
         currentExperience = {
           id: generateId(),
-          company: parts[0]?.trim() || '',
-          role: parts[1]?.trim() || '',
+          company,
+          role,
           dates: '',
           location: '',
           bullets: [],
@@ -312,39 +336,62 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         const datePatterns = [
           /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*[A-Za-z]{3,}\s+\d{4})/i,  // "January 2021 – December 2023"
           /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*Present)/i,               // "Jan 2021 – Present"
+          /(\d{4}\/\d{2}\s*[-–]\s*\d{4}\/\d{2})/,                   // "2020/01 – 2023/12"
+          /(\d{4}\/\d{2}\s*[-–]\s*Present)/i,                       // "2020/01 – Present"
           /(\d{4}\s*[-–]\s*\d{4})/,                                  // "2020-2023"
           /(\d{4}\s*[-–]\s*Present)/i,                               // "2020-Present"
+          /(Q[1-4]\s+\d{4}\s*[-–]\s*Q[1-4]\s+\d{4})/i,              // "Q1 2020 – Q4 2023"
+          /(Q[1-4]\s+\d{4}\s*[-–]\s*Present)/i,                     // "Q1 2020 – Present"
         ]
-        
+
         let dateMatch = null
         for (const pattern of datePatterns) {
           dateMatch = line.match(pattern)
-          if (dateMatch) break
+          if (dateMatch) {
+            currentExperience.dates = dateMatch[0].trim()
+            break
+          }
         }
-        
+
         if (dateMatch) {
-          currentExperience.dates = dateMatch[0].trim()
           // Everything after dates (separated by | • or ·) is location
           const remainder = line.replace(dateMatch[0], '').replace(/^[\s|•·,]+/, '').replace(/[\s|•·,]+$/, '').trim()
-          if (remainder) currentExperience.location = remainder
-        } else if (line.includes('|') || line.includes('•') || line.includes('·')) {
-          // Pipe/bullet separated metadata line without clear dates
-          const parts = line.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
-          if (parts.length >= 2) {
-            currentExperience.dates = parts[0]
-            currentExperience.location = parts.slice(1).join(' • ')
-          } else if (parts.length === 1) {
-            // Could be dates or location, prefer dates if it has numbers
-            if (/\d/.test(parts[0])) {
-              currentExperience.dates = parts[0]
-            } else {
-              currentExperience.location = parts[0]
+          if (remainder) {
+            currentExperience.location = remainder
+          }
+        } else {
+          // No dates found, try to extract location from pipe/bullet separated line
+          if (line.includes('|') || line.includes('•') || line.includes('·')) {
+            const parts = line.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
+            if (parts.length >= 1) {
+              // Assume last part is location if it looks like a place (has capital letters or "remote")
+              const lastPart = parts[parts.length - 1]
+              if (lastPart.match(/[A-Z][a-z]+/) || lastPart.toLowerCase().includes('remote')) {
+                currentExperience.location = lastPart
+                // First parts might be dates
+                if (parts.length >= 2) {
+                  currentExperience.dates = parts.slice(0, -1).join(' • ')
+                }
+              } else {
+                // All parts might be dates or other metadata
+                if (parts.length >= 2) {
+                  currentExperience.dates = parts[0]
+                  currentExperience.location = parts.slice(1).join(' • ')
+                } else if (parts.length === 1) {
+                  // Could be dates or location, prefer dates if it has numbers
+                  if (/\d/.test(parts[0])) {
+                    currentExperience.dates = parts[0]
+                  } else {
+                    currentExperience.location = parts[0]
+                  }
+                }
+              }
             }
           }
         }
-      } else if (currentExperience && (line.startsWith('*') || line.startsWith('-'))) {
-        // Bullet point
-        const bulletText = line.replace(/^[*-]\s*/, '').trim()
+      } else if (currentExperience && (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/))) {
+        // Bullet point - handle nested bullets by stripping indentation
+        const bulletText = line.replace(/^[\s]*[*-]\s*/, '').trim()
         if (bulletText) {
           currentExperience.bullets.push({
             id: generateId(),
@@ -352,6 +399,14 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
             included: true
           })
         }
+      } else if (currentExperience && !line.startsWith('#') && line.length > 20 && currentExperience.bullets.length === 0) {
+        // Paragraph description - add as single bullet if no bullets exist yet
+        // Only if line is substantial (>20 chars) and doesn't look like metadata
+        currentExperience.bullets.push({
+          id: generateId(),
+          text: line.trim(),
+          included: true
+        })
       }
     } else if (currentSection === 'education') {
       if (line.match(/^###\s+/)) {

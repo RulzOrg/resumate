@@ -30,20 +30,20 @@
 
 ## Tasks
 
-- [ ] **1.0 Add Debug Logging and Analysis Tools**
+- [x] **1.0 Add Debug Logging and Analysis Tools**
   - [x] 1.1 Add console logging at start of `parseMarkdownToStructured()` to show input markdown length and preview
   - [x] 1.2 Add section detection logging to show which sections are found
   - [x] 1.3 Add summary logging at end of parsing to show what was extracted
   - [x] 1.4 Add error logging with try-catch around entire parser
   - [x] 1.5 Add dev mode toggle for verbose logging (Shift+Ctrl+D)
 
-- [ ] **2.0 Fix Work Experience Parsing**
-  - [ ] 2.1 Fix company/role extraction from heading
-  - [ ] 2.2 Fix date extraction to handle all formats
-  - [ ] 2.3 Fix location extraction from metadata line
-  - [ ] 2.4 Fix bullet point parsing to handle nested bullets
-  - [ ] 2.5 Handle experience entries without bullets (paragraph format)
-  - [ ] 2.6 Ensure last experience entry is saved
+- [x] **2.0 Fix Work Experience Parsing**
+  - [x] 2.1 Fix company/role extraction from heading
+  - [x] 2.2 Fix date extraction to handle all formats
+  - [x] 2.3 Fix location extraction from metadata line
+  - [x] 2.4 Fix bullet point parsing to handle nested bullets
+  - [x] 2.5 Handle experience entries without bullets (paragraph format)
+  - [x] 2.6 Ensure last experience entry is saved
 
 - [ ] **3.0 Fix Education Parsing**
   - [ ] 3.1 Fix degree extraction from various patterns
