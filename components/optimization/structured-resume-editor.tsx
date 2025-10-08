@@ -103,10 +103,17 @@ function generateId(): string {
 }
 
 function parseMarkdownToStructured(markdown: string): ResumeData {
-  const lines = markdown.split('\n')
-  
-  // Default structure
-  const data: ResumeData = {
+  console.log('[Parser] Starting parse:', {
+    length: markdown.length,
+    preview: markdown.substring(0, 200),
+    lineCount: markdown.split('\n').length
+  })
+
+  try {
+    const lines = markdown.split('\n')
+
+    // Default structure
+    const data: ResumeData = {
     contactInfo: {
       firstName: '',
       lastName: '',
@@ -215,6 +222,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
     
     // Check for section headers
     if (line.match(/^##\s*(professional\s*summary|summary|about)/i)) {
+      console.log('[Parser] Found section: Summary')
       if (currentExperience) data.workExperience.push(currentExperience)
       if (currentEducation) data.education.push(currentEducation)
       currentExperience = null
@@ -223,6 +231,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       summaryLines = []
       continue
     } else if (line.match(/^##\s*(work\s*experience|experience|employment)/i)) {
+      console.log('[Parser] Found section: Work Experience')
       if (summaryLines.length > 0 && data.summaries.length === 0) {
         data.summaries.push({
           id: generateId(),
@@ -237,6 +246,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       currentSection = 'experience'
       continue
     } else if (line.match(/^##\s*(education|academic)/i)) {
+      console.log('[Parser] Found section: Education')
       if (currentExperience) data.workExperience.push(currentExperience)
       if (currentEducation) data.education.push(currentEducation)
       currentExperience = null
@@ -244,6 +254,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       currentSection = 'education'
       continue
     } else if (line.match(/^##\s*(skills|technical\s*skills|core\s*competencies)/i)) {
+      console.log('[Parser] Found section: Skills')
       if (currentExperience) data.workExperience.push(currentExperience)
       if (currentEducation) data.education.push(currentEducation)
       currentExperience = null
@@ -251,6 +262,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       currentSection = 'skills'
       continue
     } else if (line.match(/^##\s*(interests|hobbies)/i)) {
+      console.log('[Parser] Found section: Interests')
       if (currentExperience) data.workExperience.push(currentExperience)
       if (currentEducation) data.education.push(currentEducation)
       currentExperience = null
@@ -445,7 +457,49 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
     })
   }
 
-  return data
+    console.log('[Parser] Parse complete:', {
+      hasContact: !!(data.contactInfo.firstName || data.contactInfo.email),
+      summaries: data.summaries.length,
+      experience: data.workExperience.length,
+      education: data.education.length,
+      certifications: data.certifications.length,
+      skills: data.skills.length,
+      interests: data.interests.length
+    })
+
+    return data
+  } catch (error: any) {
+    console.error('[Parser] Fatal error:', {
+      error: error?.message || String(error),
+      stack: error?.stack,
+      markdownPreview: markdown.substring(0, 500)
+    })
+
+    // Return default empty structure
+    return {
+      contactInfo: {
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        linkedin: '',
+        location: '',
+        firstNameIncluded: true,
+        lastNameIncluded: true,
+        emailIncluded: true,
+        phoneIncluded: true,
+        linkedinIncluded: true,
+        locationIncluded: true
+      },
+      targetTitle: { text: '', included: true },
+      summaries: [],
+      workExperience: [],
+      education: [],
+      certifications: [],
+      skills: [],
+      interests: []
+    }
+  }
 }
 
 function convertToMarkdown(data: ResumeData): string {
@@ -567,6 +621,23 @@ export default function StructuredResumeEditor({
   const [isSaving, setIsSaving] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [isGeneratingDOCX, setIsGeneratingDOCX] = useState(false)
+  const [debugMode, setDebugMode] = useState(false)
+
+  // Debug mode toggle (Shift+Ctrl+D)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.ctrlKey && e.key === 'D') {
+        e.preventDefault()
+        setDebugMode(prev => {
+          const newMode = !prev
+          console.log('[Debug] Debug mode:', newMode ? 'ENABLED' : 'DISABLED')
+          return newMode
+        })
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Initialize resume data from markdown
   useEffect(() => {
@@ -685,7 +756,13 @@ export default function StructuredResumeEditor({
   const includedCount = useMemo(() => {
     if (!resumeData) return 0
     let count = 0
-    if (resumeData.contactInfo.included) count++
+    // Count individual contact fields that are included
+    if (resumeData.contactInfo.firstNameIncluded) count++
+    if (resumeData.contactInfo.lastNameIncluded) count++
+    if (resumeData.contactInfo.emailIncluded) count++
+    if (resumeData.contactInfo.phoneIncluded) count++
+    if (resumeData.contactInfo.linkedinIncluded) count++
+    if (resumeData.contactInfo.locationIncluded) count++
     if (resumeData.targetTitle.included) count++
     count += resumeData.summaries.filter(s => s.included).length
     count += resumeData.workExperience.filter(w => w.included).length
@@ -1700,6 +1777,51 @@ export default function StructuredResumeEditor({
           </div>
         </aside>
       </div>
+
+      {/* Debug Overlay */}
+      {debugMode && resumeData && (
+        <div className="fixed bottom-4 right-4 max-w-md rounded-xl border border-emerald-500/50 bg-black/90 backdrop-blur-xl p-4 shadow-2xl z-50">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-emerald-400 flex items-center gap-2">
+              🐛 Debug Info
+            </h3>
+            <button
+              onClick={() => setDebugMode(false)}
+              className="text-white/60 hover:text-white"
+              title="Close (or press Shift+Ctrl+D)"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="space-y-2 text-xs font-mono">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-white/60">Contact:</div>
+              <div className="text-white">{resumeData.contactInfo.firstName || resumeData.contactInfo.email ? '✓' : '✗'}</div>
+
+              <div className="text-white/60">Summaries:</div>
+              <div className="text-white">{resumeData.summaries.length}</div>
+
+              <div className="text-white/60">Experience:</div>
+              <div className="text-white">{resumeData.workExperience.length}</div>
+
+              <div className="text-white/60">Education:</div>
+              <div className="text-white">{resumeData.education.length}</div>
+
+              <div className="text-white/60">Certifications:</div>
+              <div className="text-white">{resumeData.certifications.length}</div>
+
+              <div className="text-white/60">Skills:</div>
+              <div className="text-white">{resumeData.skills.length}</div>
+
+              <div className="text-white/60">Interests:</div>
+              <div className="text-white">{resumeData.interests.length}</div>
+            </div>
+            <div className="pt-2 border-t border-white/10 text-white/60">
+              Press <kbd className="px-1 py-0.5 bg-white/10 rounded">Shift+Ctrl+D</kbd> to toggle
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
