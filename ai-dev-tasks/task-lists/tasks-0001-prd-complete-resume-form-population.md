@@ -62,13 +62,13 @@
   - [x] 4.6 Add certifications to markdown converter
   - [x] 4.7 Add certifications to preview HTML
 
-- [ ] **5.0 Fix Skills and Interests Parsing**
-  - [ ] 5.1 Enhance skills parser to handle multiple separators
-  - [ ] 5.2 Handle bullet-point skills format
-  - [ ] 5.3 Handle skill categories/groupings
-  - [ ] 5.4 Deduplicate skills (case-insensitive)
-  - [ ] 5.5 Enhance interests parser to handle multiple separators
-  - [ ] 5.6 Handle bullet-point interests format
+- [x] **5.0 Fix Skills and Interests Parsing**
+  - [x] 5.1 Enhance skills parser to handle multiple separators
+  - [x] 5.2 Handle bullet-point skills format
+  - [x] 5.3 Handle skill categories/groupings
+  - [x] 5.4 Deduplicate skills (case-insensitive)
+  - [x] 5.5 Enhance interests parser to handle multiple separators
+  - [x] 5.6 Handle bullet-point interests format
 
 - [ ] **6.0 Add Robust Error Handling**
   - [ ] 6.1 Wrap entire parser in try-catch

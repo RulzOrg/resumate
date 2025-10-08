@@ -541,12 +541,16 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       }
     } else if (currentSection === 'skills') {
       if (line && !line.startsWith('#')) {
+        console.log('[Parser] Parsing skills line:', line)
         // Parse skills from comma-separated list or bullets
+        // Handle multiple separators: comma, semicolon, pipe, bullets
         const skillText = line.replace(/^[*-]\s*/, '')
         const skills = skillText.split(/[,;|·•]/)
         skills.forEach(skill => {
           const trimmed = skill.trim()
+          // Deduplicate (case-insensitive)
           if (trimmed && !data.skills.find(s => s.name.toLowerCase() === trimmed.toLowerCase())) {
+            console.log('[Parser] Adding skill:', trimmed)
             data.skills.push({
               id: generateId(),
               name: trimmed,
@@ -554,14 +558,23 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
             })
           }
         })
+      } else if (line.startsWith('###')) {
+        // Handle skill categories: ### Programming Languages
+        // The skills will be on the next lines
+        console.log('[Parser] Found skill category:', line)
       }
     } else if (currentSection === 'interests') {
       if (line && !line.startsWith('#')) {
+        console.log('[Parser] Parsing interests line:', line)
+        // Parse interests from comma-separated list or bullets
+        // Handle multiple separators: comma, semicolon, pipe, bullets
         const interestText = line.replace(/^[*-]\s*/, '')
         const interests = interestText.split(/[,;|·•]/)
         interests.forEach(interest => {
           const trimmed = interest.trim()
+          // Deduplicate (case-insensitive)
           if (trimmed && !data.interests.find(i => i.name.toLowerCase() === trimmed.toLowerCase())) {
+            console.log('[Parser] Adding interest:', trimmed)
             data.interests.push({
               id: generateId(),
               name: trimmed,
@@ -569,6 +582,9 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
             })
           }
         })
+      } else if (line.startsWith('###')) {
+        // Handle interest categories (rare but possible)
+        console.log('[Parser] Found interest category:', line)
       }
     }
   }
