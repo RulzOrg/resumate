@@ -91,6 +91,7 @@ interface ResumeData {
 
 interface StructuredResumeEditorProps {
   optimizedContent: string
+  structuredOutput?: any  // System Prompt v1.1 structured output
   optimizedId: string | null
   jobTitle: string
   companyName: string
@@ -102,40 +103,309 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 }
 
-function parseMarkdownToStructured(markdown: string): ResumeData {
-  console.log('[Parser] Starting parse:', {
-    length: markdown.length,
-    preview: markdown.substring(0, 200),
-    lineCount: markdown.split('\n').length
-  })
+/**
+ * Converts System Prompt v1.1 structured output to ResumeData format
+ * This is the primary data source when available (v2 optimization)
+ */
+function convertStructuredOutputToResumeData(structuredOutput: any): ResumeData {
+  console.log('[Converter] Converting structured output to ResumeData:', structuredOutput)
+  
+  const ui = structuredOutput?.ui || {}
+  
+  // Contact Information
+  const contactFields = ui.contact_information?.fields || {}
+  const contactInfo: ContactInfo = {
+    firstName: contactFields.first_name || '',
+    lastName: contactFields.last_name || '',
+    email: contactFields.email || '',
+    phone: contactFields.phone || '',
+    linkedin: contactFields.linkedin || '',
+    location: contactFields.location || '',
+    firstNameIncluded: true,
+    lastNameIncluded: true,
+    emailIncluded: true,
+    phoneIncluded: true,
+    linkedinIncluded: true,
+    locationIncluded: true,
+  }
+  
+  // Target Title
+  const targetTitle = {
+    text: ui.target_title?.primary || '',
+    included: ui.target_title?.include !== false,
+  }
+  
+  // Professional Summary
+  const summaries: Summary[] = []
+  if (ui.professional_summary?.primary) {
+    summaries.push({
+      id: generateId(),
+      text: ui.professional_summary.primary,
+      included: ui.professional_summary.include !== false,
+    })
+  }
+  if (ui.professional_summary?.alternates?.length) {
+    ui.professional_summary.alternates.forEach((alt: string) => {
+      summaries.push({
+        id: generateId(),
+        text: alt,
+        included: false,
+      })
+    })
+  }
+  
+  // Work Experience
+  const workExperience: WorkExperience[] = []
+  if (ui.work_experience?.items?.length) {
+    ui.work_experience.items.forEach((item: any) => {
+      const bullets: WorkBullet[] = []
+      
+      // Primary bullets
+      if (item.bullets?.primary?.length) {
+        item.bullets.primary.forEach((bulletText: string) => {
+          bullets.push({
+            id: generateId(),
+            text: bulletText,
+            included: true,
+          })
+        })
+      }
+      
+      // Alternate bullets (marked as not included by default)
+      if (item.bullets?.alternates?.length) {
+        item.bullets.alternates.forEach((bulletText: string) => {
+          bullets.push({
+            id: generateId(),
+            text: bulletText,
+            included: false,
+          })
+        })
+      }
+      
+      workExperience.push({
+        id: generateId(),
+        company: item.company || '',
+        role: item.title || '',
+        dates: `${item.start_date || ''} - ${item.end_date || ''}`.trim().replace(/^-\s*|-\s*$/g, ''),
+        location: item.location || '',
+        bullets,
+        included: item.include !== false,
+      })
+    })
+  }
+  
+  // Education
+  const education: Education[] = []
+  if (ui.education?.items?.length) {
+    ui.education.items.forEach((item: any) => {
+      education.push({
+        id: generateId(),
+        institution: item.school || '',
+        degree: item.degree || '',
+        field: item.field_of_study || '',
+        location: item.location || '',
+        gpa: item.gpa || '',
+        start: item.start_date || '',
+        end: item.end_date || '',
+        notes: item.notes || '',
+        included: item.include !== false,
+      })
+    })
+  }
+  
+  // Certifications
+  const certifications: Certification[] = []
+  if (ui.certifications?.items?.length) {
+    ui.certifications.items.forEach((item: any) => {
+      certifications.push({
+        id: generateId(),
+        name: item.name || '',
+        issuer: item.issuing_organization || '',
+        date: item.date_obtained || '',
+        included: item.include !== false,
+      })
+    })
+  }
+  
+  // Skills - flatten all categories
+  const skills: Skill[] = []
+  const skillsData = ui.skills || {}
+  
+  // Handle both array format and object format
+  if (Array.isArray(skillsData)) {
+    skillsData.forEach((skillName: string) => {
+      skills.push({
+        id: generateId(),
+        name: skillName,
+        included: true,
+      })
+    })
+  } else if (typeof skillsData === 'object') {
+    // System Prompt v1.1 has categorized skills
+    const categories = ['domain', 'research_and_validation', 'product_and_systems', 'tools']
+    categories.forEach(category => {
+      const categoryData = skillsData[category]
+      if (categoryData?.primary?.length) {
+        categoryData.primary.forEach((skillName: string) => {
+          skills.push({
+            id: generateId(),
+            name: skillName,
+            included: true,
+          })
+        })
+      }
+      if (categoryData?.alternates?.length) {
+        categoryData.alternates.forEach((skillName: string) => {
+          skills.push({
+            id: generateId(),
+            name: skillName,
+            included: false,
+          })
+        })
+      }
+    })
+  }
+  
+  // Interests
+  const interests: Interest[] = []
+  if (ui.interests_or_extras?.items?.length) {
+    ui.interests_or_extras.items.forEach((item: any) => {
+      interests.push({
+        id: generateId(),
+        name: typeof item === 'string' ? item : item.name || '',
+        included: typeof item === 'string' ? true : item.include !== false,
+      })
+    })
+  }
+  
+  const resumeData: ResumeData = {
+    contactInfo,
+    targetTitle,
+    summaries,
+    workExperience,
+    education,
+    certifications,
+    skills,
+    interests,
+  }
+  
+  console.log('[Converter] Converted to ResumeData:', resumeData)
+  
+  return resumeData
+}
 
+export function parseMarkdownToStructured(markdown: string): ResumeData {
   try {
-    const lines = markdown.split('\n')
+    let normalizedMarkdown = (markdown || '').replace(/\r/g, '')
+    const originalLength = normalizedMarkdown.length
+
+    normalizedMarkdown = normalizedMarkdown.trim()
+
+    const quotePairs: Array<[string, string]> = [
+      ['"', '"'],
+      ["'", "'"],
+      ['“', '”'],
+      ['‘', '’']
+    ]
+
+    for (const [open, close] of quotePairs) {
+      if (normalizedMarkdown.startsWith(open) && normalizedMarkdown.endsWith(close)) {
+        normalizedMarkdown = normalizedMarkdown.slice(open.length, normalizedMarkdown.length - close.length).trim()
+        break
+      }
+    }
+
+    if (normalizedMarkdown.startsWith('```')) {
+      const fenceHeaderMatch = normalizedMarkdown.match(/^```[^\n]*\n?/)
+      const fenceHeaderLength = fenceHeaderMatch ? fenceHeaderMatch[0].length : 3
+      const closingFenceIndex = normalizedMarkdown.lastIndexOf('```')
+      if (closingFenceIndex > fenceHeaderLength) {
+        normalizedMarkdown = normalizedMarkdown.slice(fenceHeaderLength, closingFenceIndex)
+      } else {
+        normalizedMarkdown = normalizedMarkdown.slice(fenceHeaderLength)
+      }
+      normalizedMarkdown = normalizedMarkdown.trim()
+    }
+
+    const lines = normalizedMarkdown.split('\n')
+
+    console.log('[Parser] Starting parse:', {
+      length: originalLength,
+      normalizedLength: normalizedMarkdown.length,
+      preview: normalizedMarkdown.substring(0, 200),
+      lineCount: lines.length
+    })
 
     // Default structure
     const data: ResumeData = {
-    contactInfo: {
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      linkedin: '',
-      location: '',
-      firstNameIncluded: true,
-      lastNameIncluded: true,
-      emailIncluded: true,
-      phoneIncluded: true,
-      linkedinIncluded: true,
-      locationIncluded: true
-    },
-    targetTitle: { text: '', included: true },
-    summaries: [],
-    workExperience: [],
-    education: [],
-    certifications: [],
-    skills: [],
-    interests: []
-  }
+      contactInfo: {
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        linkedin: '',
+        location: '',
+        firstNameIncluded: true,
+        lastNameIncluded: true,
+        emailIncluded: true,
+        phoneIncluded: true,
+        linkedinIncluded: true,
+        locationIncluded: true
+      },
+      targetTitle: { text: '', included: true },
+      summaries: [],
+      workExperience: [],
+      education: [],
+      certifications: [],
+      skills: [],
+      interests: []
+    }
+
+    const companyIndicators = /(inc\.?|corp\.?|company|llc|ltd|gmbh|ag|plc|co\.?|group|studio|labs|solutions|technologies|systems|partners|associates|ventures|holdings|industries|services|design|digital|university|college|school|academy|hospital|center|centre|agency|consulting|consultants|media|works|communications)/i
+    const roleIndicators = /(engineer|manager|designer|developer|director|lead|consultant|analyst|specialist|architect|executive|officer|founder|co-founder|intern|head|product|marketing|sales|research|scientist|strategist|coordinator|administrator|advisor|account|trainer|teacher|nurse|technician|programmer|supervisor|writer|editor|producer|recruiter|associate|representative|coach)/i
+    const leadershipIndicators = /(lead|senior|principal|head|chief|vp|vice\s+president|owner|president|chair|partner|managing|global)/i
+
+    const inferRoleAndCompany = (primary: string, secondary: string) => {
+      const first = primary.trim()
+      const second = secondary.trim()
+      if (!first && !second) {
+        return { role: '', company: '' }
+      }
+
+      const firstCompanyScore = companyIndicators.test(first) ? 1 : 0
+      const secondCompanyScore = companyIndicators.test(second) ? 1 : 0
+      const firstRoleScore = roleIndicators.test(first) ? 1 : 0
+      const secondRoleScore = roleIndicators.test(second) ? 1 : 0
+
+      if (firstCompanyScore > secondCompanyScore && secondRoleScore >= firstRoleScore) {
+        return { role: second || first, company: first }
+      }
+      if (secondCompanyScore > firstCompanyScore && firstRoleScore >= secondRoleScore) {
+        return { role: first || second, company: second }
+      }
+
+      if (second && !firstRoleScore && secondRoleScore && !secondCompanyScore) {
+        return { role: second, company: first }
+      }
+      if (first && !secondRoleScore && firstRoleScore && secondCompanyScore && !firstCompanyScore) {
+        return { role: first, company: second }
+      }
+
+      const firstLeadership = leadershipIndicators.test(first)
+      const secondLeadership = leadershipIndicators.test(second)
+      if (firstLeadership && !secondLeadership) {
+        return { role: first, company: second }
+      }
+      if (secondLeadership && !firstLeadership) {
+        return { role: second, company: first }
+      }
+
+      if (!second) {
+        return { role: first, company: '' }
+      }
+
+      return { role: first, company: second }
+    }
 
   // Extract contact info from first few lines
   const emailRegex = /[\w.-]+@[\w.-]+\.\w+/
@@ -144,7 +414,6 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
   const locationRegex = /([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Z]{2,}(?:\s*\d{5})?)/  // City, STATE or City, Country
   
   // Get name from first heading or first line
-  let nameFound = false
   for (let i = 0; i < Math.min(5, lines.length); i++) {
     const line = lines[i].trim()
     if (line.startsWith('#')) {
@@ -152,13 +421,11 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
       const nameParts = name.split(' ')
       data.contactInfo.firstName = nameParts[0] || ''
       data.contactInfo.lastName = nameParts.slice(1).join(' ') || ''
-      nameFound = true
       break
     } else if (i === 0 && line && !emailRegex.test(line)) {
       const nameParts = line.split(' ')
       data.contactInfo.firstName = nameParts[0] || ''
       data.contactInfo.lastName = nameParts.slice(1).join(' ') || ''
-      nameFound = true
       break
     }
   }
@@ -295,8 +562,18 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         summaryLines.push(line.replace(/^[*-]\s*/, ''))
       }
     } else if (currentSection === 'experience') {
-      if (line.match(/^###\s+/)) {
-        // Save previous experience
+      const trimmedLine = line.trim()
+      const listMarkerRegex = /^[-*•●◦▪▫➤➣▹▸·]\s+/
+      const numberedListRegex = /^\d+\.\s+/
+      const headingMatch = trimmedLine.match(/^#{3,}\s+/)
+      const removeListPrefix = (value: string) => value.replace(listMarkerRegex, '').replace(numberedListRegex, '')
+      const stripEmphasis = (value: string) => value.replace(/^[_*`"'“”‘’]+/, '').replace(/[_*`"'“”‘’]+$/, '').trim()
+      const normalizedHeadingSource = headingMatch
+        ? trimmedLine.replace(/^#{3,}\s+/, '')
+        : stripEmphasis(removeListPrefix(trimmedLine))
+      const looksLikeHeading = /[—–]|\bat\b|\|/.test(normalizedHeadingSource)
+
+      if (headingMatch || (looksLikeHeading && (listMarkerRegex.test(trimmedLine) || numberedListRegex.test(trimmedLine)))) {
         if (currentExperience) {
           console.log('[Parser] Saving completed work experience:', {
             company: currentExperience.company,
@@ -305,36 +582,33 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           })
           data.workExperience.push(currentExperience)
         }
-        // Parse company and role from heading
-        // Remove markdown formatting (**, *, etc.) and clean up
-        const heading = line.replace(/^###\s+/, '').replace(/\*+$/, '').replace(/\*+/g, '').trim()
+
+        const heading = stripEmphasis(normalizedHeadingSource.replace(/\*+$/, '').replace(/\*+/g, ''))
         console.log('[Parser] Found work experience heading:', heading)
+
         let company = ''
         let role = ''
 
-        // Try different patterns (handle both em-dash — and en-dash –)
         if (heading.includes('—') || heading.includes('–')) {
-          // Format: "Role — Company" or "Company — Role"
           const parts = heading.split(/\s*[—–]\s*/)
-          // Based on PRD example: "Senior Product Designer — ABC Design Corp"
-          // First part is role, second is company
-          role = parts[0]?.trim() || ''
-          company = parts[1]?.trim() || ''
+          const [firstPart, ...restParts] = parts
+          const secondPart = restParts.join(' — ')
+          const inferred = inferRoleAndCompany(firstPart || '', secondPart || '')
+          role = inferred.role
+          company = inferred.company
           console.log('[Parser] Extracted via em-dash:', { role, company })
         } else if (heading.toLowerCase().includes(' at ')) {
-          // Format: "Role at Company"
           const parts = heading.split(/\s+at\s+/i)
           role = parts[0]?.trim() || ''
           company = parts[1]?.trim() || ''
           console.log('[Parser] Extracted via "at":', { role, company })
         } else if (heading.includes('|')) {
-          // Format: "Role | Company"
           const parts = heading.split(/\s*\|\s*/)
-          role = parts[0]?.trim() || ''
-          company = parts[1]?.trim() || ''
+          const inferred = inferRoleAndCompany(parts[0] || '', parts[1] || '')
+          role = inferred.role
+          company = inferred.company
           console.log('[Parser] Extracted via pipe:', { role, company })
         } else {
-          // Default: treat whole thing as role (company might be on next line)
           role = heading
           company = ''
           console.log('[Parser] Extracted as role only:', { role })
@@ -349,31 +623,26 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           bullets: [],
           included: true
         }
-      } else if (currentExperience && !line.startsWith('*') && !line.startsWith('-') && !line.startsWith('#')) {
-        // This line likely contains dates and/or location metadata
-        // Common formats:
-        // "Jan 2021 – Present | Remote"
-        // "2020-2023 • San Francisco, CA"
-        // "January 2021 - December 2023"
-        // Clean markdown formatting from metadata line
-        const cleanLine = line.replace(/\*+$/, '').replace(/\*+/g, '').trim()
-        console.log('[Parser] Parsing metadata line:', cleanLine)
+      } else if (currentExperience) {
+        const cleanedLine = stripEmphasis(removeListPrefix(trimmedLine)).replace(/\*+$/, '').replace(/\*+/g, '').trim()
+        if (!cleanedLine) continue
 
-        // Try to extract dates (various formats)
+        console.log('[Parser] Parsing experience line:', cleanedLine)
+
         const datePatterns = [
-          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*[A-Za-z]{3,}\s+\d{4})/i,  // "January 2021 – December 2023"
-          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*Present)/i,               // "Jan 2021 – Present"
-          /(\d{4}\/\d{2}\s*[-–]\s*\d{4}\/\d{2})/,                   // "2020/01 – 2023/12"
-          /(\d{4}\/\d{2}\s*[-–]\s*Present)/i,                       // "2020/01 – Present"
-          /(\d{4}\s*[-–]\s*\d{4})/,                                  // "2020-2023"
-          /(\d{4}\s*[-–]\s*Present)/i,                               // "2020-Present"
-          /(Q[1-4]\s+\d{4}\s*[-–]\s*Q[1-4]\s+\d{4})/i,              // "Q1 2020 – Q4 2023"
-          /(Q[1-4]\s+\d{4}\s*[-–]\s*Present)/i,                     // "Q1 2020 – Present"
+          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*[A-Za-z]{3,}\s+\d{4})/i,
+          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*Present)/i,
+          /(\d{4}\/\d{2}\s*[-–]\s*\d{4}\/\d{2})/,
+          /(\d{4}\/\d{2}\s*[-–]\s*Present)/i,
+          /(\d{4}\s*[-–]\s*\d{4})/,
+          /(\d{4}\s*[-–]\s*Present)/i,
+          /(Q[1-4]\s+\d{4}\s*[-–]\s*Q[1-4]\s+\d{4})/i,
+          /(Q[1-4]\s+\d{4}\s*[-–]\s*Present)/i,
         ]
 
-        let dateMatch = null
+        let dateMatch: RegExpMatchArray | null = null
         for (const pattern of datePatterns) {
-          dateMatch = cleanLine.match(pattern)
+          dateMatch = cleanedLine.match(pattern)
           if (dateMatch) {
             currentExperience.dates = dateMatch[0].trim()
             console.log('[Parser] Extracted dates:', currentExperience.dates)
@@ -382,65 +651,70 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         }
 
         if (dateMatch) {
-          // Everything after dates (separated by | • or ·) is location
-          const remainder = cleanLine.replace(dateMatch[0], '').replace(/^[\s|•·,]+/, '').replace(/[\s|•·,]+$/, '').trim()
+          const remainder = cleanedLine
+            .replace(dateMatch[0], '')
+            .replace(/^[\s|•·,;:-]+/, '')
+            .replace(/[\s|•·,;:-]+$/, '')
+            .trim()
           if (remainder) {
             currentExperience.location = remainder
             console.log('[Parser] Extracted location:', currentExperience.location)
           }
-        } else {
-          // No dates found, try to extract location from pipe/bullet separated line
-          if (cleanLine.includes('|') || cleanLine.includes('•') || cleanLine.includes('·')) {
-            const parts = cleanLine.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
-            if (parts.length >= 1) {
-              // Assume last part is location if it looks like a place (has capital letters or "remote")
-              const lastPart = parts[parts.length - 1]
-              if (lastPart.match(/[A-Z][a-z]+/) || lastPart.toLowerCase().includes('remote')) {
-                currentExperience.location = lastPart
-                // First parts might be dates
-                if (parts.length >= 2) {
-                  currentExperience.dates = parts.slice(0, -1).join(' • ')
-                }
-              } else {
-                // All parts might be dates or other metadata
-                if (parts.length >= 2) {
-                  currentExperience.dates = parts[0]
-                  currentExperience.location = parts.slice(1).join(' • ')
-                } else if (parts.length === 1) {
-                  // Could be dates or location, prefer dates if it has numbers
-                  if (/\d/.test(parts[0])) {
-                    currentExperience.dates = parts[0]
-                  } else {
-                    currentExperience.location = parts[0]
-                  }
-                }
+          continue
+        }
+
+        if ((cleanedLine.includes('|') || cleanedLine.includes('•') || cleanedLine.includes('·')) && (currentExperience.dates === '' || currentExperience.location === '')) {
+          const parts = cleanedLine.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
+          if (parts.length > 0) {
+            const lastPart = parts[parts.length - 1]
+            if (lastPart.match(/[A-Z][a-z]+/) || lastPart.toLowerCase().includes('remote') || lastPart.toLowerCase().includes('hybrid')) {
+              currentExperience.location = lastPart
+              if (parts.length >= 2) {
+                currentExperience.dates = parts.slice(0, -1).join(' • ')
               }
+              console.log('[Parser] Extracted composite metadata:', {
+                dates: currentExperience.dates,
+                location: currentExperience.location
+              })
+              continue
             }
           }
         }
-      } else if (currentExperience && (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/))) {
-        // Bullet point - handle nested bullets by stripping indentation
-        const bulletText = line.replace(/^[\s]*[*-]\s*/, '').trim()
-        if (bulletText) {
-          console.log('[Parser] Adding bullet point:', bulletText.substring(0, 50) + (bulletText.length > 50 ? '...' : ''))
-          currentExperience.bullets.push({
-            id: generateId(),
-            text: bulletText,
-            included: true
-          })
+
+        if (!listMarkerRegex.test(trimmedLine) && currentExperience.bullets.length === 0 && !currentExperience.dates && cleanedLine.match(/\d{4}/) && cleanedLine.length <= 64) {
+          currentExperience.dates = cleanedLine
+          console.log('[Parser] Using standalone line as dates:', currentExperience.dates)
+          continue
         }
-      } else if (currentExperience && !line.startsWith('#') && line.length > 20 && currentExperience.bullets.length === 0) {
-        // Paragraph description - add as single bullet if no bullets exist yet
-        // Only if line is substantial (>20 chars) and doesn't look like metadata
-        currentExperience.bullets.push({
-          id: generateId(),
-          text: line.trim(),
-          included: true
-        })
+
+        const bulletText = cleanedLine
+        if (bulletText) {
+          const duplicateBullet = currentExperience.bullets.find(b => b.text === bulletText)
+          if (!duplicateBullet) {
+            console.log('[Parser] Adding bullet point:', bulletText.substring(0, 50) + (bulletText.length > 50 ? '...' : ''))
+            currentExperience.bullets.push({
+              id: generateId(),
+              text: bulletText,
+              included: true
+            })
+          }
+        }
       }
     } else if (currentSection === 'education') {
-      if (line.match(/^###\s+/)) {
-        // Save previous education
+      const trimmedLine = line.trim()
+      const listMarkerRegex = /^[-*•●◦▪▫➤➣▹▸·]\s+/
+      const numberedListRegex = /^\d+\.\s+/
+      const headingMatch = trimmedLine.match(/^#{3,}\s+/)
+      const removeListPrefix = (value: string) => value.replace(listMarkerRegex, '').replace(numberedListRegex, '')
+      const stripEmphasis = (value: string) => value.replace(/^[_*`"'“”‘’]+/, '').replace(/[_*`"'“”‘’]+$/, '').trim()
+      const normalizedHeadingSource = headingMatch
+        ? trimmedLine.replace(/^#{3,}\s+/, '')
+        : stripEmphasis(removeListPrefix(trimmedLine))
+      const looksLikeHeading = /[—–]|\bdegree\b|\bbachelor\b|\bmaster\b|\bdiploma\b|\bphd\b|\bdoctorate\b|\bassociate\b|\buniversity\b|\bcollege\b|\bacademy\b|\bschool\b|\binstitute\b|\|/.test(
+        normalizedHeadingSource.toLowerCase()
+      )
+
+      if (headingMatch || (looksLikeHeading && (listMarkerRegex.test(trimmedLine) || numberedListRegex.test(trimmedLine) || normalizedHeadingSource.split(' ').length >= 2))) {
         if (currentEducation) {
           console.log('[Parser] Saving completed education:', {
             institution: currentEducation.institution,
@@ -449,23 +723,19 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           })
           data.education.push(currentEducation)
         }
-        // Parse heading format: "Degree in Field — Institution" or just "Institution"
-        // Remove markdown formatting (**, *, etc.) and clean up
-        const heading = line.replace(/^###\s+/, '').replace(/\*+$/, '').replace(/\*+/g, '').trim()
+
+        const heading = stripEmphasis(normalizedHeadingSource.replace(/\*+$/, '').replace(/\*+/g, ''))
         console.log('[Parser] Found education heading:', heading)
 
         let institution = ''
         let degree = ''
         let field = ''
 
-        // Try to extract degree and institution from heading
         if (heading.includes('—') || heading.includes('–')) {
-          // Format: "Degree in Field — Institution"
           const parts = heading.split(/\s*[—–]\s*/)
           const degreeFieldPart = parts[0]?.trim() || ''
           institution = parts[1]?.trim() || ''
 
-          // Extract degree and field
           if (degreeFieldPart.includes(' in ')) {
             const degreeFieldParts = degreeFieldPart.split(/\s+in\s+/i)
             degree = degreeFieldParts[0]?.trim() || ''
@@ -475,12 +745,10 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
             degree = degreeFieldParts[0]?.trim() || ''
             field = degreeFieldParts[1]?.trim() || ''
           } else {
-            // No field, just degree
             degree = degreeFieldPart
           }
           console.log('[Parser] Extracted via em-dash:', { degree, field, institution })
         } else {
-          // No separator, treat whole thing as institution
           institution = heading
           console.log('[Parser] Extracted as institution only:', { institution })
         }
@@ -496,34 +764,32 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           notes: '',
           included: true
         }
-      } else if (currentEducation && !line.startsWith('*') && !line.startsWith('-') && !line.startsWith('#')) {
-        // This line likely contains dates and/or location metadata
-        // Common formats:
-        // "2010 - 2014 | Stanford, CA"
-        // "September 2016 – June 2020"
-        // Clean markdown formatting from metadata line
-        const cleanLine = line.replace(/\*+$/, '').replace(/\*+/g, '').trim()
-        console.log('[Parser] Parsing education metadata line:', cleanLine)
+      } else if (currentEducation) {
+        const cleanedLine = stripEmphasis(removeListPrefix(trimmedLine)).replace(/\*+$/, '').replace(/\*+/g, '').trim()
+        if (!cleanedLine) continue
 
-        // Try to parse dates first
-        if (cleanLine.match(/\d{4}/) && !currentEducation.start) {
-          // Date patterns for education
+        console.log('[Parser] Parsing education line:', cleanedLine)
+
+        if (cleanedLine.match(/\d{4}/) && !currentEducation.start) {
           const datePatterns = [
-            /([A-Za-z]{3,}\s+\d{4})\s*[-–]\s*([A-Za-z]{3,}\s+\d{4})/i,  // "September 2016 – June 2020"
-            /(\d{4})\s*[-–]\s*(\d{4})/,                                   // "2010 - 2014"
-            /(\d{4})\s*[-–]\s*(Present|Expected\s+\d{4})/i,              // "2020 - Present"
+            /([A-Za-z]{3,}\s+\d{4})\s*[-–]\s*([A-Za-z]{3,}\s+\d{4})/i,
+            /(\d{4})\s*[-–]\s*(\d{4})/,
+            /(\d{4})\s*[-–]\s*(Present|Expected\s+\d{4})/i,
           ]
 
-          let dateMatch = null
+          let dateMatch: RegExpMatchArray | null = null
           for (const pattern of datePatterns) {
-            dateMatch = cleanLine.match(pattern)
+            dateMatch = cleanedLine.match(pattern)
             if (dateMatch) {
               currentEducation.start = dateMatch[1].trim()
               currentEducation.end = dateMatch[2].trim()
               console.log('[Parser] Extracted dates:', { start: currentEducation.start, end: currentEducation.end })
 
-              // Extract location from remainder (after dates, separated by | or •)
-              const remainder = cleanLine.replace(dateMatch[0], '').replace(/^[\s|•·,]+/, '').replace(/[\s|•·,]+$/, '').trim()
+              const remainder = cleanedLine
+                .replace(dateMatch[0], '')
+                .replace(/^[\s|•·,;:-]+/, '')
+                .replace(/[\s|•·,;:-]+$/, '')
+                .trim()
               if (remainder) {
                 currentEducation.location = remainder
                 console.log('[Parser] Extracted location:', currentEducation.location)
@@ -531,38 +797,40 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
               break
             }
           }
+          if (dateMatch) continue
         }
-        // Try to parse degree and field if not already set (fallback for alternative formats)
-        else if (!currentEducation.degree) {
-          const degreeMatch = cleanLine.match(/(?:bachelor|master|phd|doctorate|associate|b\.?s\.?|m\.?s\.?|mba|ma|ba)/i)
+
+        if (!currentEducation.degree) {
+          const degreeMatch = cleanedLine.match(/(?:bachelor|master|phd|doctorate|associate|b\.?s\.?|m\.?s\.?|mba|ma|ba)/i)
           if (degreeMatch) {
-            const parts = cleanLine.split(/\s+in\s+|\s+of\s+|·|•|\|/)
+            const parts = cleanedLine.split(/\s+in\s+|\s+of\s+|·|•|\|/)
             currentEducation.degree = parts[0]?.trim() || ''
             if (parts.length > 1) {
               currentEducation.field = parts[1]?.trim().split(/[|•·]/)[0]?.trim() || ''
             }
             console.log('[Parser] Extracted degree/field from metadata:', { degree: currentEducation.degree, field: currentEducation.field })
+            continue
           }
         }
-        // Try to parse GPA
-        else if (cleanLine.toLowerCase().includes('gpa') && !currentEducation.gpa) {
-          const gpaMatch = cleanLine.match(/GPA:?\s*(\d\.\d+)/i) || cleanLine.match(/\((\d\.\d+)\/\d\.\d+\)/)
+
+        if (cleanedLine.toLowerCase().includes('gpa') && !currentEducation.gpa) {
+          const gpaMatch = cleanedLine.match(/GPA:?\s*(\d\.\d+)/i) || cleanedLine.match(/\((\d\.\d+)\/\d\.\d+\)/)
           if (gpaMatch) {
             currentEducation.gpa = gpaMatch[1]
             console.log('[Parser] Extracted GPA:', currentEducation.gpa)
+            continue
           }
         }
-        // Otherwise might be location (if dates already set)
-        else if (!currentEducation.location && cleanLine.match(/[A-Z][a-z]+/)) {
-          currentEducation.location = cleanLine.trim()
-          console.log('[Parser] Extracted location:', currentEducation.location)
+
+        if (!currentEducation.location && cleanedLine.match(/[A-Z][a-z]+/)) {
+          currentEducation.location = cleanedLine
+          console.log('[Parser] Extracted fallback location:', currentEducation.location)
+          continue
         }
-      } else if (currentEducation && (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/))) {
-        // Bullet point - add to notes (honors, thesis, etc.)
-        const note = line.replace(/^[\s]*[*-]\s*/, '').trim()
-        if (note) {
-          console.log('[Parser] Adding note to education:', note)
-          currentEducation.notes += (currentEducation.notes ? '\n' : '') + note
+
+        if (listMarkerRegex.test(trimmedLine) || numberedListRegex.test(trimmedLine) || cleanedLine.length > 0) {
+          console.log('[Parser] Adding note to education:', cleanedLine)
+          currentEducation.notes += (currentEducation.notes ? '\n' : '') + cleanedLine
         }
       }
     } else if (currentSection === 'certifications') {
@@ -607,9 +875,9 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
           date,
           included: true
         })
-      } else if (line.startsWith('*') || line.startsWith('-') || line.match(/^\s+[*-]\s/)) {
+      } else if (/^\s*[-*•●◦▪▫➤➣▹▸·]/.test(line)) {
         // Bullet format: "- Cert Name | Issuer | Year" or "- Cert (Issuer, Year)"
-        const text = line.replace(/^[\s]*[*-]\s*/, '').trim()
+        const text = line.replace(/^[\s]*[-*•●◦▪▫➤➣▹▸·]\s*/, '').trim()
         console.log('[Parser] Found certification bullet:', text)
         let name = text
         let issuer = ''
@@ -647,7 +915,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         console.log('[Parser] Parsing skills line:', line)
         // Parse skills from comma-separated list or bullets
         // Handle multiple separators: comma, semicolon, pipe, bullets
-        const skillText = line.replace(/^[*-]\s*/, '')
+        const skillText = line.replace(/^[-*•●◦▪▫➤➣▹▸·]\s*/, '')
         const skills = skillText.split(/[,;|·•]/)
         skills.forEach(skill => {
           const trimmed = skill.trim()
@@ -671,7 +939,7 @@ function parseMarkdownToStructured(markdown: string): ResumeData {
         console.log('[Parser] Parsing interests line:', line)
         // Parse interests from comma-separated list or bullets
         // Handle multiple separators: comma, semicolon, pipe, bullets
-        const interestText = line.replace(/^[*-]\s*/, '')
+        const interestText = line.replace(/^[-*•●◦▪▫➤➣▹▸·]\s*/, '')
         const interests = interestText.split(/[,;|·•]/)
         interests.forEach(interest => {
           const trimmed = interest.trim()
@@ -853,7 +1121,7 @@ function convertToMarkdown(data: ResumeData): string {
   if (includedWork.length > 0) {
     md += `## Work Experience\n\n`
     includedWork.forEach(exp => {
-      md += `### ${exp.company} — ${exp.role}\n`
+      md += `### ${exp.role}${exp.company ? ` — ${exp.company}` : ''}\n`
       md += `${exp.dates} • ${exp.location}\n\n`
       exp.bullets.filter(b => b.included).forEach(bullet => {
         md += `- ${bullet.text}\n`
@@ -918,6 +1186,7 @@ function convertToMarkdown(data: ResumeData): string {
 
 export default function StructuredResumeEditor({
   optimizedContent,
+  structuredOutput,
   optimizedId,
   jobTitle,
   companyName,
@@ -955,29 +1224,44 @@ export default function StructuredResumeEditor({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Initialize resume data from markdown
+  // Initialize resume data from structured output or markdown
   useEffect(() => {
-    if (optimizedContent && !resumeData) {
-      try {
-        const parsed = parseMarkdownToStructured(optimizedContent)
-        setResumeData(parsed)
-        setParseError(null)
+    if (resumeData) return // Already initialized
+    
+    try {
+      let parsed: ResumeData
+      
+      // Prefer structured output (v2 optimization) over markdown parsing
+      if (structuredOutput) {
+        console.log('[Editor] Using structured output from v2 API')
+        parsed = convertStructuredOutputToResumeData(structuredOutput)
+      } else if (optimizedContent) {
+        console.log('[Editor] Falling back to markdown parsing (v1 or legacy)')
+        parsed = parseMarkdownToStructured(optimizedContent)
+      } else {
+        console.log('[Editor] No data available yet')
+        return
+      }
+      
+      setResumeData(parsed)
+      setParseError(null)
 
-        // Check if parse was successful (has at least contact info or summaries)
-        const hasData = parsed.contactInfo.firstName || parsed.contactInfo.email || parsed.summaries.length > 0
-        if (!hasData) {
-          const errorMsg = 'Resume parser returned empty data. Check console for details.'
-          setParseError(errorMsg)
-          toast.error(errorMsg)
-        }
-      } catch (error: any) {
-        const errorMsg = `Failed to parse resume: ${error?.message || 'Unknown error'}`
+      // Check if parse was successful (has at least contact info or summaries)
+      const hasData = parsed.contactInfo.firstName || parsed.contactInfo.email || parsed.summaries.length > 0
+      if (!hasData) {
+        const errorMsg = 'Resume parser returned empty data. Check console for details.'
         setParseError(errorMsg)
         toast.error(errorMsg)
-        console.error('[Editor] Parse error:', error)
+      } else {
+        console.log('[Editor] Successfully initialized resume data')
       }
+    } catch (error: any) {
+      const errorMsg = `Failed to parse resume: ${error?.message || 'Unknown error'}`
+      setParseError(errorMsg)
+      toast.error(errorMsg)
+      console.error('[Editor] Parse error:', error)
     }
-  }, [optimizedContent, resumeData])
+  }, [optimizedContent, structuredOutput, resumeData])
 
   // Build preview HTML
   const previewHtml = useMemo(() => {

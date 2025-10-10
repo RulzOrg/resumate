@@ -25,7 +25,7 @@ The optimized resume structured editor is currently **only populating contact in
 ### Primary User Stories
 
 **US-1: Complete Form Population**
-> As a user who completed resume optimization, I want ALL my resume sections (summary, experience, education, skills, certifications, interests) to populate in the editor form, so that I can review and edit the complete optimized resume.
+> As a user who completed resume optimization, I want ALL my resume sections (summary, experience, education, skills, certifications, interests, etc all the section/data that was extracted from my resume) to populate in the editor form, so that I can review and edit the complete optimized resume.
 
 **US-2: Certification Editing**
 > As a user with professional certifications, I want to see and edit my certifications in the structured form, so that I can include/exclude them or update details.
@@ -46,7 +46,7 @@ The optimized resume structured editor is currently **only populating contact in
 
 ## 4. Functional Requirements
 
-### FR-1: Contact Information Parsing ✅ (Already Working)
+### FR-1: Contact Information Parsing ⚠️ (Partially Working)
 - 1.1. Extract name from first heading or first line
 - 1.2. Extract email using regex
 - 1.3. Extract phone using regex
@@ -311,7 +311,7 @@ Open Source Contribution, Hiking, Photography, Chess
 - [ ] Professional summary appears in textarea
 - [ ] All work experience entries appear with company, role, dates, bullets
 - [ ] All education entries appear with institution, degree, dates
-- [ ] **Certifications section parses and displays**
+- [ ] **Certifications section parses and displays, if available**
 - [ ] All skills appear as tags
 - [ ] All interests appear as tags
 - [ ] Include/exclude checkboxes work for all items

@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner"
 import { scoreFit, rephraseBullet, rewriteResume } from "@/lib/api"
 import type { EvidencePoint, ScoreBreakdown } from "@/lib/match"
-import StructuredResumeEditor from "./structured-resume-editor"
+import { ResumeEditorV2 } from "./resume-editor-v2"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -249,6 +249,8 @@ export default function OptimizerUiOnly({
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [optimizeError, setOptimizeError] = useState<string | null>(null)
   const [optimizedId, setOptimizedId] = useState<string | null>(null)
+  const [optimizedMarkdown, setOptimizedMarkdown] = useState<string>('')
+  const [structuredOutput, setStructuredOutput] = useState<any>(null)
 
   // Step 2: evidence & scoring state
   const [isScoring, setIsScoring] = useState(false)
@@ -431,25 +433,48 @@ export default function OptimizerUiOnly({
         const resp = await rewriteResume(payload)
         optimized = resp.optimized_resume
       } else {
-        const res = await fetch('/api/resumes/optimize', {
+        // Use v2 endpoint with preferences
+        const res = await fetch('/api/resumes/optimize-v2', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ resume_id: selectedResume, job_analysis_id: selectedJobId }),
+          body: JSON.stringify({ 
+            resume_id: selectedResume, 
+            job_analysis_id: selectedJobId,
+            preferences: {
+              tone: config.tone,                    // 'neutral' | 'impactful' | 'executive'
+              length_mode: config.length === 'short' ? 'short' : 'full',  // Map: short→short, standard/detailed→full
+              ats_optimization: config.ats,         // true | false
+              emphasize_keywords: config.emphasize  // keywords to emphasize
+            }
+          }),
         })
         const data = await res.json()
         if (!res.ok) throw new Error(data?.error || 'Failed to optimize')
-        optimized = data.optimized_resume
+        optimized = {
+          id: data.optimized_resume.id,
+          structured_output: data.structured_output,
+          optimized_content: data.structured_output?.tailored_resume_text?.ats_plain_text || data.optimized_resume.optimized_content
+        }
+        // Store structured output for the form editor
+        if (data.structured_output) {
+          setStructuredOutput(data.structured_output)
+        }
       }
       if (optimized?.optimized_content) {
+        // Store the original markdown for the structured editor
+        setOptimizedMarkdown(optimized.optimized_content)
+        // Also convert to HTML for any legacy preview needs
         setEditorHtml(mdToHtml(optimized.optimized_content))
       } else {
         // Fallback to local transform if server returned unexpected shape
         applyOptimizations()
       }
       const oid = optimized?.id || optimized?.optimized_resume_id || null
-      if (oid) setOptimizedId(String(oid))
-      setStep(4)
-      toast.success('Optimized resume generated')
+      if (oid) {
+        setOptimizedId(String(oid))
+        setStep(4)
+        toast.success('Optimized resume generated!')
+      }
     } catch (e: any) {
       setOptimizeError(e?.message || 'Optimization failed')
       toast.error(e?.message || 'Optimization failed')
@@ -1074,14 +1099,22 @@ export default function OptimizerUiOnly({
             </div>
           </div>
 
-          {/* Optimized (Final) - New Structured Editor */}
-          {step === 4 && (
-            <StructuredResumeEditor
-              optimizedContent={editorHtml}
+          {/* Optimized (Final) - Enhanced V2 Editor */}
+          {step === 4 && structuredOutput && optimizedId && (
+            <ResumeEditorV2
               optimizedId={optimizedId}
+              structuredOutput={structuredOutput}
               jobTitle={selectedJobTitle}
               companyName={selectedCompany}
             />
+          )}
+          
+          {/* Fallback message if no structured output */}
+          {step === 4 && !structuredOutput && (
+            <div className="rounded-lg border-2 border-dashed border-neutral-800 bg-neutral-900/50 p-12 text-center">
+              <p className="text-neutral-400">Resume editor requires structured output from optimization.</p>
+              <p className="text-sm text-neutral-500 mt-2">Please re-optimize your resume to use the enhanced editor.</p>
+            </div>
           )}
         </div>
 

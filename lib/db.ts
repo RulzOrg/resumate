@@ -111,6 +111,7 @@ export interface Resume {
   file_url: string
   file_type: string
   file_size: number
+  file_hash?: string | null
   content_text?: string
   kind: ResumeKind
   processing_status: ResumeProcessingStatus
@@ -121,6 +122,23 @@ export interface Resume {
   is_primary: boolean
   created_at: string
   updated_at: string
+}
+
+export interface ResumeVersionSnapshot {
+  id: string
+  user_id: string
+  resume_id: string
+  kind: ResumeKind
+  version: number
+  file_name: string
+  file_type: string
+  file_size: number
+  file_hash: string
+  storage_key: string
+  metadata?: Record<string, any> | null
+  change_type: string
+  change_summary?: string | null
+  created_at: string
 }
 
 export type ResumeKind = "uploaded" | "master" | "generated" | "duplicate"
@@ -210,6 +228,17 @@ export interface OptimizedResume {
   skills_highlighted: string[]
   created_at: string
   updated_at: string
+}
+
+// System Prompt v1.1 Extended Resume with Structured Output
+export interface OptimizedResumeV2 extends OptimizedResume {
+  structured_output?: any | null  // Will be SystemPromptV1Output from schemas-v2
+  qa_metrics?: any | null  // Will be QASection from schemas-v2
+  export_formats?: {
+    docx_url?: string
+    pdf_url?: string
+    txt_url?: string
+  } | null
 }
 
 export interface UserProfile {
@@ -392,6 +421,7 @@ export async function createResume(data: {
   file_url: string
   file_type: string
   file_size: number
+  file_hash?: string | null
   content_text?: string
   kind?: ResumeKind
   processing_status?: ResumeProcessingStatus
@@ -415,6 +445,7 @@ export async function createResume(data: {
       file_url,
       file_type,
       file_size,
+      file_hash,
       content_text,
       kind,
       processing_status,
@@ -433,6 +464,7 @@ export async function createResume(data: {
       ${data.file_url},
       ${data.file_type},
       ${data.file_size},
+      ${data.file_hash || null},
       ${data.content_text || null},
       ${kind},
       ${processingStatus},
@@ -447,6 +479,68 @@ export async function createResume(data: {
     RETURNING *
   `
   return resume as Resume
+}
+
+export async function createResumeVersion(data: {
+  user_id: string
+  resume_id: string
+  kind: ResumeKind
+  file_name: string
+  file_type: string
+  file_size: number
+  file_hash: string
+  storage_key: string
+  metadata?: Record<string, any> | null
+  change_type?: string
+  change_summary?: string | null
+}): Promise<ResumeVersionSnapshot> {
+  const metadata = data.metadata ? JSON.stringify(data.metadata) : null
+  const changeType = data.change_type ?? "upload"
+  const changeSummary = data.change_summary ?? null
+
+  const [nextVersionRow] = await sql`
+    SELECT COALESCE(MAX(version), 0) + 1 AS next_version
+    FROM resume_versions
+    WHERE user_id = ${data.user_id} AND kind = ${data.kind}
+  `
+
+  const nextVersion = Number((nextVersionRow as any)?.next_version || 1)
+
+  const [snapshot] = await sql`
+    INSERT INTO resume_versions (
+      user_id,
+      resume_id,
+      kind,
+      version,
+      file_name,
+      file_type,
+      file_size,
+      file_hash,
+      storage_key,
+      metadata,
+      change_type,
+      change_summary,
+      created_at
+    )
+    VALUES (
+      ${data.user_id},
+      ${data.resume_id},
+      ${data.kind},
+      ${nextVersion},
+      ${data.file_name},
+      ${data.file_type},
+      ${data.file_size},
+      ${data.file_hash},
+      ${data.storage_key},
+      ${metadata},
+      ${changeType},
+      ${changeSummary},
+      NOW()
+    )
+    RETURNING *
+  `
+
+  return snapshot as ResumeVersionSnapshot
 }
 
 export async function getUserResumes(user_id: string) {
@@ -830,9 +924,18 @@ export async function createJobAnalysisWithVerification(data: {
     const keywords = Array.isArray(normalizedAnalysis.keywords) ? normalizedAnalysis.keywords : []
     const required_skills = Array.isArray(normalizedAnalysis.required_skills) ? normalizedAnalysis.required_skills : []
     const preferred_skills = Array.isArray(normalizedAnalysis.preferred_skills) ? normalizedAnalysis.preferred_skills : []
-    const experience_level = normalizedAnalysis.experience_level || null
-    const salary_range = normalizedAnalysis.salary_range || null
-    const location = normalizedAnalysis.location || null
+    // Cap DB-bound string fields to match schema limits to avoid varchar overflows
+    const safeJobTitle = typeof data.job_title === "string" ? data.job_title.slice(0, 255) : data.job_title
+    const safeCompanyName = typeof data.company_name === "string" ? data.company_name.slice(0, 255) : data.company_name
+    const experience_level = typeof (normalizedAnalysis as any).experience_level === "string"
+      ? (normalizedAnalysis as any).experience_level.trim().slice(0, 100)
+      : (normalizedAnalysis as any).experience_level || null
+    const salary_range = typeof (normalizedAnalysis as any).salary_range === "string"
+      ? (normalizedAnalysis as any).salary_range.trim().slice(0, 100)
+      : (normalizedAnalysis as any).salary_range || null
+    const location = typeof (normalizedAnalysis as any).location === "string"
+      ? (normalizedAnalysis as any).location.trim().slice(0, 255)
+      : (normalizedAnalysis as any).location || null
 
     // Step 4: Generate UUID fallback if database doesn't handle it
     const id = generateUUID()
@@ -852,7 +955,7 @@ export async function createJobAnalysisWithVerification(data: {
         experience_level, salary_range, location, created_at, updated_at
       )
       VALUES (
-        ${id}, ${data.user_id}, ${data.job_title}, ${data.company_name || null}, 
+        ${id}, ${data.user_id}, ${safeJobTitle}, ${safeCompanyName || null}, 
         ${data.job_url || null}, ${data.job_description}, ${JSON.stringify(normalizedAnalysis)},
         ${keywords}, ${required_skills}, ${preferred_skills}, ${experience_level},
         ${salary_range}, ${location}, NOW(), NOW()
@@ -1039,6 +1142,63 @@ export async function updateOptimizedResume(
     RETURNING *
   `
   return optimizedResume as OptimizedResume | undefined
+}
+
+export async function updateOptimizedResumeV2(
+  id: string,
+  user_id: string,
+  data: {
+    structured_output?: any
+    qa_metrics?: any
+    export_formats?: { docx_url?: string; pdf_url?: string; txt_url?: string }
+    optimized_content?: string
+    match_score?: number
+  }
+) {
+  console.log('[DB] Updating resume:', id)
+  console.log('[DB] Fields being updated:', Object.keys(data).filter(k => (data as any)[k] !== undefined))
+  
+  if (data.structured_output) {
+    const size = JSON.stringify(data.structured_output).length
+    console.log('[DB] Structured output size:', size, 'bytes')
+  }
+
+  const [optimizedResume] = await sql`
+    UPDATE optimized_resumes
+    SET 
+      structured_output = CASE 
+        WHEN ${data.structured_output === undefined}::boolean 
+        THEN structured_output 
+        ELSE ${data.structured_output !== undefined ? JSON.stringify(data.structured_output) : null}::jsonb 
+      END,
+      qa_metrics = CASE 
+        WHEN ${data.qa_metrics === undefined}::boolean 
+        THEN qa_metrics 
+        ELSE ${data.qa_metrics !== undefined ? JSON.stringify(data.qa_metrics) : null}::jsonb 
+      END,
+      export_formats = CASE 
+        WHEN ${data.export_formats === undefined}::boolean 
+        THEN export_formats 
+        ELSE ${data.export_formats !== undefined ? JSON.stringify(data.export_formats) : null}::jsonb 
+      END,
+      optimized_content = CASE 
+        WHEN ${data.optimized_content === undefined}::boolean 
+        THEN optimized_content 
+        ELSE ${data.optimized_content} 
+      END,
+      match_score = CASE 
+        WHEN ${data.match_score === undefined}::boolean 
+        THEN match_score 
+        ELSE ${data.match_score} 
+      END,
+      updated_at = NOW()
+    WHERE id = ${id} AND user_id = ${user_id}
+    RETURNING *
+  `
+  
+  console.log('[DB] Update result:', optimizedResume ? 'Success ✓' : 'Failed - No rows updated')
+  
+  return optimizedResume as OptimizedResumeV2 | undefined
 }
 
 export async function deleteOptimizedResume(id: string, user_id: string) {

@@ -58,6 +58,7 @@ model Resume {
 
   user            UserSync         @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobApplications JobApplication[]
+  versions        ResumeVersion[]
 
   @@index([userId])
   @@index([createdAt])
@@ -65,6 +66,32 @@ model Resume {
   @@index([processingStatus])
   @@index([fileHash])
   @@map("resumes")
+  @@schema("public")
+}
+
+model ResumeVersion {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id")
+  resumeId      String   @map("resume_id") @db.Uuid
+  kind          String   @db.VarChar(32)
+  version       Int
+  fileName      String   @map("file_name") @db.VarChar(255)
+  fileType      String   @map("file_type") @db.VarChar(50)
+  fileSize      Int      @map("file_size")
+  fileHash      String   @map("file_hash") @db.VarChar(64)
+  storageKey    String   @map("storage_key")
+  metadata      Json?    @map("metadata")
+  changeType    String   @map("change_type") @db.VarChar(32)
+  changeSummary String?  @map("change_summary")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  resume Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  user   UserSync @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([kind])
+  @@index([resumeId])
+  @@map("resume_versions")
   @@schema("public")
 }
 

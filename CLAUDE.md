@@ -153,3 +153,10 @@ NEXT_PUBLIC_APP_URL="https://..." # App URL for callbacks
 - User data isolation through proper database queries
 - API endpoints protected with authentication middleware
 - Stripe webhooks verified with signature validation
+
+## AI Dev Tasks
+
+Use these files when I request structured feature development using PRDs:
+- `/ai-dev-tasks/create-prd.md`
+- `/ai-dev-tasks/generate-tasks.md`
+- `/ai-dev-tasks/process-task-list.md`
