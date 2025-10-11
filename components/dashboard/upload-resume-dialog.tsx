@@ -130,6 +130,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     setIsUploading(true)
     setUploadProgress(0)
     setError("")
+    setStep("upload")
 
     try {
       // Use the new hardened upload pipeline
@@ -163,7 +164,8 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
         setStep("fallback")
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during upload")
+      console.error("Upload error:", err)
+      setError(err.message || "Upload failed. Please check your connection and try again.")
     } finally {
       setIsUploading(false)
     }
@@ -288,7 +290,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
 
                   <div className="flex gap-2">
                     <Button onClick={handleUpload} disabled={isUploading} className="flex-1">
-                      {isUploading ? "Uploading..." : "Upload Resume"}
+                      {isUploading ? "Uploading..." : error ? "Retry Upload" : "Upload Resume"}
                     </Button>
                     <Button variant="outline" onClick={resetForm} disabled={isUploading}>
                       Remove File

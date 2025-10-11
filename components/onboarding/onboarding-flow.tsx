@@ -3,7 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { UserButton } from "@clerk/nextjs"
+import dynamic from "next/dynamic"
+
+// Dynamically import UserButton to avoid SSR issues
+const DynamicUserButton = dynamic(
+  () => import("@clerk/nextjs").then((mod) => ({ default: mod.UserButton })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="relative h-9 w-9 rounded-full bg-white/10 animate-pulse" />
+    ),
+  }
+)
 import { UploadCloud, Link2, Plus, Trash2, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -299,7 +310,7 @@ export function OnboardingFlow({
             </Link>
           </div>
           <div className="relative h-9 w-9">
-            <UserButton afterSignOutUrl="/auth/login" />
+            <DynamicUserButton afterSignOutUrl="/auth/login" />
           </div>
         </div>
       </header>

@@ -20,9 +20,10 @@ import { Upload, Loader2, CheckCircle, X } from "lucide-react"
 
 interface UploadMasterResumeDialogProps {
   children: React.ReactNode
+  currentResumeCount?: number
 }
 
-export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogProps) {
+export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: UploadMasterResumeDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isOpening, setIsOpening] = useState(false)
@@ -89,8 +90,15 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
       return
     }
 
+    // Check 3-resume limit
+    if (currentResumeCount >= 3) {
+      setError("You can only upload up to 3 resumes. Please delete an existing resume first.")
+      return
+    }
+
     setIsUploading(true)
     setError(null)
+    setSuccess(false)
     setProgress(10)
     
     // Start progress timer
@@ -126,7 +134,12 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
       }
       setProgress(100)
       setSuccess(true)
-      router.refresh()
+      
+      // Auto-close dialog after 2 seconds
+      setTimeout(() => {
+        setOpen(false)
+        router.refresh()
+      }, 2000)
     } catch (uploadError) {
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current)
@@ -140,7 +153,8 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
       if (isAbort) {
         setError("Upload cancelled")
       } else {
-        setError(uploadError instanceof Error ? uploadError.message : "Upload failed")
+        console.error("Upload error:", uploadError)
+        setError(uploadError instanceof Error ? uploadError.message : "Upload failed. Please check your connection and try again.")
       }
     } finally {
       setIsUploading(false)
@@ -183,8 +197,15 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
             <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
               <CheckCircle className="h-6 w-6 text-emerald-400" />
             </div>
-            <p className="text-sm text-white/70">Master resume uploaded and analyzed. You can now generate tailored versions.</p>
-            <Button onClick={() => setOpen(false)}>Close</Button>
+            <p className="text-sm text-white/70">Master resume uploaded successfully! You can now generate tailored versions.</p>
+            <Button 
+              onClick={() => {
+                setOpen(false)
+                router.refresh()
+              }}
+            >
+              Close
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -324,6 +345,8 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Uploading
                   </>
+                ) : error ? (
+                  "Retry Upload"
                 ) : (
                   "Upload Master Resume"
                 )}

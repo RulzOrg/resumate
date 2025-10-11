@@ -1,6 +1,49 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getOrCreateUser, deleteResume, getResumeById } from "@/lib/db"
+import { getOrCreateUser, deleteResume, getResumeById, updateResume } from "@/lib/db"
+
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await getOrCreateUser(userId)
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    const resumeId = params.id
+    const body = await request.json()
+    const { title } = body
+
+    if (!title || typeof title !== 'string' || !title.trim()) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 })
+    }
+
+    // Check if resume exists and belongs to the user
+    const resume = await getResumeById(resumeId, user.id)
+    if (!resume) {
+      return NextResponse.json({ error: "Resume not found" }, { status: 404 })
+    }
+
+    // Update the resume title
+    const updatedResume = await updateResume(resumeId, user.id, { title: title.trim() })
+    if (!updatedResume) {
+      return NextResponse.json({ error: "Failed to update resume" }, { status: 500 })
+    }
+
+    return NextResponse.json({ 
+      success: true,
+      message: "Resume updated successfully",
+      resume: updatedResume 
+    })
+  } catch (error) {
+    console.error("Error updating resume:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   console.log('DELETE request received for resume:', params.id)
