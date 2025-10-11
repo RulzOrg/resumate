@@ -169,22 +169,30 @@ export async function POST(request: NextRequest) {
 
     await setPrimaryResume(resume.id, user.id)
 
-    // Enqueue background processing job
-    await inngest.send({
-      name: "resume/uploaded",
-      data: {
-        resumeId: resume.id,
-        userId: user.id,
-        fileKey: key,
-        fileType: file.type,
-        fileSize: file.size,
-      },
-    })
+    // Try to enqueue background processing job, but don't fail if Inngest is down
+    try {
+      await inngest.send({
+        name: "resume/uploaded",
+        data: {
+          resumeId: resume.id,
+          userId: user.id,
+          fileKey: key,
+          fileType: file.type,
+          fileSize: file.size,
+        },
+      })
 
-    console.log("[MasterUpload] Resume uploaded and job enqueued:", {
-      resumeId: resume.id.substring(0, 8),
-      userId: user.id.substring(0, 8),
-    })
+      console.log("[MasterUpload] Resume uploaded and job enqueued:", {
+        resumeId: resume.id.substring(0, 8),
+        userId: user.id.substring(0, 8),
+      })
+    } catch (inngestError) {
+      console.warn("[MasterUpload] Failed to enqueue background job, but upload succeeded:", {
+        resumeId: resume.id.substring(0, 8),
+        error: inngestError instanceof Error ? inngestError.message : String(inngestError),
+      })
+      // Continue - the upload was successful even if background processing failed
+    }
 
     // Return immediately - don't wait for processing!
     return NextResponse.json({
