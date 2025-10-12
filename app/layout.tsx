@@ -51,13 +51,17 @@ export const metadata: Metadata = {
     creator: "@resumate_ai",
     images: ["/images/twitter-image.jpg"],
   },
-  viewport: "width=device-width, initial-scale=1",
   metadataBase: new URL("https://www.useresumate.com"),
   verification: {
     google: "google-site-verification-code",
     yandex: "yandex-verification-code",
     yahoo: "yahoo-site-verification-code",
   },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 }
 
 export default function RootLayout({
