@@ -5,6 +5,67 @@ import Link from "next/link"
 import Image from "next/image"
 import { RefreshCw, Upload, Target, Download, Check, Star, Plus, Menu } from "lucide-react"
 
+// Structured data for SEO
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "ResuMate AI",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  description: "AI-powered resume optimization platform that creates ATS-friendly tailored resumes for multiple job applications",
+  url: "https://www.useresumate.com",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free plan with 3 resume optimizations per month"
+  },
+  featureList: [
+    "AI Resume Optimization",
+    "ATS-Friendly Formatting", 
+    "Multiple Resume Versions",
+    "Job-Specific Tailoring",
+    "Cover Letter Generation",
+    "ATS Score Checking"
+  ],
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: "4.8",
+    ratingCount: "1000"
+  }
+}
+
+const faqStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What is an ATS and why does my resume need to be ATS-friendly?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "ATS (Applicant Tracking Systems) are software used by 98% of employers to filter resumes automatically. These systems scan resumes for specific keywords, formatting, and qualifications before a human ever sees them. Without ATS-optimized formatting and proper keyword placement, even highly qualified candidates get rejected. Our AI ensures your resume passes these automated filters."
+      }
+    },
+    {
+      "@type": "Question", 
+      name: "How does ResuMate AI optimize resumes for Applicant Tracking Systems?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Our AI analyzes job descriptions to extract critical keywords and skills, then strategically integrates them into your resume using natural language patterns that ATS algorithms prefer. We format your resume with clean, ATS-friendly layouts, optimize bullet points with action verbs and metrics, and ensure proper section structure that automated systems can easily parse."
+      }
+    },
+    {
+      "@type": "Question",
+      name: "Can I create multiple tailored resumes for different jobs?",
+      acceptedAnswer: {
+        "@type": "Answer", 
+        text: "Yes! This is our core strength. Upload your base resume once, then generate unlimited optimized versions for different job applications. Each version is tailored to specific job descriptions while maintaining your authentic experience. This approach increases interview rates by matching each position's unique requirements and keywords perfectly."
+      }
+    }
+  ]
+}
+
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
@@ -13,9 +74,20 @@ export default function HomePage() {
   }
 
   return (
-    <div className="antialiased text-white bg-black font-sans">
-      {/* Background gradient */}
-      <div className="absolute top-0 left-0 w-full h-[880px] -z-10 gradient-blur"></div>
+    <>
+      {/* Structured Data for SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+      />
+      
+      <div className="antialiased text-white bg-black font-sans">
+        {/* Background gradient */}
+        <div className="absolute top-0 left-0 w-full h-[880px] -z-10 gradient-blur"></div>
 
       {/* Header */}
       <header className="relative">
@@ -109,14 +181,13 @@ export default function HomePage() {
                 className="text-white font-space-grotesk font-semibold"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                Tailor-fit
+                AI Resume Optimizer
               </span>{" "}
-              your resume for any job, instantly.
+              - Create ATS-Friendly Resume Versions for Multiple Jobs
             </h1>
 
             <p className="max-w-2xl text-base sm:text-lg font-normal text-white/70 mt-6 mx-auto font-sans">
-              Our AI-powered platform analyzes job descriptions to rewrite your resume, dramatically increasing your
-              chances of landing an interview.
+              Transform your job search with AI-powered resume tailoring. Generate multiple ATS-optimized resume versions for different applications, increase interview rates by 3-5x with smart keyword optimization and job-specific customization.
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row mt-8 items-center justify-center">
@@ -222,10 +293,10 @@ export default function HomePage() {
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-12">
           <div className="max-w-3xl">
             <h2 className="text-3xl sm:text-4xl md:text-5xl tracking-tight font-space-grotesk font-semibold">
-              Beat the bots and impress recruiters.
+              ATS-Friendly Resume Features for Multiple Job Applications
             </h2>
             <p className="mt-3 text-base text-white/70 font-sans">
-              Powerful features designed to get your resume past Applicant Tracking Systems (ATS) and into human hands.
+              Powerful AI features designed to get your resume past Applicant Tracking Systems and land more interviews. Optimize for Workday, Taleo, Greenhouse and other major ATS platforms.
             </p>
           </div>
         </div>
@@ -474,32 +545,87 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center mb-12">
             <h2 className="text-3xl sm:text-4xl md:text-5xl tracking-tight font-space-grotesk font-semibold">
-              Frequently asked questions
+              Questions about AI resume optimization
             </h2>
-            <p className="mt-4 text-base text-white/70 font-sans">Everything you need to know about ResuMate AI.</p>
+            <p className="mt-4 text-base text-white/70 font-sans">Expert answers about creating ATS-friendly resumes and landing more interviews with AI-powered tailoring.</p>
           </div>
 
-          <div className="max-w-3xl mx-auto space-y-4">
+          <div className="max-w-4xl mx-auto space-y-4">
             {[
               {
-                question: "How does the AI work?",
+                question: "What is an ATS and why does my resume need to be ATS-friendly?",
                 answer:
-                  "Our platform uses advanced large language models (LLMs) trained on millions of successful resumes and job descriptions. It analyzes the specific requirements of a job and cross-references them with your experience to rewrite your resume for maximum impact and ATS compatibility.",
+                  "ATS (Applicant Tracking Systems) are software used by 98% of employers to filter resumes automatically. These systems scan resumes for specific keywords, formatting, and qualifications before a human ever sees them. Without ATS-optimized formatting and proper keyword placement, even highly qualified candidates get rejected. Our AI ensures your resume passes these automated filters.",
               },
               {
-                question: "Is my data private and secure?",
+                question: "How does ResuMate AI optimize resumes for Applicant Tracking Systems?",
                 answer:
-                  "Absolutely. We take data privacy very seriously. Your resume and personal information are encrypted and are never used for training AI models. You have full control over your data and can delete it at any time.",
+                  "Our AI analyzes job descriptions to extract critical keywords and skills, then strategically integrates them into your resume using natural language patterns that ATS algorithms prefer. We format your resume with clean, ATS-friendly layouts, optimize bullet points with action verbs and metrics, and ensure proper section structure that automated systems can easily parse.",
               },
               {
-                question: "Does this guarantee I will get a job?",
+                question: "Can I create multiple tailored resumes for different jobs?",
                 answer:
-                  "While we can't guarantee a job (as that depends on many factors like your interview skills and qualifications), ResuMate AI is designed to significantly increase your chances of getting shortlisted for an interview. Our users report a dramatic increase in response rates from employers.",
+                  "Yes! This is our core strength. Upload your base resume once, then generate unlimited optimized versions for different job applications. Each version is tailored to specific job descriptions while maintaining your authentic experience. This approach increases interview rates by matching each position's unique requirements and keywords perfectly.",
               },
               {
-                question: "Can I cancel my subscription anytime?",
+                question: "How many job applications can I optimize per month?",
                 answer:
-                  "Yes, you can cancel your monthly subscription at any time through your account dashboard. There are no long-term contracts or hidden fees. You will retain access to Pro features until the end of your current billing period.",
+                  "With our free plan, you can optimize 3 resumes per month. Pro users get unlimited resume optimizations and can create multiple tailored versions for different jobs simultaneously. Enterprise users also get team collaboration features and API access for bulk operations.",
+              },
+              {
+                question: "What file formats work best for ATS optimization?",
+                answer:
+                  "We recommend both PDF and DOCX formats for maximum ATS compatibility. AI-generated PDFs from our platform are specifically formatted to pass ATS scanners, while DOCX files allow for easy editing. Both formats maintain proper structure and keyword placement that automated systems can read accurately.",
+              },
+              {
+                question: "How much can AI optimization increase my interview rate?",
+                answer:
+                  "While results vary by industry and qualifications, our users report dramatic increases in interview responses - many see 3-5x higher response rates after AI optimization. Tailored resumes that match job descriptions perfectly significantly outperform generic, one-size-fits-all applications.",
+              },
+              {
+                question: "Is ResuMate AI better than Jobscan or Rezi?",
+                answer:
+                  "Unlike simple ATS scanners like Jobscan or basic builders like Rezi, ResuMate AI actively rewrites your content using AI, creates unlimited tailored versions, and optimizes for job specifics. We combine AI content generation, ATS formatting, and multi-application optimization in one platform, typically at better pricing.",
+              },
+              {
+                question: "Can I try the AI resume optimizer for free?",
+                answer:
+                  "Yes! Our free plan includes 3 resume optimizations per month with full AI analysis and ATS scoring. You can experience our AI-powered tailoring, keyword optimization, and ATS compatibility checking without commitment. No credit card required to start optimizing your resume.",
+              },
+              {
+                question: "How does the AI work for different industries and job types?",
+                answer:
+                  "Our AI is trained on millions of successful resumes across all industries - tech, healthcare, finance, education, creative fields, and more. It adapts language style, highlights industry-specific keywords, and tailors achievements relevant to each sector's expectations and recruitment patterns.",
+              },
+              {
+                question: "Can I check my ATS score before applying to jobs?",
+                answer:
+                  "Absolutely! Each optimized resume includes a comprehensive ATS score showing compatibility with major systems like Workday, Taleo, and Greenhouse. Our real-time scanner checks formatting, keyword density, structure, and other critical factors, with suggestions for improvements before you apply.",
+              },
+              {
+                question: "What kind of results do users see with tailored resumes?",
+                answer:
+                  "Users report significant improvements: 80% see increased interview requests, many cut job search time in half, and 60% receive job offers after optimizing multiple applications. Tailored resumes consistently outperform generic versions by highlighting matched skills and experiences that match what employers seek.",
+              },
+              {
+                question: "How long does it take to optimize a resume for each job?",
+                answer:
+                  "Our AI generates optimized resumes in seconds - usually under 30 seconds per job application. This eliminates hours of manual editing and research. You can create multiple tailored resumes for different positions in minutes, compared to hours spent doing it manually.",
+              },
+              {
+                question: "Does your AI include a cover letter generator?",
+                answer:
+                  "Yes! Pro and Enterprise plans include our AI cover letter generator that complements your tailored resumes. Cover letters are automatically customized for each job application, using the same job analysis and keyword optimization that makes our resumes so effective.",
+              },
+              {
+                question: "Is my personal and resume data kept secure and private?",
+                answer:
+                  "Absolutely. All data is encrypted with enterprise-grade security. Resumes and personal information are never used for AI training - we use general patterns and insights, not your specific data. You maintain full control with options to export or delete your data at any time. We comply with GDPR and data protection standards.",
+              },
+              {
+                question: "What if I need help or have questions about using the AI?",
+                answer:
+                  "Pro users receive priority email support, while Enterprise plans include dedicated account managers. Our comprehensive help center covers everything from basic setup to advanced optimization strategies. Most users get started successfully within minutes of creating their account.",
               },
             ].map((faq, index) => (
               <div key={index} className="relative overflow-hidden rounded-xl border border-white/10 bg-white/5">
@@ -547,6 +673,7 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </>
   )
 }

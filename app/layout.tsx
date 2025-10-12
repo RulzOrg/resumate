@@ -21,10 +21,43 @@ const spaceGrotesk = Space_Grotesk({
 })
 
 export const metadata: Metadata = {
-  title: "ResuMate AI - AI-Powered Resume Optimization",
-  description:
-    "Transform your resume with AI-driven improvements tailored to specific job descriptions. Increase your chances of getting shortlisted.",
-  generator: "v0.app",
+  title: "AI Resume Optimizer - ATS Friendly Resume Tailoring for Multiple Jobs",
+  description: "Create ATS-friendly resumes optimized for each job application. Our AI generates multiple tailored versions to increase interview rates. Free ATS checker included.",
+  keywords: "AI resume optimizer, ATS friendly resume, resume tailoring tool, job specific resume, resume scanner, application tracking system, ATS resume checker, multiple resume versions, cover letter generator, job application tracking, AI resume builder, resume optimization, ATS formatting, resume keyword optimization",
+  authors: [{ name: "ResuMate AI" }],
+  creator: "ResuMate AI",
+  publisher: "ResuMate AI",
+  robots: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+  openGraph: {
+    title: "AI Resume Optimizer - ATS Friendly Resume Tailoring for Multiple Jobs",
+    description: "Create ATS-friendly resumes optimized for each job application. Our AI generates multiple tailored versions to increase interview rates. Free ATS checker included.",
+    url: "https://www.useresumate.com",
+    siteName: "ResuMate AI",
+    locale: "en_US",
+    type: "website",
+    images: [
+      {
+        url: "/images/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "ResuMate AI - AI Resume Optimizer",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Resume Optimizer - ATS Friendly Resume Tailoring",
+    description: "Create ATS-friendly resumes optimized for each job application. Our AI generates multiple tailored versions to increase interview rates.",
+    creator: "@resumate_ai",
+    images: ["/images/twitter-image.jpg"],
+  },
+  viewport: "width=device-width, initial-scale=1",
+  metadataBase: new URL("https://www.useresumate.com"),
+  verification: {
+    google: "google-site-verification-code",
+    yandex: "yandex-verification-code",
+    yahoo: "yahoo-site-verification-code",
+  },
 }
 
 export default function RootLayout({
