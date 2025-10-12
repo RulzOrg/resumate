@@ -2,6 +2,30 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+
+// Safe Link component that handles SSR issues
+const SafeLink = ({ href, children, className, ...props }: any) => {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) {
+    return (
+      <span className={className} {...props}>
+        {children}
+      </span>
+    )
+  }
+
+  return (
+    <Link href={href} className={className} {...props}>
+      {children}
+    </Link>
+  )
+}
 import {
   ArrowLeft,
   AlertTriangle,
@@ -25,6 +49,7 @@ import {
   Eye,
   Wand2,
   WandSparkles,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { scoreFit, rephraseBullet, rewriteResume } from "@/lib/api"
@@ -215,6 +240,8 @@ export default function OptimizerUiOnly({
   jobOptions,
   initialJob,
 }: OptimizerUiOnlyProps) {
+  const [mounted, setMounted] = useState(false)
+
   const resolvedResumes = resumes && resumes.length > 0 ? resumes : mockResumeOptions
   const resolvedJobs = jobOptions && jobOptions.length > 0 ? jobOptions : mockJobOptions
 
@@ -313,6 +340,7 @@ export default function OptimizerUiOnly({
   })
 
   useEffect(() => {
+    setMounted(true)
     setKeywords(extractKeywords(jobDesc))
   }, [])
 
@@ -347,6 +375,10 @@ export default function OptimizerUiOnly({
   const replaceJD = () => {
     setJobDesc("")
     setKeywords([])
+  }
+
+  const removeKeyword = (keywordToRemove: string) => {
+    setKeywords(prev => prev.filter(k => k !== keywordToRemove))
   }
 
   const populateEmphasisFromJD = () => setConfig((c) => ({ ...c, emphasize: extractKeywords(jobDesc) }))
@@ -539,14 +571,27 @@ export default function OptimizerUiOnly({
     )
   }, [config])
 
+  if (!mounted) {
+    return (
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="h-8 w-8 rounded-full bg-emerald-500/20 animate-pulse mx-auto mb-4"></div>
+            <p className="text-white/60">Loading optimizer...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
         <div className="mb-2">
-          <Link href="/dashboard" className="group inline-flex items-center gap-2 text-sm text-white/70 hover:text-white">
+          <SafeLink href="/dashboard" className="group inline-flex items-center gap-2 text-sm text-white/70 hover:text-white">
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
             Back to Dashboard
-          </Link>
+          </SafeLink>
         </div>
         <h1 className="text-3xl sm:text-4xl tracking-tight font-space-grotesk font-semibold">AI Resume Optimization</h1>
         <p className="mt-1 text-base text-white/60">
@@ -659,8 +704,15 @@ export default function OptimizerUiOnly({
                     <span className="text-xs text-white/50">Detected keywords:</span>
                     <div className="flex flex-wrap gap-2">
                       {keywords.map((k) => (
-                        <span key={k} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
-                          {k.replace(/^\w/, (c) => c.toUpperCase())}
+                        <span key={k} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs group hover:bg-red-500/20 transition-colors">
+                          <span>{k.replace(/^\w/, (c) => c.toUpperCase())}</span>
+                          <button
+                            onClick={() => removeKeyword(k)}
+                            className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all"
+                            title={`Remove ${k}`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
                         </span>
                       ))}
                     </div>
@@ -695,14 +747,15 @@ export default function OptimizerUiOnly({
                   {isAnalyzing ? 'Analyzing…' : 'Analyze with AI'}
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60 disabled:bg-white/20 disabled:text-white/40"
                   onClick={() => {
                     setStep(2)
                   }}
                   disabled={isAnalyzing}
+                  title={isAnalyzing ? "Please wait for AI analysis to complete" : "Continue to next step"}
                 >
                   <Wand2 className="h-4 w-4" />
-                  Continue
+                  {isAnalyzing ? "Analyzing..." : "Continue"}
                 </button>
               </div>
             </div>
@@ -770,7 +823,7 @@ export default function OptimizerUiOnly({
                   ) : score ? (
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center justify-between"><span>Overall</span><span className="text-white/80">{score.overall}%</span></div>
-                      {([['skills', 'Skills'], ['responsibilities','Responsibilities'], ['domain','Domain'], ['seniority','Seniority']] as const).map(([k, label]) => (
+                      {([['skills', 'Skills'], ['responsibilities', 'Responsibilities'], ['domain', 'Domain'], ['seniority', 'Seniority']] as const).map(([k, label]) => (
                         <div key={k}>
                           <div className="flex items-center justify-between"><span>{label}</span><span className="text-white/70">{(score.dimensions as any)[k]}%</span></div>
                           <div className="w-full h-1.5 rounded bg-white/10 overflow-hidden"><div className="h-1.5 bg-emerald-500" style={{ width: `${(score.dimensions as any)[k]}%` }}></div></div>
@@ -779,7 +832,7 @@ export default function OptimizerUiOnly({
                       {score.missingMustHaves?.length > 0 && (
                         <div className="pt-2"><div className="text-white/70 mb-1">Missing must‑haves</div>
                           <ul className="list-disc pl-5 space-y-0.5">
-                            {score.missingMustHaves.slice(0,6).map((m) => (<li key={m}>{m}</li>))}
+                            {score.missingMustHaves.slice(0, 6).map((m) => (<li key={m}>{m}</li>))}
                           </ul>
                         </div>
                       )}
@@ -799,7 +852,7 @@ export default function OptimizerUiOnly({
                     <div className="text-xs text-white/60">Fetching evidence…</div>
                   ) : evidence.length ? (
                     <ul className="space-y-2 text-sm">
-                      {evidence.slice(0,20).map((ev) => {
+                      {evidence.slice(0, 20).map((ev) => {
                         const eid = (ev.metadata as any)?.evidence_id || (ev.id?.includes(":") ? ev.id.split(":")[1] : ev.id)
                         const shown = editedEvidence[eid] || ev.text
                         const selected = selectedEvidenceIds.has(eid)
@@ -821,7 +874,7 @@ export default function OptimizerUiOnly({
                                     onClick={async () => {
                                       try {
                                         setRephrasingId(eid)
-                                        const { text } = await rephraseBullet({ evidence_id: eid, target_keywords: keywords.slice(0,5), style: 'concise' })
+                                        const { text } = await rephraseBullet({ evidence_id: eid, target_keywords: keywords.slice(0, 5), style: 'concise' })
                                         setEditedEvidence((m) => ({ ...m, [eid]: text }))
                                       } catch (e: any) {
                                         toast.error(e?.error || e?.message || 'Rephrase failed')
@@ -948,14 +1001,16 @@ export default function OptimizerUiOnly({
                 Back
               </button>
               <button
-                className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60 disabled:bg-white/20 disabled:text-white/40"
                 onClick={() => {
                   setStep(3)
                   populateEmphasisFromJD()
                 }}
+                disabled={isAnalyzing}
+                title={isAnalyzing ? "Please wait for AI analysis to complete" : "Continue to optimization"}
               >
                 <Sparkles className="h-4 w-4" />
-                Continue to Optimize
+                {isAnalyzing ? "Analyzing..." : "Continue to Optimize"}
               </button>
             </div>
           </div>
@@ -1096,7 +1151,7 @@ export default function OptimizerUiOnly({
                       const tmp = document.createElement("div")
                       tmp.innerHTML = editorHtml
                       await navigator.clipboard.writeText(tmp.innerText.trim())
-                    } catch {}
+                    } catch { }
                   }}
                 >
                   <CopyIcon className="h-4 w-4" />
@@ -1137,13 +1192,13 @@ export default function OptimizerUiOnly({
                   Download PDF
                 </button>
                 {optimizedId && (
-                  <Link
+                  <SafeLink
                     href={`/dashboard/optimized/${optimizedId}`}
                     className="inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-3 hover:bg-white/20 transition-colors"
                   >
                     <Eye className="h-4 w-4" />
                     View Details
-                  </Link>
+                  </SafeLink>
                 )}
               </div>
             </div>
@@ -1195,7 +1250,15 @@ export default function OptimizerUiOnly({
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-medium text-white/90">Job Summary</h3>
-              <span className="text-xs font-medium text-white/50">{resolvedJobs.length ? "Imported" : "Mock"}</span>
+              <div className="flex items-center gap-2">
+                {isAnalyzing && (
+                  <div className="flex items-center gap-1 text-xs text-emerald-400">
+                    <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                    Analyzing...
+                  </div>
+                )}
+                <span className="text-xs font-medium text-white/50">{resolvedJobs.length ? "Imported" : "Mock"}</span>
+              </div>
             </div>
             <div className="mt-4 space-y-3">
               <div className="flex items-center gap-3">
@@ -1226,14 +1289,25 @@ export default function OptimizerUiOnly({
                 </div>
               </div>
               <div className="pt-2">
-                <div className="text-xs text-white/60 mb-1">Top skills</div>
-                <div className="flex flex-wrap gap-2">
-                  {(keywords.length ? keywords : ["Roadmap", "A/B Testing", "Analytics", "Frontend", "APIs"]).map((s) => (
-                    <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
-                      {s}
-                    </span>
-                  ))}
-                </div>
+                <div className="text-xs text-white/60 mb-1">Detected Keywords</div>
+                {keywords.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {keywords.map((s) => (
+                      <span key={s} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-1 text-xs group hover:bg-red-500/20 transition-colors">
+                        <span className="text-emerald-200">{s}</span>
+                        <button
+                          onClick={() => removeKeyword(s)}
+                          className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-all"
+                          title={`Remove ${s}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-white/40 italic">Run "Analyze with AI" to extract keywords</div>
+                )}
               </div>
             </div>
           </div>
