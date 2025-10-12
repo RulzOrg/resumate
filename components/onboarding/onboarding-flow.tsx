@@ -3,8 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { UserButton } from "@clerk/nextjs"
+import dynamic from "next/dynamic"
 import { UploadCloud, CheckCircle2, Loader2 } from "lucide-react"
+
+// Dynamically import UserButton to avoid SSR issues
+const DynamicUserButton = dynamic(
+  () => import("@clerk/nextjs").then((mod) => ({ default: mod.UserButton })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="relative h-9 w-9 rounded-full bg-white/10 animate-pulse" />
+    ),
+  }
+)
 
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -65,12 +76,25 @@ export function OnboardingFlow({
   )
 
   const validateFile = (file: File) => {
+    // Check file size first (10MB limit)
     if (file.size > MAX_FILE_SIZE) {
-      return "File size must be less than 10MB"
+      return `File size is ${(file.size / 1024 / 1024).toFixed(1)}MB. Please upload a file smaller than 10MB.`
     }
+
+    // Check file extension (more reliable than MIME type)
+    const fileName = file.name.toLowerCase()
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+    
+    if (!hasValidExtension) {
+      return "Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported."
+    }
+
+    // Double-check with MIME type for additional security
     if (!ALLOWED_TYPES.includes(file.type)) {
       return "Upload a PDF, Word, or plain text resume"
     }
+    
     return null
   }
 
@@ -206,7 +230,7 @@ export function OnboardingFlow({
             </Link>
           </div>
           <div className="relative h-9 w-9">
-            <UserButton afterSignOutUrl="/auth/login" />
+            <DynamicUserButton afterSignOutUrl="/auth/login" />
           </div>
         </div>
       </header>

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle } from "lucide-react"
+import { Upload, FileText, X, CheckCircle } from "lucide-react"
 import { uploadResume } from "@/lib/upload-handler"
 import { ReviewFallbackUI } from "@/components/resume/review-fallback-ui"
 
@@ -63,13 +63,12 @@ interface ResumeAnalysis {
 
 export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   const [open, setOpen] = useState(false)
+  const [isOpening, setIsOpening] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
   const [isUploading, setIsUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState("")
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null)
   const [uploadedResumeId, setUploadedResumeId] = useState<string | null>(null)
   const [step, setStep] = useState<"upload" | "analysis" | "fallback">("upload")
   const [rawParagraphs, setRawParagraphs] = useState<string[]>([])
@@ -77,12 +76,23 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   const router = useRouter()
 
   const handleFileSelect = (selectedFile: File) => {
+    // Check file size first (10MB limit)
     if (selectedFile.size > 10 * 1024 * 1024) {
-      // 10MB limit
-      setError("File size must be less than 10MB")
+      setError(`File size is ${(selectedFile.size / 1024 / 1024).toFixed(1)}MB. Please upload a file smaller than 10MB.`)
       return
     }
 
+    // Check file extension (more reliable than MIME type)
+    const fileName = selectedFile.name.toLowerCase()
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+
+    if (!hasValidExtension) {
+      setError("Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported.")
+      return
+    }
+
+    // Double-check with MIME type for additional security
     const allowedTypes = [
       "application/pdf",
       "application/msword",
@@ -120,6 +130,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     setIsUploading(true)
     setUploadProgress(0)
     setError("")
+    setStep("upload")
 
     try {
       // Use the new hardened upload pipeline
@@ -140,7 +151,6 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
       if (result.status === "success") {
         // Success - evidence extracted
         setStep("analysis")
-        setIsAnalyzing(false)
         // Optionally run additional analysis here
         // For now, just show success
         setTimeout(() => {
@@ -154,7 +164,8 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
         setStep("fallback")
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during upload")
+      console.error("Upload error:", err)
+      setError(err.message || "Upload failed. Please check your connection and try again.")
     } finally {
       setIsUploading(false)
     }
@@ -171,7 +182,6 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     setTitle("")
     setError("")
     setUploadProgress(0)
-    setAnalysis(null)
     setUploadedResumeId(null)
     setRawParagraphs([])
     setStep("upload")
@@ -184,8 +194,14 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     <Dialog
       open={open}
       onOpenChange={(newOpen) => {
+        if (isOpening && newOpen) return // Prevent rapid opening
         setOpen(newOpen)
-        if (!newOpen) resetForm()
+        if (newOpen) {
+          setIsOpening(true)
+          setTimeout(() => setIsOpening(false), 500) // Debounce for 500ms
+        } else {
+          resetForm()
+        }
       }}
     >
       <DialogTrigger asChild>{children}</DialogTrigger>
@@ -274,10 +290,10 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
 
                   <div className="flex gap-2">
                     <Button onClick={handleUpload} disabled={isUploading} className="flex-1">
-                      {isUploading ? "Uploading..." : "Upload Resume"}
+                      {isUploading ? "Uploading..." : error ? "Retry Upload" : "Upload Resume"}
                     </Button>
                     <Button variant="outline" onClick={resetForm} disabled={isUploading}>
-                      Cancel
+                      Remove File
                     </Button>
                   </div>
                 </div>

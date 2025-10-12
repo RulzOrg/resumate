@@ -20,11 +20,13 @@ import { Upload, Loader2, CheckCircle, X } from "lucide-react"
 
 interface UploadMasterResumeDialogProps {
   children: React.ReactNode
+  currentResumeCount?: number
 }
 
-export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogProps) {
+export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: UploadMasterResumeDialogProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
+  const [isOpening, setIsOpening] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
   const [isUploading, setIsUploading] = useState(false)
@@ -48,11 +50,23 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
   }
 
   const handleFileSelect = (selectedFile: File) => {
+    // Check file size first (10MB limit)
     if (selectedFile.size > 10 * 1024 * 1024) {
-      setError("File size must be less than 10MB")
+      setError(`File size is ${(selectedFile.size / 1024 / 1024).toFixed(1)}MB. Please upload a file smaller than 10MB.`)
       return
     }
 
+    // Check file extension (more reliable than MIME type)
+    const fileName = selectedFile.name.toLowerCase()
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+    
+    if (!hasValidExtension) {
+      setError("Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported.")
+      return
+    }
+
+    // Double-check with MIME type for additional security
     const allowedTypes = [
       "application/pdf",
       "application/msword",
@@ -76,8 +90,15 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
       return
     }
 
+    // Check 3-resume limit
+    if (currentResumeCount >= 3) {
+      setError("You can only upload up to 3 resumes. Please delete an existing resume first.")
+      return
+    }
+
     setIsUploading(true)
     setError(null)
+    setSuccess(false)
     setProgress(10)
     
     // Start progress timer
@@ -113,7 +134,12 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
       }
       setProgress(100)
       setSuccess(true)
-      router.refresh()
+      
+      // Auto-close dialog after 2 seconds
+      setTimeout(() => {
+        setOpen(false)
+        router.refresh()
+      }, 2000)
     } catch (uploadError) {
       if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current)
@@ -127,7 +153,8 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
       if (isAbort) {
         setError("Upload cancelled")
       } else {
-        setError(uploadError instanceof Error ? uploadError.message : "Upload failed")
+        console.error("Upload error:", uploadError)
+        setError(uploadError instanceof Error ? uploadError.message : "Upload failed. Please check your connection and try again.")
       }
     } finally {
       setIsUploading(false)
@@ -140,8 +167,12 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
     <Dialog
       open={open}
       onOpenChange={(nextOpen) => {
+        if (isOpening && nextOpen) return // Prevent rapid opening
         setOpen(nextOpen)
-        if (!nextOpen) {
+        if (nextOpen) {
+          setIsOpening(true)
+          setTimeout(() => setIsOpening(false), 500) // Debounce for 500ms
+        } else {
           resetState()
         }
       }}
@@ -166,8 +197,15 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
             <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
               <CheckCircle className="h-6 w-6 text-emerald-400" />
             </div>
-            <p className="text-sm text-white/70">Master resume uploaded and analyzed. You can now generate tailored versions.</p>
-            <Button onClick={() => setOpen(false)}>Close</Button>
+            <p className="text-sm text-white/70">Master resume uploaded successfully! You can now generate tailored versions.</p>
+            <Button 
+              onClick={() => {
+                setOpen(false)
+                router.refresh()
+              }}
+            >
+              Close
+            </Button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -230,8 +268,26 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                   />
                 </div>
                 {file && (
-                  <div className="text-xs text-white/60">
-                    Selected: <span className="text-white/80">{file.name}</span>
+                  <div className="flex items-center justify-between text-xs text-white/60 bg-white/10 rounded-lg p-3 mt-3">
+                    <div>
+                      <span className="text-white/80">{file.name}</span>
+                      <span className="ml-2">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFile(null)
+                        setTitle("")
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = ""
+                        }
+                      }}
+                      disabled={isUploading}
+                      className="text-white/60 hover:text-red-400 transition-colors disabled:opacity-50"
+                      title="Remove file"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 )}
               </div>
@@ -251,7 +307,7 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => {
+                onClick={(e) => {
                   if (isUploading) {
                     // Abort in-flight request and cleanup
                     if (uploadAbortRef.current) {
@@ -268,6 +324,12 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                   } else {
                     setOpen(false)
                   }
+                  e.stopPropagation()
+                        setFile(null)
+                        setTitle("")
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = ""
+                        }
                 }}
                 className="text-white/70"
               >
@@ -283,6 +345,8 @@ export function UploadMasterResumeDialog({ children }: UploadMasterResumeDialogP
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Uploading
                   </>
+                ) : error ? (
+                  "Retry Upload"
                 ) : (
                   "Upload Master Resume"
                 )}
