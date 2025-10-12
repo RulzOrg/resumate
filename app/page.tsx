@@ -68,9 +68,14 @@ const faqStructuredData = {
 
 export default function HomePage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const toggleFaq = (index: number) => {
     setOpenFaq(openFaq === index ? null : index)
+  }
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen)
   }
 
   return (
@@ -129,10 +134,60 @@ export default function HomePage() {
               Optimize My Resume
             </Link>
 
-            <button className="md:hidden inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium backdrop-blur font-sans">
+            <button 
+              onClick={toggleMobileMenu}
+              className="md:hidden inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium backdrop-blur font-sans"
+            >
               <Menu className="h-5 w-5" />
               Menu
             </button>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-black/95 border border-white/10 backdrop-blur rounded-2xl shadow-2xl overflow-hidden">
+                <nav className="flex flex-col p-4 space-y-2">
+                  <a
+                    href="#how-it-works"
+                    onClick={toggleMobileMenu}
+                    className="px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors font-sans"
+                  >
+                    How It Works
+                  </a>
+                  <a
+                    href="#features"
+                    onClick={toggleMobileMenu}
+                    className="px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors font-sans"
+                  >
+                    Features
+                  </a>
+                  <a
+                    href="#pricing"
+                    onClick={toggleMobileMenu}
+                    className="px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors font-sans"
+                  >
+                    Pricing
+                  </a>
+                  <a
+                    href="#faq"
+                    onClick={toggleMobileMenu}
+                    className="px-4 py-3 text-base font-medium text-white/80 hover:text-white hover:bg-white/5 rounded-lg transition-colors font-sans"
+                  >
+                    FAQ
+                  </a>
+                  <div className="pt-2 border-t border-white/10">
+                    <Link
+                      href="/auth/signup"
+                      onClick={toggleMobileMenu}
+                      className="inline-flex items-center justify-center gap-2 text-base font-medium text-black bg-emerald-500 rounded-full py-3 px-6 hover:bg-emerald-400 transition-colors font-sans w-full"
+                    >
+                      Optimize My Resume
+                    </Link>
+                  </div>
+                </nav>
+              </div>
+            </div>
+          )}
           </nav>
 
           {/* Hero */}
