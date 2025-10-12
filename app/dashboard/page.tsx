@@ -4,8 +4,7 @@ import { getUserResumes, getUserJobAnalyses, getUserOptimizedResumes } from "@/l
 import { getCurrentSubscription, getUsageLimits } from "@/lib/subscription"
 import { Button } from "@/components/ui/button"
 import { UploadResumeDialog } from "@/components/dashboard/upload-resume-dialog"
-import { UploadMasterResumeDialog } from "@/components/dashboard/master-resume-dialog"
-import { FileText, Download, Plus, RefreshCw } from "lucide-react"
+import { FileText, Plus, RefreshCw } from "lucide-react"
 import { TargetJobsEmptyState } from "@/components/dashboard/TargetJobsEmptyState"
 import { AnalyzeJobDialog } from "@/components/jobs/analyze-job-dialog"
 import { TargetJobsCompactList } from "@/components/dashboard/TargetJobsCompactList"
@@ -14,7 +13,7 @@ import Link from "next/link"
 import { UserAvatar } from "@/components/dashboard/user-avatar"
 import { AccountStatusCard } from "@/components/dashboard/AccountStatusCard"
 import { MasterResumesSection } from "@/components/dashboard/MasterResumesSection"
-import { formatDistanceToNow } from "date-fns"
+
 
 export default async function DashboardPage({
   searchParams,
@@ -27,7 +26,7 @@ export default async function DashboardPage({
     // Next will render NotFound if something odd happened
     return null
   }
-  
+
   // Redirect to onboarding if user hasn't completed it
   if (!user.onboarding_completed_at) {
     redirect("/onboarding")
