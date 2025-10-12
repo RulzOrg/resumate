@@ -190,12 +190,12 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                 </div>
                 {editingId !== resume.id && (
                   <div
-                    className={`flex items-center gap-2 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-0 group-hover:opacity-100"
-                      }`}
+                    className={`flex items-center gap-2 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                      } sm:bg-transparent bg-black/20 rounded-md p-1 sm:p-0`}
                   >
                     <button
                       onClick={() => handleStartEdit(resume.id, resume.title)}
-                      className="text-white/60 transition-colors hover:text-white"
+                      className="text-white/70 sm:text-white/60 transition-colors hover:text-white"
                       title="Edit resume name"
                     >
                       <Pencil className="h-4 w-4" />
@@ -206,7 +206,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         setDeleteError(null)
                       }}
                       disabled={isDeleting === resume.id}
-                      className="text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
+                      className="text-white/70 sm:text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
                       title="Delete resume"
                     >
                       <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} />
