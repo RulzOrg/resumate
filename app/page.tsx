@@ -12,9 +12,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="antialiased text-white bg-black font-sans">
+    <div className="antialiased text-foreground bg-background font-sans">
       {/* Background gradient */}
-      <div className="absolute top-0 left-0 w-full h-[880px] -z-10 gradient-blur"></div>
+      <div className="absolute top-0 left-0 w-full h-[880px] -z-10 gradient-blur opacity-80 dark:opacity-100"></div>
 
       {/* Header */}
       <header className="relative">

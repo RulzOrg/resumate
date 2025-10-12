@@ -36,18 +36,18 @@ export function ResumeInsightsSidebar({ topRoles, avgScore, onNewResume }: Resum
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5">
-      <div className="px-4 py-3 border-b border-white/10">
-        <h2 className="text-lg font-medium tracking-tight font-geist">Resume insights</h2>
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">Resume insights</h2>
       </div>
       <div className="p-4 space-y-4">
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <ListChecks className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-secondary flex items-center justify-center">
+            <ListChecks className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Top roles</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
+            <p className="text-sm font-medium font-geist text-foreground">Top roles</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">
               Most generated resumes target these roles.
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -55,14 +55,14 @@ export function ResumeInsightsSidebar({ topRoles, avgScore, onNewResume }: Resum
                 topRoles.map((item) => (
                   <span
                     key={item.role}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
                     aria-label={`${extractRoleName(item.role)} - ${item.count} resume${item.count !== 1 ? 's' : ''}`}
                   >
                     {extractRoleName(item.role)} ({item.count})
                   </span>
                 ))
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80">
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">
                   No roles yet
                 </span>
               )}
@@ -71,25 +71,25 @@ export function ResumeInsightsSidebar({ topRoles, avgScore, onNewResume }: Resum
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <Percent className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-secondary flex items-center justify-center">
+            <Percent className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Average score</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">{scoreDescription}</p>
+            <p className="text-sm font-medium font-geist text-foreground">Average score</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">{scoreDescription}</p>
           </div>
-          <span className="text-xs text-emerald-200 font-medium">{avgScoreValue}</span>
+          <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">{avgScoreValue}</span>
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <Lightbulb className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-secondary flex items-center justify-center">
+            <Lightbulb className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Suggestions</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">{suggestionMessage}</p>
+            <p className="text-sm font-medium font-geist text-foreground">Suggestions</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">{suggestionMessage}</p>
           </div>
-          <span className="text-xs text-white/80 font-medium">Action</span>
+          <span className="text-xs text-foreground font-medium">Action</span>
         </div>
 
         <button

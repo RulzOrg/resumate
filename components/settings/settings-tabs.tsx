@@ -38,9 +38,9 @@ export function SettingsTabs({ user, profile, usage, billingProvider }: Settings
   }
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5">
+    <div className="rounded-xl border border-border bg-card shadow-sm">
       {/* Tabs */}
-      <div className="px-3 sm:px-4 pt-3 border-b border-white/10">
+      <div className="px-3 sm:px-4 pt-3 border-b border-border">
         <nav className="flex flex-wrap gap-1" role="tablist">
           <button
             onClick={() => switchTab('account')}
@@ -49,8 +49,8 @@ export function SettingsTabs({ user, profile, usage, billingProvider }: Settings
             aria-controls="account-panel"
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
               activeTab === 'account'
-                ? 'border border-white/10 bg-white/10 text-white font-medium'
-                : 'border border-transparent bg-transparent hover:bg-white/5 text-white/70'
+                ? 'border border-border bg-secondary text-foreground font-medium'
+                : 'border border-transparent bg-transparent hover:bg-secondary/50 text-muted-foreground'
             }`}
           >
             <User className="w-4 h-4" />
@@ -63,8 +63,8 @@ export function SettingsTabs({ user, profile, usage, billingProvider }: Settings
             aria-controls="subscription-panel"
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
               activeTab === 'subscription'
-                ? 'border border-white/10 bg-white/10 text-white font-medium'
-                : 'border border-transparent bg-transparent hover:bg-white/5 text-white/70'
+                ? 'border border-border bg-secondary text-foreground font-medium'
+                : 'border border-transparent bg-transparent hover:bg-secondary/50 text-muted-foreground'
             }`}
           >
             <CreditCard className="w-4 h-4" />
@@ -77,8 +77,8 @@ export function SettingsTabs({ user, profile, usage, billingProvider }: Settings
             aria-controls="security-panel"
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
               activeTab === 'security'
-                ? 'border border-white/10 bg-white/10 text-white font-medium'
-                : 'border border-transparent bg-transparent hover:bg-white/5 text-white/70'
+                ? 'border border-border bg-secondary text-foreground font-medium'
+                : 'border border-transparent bg-transparent hover:bg-secondary/50 text-muted-foreground'
             }`}
           >
             <Lock className="w-4 h-4" />

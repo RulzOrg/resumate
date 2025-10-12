@@ -34,13 +34,13 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
   const getSubscriptionBadge = (status: string, plan: string) => {
     if (status === "active") {
       return (
-        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+        <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20">
           {plan}
         </Badge>
       )
     }
     return (
-      <Badge className="bg-white/5 text-white/60 border-white/10">
+      <Badge className="bg-secondary text-secondary-foreground border-border">
         {status}
       </Badge>
     )
@@ -48,30 +48,30 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
 
   return (
     <>
-      <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow className="border-white/10 hover:bg-white/5">
-              <TableHead className="text-white/70 font-geist">User</TableHead>
-              <TableHead className="text-white/70 font-geist">Email</TableHead>
-              <TableHead className="text-white/70 font-geist">Subscription</TableHead>
-              <TableHead className="text-white/70 font-geist">Resumes</TableHead>
-              <TableHead className="text-white/70 font-geist">Jobs</TableHead>
-              <TableHead className="text-white/70 font-geist">Joined</TableHead>
-              <TableHead className="text-white/70 font-geist text-right">Actions</TableHead>
+            <TableRow className="border-border hover:bg-muted/50">
+              <TableHead className="text-muted-foreground font-geist">User</TableHead>
+              <TableHead className="text-muted-foreground font-geist">Email</TableHead>
+              <TableHead className="text-muted-foreground font-geist">Subscription</TableHead>
+              <TableHead className="text-muted-foreground font-geist">Resumes</TableHead>
+              <TableHead className="text-muted-foreground font-geist">Jobs</TableHead>
+              <TableHead className="text-muted-foreground font-geist">Joined</TableHead>
+              <TableHead className="text-muted-foreground font-geist text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-white/50 py-8 font-geist">
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8 font-geist">
                   No users found
                 </TableCell>
               </TableRow>
             ) : (
               users.map((user) => (
-                <TableRow key={user.id} className="border-white/10 hover:bg-white/5">
-                  <TableCell className="font-medium text-white font-geist">
+                <TableRow key={user.id} className="border-border hover:bg-muted/50">
+                  <TableCell className="font-medium text-foreground font-geist">
                     <div className="flex items-center gap-3">
                       <img
                         src={`https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(user.name)}&backgroundColor=10b981`}
@@ -81,13 +81,13 @@ export function UsersTable({ users, onUserDeleted }: UsersTableProps) {
                       <span>{user.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-white/80 font-geist">{user.email}</TableCell>
+                  <TableCell className="text-foreground font-geist">{user.email}</TableCell>
                   <TableCell>
                     {getSubscriptionBadge(user.subscription_status, user.subscription_plan)}
                   </TableCell>
-                  <TableCell className="text-white/80 font-geist">{user.resume_count}</TableCell>
-                  <TableCell className="text-white/80 font-geist">{user.job_analysis_count}</TableCell>
-                  <TableCell className="text-white/80 font-geist">
+                  <TableCell className="text-foreground font-geist">{user.resume_count}</TableCell>
+                  <TableCell className="text-foreground font-geist">{user.job_analysis_count}</TableCell>
+                  <TableCell className="text-foreground font-geist">
                     {(() => {
                       try {
                         const date = new Date(user.created_at)

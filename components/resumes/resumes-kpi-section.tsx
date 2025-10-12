@@ -38,7 +38,6 @@ export function ResumesKpiSection({ stats, trends }: ResumesKpiSectionProps) {
         value={stats.resumesSaved}
         subtitle={formatChange(trends.resumesSavedChange, { suffix: "this week" })}
         icon={FileText}
-        iconColor="text-emerald-300"
       />
       <KpiCard
         title="PDF exports"
@@ -48,14 +47,12 @@ export function ResumesKpiSection({ stats, trends }: ResumesKpiSectionProps) {
           zeroLabel: "No exports tracked this week",
         })}
         icon={FileDown}
-        iconColor="text-emerald-300"
       />
       <KpiCard
         title="Edits made"
         value={stats.editsMade}
         subtitle={formatChange(trends.editsMadeChange, { suffix: "this week" })}
         icon={Pencil}
-        iconColor="text-emerald-300"
       />
       <KpiCard
         title="Avg score"
@@ -65,7 +62,6 @@ export function ResumesKpiSection({ stats, trends }: ResumesKpiSectionProps) {
           zeroLabel: "No change vs last week",
         })}
         icon={Gauge}
-        iconColor="text-emerald-300"
       />
     </div>
   )

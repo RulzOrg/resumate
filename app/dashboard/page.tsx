@@ -72,7 +72,7 @@ export default async function DashboardPage() {
         <h1 className="text-2xl sm:text-3xl tracking-tight font-space-grotesk font-semibold">
           Resume optimization
         </h1>
-        <p className="mt-1 text-sm text-white/60 font-geist">
+        <p className="mt-1 text-sm text-muted-foreground font-geist">
           Tailor your resume to each application. Review match scores and improvement suggestions.
         </p>
       </div>
@@ -84,35 +84,31 @@ export default async function DashboardPage() {
           value={stats.applications}
           subtitle={formatChange(trends.applicationsChange)}
           icon={Send}
-          iconColor="text-emerald-300"
         />
         <KpiCard
           title="Optimizations"
           value={stats.optimizations}
           subtitle={formatChange(trends.optimizationsChange)}
           icon={Wand2}
-          iconColor="text-emerald-300"
         />
         <KpiCard
           title="Resume variants"
           value={stats.variants}
           subtitle={formatChange(trends.variantsChange, "new this week")}
           icon={Files}
-          iconColor="text-emerald-300"
         />
         <KpiCard
           title="Avg match"
           value={`${stats.avgMatch}%`}
           subtitle={formatChange(trends.matchChange, "vs last week")}
           icon={Gauge}
-          iconColor="text-emerald-300"
         />
       </div>
 
       {/* Main content area */}
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
         {/* Applications table (2 columns) */}
-        <div className="xl:col-span-2 rounded-xl border border-white/10 bg-white/5">
+        <div className="xl:col-span-2 rounded-xl border border-border bg-card shadow-sm">
           <ApplicationsSection applications={applications} />
         </div>
 

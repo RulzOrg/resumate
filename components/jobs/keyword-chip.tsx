@@ -9,10 +9,10 @@ interface KeywordChipProps {
 }
 
 const variantStyles: Record<ChipVariant, string> = {
-  neutral: 'border-white/10 bg-white/5',
-  good: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
-  warn: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
-  info: 'border-sky-500/30 bg-sky-500/10 text-sky-200'
+  neutral: 'border-border bg-secondary text-secondary-foreground',
+  good: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  warn: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+  info: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300'
 }
 
 export function KeywordChip({ text, variant = 'neutral', className }: KeywordChipProps) {

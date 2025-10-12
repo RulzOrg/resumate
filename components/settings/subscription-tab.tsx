@@ -117,16 +117,16 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
       )}
 
       {/* Plan Section */}
-      <div className="rounded-xl border border-white/10 bg-white/5">
+      <div className="rounded-xl border border-border bg-secondary">
         <div className="px-4 py-3 border-b border-white/10">
           <h3 className="text-base font-medium tracking-tight font-geist">Plan</h3>
         </div>
         <div className="p-4 grid gap-4 sm:grid-cols-2">
           {/* Current Plan Card */}
-          <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+          <div className="rounded-lg border border-border bg-secondary p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-white/60 font-geist">Current plan</p>
+                <p className="text-xs text-muted-foreground font-geist">Current plan</p>
                 <p className="mt-1 text-lg tracking-tight font-space-grotesk font-semibold">
                   {getPlanDisplayName(user.subscription_plan)}
                 </p>
@@ -135,11 +135,11 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
                 {user.subscription_status === 'free' ? 'Free' : 'Active'}
               </span>
             </div>
-            <p className="mt-3 text-sm text-white/70 font-geist">
+            <p className="mt-3 text-sm text-muted-foreground font-geist">
               ${plan?.price || 0}/{plan?.interval || 'month'} • Billed {plan?.interval}ly
             </p>
             {user.subscription_period_end && (
-              <p className="mt-1 text-xs text-white/50 font-geist">
+              <p className="mt-1 text-xs text-muted-foreground font-geist">
                 Next billing on {formatBillingDate(user.subscription_period_end)}
               </p>
             )}
@@ -147,7 +147,7 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
               <button
                 onClick={handleManagePayment}
                 disabled={isLoading}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -169,17 +169,17 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
           </div>
 
           {/* Usage Card */}
-          <div className="rounded-lg border border-white/10 bg-white/5 p-4">
-            <p className="text-xs text-white/60 font-geist">Usage (this cycle)</p>
+          <div className="rounded-lg border border-border bg-secondary p-4">
+            <p className="text-xs text-muted-foreground font-geist">Usage (this cycle)</p>
             <div className="mt-3 space-y-3">
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/80 font-geist">Jobs saved</span>
-                  <span className="text-sm text-white/70 font-geist">
+                  <span className="text-sm text-foreground font-geist">Jobs saved</span>
+                  <span className="text-sm text-muted-foreground font-geist">
                     {usage.jobs_saved} / {plan?.limits.jobAnalyses === 'unlimited' ? '∞' : plan?.limits.jobAnalyses}
                   </span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mt-2">
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-2">
                   <div
                     className={`h-full ${getUsageColor(jobsPercentage)}`}
                     style={{ width: `${jobsPercentage}%` }}
@@ -188,12 +188,12 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/80 font-geist">CVs generated</span>
-                  <span className="text-sm text-white/70 font-geist">
+                  <span className="text-sm text-foreground font-geist">CVs generated</span>
+                  <span className="text-sm text-muted-foreground font-geist">
                     {usage.cvs_generated} / {plan?.limits.resumeOptimizations === 'unlimited' ? '∞' : plan?.limits.resumeOptimizations}
                   </span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mt-2">
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-2">
                   <div
                     className={`h-full ${getUsageColor(cvsPercentage)}`}
                     style={{ width: `${cvsPercentage}%` }}
@@ -202,12 +202,12 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
               </div>
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-white/80 font-geist">AI credits</span>
-                  <span className="text-sm text-white/70 font-geist">
+                  <span className="text-sm text-foreground font-geist">AI credits</span>
+                  <span className="text-sm text-muted-foreground font-geist">
                     {usage.ai_credits.toLocaleString()} / {aiCreditsLimit.toLocaleString()}
                   </span>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden mt-2">
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-2">
                   <div
                     className={`h-full ${getUsageColor(creditsPercentage)}`}
                     style={{ width: `${creditsPercentage}%` }}
@@ -215,7 +215,7 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
                 </div>
               </div>
             </div>
-            <p className="mt-3 text-[11px] text-white/50 font-geist">
+            <p className="mt-3 text-[11px] text-muted-foreground font-geist">
               Usage resets each billing cycle.
             </p>
           </div>
@@ -223,29 +223,29 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
       </div>
 
       {/* Billing Details */}
-      <div className="rounded-xl border border-white/10 bg-white/5">
+      <div className="rounded-xl border border-border bg-secondary">
         <div className="px-4 py-3 border-b border-white/10">
           <h3 className="text-base font-medium tracking-tight font-geist">Billing details</h3>
         </div>
         <div className="p-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-xs text-white/70 mb-1.5 font-geist">Billing email</label>
+            <label className="block text-xs text-muted-foreground mb-1.5 font-geist">Billing email</label>
             <input
               type="email"
               value={billingEmail}
               onChange={(e) => setBillingEmail(e.target.value)}
               placeholder="billing@company.com"
-              className="w-full rounded-lg bg-white/5 border border-white/15 text-white placeholder-white/40 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
+              className="w-full rounded-lg bg-input border border-input text-foreground placeholder-muted-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-white/70 mb-1.5 font-geist">Company (optional)</label>
+            <label className="block text-xs text-muted-foreground mb-1.5 font-geist">Company (optional)</label>
             <input
               type="text"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="Company, Inc."
-              className="w-full rounded-lg bg-white/5 border border-white/15 text-white placeholder-white/40 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
+              className="w-full rounded-lg bg-input border border-input text-foreground placeholder-muted-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
             />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end">
@@ -264,15 +264,15 @@ export function SubscriptionTab({ user, usage, billingProvider }: SubscriptionTa
       {/* Cancel Modal */}
       {showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-          <div className="bg-black border border-white/10 rounded-xl p-6 max-w-md w-full mx-4">
+          <div className="bg-black border border-border rounded-xl p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold font-geist mb-2">Cancel Subscription?</h3>
-            <p className="text-sm text-white/60 font-geist mb-4">
+            <p className="text-sm text-muted-foreground font-geist mb-4">
               You'll be redirected to the billing portal to manage your subscription. You can cancel or make changes there.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => setShowCancelModal(false)}
-                className="px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 text-sm transition"
+                className="px-4 py-2 rounded-lg border border-border bg-secondary text-foreground hover:bg-white/10 text-sm transition"
               >
                 Cancel
               </button>

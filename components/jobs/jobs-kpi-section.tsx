@@ -33,28 +33,24 @@ export function JobsKpiSection({ stats, trends }: JobsKpiSectionProps) {
         value={stats.jobsSaved}
         subtitle={formatChange(trends.jobsSavedChange, "this week")}
         icon={Briefcase}
-        iconColor="text-emerald-300"
       />
       <KpiCard
         title="CVs generated"
         value={stats.cvsGenerated}
         subtitle={formatChange(trends.cvsGeneratedChange, "this week")}
         icon={FileText}
-        iconColor="text-emerald-300"
       />
       <KpiCard
         title="Keywords extracted"
         value={stats.keywordsExtracted}
         subtitle={formatChange(trends.keywordsExtractedChange, "this week")}
         icon={List}
-        iconColor="text-emerald-300"
       />
       <KpiCard
         title="Avg match"
         value={`${stats.avgMatch}%`}
         subtitle={formatChange(trends.avgMatchChange, "vs last week")}
         icon={Gauge}
-        iconColor="text-emerald-300"
       />
     </div>
   )

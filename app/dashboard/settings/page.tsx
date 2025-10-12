@@ -38,7 +38,7 @@ export default async function SettingsPage() {
         <h1 className="text-2xl sm:text-3xl tracking-tight font-space-grotesk font-semibold">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-white/60 font-geist">
+        <p className="mt-1 text-sm text-muted-foreground font-geist">
           Manage your account, subscription, and security preferences.
         </p>
       </div>

@@ -53,7 +53,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
       <ResponsiveTable>
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-white/10">
+            <TableRow className="border-b border-border">
               {deleteMode && (
                 <TableHead className="w-12">
                   <input
@@ -63,7 +63,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
                       if (el) el.indeterminate = someSelected
                     }}
                     onChange={(e) => onSelectAll(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/30 bg-white/5 checked:bg-emerald-500 checked:border-emerald-500"
+                    className="w-4 h-4 rounded border-border bg-input checked:bg-emerald-500 checked:border-emerald-500"
                   />
                 </TableHead>
               )}
@@ -82,21 +82,21 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
             const hasMore = remainingKeywords.length > 0
             
             return (
-              <TableRow key={job.id} className="border-b border-white/10 hover:bg-white/5">
+              <TableRow key={job.id} className="border-b border-border hover:bg-muted/50">
                 {deleteMode && (
                   <TableCell>
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => onSelectJob(job.id, e.target.checked)}
-                      className="w-4 h-4 rounded border-white/30 bg-white/5 checked:bg-emerald-500 checked:border-emerald-500"
+                      className="w-4 h-4 rounded border-border bg-input checked:bg-emerald-500 checked:border-emerald-500"
                     />
                   </TableCell>
                 )}
                 <TableCell>
                   <div>
-                    <div className="font-medium text-white/90 font-geist">{job.job_title}</div>
-                    <div className="text-sm text-white/60 font-geist mt-0.5">{job.company_name || "—"}</div>
+                    <div className="font-medium text-foreground font-geist">{job.job_title}</div>
+                    <div className="text-sm text-muted-foreground font-geist mt-0.5">{job.company_name || "—"}</div>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -104,7 +104,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
                     {visibleKeywords.map((keyword, i) => (
                       <span
                         key={i}
-                        className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
+                        className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
                       >
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                         {keyword}
@@ -114,7 +114,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/60 cursor-help">
+                            <span className="inline-flex items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground cursor-help">
                               +{remainingKeywords.length} more
                             </span>
                           </TooltipTrigger>
@@ -123,7 +123,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
                               {remainingKeywords.map((keyword, i) => (
                                 <span
                                   key={i}
-                                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
+                                  className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
                                 >
                                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                                   {keyword}
@@ -169,7 +169,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
           return (
             <MobileCard key={job.id}>
               {/* Header with Role, Company and Checkbox */}
-              <div className="flex items-start gap-3 pb-3 border-b border-white/10">
+              <div className="flex items-start gap-3 pb-3 border-b border-border">
                 {deleteMode && (
                   <input
                     type="checkbox"
@@ -179,8 +179,8 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-geist text-white/90 font-medium">{job.job_title}</h3>
-                  <p className="text-sm text-white/60 mt-0.5">{job.company_name || "—"}</p>
+                  <h3 className="font-geist text-foreground font-medium">{job.job_title}</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">{job.company_name || "—"}</p>
                 </div>
                 <div className="shrink-0">
                   <CircularProgress value={clampedScore} size={44} strokeWidth={3} />
@@ -189,7 +189,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
 
               {/* Keywords */}
               <div className="py-3">
-                <p className="text-xs text-white/40 font-geist mb-2">Keywords</p>
+                <p className="text-xs text-muted-foreground font-geist mb-2">Keywords</p>
                 <div className="flex flex-wrap gap-1.5">
                   {visibleKeywords.map((keyword, i) => (
                     <span
@@ -213,7 +213,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
                             {remainingKeywords.map((keyword, i) => (
                               <span
                                 key={i}
-                                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
+                                className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
                               >
                                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                                 {keyword}
@@ -228,7 +228,7 @@ export function JobsTable({ jobs, selectedJobs, deleteMode, onSelectAll, onSelec
               </div>
 
               {/* Action Button */}
-              <div className="pt-3 border-t border-white/10">
+              <div className="pt-3 border-t border-border">
                 <Link
                   href={`/dashboard/optimize?jobId=${job.id}`}
                   className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500 text-black px-3 py-2 text-sm font-medium hover:bg-emerald-400 transition"

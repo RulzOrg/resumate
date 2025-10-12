@@ -173,13 +173,13 @@ export function SecurityTab({ user }: SecurityTabProps) {
   return (
     <div className="space-y-6">
       {/* Change Password */}
-      <div className="rounded-xl border border-white/10 bg-white/5">
+      <div className="rounded-xl border border-border bg-secondary">
         <div className="px-4 py-3 border-b border-white/10">
           <h3 className="text-base font-medium tracking-tight font-geist">Change password</h3>
         </div>
         <div className="p-4 grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className="block text-xs text-white/70 mb-1.5 font-geist">
+            <label className="block text-xs text-muted-foreground mb-1.5 font-geist">
               Current password
             </label>
             <input
@@ -187,11 +187,11 @@ export function SecurityTab({ user }: SecurityTabProps) {
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-lg bg-white/5 border border-white/15 text-white placeholder-white/40 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
+              className="w-full rounded-lg bg-input border border-input text-foreground placeholder-muted-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-white/70 mb-1.5 font-geist">
+            <label className="block text-xs text-muted-foreground mb-1.5 font-geist">
               New password
             </label>
             <input
@@ -199,11 +199,11 @@ export function SecurityTab({ user }: SecurityTabProps) {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="At least 8 characters"
-              className="w-full rounded-lg bg-white/5 border border-white/15 text-white placeholder-white/40 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
+              className="w-full rounded-lg bg-input border border-input text-foreground placeholder-muted-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-white/70 mb-1.5 font-geist">
+            <label className="block text-xs text-muted-foreground mb-1.5 font-geist">
               Confirm new password
             </label>
             <input
@@ -211,7 +211,7 @@ export function SecurityTab({ user }: SecurityTabProps) {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Repeat new password"
-              className="w-full rounded-lg bg-white/5 border border-white/15 text-white placeholder-white/40 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
+              className="w-full rounded-lg bg-input border border-input text-foreground placeholder-muted-foreground px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-sm"
             />
           </div>
           <div className="sm:col-span-2 flex items-center justify-end">
@@ -228,7 +228,7 @@ export function SecurityTab({ user }: SecurityTabProps) {
       </div>
 
       {/* Two-Factor Authentication */}
-      <div className="rounded-xl border border-white/10 bg-white/5">
+      <div className="rounded-xl border border-border bg-secondary">
         <div className="px-4 py-3 border-b border-white/10">
           <h3 className="text-base font-medium tracking-tight font-geist">
             Two-factor authentication
@@ -237,7 +237,7 @@ export function SecurityTab({ user }: SecurityTabProps) {
         <div className="p-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-geist">Protect your account with an extra layer of security</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">
               Use an authenticator app to generate one-time codes.
             </p>
           </div>
@@ -246,10 +246,10 @@ export function SecurityTab({ user }: SecurityTabProps) {
             aria-pressed={twoFAEnabled}
             className="group inline-flex items-center rounded-full border border-white/15 bg-white/5 px-1.5 py-1 transition"
           >
-            <span className="px-2 text-xs text-white/70 font-geist">
+            <span className="px-2 text-xs text-muted-foreground font-geist">
               {twoFAEnabled ? 'On' : 'Off'}
             </span>
-            <span className="inline-flex h-6 w-10 items-center rounded-full border border-white/10 bg-white/10 relative">
+            <span className="inline-flex h-6 w-10 items-center rounded-full border border-border bg-white/10 relative">
               <span
                 className={`h-5 w-5 rounded-full bg-white transition-transform ${
                   twoFAEnabled ? 'translate-x-5' : 'translate-x-0'
@@ -261,17 +261,17 @@ export function SecurityTab({ user }: SecurityTabProps) {
       </div>
 
       {/* Sessions */}
-      <div className="rounded-xl border border-white/10 bg-white/5">
+      <div className="rounded-xl border border-border bg-secondary">
         <div className="px-4 py-3 border-b border-white/10">
           <h3 className="text-base font-medium tracking-tight font-geist">Sessions</h3>
         </div>
         <div className="p-4 space-y-3">
           {loadingSessions ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : sessions.length === 0 ? (
-            <div className="text-center py-8 text-white/60 text-sm font-geist">
+            <div className="text-center py-8 text-muted-foreground text-sm font-geist">
               No active sessions found
             </div>
           ) : (
@@ -308,8 +308,8 @@ export function SecurityTab({ user }: SecurityTabProps) {
                 return (
                   <div key={session.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center">
-                        <DeviceIcon className="w-[18px] h-[18px] text-white/70" />
+                      <div className="h-9 w-9 rounded-full border border-border bg-secondary flex items-center justify-center">
+                        <DeviceIcon className="w-[18px] h-[18px] text-muted-foreground" />
                       </div>
                       <div>
                         <p className="text-sm font-geist">
@@ -318,7 +318,7 @@ export function SecurityTab({ user }: SecurityTabProps) {
                             <span className="ml-2 text-xs text-emerald-400">(Current)</span>
                           )}
                         </p>
-                        <p className="text-xs text-white/60 font-geist">
+                        <p className="text-xs text-muted-foreground font-geist">
                           {timeText}
                           {location && ` • ${location}`}
                         </p>
@@ -328,7 +328,7 @@ export function SecurityTab({ user }: SecurityTabProps) {
                       <button
                         onClick={() => handleRevokeSession(session.id)}
                         disabled={revokingSession === session.id}
-                        className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-xs text-foreground hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {revokingSession === session.id ? (
                           <>
@@ -350,7 +350,7 @@ export function SecurityTab({ user }: SecurityTabProps) {
                   <button
                     onClick={handleRevokeAllOtherSessions}
                     disabled={revokingAll}
-                    className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/80 hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {revokingAll ? (
                       <>
@@ -378,14 +378,14 @@ export function SecurityTab({ user }: SecurityTabProps) {
             <AlertDialogTitle className="text-white font-geist">
               Sign out session?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-white/60 font-geist">
+            <AlertDialogDescription className="text-muted-foreground font-geist">
               This will immediately sign out this session. You'll need to sign in again on that device.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel 
               disabled={!!revokingSession}
-              className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              className="border-border bg-secondary text-white hover:bg-white/10 hover:text-white"
             >
               Cancel
             </AlertDialogCancel>
@@ -407,14 +407,14 @@ export function SecurityTab({ user }: SecurityTabProps) {
             <AlertDialogTitle className="text-white font-geist">
               Sign out of all other sessions?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-white/60 font-geist">
+            <AlertDialogDescription className="text-muted-foreground font-geist">
               This will sign you out of all sessions except your current one. You'll need to sign in again on those devices.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel 
               disabled={revokingAll}
-              className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              className="border-border bg-secondary text-white hover:bg-white/10 hover:text-white"
             >
               Cancel
             </AlertDialogCancel>

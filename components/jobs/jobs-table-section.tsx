@@ -239,11 +239,11 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
         />
       )}
 
-      <div className="rounded-xl border border-white/10 bg-white/5">
+      <div className="rounded-xl border border-border bg-card shadow-sm">
         {/* Bulk Actions Toolbar */}
         {deleteMode && selectedJobs.size > 0 && (
-          <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/10 bg-red-500/10">
-            <span className="text-sm text-white/80 font-geist">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-red-500/10">
+            <span className="text-sm text-foreground font-geist">
               {selectedJobs.size} job{selectedJobs.size > 1 ? "s" : ""} selected
             </span>
             <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
                 variant="ghost"
                 size="sm"
                 onClick={handleToggleDeleteMode}
-                className="h-8 text-xs text-white/60 hover:text-white"
+                className="h-8 text-xs text-muted-foreground hover:text-foreground"
               >
                 Cancel
               </Button>
@@ -268,23 +268,23 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-b border-white/10 gap-3">
-          <h2 className="text-lg font-medium tracking-tight font-geist">Jobs</h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 py-3 border-b border-border gap-3">
+          <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">Jobs</h2>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             {/* Search Input */}
             <div className="relative flex-1 sm:flex-initial">
-              <Search className="w-3.5 h-3.5 text-white/60 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search jobs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-48 rounded-lg bg-white/5 border border-white/15 text-white placeholder-white/40 pl-8 pr-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500/60 focus:border-emerald-500/60 text-xs"
+                className="w-full sm:w-48 rounded-lg bg-input border border-border text-foreground placeholder-muted-foreground pl-8 pr-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-xs"
               />
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-1.5 text-xs text-secondary-foreground hover:bg-secondary/80 transition"
             >
               <Filter className="w-3.5 h-3.5" />
               <span className="font-geist hidden sm:inline">Filter</span>
@@ -292,7 +292,7 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
             </button>
             <button
               onClick={handleExport}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 transition"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-secondary px-2.5 py-1.5 text-xs text-secondary-foreground hover:bg-secondary/80 transition"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="font-geist hidden sm:inline">Export</span>
@@ -301,8 +301,8 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
               onClick={handleToggleDeleteMode}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                 deleteMode
-                  ? "border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                  : "border-white/10 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
+                  ? "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400 hover:bg-red-500/20"
+                  : "border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
               }`}
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -323,7 +323,7 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
             
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="px-4 py-3 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-white/70">
+              <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">
                 <span className="font-geist">
                   Showing {Math.min(totalJobs === 0 ? 0 : start + 1, totalJobs)}–
                   {Math.min(start + perPage, totalJobs)} of {totalJobs}
@@ -332,7 +332,7 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
                   <button
                     onClick={() => handlePageChange(Math.max(1, safePage - 1))}
                     disabled={safePage <= 1}
-                    className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed font-geist text-xs"
+                    className="px-3 py-1.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition disabled:opacity-50 disabled:cursor-not-allowed font-geist text-xs text-secondary-foreground"
                   >
                     Previous
                   </button>
@@ -342,7 +342,7 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
                   <button
                     onClick={() => handlePageChange(Math.min(totalPages, safePage + 1))}
                     disabled={safePage >= totalPages}
-                    className="px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed font-geist text-xs"
+                    className="px-3 py-1.5 rounded-lg border border-border bg-secondary hover:bg-secondary/80 transition disabled:opacity-50 disabled:cursor-not-allowed font-geist text-xs text-secondary-foreground"
                   >
                     Next
                   </button>
@@ -352,7 +352,7 @@ export function JobsTableSection({ jobs }: JobsTableSectionProps) {
           </>
         ) : (
           <div className="px-4 py-12 text-center">
-            <p className="text-sm text-white/60 font-geist">
+            <p className="text-sm text-muted-foreground font-geist">
               {searchQuery ? `No jobs found matching "${searchQuery}"` : "No jobs yet. Add a job description to get started."}
             </p>
           </div>

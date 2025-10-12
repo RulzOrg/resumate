@@ -568,7 +568,7 @@ export function AddJobPageClient() {
         <h1 className="text-2xl sm:text-3xl tracking-tight font-space-grotesk font-semibold">
           Add Job Description
         </h1>
-        <p className="mt-1 text-sm text-white/60 font-geist">
+        <p className="mt-1 text-sm text-muted-foreground font-geist">
           Paste a job description to analyze keywords, match score, and generate a tailored CV.
         </p>
       </div>
@@ -576,14 +576,14 @@ export function AddJobPageClient() {
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Form */}
-        <div className="rounded-xl border border-white/10 bg-white/5">
-          <div className="px-4 py-3 border-b border-white/10">
-            <h2 className="text-lg font-medium tracking-tight font-geist">Job details</h2>
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="px-4 py-3 border-b border-border">
+            <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">Job details</h2>
           </div>
           
           <form className="px-4 py-4 space-y-4" onSubmit={(e) => e.preventDefault()}>
             <div>
-              <Label htmlFor="jobTitle" className="text-xs text-white/70 mb-1.5 font-geist">
+              <Label htmlFor="jobTitle" className="text-xs text-muted-foreground mb-1.5 font-geist">
                 Job Title
               </Label>
               <Input
@@ -592,12 +592,12 @@ export function AddJobPageClient() {
                 placeholder="e.g. Frontend Engineer"
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
-                className="bg-white/5 border-white/10 text-white placeholder-white/40"
+                className="bg-input border-input text-foreground placeholder-muted-foreground"
               />
             </div>
             
             <div>
-              <Label htmlFor="company" className="text-xs text-white/70 mb-1.5 font-geist">
+              <Label htmlFor="company" className="text-xs text-muted-foreground mb-1.5 font-geist">
                 Company
               </Label>
               <Input
@@ -606,16 +606,16 @@ export function AddJobPageClient() {
                 placeholder="e.g. Lumina"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
-                className="bg-white/5 border-white/10 text-white placeholder-white/40"
+                className="bg-input border-input text-foreground placeholder-muted-foreground"
               />
             </div>
             
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <Label htmlFor="jobDescription" className="text-xs text-white/70 font-geist">
+                <Label htmlFor="jobDescription" className="text-xs text-muted-foreground font-geist">
                   Job Description
                 </Label>
-                <div className="flex items-center gap-2 text-xs text-white/50">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileText className="w-3 h-3" />
                   <span>
                     {contentValidation.charCount.toLocaleString()} / {MAX_LENGTH.toLocaleString()}
@@ -630,7 +630,7 @@ export function AddJobPageClient() {
                   value={jobDescription}
                   onChange={(e) => handleDescriptionChange(e.target.value)}
                   rows={10}
-                  className={`resize-none bg-white/5 border-white/10 text-white placeholder-white/40 ${
+                  className={`resize-none bg-input border-input text-foreground placeholder-muted-foreground ${
                     !contentValidation.isValid && contentValidation.level === 'error' 
                       ? 'border-red-500/50 focus:border-red-500' 
                       : contentValidation.level === 'warning'
@@ -662,7 +662,7 @@ export function AddJobPageClient() {
                 </div>
               </div>
               
-              <p className="mt-1.5 text-[11px] text-white/50 font-geist">
+              <p className="mt-1.5 text-[11px] text-muted-foreground font-geist">
                 Analysis runs as you type or when you click Analyze.
               </p>
               
@@ -726,12 +726,12 @@ export function AddJobPageClient() {
             </div>
             
             {/* Buttons */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
               <Button
                 type="button"
                 onClick={handleClear}
                 variant="outline"
-                className="border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
+                className="border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
               >
                 <Eraser className="w-4 h-4 mr-2" />
                 Clear
@@ -752,10 +752,10 @@ export function AddJobPageClient() {
         </div>
         
         {/* Right: Analysis */}
-        <div className="rounded-xl border border-white/10 bg-white/5">
-          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-medium tracking-tight font-geist">AI analysis</h2>
+              <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">AI analysis</h2>
               {aiConfidence !== null && (
                 <span className="text-[10px] bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">
                   {aiConfidence}% confidence
@@ -765,13 +765,13 @@ export function AddJobPageClient() {
             
             {/* Status or Action Buttons */}
             {!showAnalysis && (
-              <span className="text-[11px] text-white/50 font-geist">
+              <span className="text-[11px] text-muted-foreground font-geist">
                 Waiting for input
               </span>
             )}
             
             {showAnalysis && Object.values(loadingStates).some(v => v) && (
-              <span className="text-[11px] text-white/50 font-geist">
+              <span className="text-[11px] text-muted-foreground font-geist">
                 AI analyzing...
               </span>
             )}
@@ -799,7 +799,7 @@ export function AddJobPageClient() {
                     disabled={isAnalyzing || !jobTitle.trim() || !company.trim()}
                     variant="outline"
                     size="sm"
-                    className="border-white/10 bg-white/5 text-white hover:bg-white/10"
+                    className="border-border bg-secondary text-secondary-foreground hover:bg-secondary/80"
                   >
                     {savedJobId ? (
                       <>
@@ -844,14 +844,14 @@ export function AddJobPageClient() {
             
             {/* Empty state */}
             {!showAnalysis && !isAnalyzing && (
-              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+              <div className="rounded-lg border border-border bg-secondary p-4">
                 <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-                    <Sparkles className="w-4.5 h-4.5 text-white/70" />
+                  <div className="h-9 w-9 rounded-lg border border-border bg-background flex items-center justify-center">
+                    <Sparkles className="w-4.5 h-4.5 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium font-geist">No description yet</p>
-                    <p className="text-xs text-white/60 font-geist mt-0.5">
+                    <p className="text-sm font-medium font-geist text-foreground">No description yet</p>
+                    <p className="text-xs text-muted-foreground font-geist mt-0.5">
                       Paste a job description on the left to see keywords, match score, and suggestions here.
                     </p>
                   </div>
@@ -863,11 +863,11 @@ export function AddJobPageClient() {
             {showAnalysis && (
               <div className="space-y-4">
                 {/* Match score */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-secondary p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium font-geist">Match score</p>
-                      <p className="text-xs text-white/60 font-geist mt-0.5">
+                      <p className="text-sm font-medium font-geist text-foreground">Match score</p>
+                      <p className="text-xs text-muted-foreground font-geist mt-0.5">
                         AI-calculated alignment with your profile
                       </p>
                       {loadingStates.match && (
@@ -883,10 +883,10 @@ export function AddJobPageClient() {
                   
                   {loadingStates.match && (
                     <div className="mt-3 animate-pulse">
-                      <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                        <div className="h-full w-1/3 bg-white/20"></div>
+                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-full w-1/3 bg-muted-foreground/30"></div>
                       </div>
-                      <div className="mt-2 h-3 w-24 rounded bg-white/10"></div>
+                      <div className="mt-2 h-3 w-24 rounded bg-muted"></div>
                     </div>
                   )}
                   
@@ -918,7 +918,7 @@ export function AddJobPageClient() {
                   {!loadingStates.match && matchScore && !matchScore.needsProfile && matchScore.pct !== null && (
                     <div className="mt-3">
                       <div className="flex items-center gap-2">
-                        <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                           <div 
                             className={`h-full transition-all duration-500 ${matchScore.color}`}
                             style={{ width: `${matchScore.pct}%` }}
@@ -928,28 +928,28 @@ export function AddJobPageClient() {
                       
                       {/* Match breakdown */}
                       {semanticDetails && (
-                        <details className="mt-2 text-[11px] text-white/50">
-                          <summary className="cursor-pointer hover:text-white/70">
+                        <details className="mt-2 text-[11px] text-muted-foreground">
+                          <summary className="cursor-pointer hover:text-foreground">
                             View match breakdown
                           </summary>
                           <div className="mt-2 space-y-1 pl-3">
                             <div className="flex justify-between">
                               <span>Keyword match:</span>
-                              <span className="text-white/70">{semanticDetails.keyword_match}%</span>
+                              <span className="text-foreground">{semanticDetails.keyword_match}%</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Semantic similarity:</span>
-                              <span className="text-white/70">{semanticDetails.semantic_match}%</span>
+                              <span className="text-foreground">{semanticDetails.semantic_match}%</span>
                             </div>
                             <div className="flex justify-between">
                               <span>Required skills match:</span>
-                              <span className="text-white/70">
+                              <span className="text-foreground">
                                 {semanticDetails.required_overlap}/{semanticDetails.required_total}
                               </span>
                             </div>
                             <div className="flex justify-between">
                               <span>Preferred skills match:</span>
-                              <span className="text-white/70">
+                              <span className="text-foreground">
                                 {semanticDetails.preferred_overlap}/{semanticDetails.preferred_total}
                               </span>
                             </div>
@@ -957,16 +957,16 @@ export function AddJobPageClient() {
                         </details>
                       )}
                       
-                      <p className="mt-2 text-[11px] text-white/50 font-geist">{matchScore.hint}</p>
+                      <p className="mt-2 text-[11px] text-muted-foreground font-geist">{matchScore.hint}</p>
                     </div>
                   )}
                 </div>
                 
                 {/* Quick metrics */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-secondary p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium font-geist">Quick metrics</p>
+                      <p className="text-sm font-medium font-geist text-foreground">Quick metrics</p>
                       {loadingStates.metrics && (
                         <div className="mt-1">
                           <BusyIndicator text="Parsing sections and estimating length" />
@@ -978,9 +978,9 @@ export function AddJobPageClient() {
                   {loadingStates.metrics && (
                     <div className="mt-3 grid grid-cols-3 gap-3">
                       {[1, 2, 3].map(i => (
-                        <div key={i} className="rounded-lg border border-white/10 bg-white/5 p-3 animate-pulse">
-                          <div className="h-3 w-14 bg-white/10 rounded"></div>
-                          <div className="mt-2 h-5 w-16 bg-white/10 rounded"></div>
+                        <div key={i} className="rounded-lg border border-border bg-background p-3 animate-pulse">
+                          <div className="h-3 w-14 bg-muted rounded"></div>
+                          <div className="mt-2 h-5 w-16 bg-muted rounded"></div>
                         </div>
                       ))}
                     </div>
@@ -988,20 +988,20 @@ export function AddJobPageClient() {
                   
                   {!loadingStates.metrics && metrics && (
                     <div className="mt-3 grid grid-cols-3 gap-3">
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                        <p className="text-[11px] text-white/60 font-geist">Words</p>
+                      <div className="rounded-lg border border-border bg-background p-3">
+                        <p className="text-[11px] text-muted-foreground font-geist">Words</p>
                         <p className="mt-1 text-base font-semibold font-space-grotesk tracking-tight">
                           {metrics.words}
                         </p>
                       </div>
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                        <p className="text-[11px] text-white/60 font-geist">Reading time</p>
+                      <div className="rounded-lg border border-border bg-background p-3">
+                        <p className="text-[11px] text-muted-foreground font-geist">Reading time</p>
                         <p className="mt-1 text-base font-semibold font-space-grotesk tracking-tight">
                           {metrics.readingTime}
                         </p>
                       </div>
-                      <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                        <p className="text-[11px] text-white/60 font-geist">Sections</p>
+                      <div className="rounded-lg border border-border bg-background p-3">
+                        <p className="text-[11px] text-muted-foreground font-geist">Sections</p>
                         <p className="mt-1 text-base font-semibold font-space-grotesk tracking-tight">
                           {metrics.sections}
                         </p>
@@ -1011,14 +1011,14 @@ export function AddJobPageClient() {
                 </div>
                 
                 {/* Keywords */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-secondary p-4">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-                      <ListChecks className="w-4.5 h-4.5 text-emerald-300" />
+                    <div className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center">
+                      <ListChecks className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium font-geist">Top keywords</p>
-                      <p className="text-xs text-white/60 font-geist -mt-[1px]">
+                      <p className="text-sm font-medium font-geist text-foreground">Top keywords</p>
+                      <p className="text-xs text-muted-foreground font-geist -mt-[1px]">
                         AI-extracted from job description
                       </p>
                       {loadingStates.keywords && (
@@ -1032,8 +1032,8 @@ export function AddJobPageClient() {
                   {loadingStates.keywords && (
                     <div className="mt-3 animate-pulse flex flex-wrap gap-1.5">
                       {[14, 10, 20, 12].map((w, i) => (
-                        <span key={i} className="inline-flex rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                          <span className={`h-3 bg-white/10 rounded`} style={{ width: `${w * 4}px` }}></span>
+                        <span key={i} className="inline-flex rounded-full border border-border bg-secondary px-2 py-1">
+                          <span className={`h-3 bg-muted rounded`} style={{ width: `${w * 4}px` }}></span>
                         </span>
                       ))}
                     </div>
@@ -1049,14 +1049,14 @@ export function AddJobPageClient() {
                 </div>
                 
                 {/* Suggestions */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-secondary p-4">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-                      <Lightbulb className="w-4.5 h-4.5 text-emerald-300" />
+                    <div className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center">
+                      <Lightbulb className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium font-geist">Preferred Skills</p>
-                      <p className="text-xs text-white/60 font-geist -mt-[1px]">
+                      <p className="text-sm font-medium font-geist text-foreground">Preferred Skills</p>
+                      <p className="text-xs text-muted-foreground font-geist -mt-[1px]">
                         Nice-to-have skills identified by AI
                       </p>
                       {loadingStates.suggestions && (
@@ -1070,8 +1070,8 @@ export function AddJobPageClient() {
                   {loadingStates.suggestions && (
                     <div className="mt-3 animate-pulse flex flex-wrap gap-1.5">
                       {[16, 10, 14].map((w, i) => (
-                        <span key={i} className="inline-flex rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                          <span className={`h-3 bg-white/10 rounded`} style={{ width: `${w * 4}px` }}></span>
+                        <span key={i} className="inline-flex rounded-full border border-border bg-secondary px-2 py-1">
+                          <span className={`h-3 bg-muted rounded`} style={{ width: `${w * 4}px` }}></span>
                         </span>
                       ))}
                     </div>
@@ -1091,14 +1091,14 @@ export function AddJobPageClient() {
                 </div>
                 
                 {/* ATS checks */}
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border bg-secondary p-4">
                   <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-                      <ShieldCheck className="w-4.5 h-4.5 text-emerald-300" />
+                    <div className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center">
+                      <ShieldCheck className="w-4.5 h-4.5 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium font-geist">ATS checks</p>
-                      <p className="text-xs text-white/60 font-geist -mt-[1px]">
+                      <p className="text-sm font-medium font-geist text-foreground">ATS checks</p>
+                      <p className="text-xs text-muted-foreground font-geist -mt-[1px]">
                         Parsing, readability, formatting flags
                       </p>
                       {loadingStates.ats && (
@@ -1112,9 +1112,9 @@ export function AddJobPageClient() {
                   {loadingStates.ats && (
                     <div className="mt-3 space-y-2">
                       {[1, 2].map(i => (
-                        <div key={i} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 animate-pulse">
-                          <div className="h-4 w-40 bg-white/10 rounded"></div>
-                          <div className="mt-2 h-3 w-56 bg-white/10 rounded"></div>
+                        <div key={i} className="rounded-lg border border-border bg-background px-3 py-2 animate-pulse">
+                          <div className="h-4 w-40 bg-muted rounded"></div>
+                          <div className="mt-2 h-3 w-56 bg-muted rounded"></div>
                         </div>
                       ))}
                     </div>

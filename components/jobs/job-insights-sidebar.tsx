@@ -29,18 +29,18 @@ export function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsSidebar
   })()
   
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5">
-      <div className="px-4 py-3 border-b border-white/10">
-        <h2 className="text-lg font-medium tracking-tight font-geist">Job insights</h2>
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">Job insights</h2>
       </div>
       <div className="p-4 space-y-4">
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <ListChecks className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-secondary flex items-center justify-center">
+            <ListChecks className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Top keywords</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
+            <p className="text-sm font-medium font-geist text-foreground">Top keywords</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">
               {hasKeywords
                 ? "Frameworks, tooling, and domain terms extracted."
                 : "Keywords will appear after you analyze a job."}
@@ -50,13 +50,13 @@ export function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsSidebar
                 displayedKeywords.map((item) => (
                   <span
                     key={item.keyword}
-                    className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/80"
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
                   >
                     {item.keyword}
                   </span>
                 ))
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-white/15 bg-white/5 px-2 py-0.5 text-[11px] text-white/60">
+                <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
                   No keywords yet
                 </span>
               )}
@@ -65,25 +65,25 @@ export function JobInsightsSidebar({ topKeywords, avgMatch }: JobInsightsSidebar
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <Percent className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-secondary flex items-center justify-center">
+            <Percent className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Average match</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">{avgMatchDescription}</p>
+            <p className="text-sm font-medium font-geist text-foreground">Average match</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">{avgMatchDescription}</p>
           </div>
-          <span className="text-xs text-emerald-200 font-medium">{avgMatchValue}</span>
+          <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">{avgMatchValue}</span>
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <Lightbulb className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-secondary flex items-center justify-center">
+            <Lightbulb className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-400" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Suggestions</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">{suggestionMessage}</p>
+            <p className="text-sm font-medium font-geist text-foreground">Suggestions</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">{suggestionMessage}</p>
           </div>
-          <span className="text-xs text-white/80 font-medium">Action</span>
+          <span className="text-xs text-foreground font-medium">Action</span>
         </div>
 
         <Link 

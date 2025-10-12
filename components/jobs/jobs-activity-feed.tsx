@@ -18,11 +18,11 @@ interface JobsActivityFeedProps {
 export function JobsActivityFeed({ activities }: JobsActivityFeedProps) {
   if (activities.length === 0) {
     return (
-      <div className="mt-6 rounded-xl border border-white/10 bg-white/5">
-        <div className="px-4 py-3 border-b border-white/10">
-          <h2 className="text-lg font-medium tracking-tight font-geist">Activity</h2>
+      <div className="mt-6 rounded-xl border border-border bg-card shadow-sm">
+        <div className="px-4 py-3 border-b border-border">
+          <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">Activity</h2>
         </div>
-        <div className="px-4 py-10 text-center text-sm text-white/60 font-geist">
+        <div className="px-4 py-10 text-center text-sm text-muted-foreground font-geist">
           Activity from job analyses and generated CVs will appear here once you get started.
         </div>
       </div>
@@ -30,11 +30,11 @@ export function JobsActivityFeed({ activities }: JobsActivityFeedProps) {
   }
 
   return (
-    <div className="mt-6 rounded-xl border border-white/10 bg-white/5">
-      <div className="px-4 py-3 border-b border-white/10">
-        <h2 className="text-lg font-medium tracking-tight font-geist">Activity</h2>
+    <div className="mt-6 rounded-xl border border-border bg-card shadow-sm">
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">Activity</h2>
       </div>
-      <div className="divide-y divide-white/10">
+      <div className="divide-y divide-border">
         {activities.map((activity) => {
           const Icon = activity.activity_type === "job_added" ? FileSearch : FilePlus
           const description =
@@ -50,15 +50,15 @@ export function JobsActivityFeed({ activities }: JobsActivityFeedProps) {
           return (
             <div key={activity.id} className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center">
-                  <Icon className="w-[18px] h-[18px] text-white/70" />
+                <div className="h-9 w-9 rounded-full border border-border bg-secondary flex items-center justify-center">
+                  <Icon className="w-[18px] h-[18px] text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-geist">{description}</p>
-                  <p className="text-xs text-white/60 font-geist">{detail}</p>
+                  <p className="text-sm font-geist text-foreground">{description}</p>
+                  <p className="text-xs text-muted-foreground font-geist">{detail}</p>
                 </div>
               </div>
-              <span className="text-xs text-white/50 font-geist">
+              <span className="text-xs text-muted-foreground font-geist">
                 {formatRelativeTime(activity.created_at)}
               </span>
             </div>

@@ -17,43 +17,43 @@ export function OptimizationSidebar({
   keywordsNeeded = 2,
 }: OptimizationSidebarProps) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5">
-      <div className="px-4 py-3 border-b border-white/10">
-        <h2 className="text-lg font-medium tracking-tight font-geist">
+    <div className="rounded-xl border border-border bg-card shadow-sm">
+      <div className="px-4 py-3 border-b border-border">
+        <h2 className="text-lg font-medium tracking-tight font-geist text-foreground">
           Resume optimization
         </h2>
       </div>
       <div className="p-4 space-y-4">
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <Files className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-muted flex items-center justify-center">
+            <Files className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-300" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Variants</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
+            <p className="text-sm font-medium font-geist text-foreground">Variants</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">
               {variantCount === 0
                 ? "No variants created yet."
                 : `${variantCount} tailored ${variantCount === 1 ? "version" : "versions"} in use.`}
             </p>
           </div>
           {variantCount > 0 && (
-            <span className="text-xs text-emerald-200 font-medium">Active</span>
+            <span className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">Active</span>
           )}
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <ScanLine className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-muted flex items-center justify-center">
+            <ScanLine className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-300" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">ATS compatibility</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
+            <p className="text-sm font-medium font-geist text-foreground">ATS compatibility</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">
               {atsHealthy ? "No parsing blockers detected." : "Issues found."}
             </p>
           </div>
           <span
             className={`text-xs font-medium ${
-              atsHealthy ? "text-emerald-200" : "text-amber-200"
+              atsHealthy ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"
             }`}
           >
             {atsHealthy ? "Pass" : "Warn"}
@@ -61,12 +61,12 @@ export function OptimizationSidebar({
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <ListChecks className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-muted flex items-center justify-center">
+            <ListChecks className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-300" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Formatting</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
+            <p className="text-sm font-medium font-geist text-foreground">Formatting</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">
               {formattingGood
                 ? "Consistent headings and sections."
                 : "Inconsistencies found."}
@@ -74,7 +74,7 @@ export function OptimizationSidebar({
           </div>
           <span
             className={`text-xs font-medium ${
-              formattingGood ? "text-emerald-200" : "text-amber-200"
+              formattingGood ? "text-emerald-700 dark:text-emerald-300" : "text-amber-700 dark:text-amber-300"
             }`}
           >
             {formattingGood ? "Good" : "Review"}
@@ -82,12 +82,12 @@ export function OptimizationSidebar({
         </div>
 
         <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-            <Highlighter className="w-[18px] h-[18px] text-emerald-300" />
+          <div className="h-9 w-9 rounded-lg border border-border bg-muted flex items-center justify-center">
+            <Highlighter className="w-[18px] h-[18px] text-emerald-600 dark:text-emerald-300" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium font-geist">Keywords</p>
-            <p className="text-xs text-white/60 font-geist mt-0.5">
+            <p className="text-sm font-medium font-geist text-foreground">Keywords</p>
+            <p className="text-xs text-muted-foreground font-geist mt-0.5">
               {keywordsNeeded > 0
                 ? `Add ${keywordsNeeded} role-specific tools to boost match.`
                 : "All key terms present."}
@@ -95,7 +95,7 @@ export function OptimizationSidebar({
           </div>
           <span
             className={`text-xs font-medium ${
-              keywordsNeeded > 0 ? "text-white/80" : "text-emerald-200"
+              keywordsNeeded > 0 ? "text-foreground" : "text-emerald-700 dark:text-emerald-300"
             }`}
           >
             {keywordsNeeded > 0 ? "Action" : "Good"}
