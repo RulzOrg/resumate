@@ -201,11 +201,12 @@ export default function HomePage() {
               </div>
             </div>
             <div className="relative">
-              <div className="aspect-[4/3] w-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border-white/10 border rounded-2xl overflow-hidden">
+              <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border-white/10 border rounded-2xl overflow-hidden">
                 <Image 
                   src="/images/features/hero-ui.webp" 
                   alt="AI Resume Platform UI" 
                   fill
+                  priority
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
                 />
