@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { RefreshCw, Upload, Target, Download, Check, Star, Plus, Menu } from "lucide-react"
 
 export default function HomePage() {
@@ -200,11 +201,14 @@ export default function HomePage() {
               </div>
             </div>
             <div className="relative">
-              <div className="aspect-[4/3] w-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border-white/10 border rounded-2xl flex items-center justify-center">
-                <div className="text-center">
-                  <RefreshCw className="h-16 w-16 text-emerald-400 mx-auto mb-4" />
-                  <p className="text-white/60">AI Resume Platform UI</p>
-                </div>
+              <div className="aspect-[4/3] w-full bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border-white/10 border rounded-2xl overflow-hidden">
+                <Image 
+                  src="/images/features/hero-ui.webp" 
+                  alt="AI Resume Platform UI" 
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 600px"
+                />
               </div>
               <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10"></div>
             </div>
@@ -237,8 +241,14 @@ export default function HomePage() {
               </p>
             </div>
             <div className="mt-6 rounded-lg overflow-hidden border border-white/10">
-              <div className="w-full h-32 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center">
-                <RefreshCw className="h-12 w-12 text-emerald-400" />
+              <div className="relative w-full aspect-[16/9] bg-gradient-to-br from-emerald-500/20 to-blue-500/20">
+                <Image 
+                  src="/images/features/instant-resume.webp" 
+                  alt="AI-Powered Optimization" 
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
               </div>
             </div>
           </div>
@@ -252,11 +262,14 @@ export default function HomePage() {
               Applicant Tracking Systems.
             </p>
             <div className="mt-4 rounded-lg overflow-hidden border border-white/10">
-              <div className="aspect-[16/10] w-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-white/20 rounded mx-auto mb-2"></div>
-                  <div className="text-xs text-white/60">Templates</div>
-                </div>
+              <div className="relative aspect-[16/10] w-full bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                <Image 
+                  src="/images/features/feature-templates.webp" 
+                  alt="Templates" 
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
               </div>
             </div>
           </div>
@@ -270,8 +283,14 @@ export default function HomePage() {
               ready.
             </p>
             <div className="mt-4 rounded-lg overflow-hidden border border-white/10">
-              <div className="aspect-[16/10] w-full bg-gradient-to-br from-emerald-500/20 to-green-500/20 flex items-center justify-center">
-                <div className="text-2xl font-bold text-emerald-400">85%</div>
+              <div className="relative aspect-[16/10] w-full bg-gradient-to-br from-emerald-500/20 to-green-500/20">
+                <Image 
+                  src="/images/features/feature-analysis.webp" 
+                  alt="Instant Resume Score" 
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
               </div>
             </div>
           </div>
