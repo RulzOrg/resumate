@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from "react"
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Download, Save, AlertCircle } from "lucide-react"
+import { Download, Save, AlertCircle, ArrowLeft } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
 import type { SystemPromptV1Output } from "@/lib/schemas-v2"
@@ -291,6 +292,13 @@ export function ResumeEditorV2({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
+          <Link 
+            href="/dashboard/optimized"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-2 transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Link>
           <h1 className="text-2xl font-semibold tracking-tight">Resume Editor</h1>
           <p className="text-sm text-muted-foreground mt-1">
             For {jobTitle}

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, getJobAnalysisById, getOrCreateUser, getUserById, ensureUserSyncRecord } from "@/lib/db"
+import { sql, getResumeById, getJobAnalysisById, getOrCreateUser, getUserById, ensureUserSyncRecord } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
         },
       )
     }
-
     // Get or create user in our database
     const user = await getOrCreateUser()
     if (!user) {
@@ -180,8 +179,6 @@ async function createOptimizedResumeV2(data: {
   structured_output: SystemPromptV1Output
   qa_metrics: any
 }) {
-  const { sql } = await import("@/lib/db")
-  
   const [optimizedResume] = await sql`
     INSERT INTO optimized_resumes (
       user_id, original_resume_id, job_analysis_id, title, optimized_content,
@@ -193,8 +190,11 @@ async function createOptimizedResumeV2(data: {
       ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id}, 
       ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
       ${data.match_score || null}, ${data.optimization_summary.changes_made}, 
-      ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
-      ${JSON.stringify(data.structured_output)}, ${JSON.stringify(data.qa_metrics)}, NULL,
+      ${data.optimization_summary.keywords_added}, 
+      ${data.optimization_summary.skills_highlighted},
+      ${JSON.stringify(data.structured_output)}::jsonb, 
+      ${JSON.stringify(data.qa_metrics)}::jsonb, 
+      NULL,
       NOW(), NOW()
     )
     RETURNING *

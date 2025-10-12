@@ -25,9 +25,11 @@ export function LivePreviewPanel({ text, diffHints, fileName }: LivePreviewPanel
       const isEdited = hint.includes("*edited*")
       
       if (lineMatch) {
-        const lineNum = parseInt(lineMatch[1])
-        if (isNew) map[lineNum] = "new"
-        else if (isEdited) map[lineNum] = "edited"
+        const lineNum = parseInt(lineMatch[1], 10) - 1 // Convert 1-based to 0-based
+        if (!isNaN(lineNum) && lineNum >= 0) {
+          if (isNew) map[lineNum] = "new"
+          else if (isEdited) map[lineNum] = "edited"
+        }
       }
     })
     
@@ -66,6 +68,16 @@ export function LivePreviewPanel({ text, diffHints, fileName }: LivePreviewPanel
     })
   }, [text, diffMap])
 
+  const escapeHtml = (str: string): string => {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+      .replace(/\//g, "&#x2F;")
+  }
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(text)
@@ -77,13 +89,19 @@ export function LivePreviewPanel({ text, diffHints, fileName }: LivePreviewPanel
 
   const handlePreview = () => {
     const printWindow = window.open("", "_blank")
-    if (!printWindow) return
+    if (!printWindow) {
+      toast.error("Popup blocked. Please allow popups for this site to preview.")
+      return
+    }
+
+    const escapedFileName = escapeHtml(fileName || "Resume Preview")
+    const escapedText = escapeHtml(text)
 
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${fileName || "Resume Preview"}</title>
+        <title>${escapedFileName}</title>
         <style>
           body {
             font-family: Arial, Helvetica, sans-serif;
@@ -103,7 +121,7 @@ export function LivePreviewPanel({ text, diffHints, fileName }: LivePreviewPanel
         </style>
       </head>
       <body>
-        <pre>${text}</pre>
+        <pre>${escapedText}</pre>
       </body>
       </html>
     `)

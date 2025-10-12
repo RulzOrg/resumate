@@ -289,7 +289,7 @@ export function SkillsSection({ data, onChange }: SkillsSectionProps) {
                         variant="outline"
                         size="icon"
                         onClick={() => handleAddSkill(category.key, newSkillInput.value)}
-                        disabled={!data.include || !newSkillInput.value.trim()}
+                        disabled={!data.include || !newSkillInput.value.trim() || newSkillInput.category !== category.key}
                       >
                         <Plus className="h-4 w-4" />
                       </Button>

@@ -1,6 +1,6 @@
 ---
 description: Run database migrations
-allowed-tools: Bash(python scripts/run-migration.py*)
+allowed-tools: Bash(python scripts/run-migration.py)
 ---
 
 Run database migration:

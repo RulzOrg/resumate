@@ -56,12 +56,25 @@ export function WorkExperienceSection({ data, onChange }: WorkExperienceSectionP
 
   const handleSwapBullet = (itemIndex: number, bulletIndex: number, alternate: string) => {
     const newItems = [...data.items]
-    const currentBullet = newItems[itemIndex].bullets.primary[bulletIndex]
-    const newAlternates = newItems[itemIndex].bullets.alternates.filter((a) => a !== alternate)
+    const item = newItems[itemIndex]
+    const currentBullet = item.bullets.primary[bulletIndex]
+    
+    // Create new copies without mutating
+    const newPrimary = [...item.bullets.primary]
+    newPrimary[bulletIndex] = alternate
+    
+    const newAlternates = item.bullets.alternates.filter((a) => a !== alternate)
     newAlternates.push(currentBullet)
-
-    newItems[itemIndex].bullets.primary[bulletIndex] = alternate
-    newItems[itemIndex].bullets.alternates = newAlternates
+    
+    // Clone the entire item with new nested structures
+    newItems[itemIndex] = {
+      ...item,
+      bullets: {
+        ...item.bullets,
+        primary: newPrimary,
+        alternates: newAlternates,
+      },
+    }
 
     onChange({ items: newItems })
   }
@@ -117,7 +130,11 @@ export function WorkExperienceSection({ data, onChange }: WorkExperienceSectionP
     onChange({ items: newItems })
   }
 
-  const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length
+  const wordCount = (text: string) => {
+    const trimmed = text.trim()
+    if (trimmed === "") return 0
+    return trimmed.split(/\s+/).length
+  }
 
   const getBulletQuality = (text: string) => {
     const wc = wordCount(text)

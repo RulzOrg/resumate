@@ -1,6 +1,7 @@
 import { neon } from "@neondatabase/serverless"
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 import { normalizeSalaryRange, type SalaryRangeInput } from "./normalizers"
+import type { SystemPromptV1Output, QASection } from "./schemas-v2"
 
 const databaseUrl = process.env.DATABASE_URL
 const isDbConfigured = Boolean(databaseUrl)
@@ -232,8 +233,8 @@ export interface OptimizedResume {
 
 // System Prompt v1.1 Extended Resume with Structured Output
 export interface OptimizedResumeV2 extends OptimizedResume {
-  structured_output?: any | null  // Will be SystemPromptV1Output from schemas-v2
-  qa_metrics?: any | null  // Will be QASection from schemas-v2
+  structured_output?: SystemPromptV1Output | null
+  qa_metrics?: QASection | null
   export_formats?: {
     docx_url?: string
     pdf_url?: string
@@ -1102,7 +1103,7 @@ export async function getOptimizedResumeById(id: string, user_id: string) {
     WHERE opt_res.id = ${id} AND opt_res.user_id = ${user_id}
   `
   return optimizedResume as
-    | (OptimizedResume & {
+    | (OptimizedResumeV2 & {
         original_resume_title: string
         job_title: string
         company_name?: string
@@ -1144,13 +1145,19 @@ export async function updateOptimizedResume(
   return optimizedResume as OptimizedResume | undefined
 }
 
+type ExportFormats = {
+  docx_url?: string
+  pdf_url?: string
+  txt_url?: string
+}
+
 export async function updateOptimizedResumeV2(
   id: string,
   user_id: string,
   data: {
-    structured_output?: any
-    qa_metrics?: any
-    export_formats?: { docx_url?: string; pdf_url?: string; txt_url?: string }
+    structured_output?: SystemPromptV1Output
+    qa_metrics?: QASection
+    export_formats?: ExportFormats
     optimized_content?: string
     match_score?: number
   }
@@ -1158,39 +1165,29 @@ export async function updateOptimizedResumeV2(
   console.log('[DB] Updating resume:', id)
   console.log('[DB] Fields being updated:', Object.keys(data).filter(k => (data as any)[k] !== undefined))
   
-  if (data.structured_output) {
-    const size = JSON.stringify(data.structured_output).length
-    console.log('[DB] Structured output size:', size, 'bytes')
+  // Prepare JSON values outside SQL query for better type safety
+  const structuredOutputJson = data.structured_output !== undefined 
+    ? JSON.stringify(data.structured_output) 
+    : null
+  const qaMetricsJson = data.qa_metrics !== undefined
+    ? JSON.stringify(data.qa_metrics)
+    : null
+  const exportFormatsJson = data.export_formats !== undefined
+    ? JSON.stringify(data.export_formats)
+    : null
+  
+  if (structuredOutputJson) {
+    console.log('[DB] Structured output size:', structuredOutputJson.length, 'bytes')
   }
 
   const [optimizedResume] = await sql`
     UPDATE optimized_resumes
     SET 
-      structured_output = CASE 
-        WHEN ${data.structured_output === undefined}::boolean 
-        THEN structured_output 
-        ELSE ${data.structured_output !== undefined ? JSON.stringify(data.structured_output) : null}::jsonb 
-      END,
-      qa_metrics = CASE 
-        WHEN ${data.qa_metrics === undefined}::boolean 
-        THEN qa_metrics 
-        ELSE ${data.qa_metrics !== undefined ? JSON.stringify(data.qa_metrics) : null}::jsonb 
-      END,
-      export_formats = CASE 
-        WHEN ${data.export_formats === undefined}::boolean 
-        THEN export_formats 
-        ELSE ${data.export_formats !== undefined ? JSON.stringify(data.export_formats) : null}::jsonb 
-      END,
-      optimized_content = CASE 
-        WHEN ${data.optimized_content === undefined}::boolean 
-        THEN optimized_content 
-        ELSE ${data.optimized_content} 
-      END,
-      match_score = CASE 
-        WHEN ${data.match_score === undefined}::boolean 
-        THEN match_score 
-        ELSE ${data.match_score} 
-      END,
+      structured_output = COALESCE(${structuredOutputJson}::jsonb, structured_output),
+      qa_metrics = COALESCE(${qaMetricsJson}::jsonb, qa_metrics),
+      export_formats = COALESCE(${exportFormatsJson}::jsonb, export_formats),
+      optimized_content = COALESCE(${data.optimized_content ?? null}, optimized_content),
+      match_score = COALESCE(${data.match_score ?? null}, match_score),
       updated_at = NOW()
     WHERE id = ${id} AND user_id = ${user_id}
     RETURNING *

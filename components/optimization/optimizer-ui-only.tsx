@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
   AlertTriangle,
@@ -223,6 +224,7 @@ export default function OptimizerUiOnly({
     initialResume || resolvedResumes.find((r) => r.isPrimary) || resolvedResumes[0] || null
   const resolvedInitialJob = initialJob || resolvedJobs[0] || null
 
+  const router = useRouter()
   const [step, setStep] = useState<Step>(1)
   const [selectedResume, setSelectedResume] = useState<string>(resolvedInitialResume?.id ?? mockResumeOptions[0].id)
   const [resumeMenuOpen, setResumeMenuOpen] = useState(false)
@@ -472,8 +474,11 @@ export default function OptimizerUiOnly({
       const oid = optimized?.id || optimized?.optimized_resume_id || null
       if (oid) {
         setOptimizedId(String(oid))
-        setStep(4)
-        toast.success('Optimized resume generated!')
+        toast.success('Optimized resume generated! Redirecting to editor...')
+        // Redirect to dedicated editor page for better UX and persistence
+        setTimeout(() => {
+          router.push(`/dashboard/optimized/${oid}`)
+        }, 1000)
       }
     } catch (e: any) {
       setOptimizeError(e?.message || 'Optimization failed')

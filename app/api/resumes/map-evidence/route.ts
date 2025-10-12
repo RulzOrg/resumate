@@ -4,19 +4,7 @@ import { getJobAnalysisById, getResumeById, getOrCreateUser } from "@/lib/db"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, AppError } from "@/lib/error-handler"
 import { searchEvidence } from "@/lib/match"
-
-export interface EvidenceMapping {
-  requirement: string
-  type: "must_have" | "preferred" | "key_requirement"
-  evidence: Array<{
-    text: string
-    score: number
-    metadata?: Record<string, any>
-  }>
-  confidence: "exact" | "partial" | "missing"
-  gaps: string
-  recommendedKeywords: string[]
-}
+import { EvidenceMapping } from "@/lib/types/evidence-mapping"
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,22 +55,24 @@ export async function POST(request: NextRequest) {
       resume: resume.title,
     })
 
+    // Helper to safely extract string arrays from job analysis
+    const extractStringArray = (obj: any, field: string): string[] => {
+      // Check top-level field first
+      if (Array.isArray(obj[field])) {
+        return obj[field].filter((item): item is string => typeof item === 'string')
+      }
+      // Check analysis_result nested field
+      if (obj.analysis_result && Array.isArray(obj.analysis_result[field])) {
+        return obj.analysis_result[field].filter((item): item is string => typeof item === 'string')
+      }
+      // Fallback to empty array
+      return []
+    }
+
     // Extract requirements from job analysis
-    const mustHaves = Array.isArray((jobAnalysis as any).required_skills)
-      ? (jobAnalysis as any).required_skills
-      : Array.isArray((jobAnalysis as any).analysis_result?.required_skills)
-        ? (jobAnalysis as any).analysis_result.required_skills
-        : []
-
-    const preferred = Array.isArray((jobAnalysis as any).preferred_skills)
-      ? (jobAnalysis as any).preferred_skills
-      : Array.isArray((jobAnalysis as any).analysis_result?.preferred_skills)
-        ? (jobAnalysis as any).analysis_result.preferred_skills
-        : []
-
-    const keyReqs = Array.isArray((jobAnalysis as any).analysis_result?.key_requirements)
-      ? (jobAnalysis as any).analysis_result.key_requirements
-      : []
+    const mustHaves = extractStringArray(jobAnalysis, 'required_skills')
+    const preferred = extractStringArray(jobAnalysis, 'preferred_skills')
+    const keyReqs = extractStringArray(jobAnalysis, 'key_requirements')
 
     // Map each requirement to evidence
     const mappings: EvidenceMapping[] = []

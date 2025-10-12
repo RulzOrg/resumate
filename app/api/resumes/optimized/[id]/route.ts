@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { updateOptimizedResumeV2, getUserByClerkId } from "@/lib/db"
 import type { SystemPromptV1Output } from "@/lib/schemas-v2"
+import { SystemPromptV1OutputSchema } from "@/lib/schemas-v2"
 
 export async function PATCH(
   request: NextRequest,
@@ -61,16 +62,14 @@ export async function PATCH(
 
     // Validate structured_output if provided
     if (structured_output !== undefined && structured_output !== null) {
-      const requiredFields = ["ui", "resume_json", "analysis", "qa", "tailored_resume_text"]
-      const missingFields = requiredFields.filter(
-        (field) => !structured_output[field]
-      )
-
-      if (missingFields.length > 0) {
+      const validation = SystemPromptV1OutputSchema.safeParse(structured_output)
+      
+      if (!validation.success) {
         return NextResponse.json(
           {
             error: "Invalid structured_output",
-            message: `Missing required fields: ${missingFields.join(", ")}`,
+            message: "The structured_output does not match the expected schema",
+            validation_errors: validation.error.errors,
           },
           { status: 400 }
         )

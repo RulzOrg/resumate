@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react"
+import React, { useState, useMemo, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -29,6 +29,12 @@ interface ProfessionalSummarySectionProps {
 export function ProfessionalSummarySection({ data, onChange }: ProfessionalSummarySectionProps) {
   const [charCount, setCharCount] = useState(data.primary.length)
   const [wordCount, setWordCount] = useState(data.primary.split(/\s+/).filter(Boolean).length)
+
+  useEffect(() => {
+    const primaryText = data.primary ?? ""
+    setCharCount(primaryText.length)
+    setWordCount(primaryText.split(/\s+/).filter(Boolean).length)
+  }, [data.primary])
 
   const handleChange = (value: string) => {
     setCharCount(value.length)

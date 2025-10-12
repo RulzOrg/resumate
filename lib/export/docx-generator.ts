@@ -12,9 +12,17 @@ import {
   AlignmentType,
   convertInchesToTwip,
   UnderlineType,
+  Footer,
+  PageNumber,
+  NumberFormat,
 } from "docx"
 import type { ResumeJSON } from "@/lib/schemas-v2"
 
+/**
+ * Options for DOCX generation
+ * @property fileName - Suggested file name (stored in document metadata)
+ * @property includePageNumbers - If true, adds "Page X of Y" footer to document
+ */
 interface DOCXOptions {
   fileName?: string
   includePageNumbers?: boolean
@@ -28,11 +36,16 @@ interface DOCXOptions {
  * - No tables, text boxes, or images
  * - Clear section headers
  * - Consistent formatting
+ * 
+ * @param resumeData - Structured resume data conforming to ResumeJSON schema
+ * @param options - Optional configuration (fileName, includePageNumbers)
+ * @returns Buffer containing the generated DOCX file
  */
 export async function generateDOCX(
   resumeData: ResumeJSON,
   options: DOCXOptions = {}
 ): Promise<Buffer> {
+  const { fileName, includePageNumbers = false } = options
   const sections: Paragraph[] = []
 
   // ============================================================================
@@ -105,13 +118,19 @@ export async function generateDOCX(
   if (resumeData.summary) {
     sections.push(
       new Paragraph({
-        text: "PROFESSIONAL SUMMARY",
+        children: [
+          new TextRun({
+            text: "PROFESSIONAL SUMMARY",
+            bold: true,
+            size: 24,
+            font: "Arial",
+            underline: {
+              type: UnderlineType.SINGLE,
+            },
+          }),
+        ],
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 240, after: 120 },
-        bold: true,
-        underline: {
-          type: UnderlineType.SINGLE,
-        },
       })
     )
 
@@ -139,32 +158,34 @@ export async function generateDOCX(
   if (hasSkills) {
     sections.push(
       new Paragraph({
-        text: "SKILLS",
+        children: [
+          new TextRun({
+            text: "SKILLS",
+            bold: true,
+            size: 24,
+            font: "Arial",
+            underline: {
+              type: UnderlineType.SINGLE,
+            },
+          }),
+        ],
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 240, after: 120 },
-        bold: true,
-        underline: {
-          type: UnderlineType.SINGLE,
-        },
       })
     )
 
     // Skills grouped by category
-    const skillCategories = [
-      { key: "Domain" as const, label: "Domain Expertise" },
-      { key: "ResearchAndValidation" as const, label: "Research & Validation" },
-      { key: "ProductAndSystems" as const, label: "Product & Systems" },
-      { key: "Tools" as const, label: "Tools & Platforms" },
-    ]
-
-    skillCategories.forEach((category) => {
-      const skills = resumeData.skills[category.key]
+    Object.entries(resumeData.skills).forEach(([key, skills]) => {
       if (skills && skills.length > 0) {
+        const label = key
+          .replace(/([A-Z])/g, " $1")
+          .trim()
+          .replace(/^./, (c) => c.toUpperCase())
         sections.push(
           new Paragraph({
             children: [
               new TextRun({
-                text: `${category.label}: `,
+                text: `${label}: `,
                 bold: true,
                 size: 22,
                 font: "Arial",
@@ -197,13 +218,19 @@ export async function generateDOCX(
   if (resumeData.experience && resumeData.experience.length > 0) {
     sections.push(
       new Paragraph({
-        text: "WORK EXPERIENCE",
+        children: [
+          new TextRun({
+            text: "WORK EXPERIENCE",
+            bold: true,
+            size: 24,
+            font: "Arial",
+            underline: {
+              type: UnderlineType.SINGLE,
+            },
+          }),
+        ],
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 240, after: 120 },
-        bold: true,
-        underline: {
-          type: UnderlineType.SINGLE,
-        },
       })
     )
 
@@ -229,7 +256,7 @@ export async function generateDOCX(
           children: [
             new TextRun({
               text: exp.title,
-              italic: true,
+              italics: true,
               size: 22,
               font: "Arial",
             }),
@@ -275,13 +302,19 @@ export async function generateDOCX(
   if (resumeData.education && resumeData.education.length > 0) {
     sections.push(
       new Paragraph({
-        text: "EDUCATION",
+        children: [
+          new TextRun({
+            text: "EDUCATION",
+            bold: true,
+            size: 24,
+            font: "Arial",
+            underline: {
+              type: UnderlineType.SINGLE,
+            },
+          }),
+        ],
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 240, after: 120 },
-        bold: true,
-        underline: {
-          type: UnderlineType.SINGLE,
-        },
       })
     )
 
@@ -333,13 +366,19 @@ export async function generateDOCX(
   if (resumeData.certifications && resumeData.certifications.length > 0) {
     sections.push(
       new Paragraph({
-        text: "CERTIFICATIONS",
+        children: [
+          new TextRun({
+            text: "CERTIFICATIONS",
+            bold: true,
+            size: 24,
+            font: "Arial",
+            underline: {
+              type: UnderlineType.SINGLE,
+            },
+          }),
+        ],
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 240, after: 120 },
-        bold: true,
-        underline: {
-          type: UnderlineType.SINGLE,
-        },
       })
     )
 
@@ -373,13 +412,19 @@ export async function generateDOCX(
   if (resumeData.extras && resumeData.extras.length > 0) {
     sections.push(
       new Paragraph({
-        text: "ADDITIONAL",
+        children: [
+          new TextRun({
+            text: "ADDITIONAL",
+            bold: true,
+            size: 24,
+            font: "Arial",
+            underline: {
+              type: UnderlineType.SINGLE,
+            },
+          }),
+        ],
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 240, after: 120 },
-        bold: true,
-        underline: {
-          type: UnderlineType.SINGLE,
-        },
       })
     )
 
@@ -409,7 +454,33 @@ export async function generateDOCX(
   // CREATE DOCUMENT
   // ============================================================================
   
+  // Optional footer with page numbers
+  const footers = includePageNumbers
+    ? {
+        default: new Footer({
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  children: ["Page ", PageNumber.CURRENT, " of ", PageNumber.TOTAL_PAGES],
+                  size: 18, // 9pt
+                  font: "Arial",
+                }),
+              ],
+            }),
+          ],
+        }),
+      }
+    : undefined
+
   const doc = new Document({
+    // Document metadata
+    ...(fileName && {
+      creator: "AI Resume Optimizer",
+      title: fileName.replace(/\.\w+$/, ""), // Remove extension
+      description: "Resume optimized by AI Resume Optimizer",
+    }),
     sections: [
       {
         properties: {
@@ -422,6 +493,7 @@ export async function generateDOCX(
             },
           },
         },
+        ...(footers && { footers }),
         children: sections,
       },
     ],

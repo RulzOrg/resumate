@@ -15,19 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { Check, AlertTriangle, X, RefreshCw, Lightbulb, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-
-interface EvidenceMapping {
-  requirement: string
-  type: "must_have" | "preferred" | "key_requirement"
-  evidence: Array<{
-    text: string
-    score: number
-    metadata?: Record<string, any>
-  }>
-  confidence: "exact" | "partial" | "missing"
-  gaps: string
-  recommendedKeywords: string[]
-}
+import { EvidenceMapping } from "@/lib/types/evidence-mapping"
 
 interface EvidenceMappingPanelProps {
   jobAnalysisId: string

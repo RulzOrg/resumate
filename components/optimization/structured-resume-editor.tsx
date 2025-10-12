@@ -1,10 +1,11 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useMemo, useRef } from "react"
 import { ChevronDown, Wand2, Plus, Trash2, Save, Download, FileText, Copy as CopyIcon, Check, X } from "lucide-react"
 import { toast } from "sonner"
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from "docx"
 import { saveAs } from "file-saver"
+import DOMPurify from "isomorphic-dompurify"
 
 // Types
 interface ContactInfo {
@@ -98,9 +99,157 @@ interface StructuredResumeEditorProps {
   onSave?: (data: ResumeData) => Promise<void>
 }
 
+// ============================================================================
+// Module-level constants and helpers for experience parsing
+// ============================================================================
+
+const LIST_MARKER_REGEX = /^[-*•●◦▪▫➤➣▹▸·]\s+/
+const NUMBERED_LIST_REGEX = /^\d+\.\s+/
+
+const DATE_PATTERNS = [
+  /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*[A-Za-z]{3,}\s+\d{4})/i,
+  /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*Present)/i,
+  /(\d{4}\/\d{2}\s*[-–]\s*\d{4}\/\d{2})/,
+  /(\d{4}\/\d{2}\s*[-–]\s*Present)/i,
+  /(\d{4}\s*[-–]\s*\d{4})/,
+  /(\d{4}\s*[-–]\s*Present)/i,
+  /(Q[1-4]\s+\d{4}\s*[-–]\s*Q[1-4]\s+\d{4})/i,
+  /(Q[1-4]\s+\d{4}\s*[-–]\s*Present)/i,
+]
+
+const removeListPrefix = (value: string) => 
+  value.replace(LIST_MARKER_REGEX, '').replace(NUMBERED_LIST_REGEX, '')
+
+const stripEmphasis = (value: string) => 
+  value.replace(/^[_*`"'""'']+/, '').replace(/[_*`"'""'']+$/, '').trim()
+
+/**
+ * Detects if a line is a work experience heading.
+ * Returns heading detection info including normalized source.
+ */
+function detectWorkExperienceHeading(trimmedLine: string): {
+  isHeading: boolean
+  normalizedHeadingSource: string
+  rawHeadingMatch: RegExpMatchArray | null
+} {
+  const headingMatch = trimmedLine.match(/^#{3,}\s+/)
+  const normalizedHeadingSource = headingMatch
+    ? trimmedLine.replace(/^#{3,}\s+/, '')
+    : stripEmphasis(removeListPrefix(trimmedLine))
+  const looksLikeHeading = /[—–]|\bat\b|\|/.test(normalizedHeadingSource)
+  const isHeading = !!(
+    headingMatch ||
+    (looksLikeHeading && (LIST_MARKER_REGEX.test(trimmedLine) || NUMBERED_LIST_REGEX.test(trimmedLine)))
+  )
+
+  return { isHeading, normalizedHeadingSource, rawHeadingMatch: headingMatch }
+}
+
+/**
+ * Extracts role and company from a heading string.
+ * Handles em-dash, " at ", pipe delimiters and falls back to inferRoleAndCompany.
+ */
+function extractRoleAndCompany(
+  heading: string,
+  inferRoleAndCompany: (primary: string, secondary: string) => { role: string; company: string }
+): { role: string; company: string } {
+  if (heading.includes('—') || heading.includes('–')) {
+    const parts = heading.split(/\s*[—–]\s*/)
+    const [firstPart, ...restParts] = parts
+    const secondPart = restParts.join(' — ')
+    const inferred = inferRoleAndCompany(firstPart || '', secondPart || '')
+    console.log('[Parser] Extracted via em-dash:', inferred)
+    return inferred
+  } else if (heading.toLowerCase().includes(' at ')) {
+    const parts = heading.split(/\s+at\s+/i)
+    const role = parts[0]?.trim() || ''
+    const company = parts[1]?.trim() || ''
+    console.log('[Parser] Extracted via "at":', { role, company })
+    return { role, company }
+  } else if (heading.includes('|')) {
+    const parts = heading.split(/\s*\|\s*/)
+    const inferred = inferRoleAndCompany(parts[0] || '', parts[1] || '')
+    console.log('[Parser] Extracted via pipe:', inferred)
+    return inferred
+  } else {
+    console.log('[Parser] Extracted as role only:', { role: heading })
+    return { role: heading, company: '' }
+  }
+}
+
+/**
+ * Extracts dates and location from a cleaned line.
+ * Returns null if no date found, otherwise returns partial or complete metadata.
+ */
+function extractDatesAndLocation(
+  cleanedLine: string,
+  currentExperience: WorkExperience
+): { dates?: string; location?: string } | null {
+  // Try standard date patterns
+  let dateMatch: RegExpMatchArray | null = null
+  for (const pattern of DATE_PATTERNS) {
+    dateMatch = cleanedLine.match(pattern)
+    if (dateMatch) {
+      const dates = dateMatch[0].trim()
+      console.log('[Parser] Extracted dates:', dates)
+      
+      const remainder = cleanedLine
+        .replace(dateMatch[0], '')
+        .replace(/^[\s|•·,;:-]+/, '')
+        .replace(/[\s|•·,;:-]+$/, '')
+        .trim()
+      
+      const location = remainder || undefined
+      if (location) {
+        console.log('[Parser] Extracted location:', location)
+      }
+      return { dates, location }
+    }
+  }
+
+  // Try composite parsing (pipe/bullet-separated)
+  if (
+    (cleanedLine.includes('|') || cleanedLine.includes('•') || cleanedLine.includes('·')) &&
+    (currentExperience.dates === '' || currentExperience.location === '')
+  ) {
+    const parts = cleanedLine.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
+    if (parts.length > 0) {
+      const lastPart = parts[parts.length - 1]
+      if (
+        lastPart.match(/[A-Z][a-z]+/) ||
+        lastPart.toLowerCase().includes('remote') ||
+        lastPart.toLowerCase().includes('hybrid')
+      ) {
+        const location = lastPart
+        const dates = parts.length >= 2 ? parts.slice(0, -1).join(' • ') : undefined
+        console.log('[Parser] Extracted composite metadata:', { dates, location })
+        return { dates, location }
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Adds a bullet point to the current experience, avoiding duplicates.
+ */
+function addBullet(currentExperience: WorkExperience, bulletText: string, generateIdFn: () => string): void {
+  if (!bulletText) return
+  const duplicateBullet = currentExperience.bullets.find(b => b.text === bulletText)
+  if (!duplicateBullet) {
+    console.log('[Parser] Adding bullet point:', bulletText.substring(0, 50) + (bulletText.length > 50 ? '...' : ''))
+    currentExperience.bullets.push({
+      id: generateIdFn(),
+      text: bulletText,
+      included: true
+    })
+  }
+}
+
 // Helper functions
 function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
 /**
@@ -563,17 +712,12 @@ export function parseMarkdownToStructured(markdown: string): ResumeData {
       }
     } else if (currentSection === 'experience') {
       const trimmedLine = line.trim()
-      const listMarkerRegex = /^[-*•●◦▪▫➤➣▹▸·]\s+/
-      const numberedListRegex = /^\d+\.\s+/
-      const headingMatch = trimmedLine.match(/^#{3,}\s+/)
-      const removeListPrefix = (value: string) => value.replace(listMarkerRegex, '').replace(numberedListRegex, '')
-      const stripEmphasis = (value: string) => value.replace(/^[_*`"'“”‘’]+/, '').replace(/[_*`"'“”‘’]+$/, '').trim()
-      const normalizedHeadingSource = headingMatch
-        ? trimmedLine.replace(/^#{3,}\s+/, '')
-        : stripEmphasis(removeListPrefix(trimmedLine))
-      const looksLikeHeading = /[—–]|\bat\b|\|/.test(normalizedHeadingSource)
+      
+      // Detect if this line is a work experience heading
+      const headingInfo = detectWorkExperienceHeading(trimmedLine)
 
-      if (headingMatch || (looksLikeHeading && (listMarkerRegex.test(trimmedLine) || numberedListRegex.test(trimmedLine)))) {
+      if (headingInfo.isHeading) {
+        // Save previous experience if any
         if (currentExperience) {
           console.log('[Parser] Saving completed work experience:', {
             company: currentExperience.company,
@@ -583,37 +727,14 @@ export function parseMarkdownToStructured(markdown: string): ResumeData {
           data.workExperience.push(currentExperience)
         }
 
-        const heading = stripEmphasis(normalizedHeadingSource.replace(/\*+$/, '').replace(/\*+/g, ''))
+        // Clean and extract heading
+        const heading = stripEmphasis(headingInfo.normalizedHeadingSource.replace(/\*+$/, '').replace(/\*+/g, ''))
         console.log('[Parser] Found work experience heading:', heading)
 
-        let company = ''
-        let role = ''
+        // Extract role and company
+        const { role, company } = extractRoleAndCompany(heading, inferRoleAndCompany)
 
-        if (heading.includes('—') || heading.includes('–')) {
-          const parts = heading.split(/\s*[—–]\s*/)
-          const [firstPart, ...restParts] = parts
-          const secondPart = restParts.join(' — ')
-          const inferred = inferRoleAndCompany(firstPart || '', secondPart || '')
-          role = inferred.role
-          company = inferred.company
-          console.log('[Parser] Extracted via em-dash:', { role, company })
-        } else if (heading.toLowerCase().includes(' at ')) {
-          const parts = heading.split(/\s+at\s+/i)
-          role = parts[0]?.trim() || ''
-          company = parts[1]?.trim() || ''
-          console.log('[Parser] Extracted via "at":', { role, company })
-        } else if (heading.includes('|')) {
-          const parts = heading.split(/\s*\|\s*/)
-          const inferred = inferRoleAndCompany(parts[0] || '', parts[1] || '')
-          role = inferred.role
-          company = inferred.company
-          console.log('[Parser] Extracted via pipe:', { role, company })
-        } else {
-          role = heading
-          company = ''
-          console.log('[Parser] Extracted as role only:', { role })
-        }
-
+        // Create new experience entry
         currentExperience = {
           id: generateId(),
           company,
@@ -624,81 +745,39 @@ export function parseMarkdownToStructured(markdown: string): ResumeData {
           included: true
         }
       } else if (currentExperience) {
+        // Process metadata and bullet points
         const cleanedLine = stripEmphasis(removeListPrefix(trimmedLine)).replace(/\*+$/, '').replace(/\*+/g, '').trim()
         if (!cleanedLine) continue
 
         console.log('[Parser] Parsing experience line:', cleanedLine)
 
-        const datePatterns = [
-          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*[A-Za-z]{3,}\s+\d{4})/i,
-          /([A-Za-z]{3,}\s+\d{4}\s*[-–]\s*Present)/i,
-          /(\d{4}\/\d{2}\s*[-–]\s*\d{4}\/\d{2})/,
-          /(\d{4}\/\d{2}\s*[-–]\s*Present)/i,
-          /(\d{4}\s*[-–]\s*\d{4})/,
-          /(\d{4}\s*[-–]\s*Present)/i,
-          /(Q[1-4]\s+\d{4}\s*[-–]\s*Q[1-4]\s+\d{4})/i,
-          /(Q[1-4]\s+\d{4}\s*[-–]\s*Present)/i,
-        ]
-
-        let dateMatch: RegExpMatchArray | null = null
-        for (const pattern of datePatterns) {
-          dateMatch = cleanedLine.match(pattern)
-          if (dateMatch) {
-            currentExperience.dates = dateMatch[0].trim()
-            console.log('[Parser] Extracted dates:', currentExperience.dates)
-            break
+        // Try to extract dates and location
+        const metadata = extractDatesAndLocation(cleanedLine, currentExperience)
+        if (metadata) {
+          if (metadata.dates) {
+            currentExperience.dates = metadata.dates
           }
-        }
-
-        if (dateMatch) {
-          const remainder = cleanedLine
-            .replace(dateMatch[0], '')
-            .replace(/^[\s|•·,;:-]+/, '')
-            .replace(/[\s|•·,;:-]+$/, '')
-            .trim()
-          if (remainder) {
-            currentExperience.location = remainder
-            console.log('[Parser] Extracted location:', currentExperience.location)
+          if (metadata.location) {
+            currentExperience.location = metadata.location
           }
           continue
         }
 
-        if ((cleanedLine.includes('|') || cleanedLine.includes('•') || cleanedLine.includes('·')) && (currentExperience.dates === '' || currentExperience.location === '')) {
-          const parts = cleanedLine.split(/[|•·]/).map(p => p.trim()).filter(Boolean)
-          if (parts.length > 0) {
-            const lastPart = parts[parts.length - 1]
-            if (lastPart.match(/[A-Z][a-z]+/) || lastPart.toLowerCase().includes('remote') || lastPart.toLowerCase().includes('hybrid')) {
-              currentExperience.location = lastPart
-              if (parts.length >= 2) {
-                currentExperience.dates = parts.slice(0, -1).join(' • ')
-              }
-              console.log('[Parser] Extracted composite metadata:', {
-                dates: currentExperience.dates,
-                location: currentExperience.location
-              })
-              continue
-            }
-          }
-        }
-
-        if (!listMarkerRegex.test(trimmedLine) && currentExperience.bullets.length === 0 && !currentExperience.dates && cleanedLine.match(/\d{4}/) && cleanedLine.length <= 64) {
+        // Standalone year heuristic (no bullets yet, no dates, looks like a year, short line)
+        if (
+          !LIST_MARKER_REGEX.test(trimmedLine) &&
+          currentExperience.bullets.length === 0 &&
+          !currentExperience.dates &&
+          cleanedLine.match(/\d{4}/) &&
+          cleanedLine.length <= 64
+        ) {
           currentExperience.dates = cleanedLine
           console.log('[Parser] Using standalone line as dates:', currentExperience.dates)
           continue
         }
 
-        const bulletText = cleanedLine
-        if (bulletText) {
-          const duplicateBullet = currentExperience.bullets.find(b => b.text === bulletText)
-          if (!duplicateBullet) {
-            console.log('[Parser] Adding bullet point:', bulletText.substring(0, 50) + (bulletText.length > 50 ? '...' : ''))
-            currentExperience.bullets.push({
-              id: generateId(),
-              text: bulletText,
-              included: true
-            })
-          }
-        }
+        // Otherwise treat as bullet point
+        addBullet(currentExperience, cleanedLine, generateId)
       }
     } else if (currentSection === 'education') {
       const trimmedLine = line.trim()
@@ -1207,6 +1286,16 @@ export default function StructuredResumeEditor({
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [isGeneratingDOCX, setIsGeneratingDOCX] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
+  const [showAddSkill, setShowAddSkill] = useState(false)
+  const [newSkill, setNewSkill] = useState('')
+  const addSkillInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus skill input when shown
+  useEffect(() => {
+    if (showAddSkill && addSkillInputRef.current) {
+      addSkillInputRef.current.focus()
+    }
+  }, [showAddSkill])
 
   // Debug mode toggle (Shift+Ctrl+D)
   useEffect(() => {
@@ -1243,17 +1332,56 @@ export default function StructuredResumeEditor({
         return
       }
       
+      // Validate parsed data for completeness before setting state
+      const validationIssues: string[] = []
+      
+      // Check for missing critical contact info
+      if (!parsed.contactInfo.firstName && !parsed.contactInfo.lastName) {
+        validationIssues.push('Missing name')
+      }
+      if (!parsed.contactInfo.email) {
+        validationIssues.push('Missing email')
+      }
+      
+      // Check for missing content sections
+      if (parsed.summaries.length === 0) {
+        validationIssues.push('Missing professional summary')
+      }
+      if (parsed.workExperience.length === 0) {
+        validationIssues.push('Missing work experience')
+      }
+      if (parsed.education.length === 0) {
+        validationIssues.push('Missing education')
+      }
+      
+      // Check for incomplete work experience entries
+      const incompleteWork = parsed.workExperience.filter(exp => 
+        !exp.company || !exp.role || exp.bullets.length === 0
+      )
+      if (incompleteWork.length > 0) {
+        validationIssues.push(`${incompleteWork.length} incomplete work experience entr${incompleteWork.length === 1 ? 'y' : 'ies'}`)
+      }
+      
+      // Check for incomplete education entries
+      const incompleteEdu = parsed.education.filter(edu => 
+        !edu.institution || !edu.degree
+      )
+      if (incompleteEdu.length > 0) {
+        validationIssues.push(`${incompleteEdu.length} incomplete education entr${incompleteEdu.length === 1 ? 'y' : 'ies'}`)
+      }
+      
+      // Always set resumeData (even if partial - user can still edit)
       setResumeData(parsed)
-      setParseError(null)
-
-      // Check if parse was successful (has at least contact info or summaries)
-      const hasData = parsed.contactInfo.firstName || parsed.contactInfo.email || parsed.summaries.length > 0
-      if (!hasData) {
-        const errorMsg = 'Resume parser returned empty data. Check console for details.'
+      
+      // Set parseError if validation issues found
+      if (validationIssues.length > 0) {
+        const errorMsg = `Resume parsing incomplete or missing data: ${validationIssues.join('; ')}. Please review and fill in missing information.`
         setParseError(errorMsg)
         toast.error(errorMsg)
+        console.warn('[Editor] Parse validation issues:', validationIssues)
       } else {
-        console.log('[Editor] Successfully initialized resume data')
+        setParseError(null)
+        console.log('[Editor] Successfully initialized complete resume data')
       }
     } catch (error: any) {
       const errorMsg = `Failed to parse resume: ${error?.message || 'Unknown error'}`
@@ -1267,15 +1395,18 @@ export default function StructuredResumeEditor({
   const previewHtml = useMemo(() => {
     if (!resumeData) return ''
 
+    // Sanitize helper to prevent XSS
+    const sanitize = (str: string) => DOMPurify.sanitize(str, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+
     let html = ''
 
     // Contact info - check individual field inclusion
     const nameParts = []
     if (resumeData.contactInfo.firstNameIncluded && resumeData.contactInfo.firstName) {
-      nameParts.push(resumeData.contactInfo.firstName)
+      nameParts.push(sanitize(resumeData.contactInfo.firstName))
     }
     if (resumeData.contactInfo.lastNameIncluded && resumeData.contactInfo.lastName) {
-      nameParts.push(resumeData.contactInfo.lastName)
+      nameParts.push(sanitize(resumeData.contactInfo.lastName))
     }
     if (nameParts.length > 0) {
       html += `<div class="text-2xl font-semibold tracking-tight mb-1">${nameParts.join(' ')}</div>`
@@ -1283,16 +1414,16 @@ export default function StructuredResumeEditor({
     
     const contactParts = []
     if (resumeData.contactInfo.emailIncluded && resumeData.contactInfo.email) {
-      contactParts.push(resumeData.contactInfo.email)
+      contactParts.push(sanitize(resumeData.contactInfo.email))
     }
     if (resumeData.contactInfo.phoneIncluded && resumeData.contactInfo.phone) {
-      contactParts.push(resumeData.contactInfo.phone)
+      contactParts.push(sanitize(resumeData.contactInfo.phone))
     }
     if (resumeData.contactInfo.linkedinIncluded && resumeData.contactInfo.linkedin) {
-      contactParts.push(resumeData.contactInfo.linkedin)
+      contactParts.push(sanitize(resumeData.contactInfo.linkedin))
     }
     if (resumeData.contactInfo.locationIncluded && resumeData.contactInfo.location) {
-      contactParts.push(resumeData.contactInfo.location)
+      contactParts.push(sanitize(resumeData.contactInfo.location))
     }
     if (contactParts.length > 0) {
       html += `<div class="text-sm text-neutral-400 mb-4">${contactParts.join(' • ')}</div>`
@@ -1300,7 +1431,7 @@ export default function StructuredResumeEditor({
 
     // Target title
     if (resumeData.targetTitle.included && resumeData.targetTitle.text) {
-      html += `<div class="text-lg font-medium text-neutral-300 mb-4">${resumeData.targetTitle.text}</div>`
+      html += `<div class="text-lg font-medium text-neutral-300 mb-4">${sanitize(resumeData.targetTitle.text)}</div>`
     }
 
     // Summaries
@@ -1308,7 +1439,7 @@ export default function StructuredResumeEditor({
     if (includedSummaries.length > 0) {
       html += `<div class="pt-4 text-sm font-medium text-neutral-300">Professional Summary</div>`
       includedSummaries.forEach(s => {
-        html += `<p class="mt-2 text-sm text-neutral-200">${s.text}</p>`
+        html += `<p class="mt-2 text-sm text-neutral-200">${sanitize(s.text)}</p>`
       })
     }
 
@@ -1318,12 +1449,12 @@ export default function StructuredResumeEditor({
       html += `<div class="pt-4 text-sm font-medium text-neutral-300">Work Experience</div>`
       includedWork.forEach(exp => {
         html += `<div class="mt-3">
-          <div class="font-medium">${exp.company}</div>
-          <div class="text-neutral-300">${exp.role}</div>
-          <div class="text-xs text-neutral-500">${exp.dates} • ${exp.location}</div>
+          <div class="font-medium">${sanitize(exp.company)}</div>
+          <div class="text-neutral-300">${sanitize(exp.role)}</div>
+          <div class="text-xs text-neutral-500">${sanitize(exp.dates)} • ${sanitize(exp.location)}</div>
           <ul class="list-disc pl-5 mt-2 space-y-1 text-sm text-neutral-200">`
         exp.bullets.filter(b => b.included).forEach(bullet => {
-          html += `<li>${bullet.text}</li>`
+          html += `<li>${sanitize(bullet.text)}</li>`
         })
         html += `</ul></div>`
       })
@@ -1335,10 +1466,10 @@ export default function StructuredResumeEditor({
       html += `<div class="pt-4 text-sm font-medium text-neutral-300">Education</div>`
       includedEducation.forEach(edu => {
         html += `<div class="mt-2">
-          <div class="font-medium">${edu.institution}</div>
-          <div class="text-neutral-300">${edu.degree}${edu.field ? ` • ${edu.field}` : ''}</div>
-          <div class="text-xs text-neutral-500">${[edu.start, edu.end].filter(Boolean).join(' – ')}${edu.location ? ` • ${edu.location}` : ''}</div>
-          ${edu.notes ? `<p class="text-sm text-neutral-200 mt-1">${edu.notes}</p>` : ''}
+          <div class="font-medium">${sanitize(edu.institution)}</div>
+          <div class="text-neutral-300">${sanitize(edu.degree)}${edu.field ? ` • ${sanitize(edu.field)}` : ''}</div>
+          <div class="text-xs text-neutral-500">${[sanitize(edu.start), sanitize(edu.end)].filter(Boolean).join(' – ')}${edu.location ? ` • ${sanitize(edu.location)}` : ''}</div>
+          ${edu.notes ? `<p class="text-sm text-neutral-200 mt-1">${sanitize(edu.notes)}</p>` : ''}
         </div>`
       })
     }
@@ -1349,9 +1480,9 @@ export default function StructuredResumeEditor({
       html += `<div class="pt-4 text-sm font-medium text-neutral-300">Certifications</div>`
       includedCertifications.forEach(cert => {
         html += `<div class="mt-2">
-          <div class="font-medium">${cert.name}</div>
-          ${cert.issuer ? `<div class="text-neutral-300">${cert.issuer}</div>` : ''}
-          ${cert.date ? `<div class="text-xs text-neutral-500">${cert.date}</div>` : ''}
+          <div class="font-medium">${sanitize(cert.name)}</div>
+          ${cert.issuer ? `<div class="text-neutral-300">${sanitize(cert.issuer)}</div>` : ''}
+          ${cert.date ? `<div class="text-xs text-neutral-500">${sanitize(cert.date)}</div>` : ''}
         </div>`
       })
     }
@@ -1362,7 +1493,7 @@ export default function StructuredResumeEditor({
       html += `<div class="pt-4 text-sm font-medium text-neutral-300">Skills</div>
         <div class="mt-2 flex flex-wrap gap-2">`
       includedSkills.forEach(s => {
-        html += `<span class="text-xs px-2.5 py-1 rounded-md bg-neutral-800 text-neutral-100">${s.name}</span>`
+        html += `<span class="text-xs px-2.5 py-1 rounded-md bg-neutral-800 text-neutral-100">${sanitize(s.name)}</span>`
       })
       html += `</div>`
     }
@@ -1373,12 +1504,16 @@ export default function StructuredResumeEditor({
       html += `<div class="pt-4 text-sm font-medium text-neutral-300">Interests</div>
         <div class="mt-2 flex flex-wrap gap-2">`
       includedInterests.forEach(i => {
-        html += `<span class="text-xs px-2.5 py-1 rounded-md bg-neutral-800 text-neutral-100">${i.name}</span>`
+        html += `<span class="text-xs px-2.5 py-1 rounded-md bg-neutral-800 text-neutral-100">${sanitize(i.name)}</span>`
       })
       html += `</div>`
     }
 
-    return html
+    // Final sanitization pass on the entire HTML string
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['div', 'p', 'span', 'ul', 'li'],
+      ALLOWED_ATTR: ['class']
+    })
   }, [resumeData])
 
   // Count included items
@@ -1437,14 +1572,26 @@ export default function StructuredResumeEditor({
       const printWindow = window.open('', '_blank', 'width=900,height=700')
       if (!printWindow) {
         toast.error('Please allow popups to download PDF')
+        setIsGeneratingPDF(false)
         return
       }
+
+      // Sanitize all user-provided fields
+      const sanitize = (str: string) => DOMPurify.sanitize(str, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+      
+      const firstName = sanitize(resumeData.contactInfo.firstName)
+      const lastName = sanitize(resumeData.contactInfo.lastName)
+      const email = sanitize(resumeData.contactInfo.email)
+      const phone = sanitize(resumeData.contactInfo.phone)
+      const linkedin = sanitize(resumeData.contactInfo.linkedin)
+      const location = sanitize(resumeData.contactInfo.location)
+      const targetTitle = sanitize(resumeData.targetTitle.text)
 
       const html = `
         <!DOCTYPE html>
         <html>
           <head>
-            <title>${resumeData.contactInfo.firstName} ${resumeData.contactInfo.lastName} - Resume</title>
+            <title>${firstName} ${lastName} - Resume</title>
             <meta charset="utf-8" />
             <style>
               @media print {
@@ -1472,24 +1619,24 @@ export default function StructuredResumeEditor({
             </style>
           </head>
           <body>
-            <h1>${resumeData.contactInfo.firstName} ${resumeData.contactInfo.lastName}</h1>
-            <div class="contact">${[resumeData.contactInfo.email, resumeData.contactInfo.phone, resumeData.contactInfo.linkedin, resumeData.contactInfo.location].filter(Boolean).join(' • ')}</div>
+            <h1>${firstName} ${lastName}</h1>
+            <div class="contact">${[email, phone, linkedin, location].filter(Boolean).join(' • ')}</div>
             
-            ${resumeData.targetTitle.included && resumeData.targetTitle.text ? `<div style="font-weight: 500; margin-bottom: 12px;">${resumeData.targetTitle.text}</div>` : ''}
+            ${resumeData.targetTitle.included && resumeData.targetTitle.text ? `<div style="font-weight: 500; margin-bottom: 12px;">${targetTitle}</div>` : ''}
             
             ${resumeData.summaries.filter(s => s.included).length > 0 ? `
               <h2>Professional Summary</h2>
-              ${resumeData.summaries.filter(s => s.included).map(s => `<p style="margin: 8px 0; font-size: 13px;">${s.text}</p>`).join('')}
+              ${resumeData.summaries.filter(s => s.included).map(s => `<p style="margin: 8px 0; font-size: 13px;">${sanitize(s.text)}</p>`).join('')}
             ` : ''}
             
             ${resumeData.workExperience.filter(w => w.included).length > 0 ? `
               <h2>Work Experience</h2>
               ${resumeData.workExperience.filter(w => w.included).map(exp => `
                 <div class="job">
-                  <div class="job-title">${exp.company} — ${exp.role}</div>
-                  <div class="job-meta">${exp.dates} • ${exp.location}</div>
+                  <div class="job-title">${sanitize(exp.company)} — ${sanitize(exp.role)}</div>
+                  <div class="job-meta">${sanitize(exp.dates)} • ${sanitize(exp.location)}</div>
                   <ul>
-                    ${exp.bullets.filter(b => b.included).map(b => `<li>${b.text}</li>`).join('')}
+                    ${exp.bullets.filter(b => b.included).map(b => `<li>${sanitize(b.text)}</li>`).join('')}
                   </ul>
                 </div>
               `).join('')}
@@ -1499,29 +1646,34 @@ export default function StructuredResumeEditor({
               <h2>Education</h2>
               ${resumeData.education.filter(e => e.included).map(edu => `
                 <div style="margin-bottom: 8px;">
-                  <div style="font-weight: 600; font-size: 14px;">${edu.institution}</div>
-                  <div style="font-size: 13px;">${edu.degree}${edu.field ? ` in ${edu.field}` : ''}</div>
-                  <div style="font-size: 11px; color: #666;">${[edu.start, edu.end].filter(Boolean).join(' – ')}${edu.location ? ` • ${edu.location}` : ''}</div>
-                  ${edu.notes ? `<div style="font-size: 12px; margin-top: 4px;">${edu.notes}</div>` : ''}
+                  <div style="font-weight: 600; font-size: 14px;">${sanitize(edu.institution)}</div>
+                  <div style="font-size: 13px;">${sanitize(edu.degree)}${edu.field ? ` in ${sanitize(edu.field)}` : ''}</div>
+                  <div style="font-size: 11px; color: #666;">${[sanitize(edu.start), sanitize(edu.end)].filter(Boolean).join(' – ')}${edu.location ? ` • ${sanitize(edu.location)}` : ''}</div>
+                  ${edu.notes ? `<div style="font-size: 12px; margin-top: 4px;">${sanitize(edu.notes)}</div>` : ''}
                 </div>
               `).join('')}
             ` : ''}
             
             ${resumeData.skills.filter(s => s.included).length > 0 ? `
               <h2>Skills</h2>
-              <div class="skills">${resumeData.skills.filter(s => s.included).map(s => s.name).join(', ')}</div>
+              <div class="skills">${resumeData.skills.filter(s => s.included).map(s => sanitize(s.name)).join(', ')}</div>
             ` : ''}
             
             ${resumeData.interests.filter(i => i.included).length > 0 ? `
               <h2>Interests</h2>
-              <div class="interests">${resumeData.interests.filter(i => i.included).map(i => i.name).join(', ')}</div>
+              <div class="interests">${resumeData.interests.filter(i => i.included).map(i => sanitize(i.name)).join(', ')}</div>
             ` : ''}
             
             <script>
-              window.onload = () => {
-                setTimeout(() => window.print(), 100)
-                window.onafterprint = () => window.close()
+              // Wait for document to be fully loaded before printing
+              if (document.readyState === 'complete') {
+                window.print()
+              } else {
+                window.onload = () => window.print()
               }
+              
+              // Close window after printing or if user cancels
+              window.onafterprint = () => window.close()
             </script>
           </body>
         </html>
@@ -1788,26 +1940,26 @@ export default function StructuredResumeEditor({
     return <div className="text-center py-12">Loading resume data...</div>
   }
 
-  // Fallback: Show raw markdown if there's a critical parse error
-  if (parseError && !resumeData.contactInfo.firstName && resumeData.summaries.length === 0) {
-    return (
-      <div className="space-y-4">
-        <div className="bg-red-900/20 border border-red-500 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-red-400 mb-2">Parse Error</h3>
-          <p className="text-sm text-red-300 mb-4">{parseError}</p>
-          <p className="text-xs text-neutral-400">Showing raw markdown below. Check browser console for detailed error logs.</p>
-        </div>
-        <div className="bg-neutral-900 border border-neutral-700 rounded-lg p-6 overflow-auto">
-          <pre className="text-sm text-neutral-300 whitespace-pre-wrap font-mono">
-            {optimizedContent}
-          </pre>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <>
+      {/* Parse error/warning banner - always shown when parseError is set */}
+      {parseError && (
+        <div className="bg-yellow-900/20 border border-yellow-600/50 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-yellow-400 mb-1">Parsing Issues Detected</h3>
+              <p className="text-sm text-yellow-200/90">{parseError}</p>
+              <p className="text-xs text-neutral-400 mt-2">You can still edit the available fields below. Check browser console for detailed logs.</p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header with actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
@@ -1884,6 +2036,7 @@ export default function StructuredResumeEditor({
                         className="peer sr-only"
                         checked={resumeData.contactInfo.firstNameIncluded}
                         onChange={(e) => updateContactInfo('firstNameIncluded', e.target.checked)}
+                        aria-label="Include first name"
                       />
                       <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                         <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -1906,6 +2059,7 @@ export default function StructuredResumeEditor({
                         className="peer sr-only"
                         checked={resumeData.contactInfo.lastNameIncluded}
                         onChange={(e) => updateContactInfo('lastNameIncluded', e.target.checked)}
+                        aria-label="Include last name"
                       />
                       <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                         <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -1934,6 +2088,7 @@ export default function StructuredResumeEditor({
                               className="peer sr-only"
                               checked={resumeData.contactInfo[includedField] as boolean}
                               onChange={(e) => updateContactInfo(includedField, e.target.checked)}
+                              aria-label={`Include ${field}`}
                             />
                             <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                               <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -1981,6 +2136,7 @@ export default function StructuredResumeEditor({
                       className="peer sr-only"
                       checked={resumeData.targetTitle.included}
                       onChange={(e) => setResumeData({ ...resumeData, targetTitle: { ...resumeData.targetTitle, included: e.target.checked } })}
+                      aria-label="Include target title"
                     />
                     <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                       <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -2032,6 +2188,7 @@ export default function StructuredResumeEditor({
                               i === idx ? { ...s, included: e.target.checked } : s
                             )
                           })}
+                          aria-label="Include professional summary"
                         />
                         <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                           <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -2103,6 +2260,7 @@ export default function StructuredResumeEditor({
                                 i === idx ? { ...w, included: e.target.checked } : w
                               )
                             })}
+                            aria-label="Include work experience entry"
                           />
                           <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                             <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -2168,6 +2326,7 @@ export default function StructuredResumeEditor({
                                   } : w
                                 )
                               })}
+                              aria-label="Include work experience bullet"
                             />
                             <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                               <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -2236,6 +2395,7 @@ export default function StructuredResumeEditor({
                                 i === idx ? { ...ed, included: e.target.checked } : ed
                               )
                             })}
+                            aria-label="Include education entry"
                           />
                           <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
                             <Check className="h-3.5 w-3.5 text-white opacity-0 peer-checked:opacity-100 transition" />
@@ -2422,6 +2582,7 @@ export default function StructuredResumeEditor({
                               s.id === skill.id ? { ...s, included: e.target.checked } : s
                             )
                           })}
+                          aria-label={`Include skill: ${skill.name}`}
                         />
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral-700 ring-1 ring-inset ring-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm text-neutral-100 transition peer-checked:border-emerald-600 peer-checked:ring-emerald-600/40">
                           <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">
@@ -2457,16 +2618,63 @@ export default function StructuredResumeEditor({
                 </div>
 
                 <div className="flex pt-2">
-                  <button
-                    onClick={() => {
-                      const name = prompt('Add skill')
-                      if (name && name.trim()) addSkill(name.trim())
-                    }}
-                    className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add skill
-                  </button>
+                  {!showAddSkill ? (
+                    <button
+                      onClick={() => setShowAddSkill(true)}
+                      className="inline-flex items-center gap-2 text-sm text-neutral-300 hover:text-white"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add skill
+                    </button>
+                  ) : (
+                    <div className="inline-flex items-center gap-2">
+                      <input
+                        ref={addSkillInputRef}
+                        type="text"
+                        value={newSkill}
+                        onChange={(e) => setNewSkill(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            if (newSkill.trim()) {
+                              addSkill(newSkill.trim())
+                              setNewSkill('')
+                              setShowAddSkill(false)
+                            }
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault()
+                            setNewSkill('')
+                            setShowAddSkill(false)
+                          }
+                        }}
+                        placeholder="Skill name"
+                        className="px-2 py-1 text-sm bg-neutral-800 border border-neutral-700 rounded text-white placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-600"
+                      />
+                      <button
+                        onClick={() => {
+                          if (newSkill.trim()) {
+                            addSkill(newSkill.trim())
+                            setNewSkill('')
+                            setShowAddSkill(false)
+                          }
+                        }}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded text-green-400 hover:text-green-300 hover:bg-neutral-800"
+                        title="Confirm"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNewSkill('')
+                          setShowAddSkill(false)
+                        }}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded text-neutral-400 hover:text-neutral-300 hover:bg-neutral-800"
+                        title="Cancel"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -2524,6 +2732,7 @@ export default function StructuredResumeEditor({
                               i.id === interest.id ? { ...i, included: e.target.checked } : i
                             )
                           })}
+                          aria-label={`Include interest: ${interest.name}`}
                         />
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-neutral-700 ring-1 ring-inset ring-neutral-800 bg-neutral-900 hover:bg-neutral-800 text-sm text-neutral-100 transition peer-checked:border-emerald-600 peer-checked:ring-emerald-600/40">
                           <span className="h-5 w-5 rounded-md border border-neutral-700 bg-neutral-900 ring-1 ring-inset ring-neutral-800 flex items-center justify-center peer-checked:bg-emerald-600 peer-checked:border-emerald-600 transition">

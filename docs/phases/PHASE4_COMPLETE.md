@@ -215,9 +215,10 @@ FirstName_LastName_JobTitle_Company.{docx|pdf|html}
 2. Replace spaces with underscores: `\s+` → `_`
 3. Remove duplicate underscores: `_+` → `_`
 4. Trim leading/trailing underscores
+5. Transliterate accented characters to ASCII equivalents (á→a, é→e, etc.)
 
 ### Examples:
-```
+
 Input:
 - Name: "John Doe"
 - Job Title: "Senior Product Manager"
@@ -231,7 +232,6 @@ Input:
 - Company: "Tech Start-up #1"
 
 Output: Maria_Garcia-Lopez_UX_Designer_UIUX_Tech_Start-up_1.docx
-```
 
 ---
 

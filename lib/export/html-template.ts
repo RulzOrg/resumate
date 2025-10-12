@@ -13,7 +13,7 @@ export function generateResumeHTML(resumeData: ResumeJSON): string {
         .replace(/([A-Z])/g, " $1")
         .trim()
         .replace(/^./, (c) => c.toUpperCase())
-      return `<p class="skill-line"><strong>${label}:</strong> ${skills.join(", ")}</strong></p>`
+      return `<p class="skill-line"><strong>${label}:</strong> ${skills.join(", ")}</p>`
     })
     .join("\n")
 

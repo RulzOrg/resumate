@@ -78,7 +78,10 @@ export async function POST(request: NextRequest) {
 
     // Generate file based on format
     if (format === "docx") {
-      const buffer = await generateDOCX(resumeData)
+      const buffer = await generateDOCX(resumeData, {
+        fileName,
+        includePageNumbers: true, // Enable page numbers for professional appearance
+      })
 
       return new NextResponse(buffer, {
         status: 200,

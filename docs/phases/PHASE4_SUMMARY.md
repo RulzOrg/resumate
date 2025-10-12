@@ -118,12 +118,11 @@ Time saved: 15+ minutes
 
 ### **PDF** ⚠️
 - **Status:** Foundation ready, requires Puppeteer
-- **Generation:** 3-5 seconds (once installed)
+- **Generation:** 3-5 seconds (estimated, once Puppeteer is installed)
 - **File Size:** 50-100KB
 - **Compatibility:** Universal
 - **ATS-Safe:** Yes (rendered from HTML)
 - **Dependencies:** puppeteer (optional install)
-
 **To enable PDF:**
 ```bash
 # Local development:
@@ -385,7 +384,7 @@ Phase 4 delivers **professional export functionality** that transforms optimized
 **Status:** ✅ Phase 4 Complete (85% Alignment)  
 **Next Phase:** Phase 5 (Database Migration & Persistence)  
 **Estimated Time to 90%:** ~1 week  
-**Completion Date:** December 2024  
+**Completion Date:** October 2025  
 **Implementation By:** Factory Droid
 
 🎉 **4 of 5 Phases Complete! Only 5% remaining to reach 90% target!**

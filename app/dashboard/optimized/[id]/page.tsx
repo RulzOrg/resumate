@@ -11,6 +11,11 @@ import { Button } from "@/components/ui/button"
 import { AlertCircle, RefreshCw } from "lucide-react"
 import type { SystemPromptV1Output } from "@/lib/schemas-v2"
 
+// Type for optimized resume with structured output
+type OptimizedResumeWithStructuredOutput = Awaited<ReturnType<typeof getOptimizedResumeById>> & {
+  structured_output?: Record<string, unknown> | null
+}
+
 // Disable caching to ensure fresh data on every page load
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -41,8 +46,16 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
   }
 
   // Check if this is a v2 optimized resume with structured output
-  const structuredOutput = (optimized as any).structured_output
-  const hasStructuredOutput = structuredOutput && typeof structuredOutput === 'object'
+  const optimizedWithStructured = optimized as OptimizedResumeWithStructuredOutput
+  const structuredOutput = optimizedWithStructured.structured_output
+  const hasStructuredOutput = structuredOutput !== undefined && 
+                               structuredOutput !== null &&
+                               typeof structuredOutput === 'object' && 
+                               !Array.isArray(structuredOutput)
+  
+  console.log('[Resume Editor] Has structured_output:', !!structuredOutput)
+  console.log('[Resume Editor] Structured output type:', typeof structuredOutput)
+  console.log('[Resume Editor] Will show V2 editor:', hasStructuredOutput)
 
   async function saveOptimizedResume(
     resumeId: string,
@@ -59,7 +72,7 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
     const optimizedContent = updates.tailored_resume_text?.ats_plain_text || fallbackContent
 
     const updated = await updateOptimizedResumeV2(resumeId, ownerId, {
-      structured_output: updates,
+      structured_output: updates as SystemPromptV1Output,
       optimized_content: optimizedContent,
     })
 

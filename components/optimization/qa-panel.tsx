@@ -55,7 +55,7 @@ export function QAPanel({ metrics, jobAnalysis }: QAPanelProps) {
               </Badge>
             </div>
           </div>
-          <Progress value={score} className="h-2" />
+          <Progress value={score} className="h-2" aria-label="Keyword coverage percentage" />
           <p className="text-xs text-muted-foreground mt-1">
             {metrics.scores.readability_hint}
           </p>
@@ -73,9 +73,9 @@ export function QAPanel({ metrics, jobAnalysis }: QAPanelProps) {
                     .replace(/\b\w/g, (c) => c.toUpperCase())}
                 </span>
                 {passed ? (
-                  <Check className="h-4 w-4 text-emerald-500" />
+                  <Check className="h-4 w-4 text-emerald-500" aria-hidden="true" />
                 ) : (
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden="true" />
                 )}
               </div>
             ))}
@@ -110,9 +110,9 @@ export function QAPanel({ metrics, jobAnalysis }: QAPanelProps) {
                         )}
                       >
                         {isGood ? (
-                          <Check className="h-4 w-4" />
+                          <Check className="h-4 w-4" aria-hidden="true" />
                         ) : (
-                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
