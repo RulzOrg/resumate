@@ -32,25 +32,25 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-      <h3 className="text-base font-medium text-white/90">Account Status</h3>
-      <p className="text-sm text-white/60 mt-1">
+    <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
+      <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Account Status</h3>
+      <p className="text-sm text-foreground/60 dark:text-white/60 mt-1">
         {plan === "pro" ? "Pro Plan" : plan === "enterprise" ? "Enterprise Plan" : "Free Plan"}
-        {status ? <span className="ml-2 text-white/40">({status})</span> : null}
+        {status ? <span className="ml-2 text-foreground/40 dark:text-white/40">({status})</span> : null}
       </p>
       {nextRenewal && plan !== "free" ? (
-        <p className="text-xs text-white/50 mt-1">Renews on {nextRenewal}</p>
+        <p className="text-xs text-foreground/50 dark:text-white/50 mt-1">Renews on {nextRenewal}</p>
       ) : null}
 
       {/* Job Analyses Usage */}
       <div className="mt-4">
-        <div className="flex justify-between text-xs text-white/70 mb-1">
+        <div className="flex justify-between text-xs text-foreground/70 dark:text-white/70 mb-1">
           <span>Job Analyses</span>
           <span>
             {jobAnalyses} of {usageLimits ? formatLimit(usageLimits.jobAnalyses.limit) : (isFree ? '5' : '∞')}
           </span>
         </div>
-        <div className="w-full bg-white/10 rounded-full h-2">
+        <div className="w-full bg-surface-muted dark:bg-white/10 rounded-full h-2">
           <div 
             className="bg-blue-500 h-2 rounded-full" 
             style={{ 
@@ -62,13 +62,13 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
 
       {/* Resume Optimizations Usage */}
       <div className="mt-3">
-        <div className="flex justify-between text-xs text-white/70 mb-1">
+        <div className="flex justify-between text-xs text-foreground/70 dark:text-white/70 mb-1">
           <span>Resume Optimizations</span>
           <span>
             {optimizedResumes} of {usageLimits ? formatLimit(usageLimits.resumeOptimizations.limit) : (isFree ? '3' : '∞')}
           </span>
         </div>
-        <div className="w-full bg-white/10 rounded-full h-2">
+        <div className="w-full bg-surface-muted dark:bg-white/10 rounded-full h-2">
           <div 
             className="bg-emerald-500 h-2 rounded-full" 
             style={{ 
@@ -82,7 +82,7 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
         <BillingButton subscriptionStatus={status} subscriptionPlan={plan} />
       </div>
       {isFree ? (
-        <p className="text-[11px] text-white/50 mt-2">Upgrade to Pro for higher limits and priority AI.</p>
+        <p className="text-[11px] text-foreground/50 dark:text-white/50 mt-2">Upgrade to Pro for higher limits and priority AI.</p>
       ) : null}
     </div>
   )

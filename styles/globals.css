@@ -123,3 +123,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .bg-surface-subtle {
+    background-color: color-mix(in oklch, var(--foreground) 8%, var(--background));
+  }
+
+  .bg-surface-muted {
+    background-color: color-mix(in oklch, var(--foreground) 16%, var(--background));
+  }
+
+  .bg-surface-strong {
+    background-color: color-mix(in oklch, var(--foreground) 24%, var(--background));
+  }
+}

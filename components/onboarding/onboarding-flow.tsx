@@ -12,7 +12,7 @@ const DynamicUserButton = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="relative h-9 w-9 rounded-full bg-white/10 animate-pulse" />
+      <div className="relative h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 animate-pulse" />
     ),
   }
 )
@@ -192,7 +192,7 @@ export function OnboardingFlow({
   }
 
   return (
-    <div className="relative min-h-screen bg-black text-white">
+    <div className="relative min-h-screen bg-background dark:bg-black text-foreground dark:text-white">
       <div
         className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[1400px] -translate-x-1/2 -z-10"
         style={{
@@ -201,10 +201,10 @@ export function OnboardingFlow({
         }}
       />
 
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/50 backdrop-blur-lg">
+      <header className="sticky top-0 z-30 border-b border-border dark:border-white/10 bg-foreground/50 dark:bg-black/50 backdrop-blur-lg">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2 text-white">
+            <Link href="/" className="inline-flex items-center gap-2 text-foreground dark:text-white">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -244,12 +244,12 @@ export function OnboardingFlow({
             >
               {`Welcome to ResuMate AI${userName ? `, ${userName}` : ""}`}
             </h1>
-            <p className="mt-2 text-base text-white/60">
+            <p className="mt-2 text-base text-foreground/60 dark:text-white/60">
               Upload your resume to get started with AI-powered optimization.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] shadow-2xl">
+          <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 shadow-2xl">
             <div className="space-y-8 p-6 sm:p-8">
               <section>
                 <div className="mb-5">
@@ -259,14 +259,14 @@ export function OnboardingFlow({
                   >
                     Upload Your Master Resume
                   </h2>
-                  <p className="text-sm text-white/60">
+                  <p className="text-sm text-foreground/60 dark:text-white/60">
                     <span className="text-emerald-400 font-medium">Required:</span> This becomes the baseline for every AI-generated resume. We support PDF, DOCX, and TXT up to 10MB.
                   </p>
                 </div>
 
                 <div
                   className={cn(
-                    "relative flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-white/20 p-8 text-center transition-colors",
+                    "relative flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-border/80 dark:border-white/20 p-8 text-center transition-colors",
                     uploadStatus === "error" && "border-red-500/40 bg-red-500/5",
                     uploadStatus === "success" && "border-emerald-500/40 bg-emerald-500/5",
                   )}
@@ -289,11 +289,11 @@ export function OnboardingFlow({
                   }}
                 >
                   <div className="flex flex-col items-center">
-                    <UploadCloud className="mb-3 h-10 w-10 text-white/30" />
-                    <span className="text-sm font-medium text-white/80">
+                    <UploadCloud className="mb-3 h-10 w-10 text-foreground/30 dark:text-white/30" />
+                    <span className="text-sm font-medium text-foreground/80 dark:text-white/80">
                       <span className="text-emerald-400">Click to upload</span> or drag and drop
                     </span>
-                    <span className="mt-1 block text-xs text-white/50">Max file size 10MB</span>
+                    <span className="mt-1 block text-xs text-foreground/50 dark:text-white/50">Max file size 10MB</span>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -306,11 +306,11 @@ export function OnboardingFlow({
 
                 {uploadStatus === "uploading" && (
                   <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-center gap-2 text-sm text-white/60">
+                    <div className="flex items-center justify-center gap-2 text-sm text-foreground/60 dark:text-white/60">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Uploading and analyzing your resume…
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted dark:bg-white/10">
                       <div
                         className="h-full rounded-full bg-emerald-500 transition-all"
                         style={{ width: `${uploadProgress}%` }}
@@ -340,7 +340,7 @@ export function OnboardingFlow({
               </section>
             </div>
 
-            <div className="rounded-b-2xl border-t border-white/10 bg-black/30 px-6 py-5 sm:px-8">
+            <div className="rounded-b-2xl border-t border-border dark:border-white/10 bg-foreground/30 dark:bg-black/30 px-6 py-5 sm:px-8">
               {completionError && (
                 <Alert variant="destructive" className="mb-4">
                   <AlertDescription>{completionError}</AlertDescription>
@@ -350,12 +350,12 @@ export function OnboardingFlow({
                 <Button
                   onClick={handleFinish}
                   disabled={uploadStatus !== "success" || isFinishing}
-                  className="w-full rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-emerald-400 disabled:bg-white/10 disabled:text-white/40 sm:w-auto"
+                  className="w-full rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-emerald-400 disabled:bg-surface-muted dark:disabled:bg-white/10 disabled:text-foreground/40 dark:disabled:text-white/40 sm:w-auto"
                 >
                   {isFinishing ? "Opening dashboard…" : "Finish Setup & View Dashboard"}
                 </Button>
                 {uploadStatus !== "success" && !isFinishing && (
-                  <p className="text-xs text-white/50 text-center">
+                  <p className="text-xs text-foreground/50 dark:text-white/50 text-center">
                     Upload your resume to continue
                   </p>
                 )}

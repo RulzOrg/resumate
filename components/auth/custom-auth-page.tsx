@@ -225,7 +225,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   }
 
   return (
-    <div className="min-h-screen w-full text-white bg-black">
+    <div className="min-h-screen w-full text-foreground dark:text-white bg-background dark:bg-black">
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="hidden md:block h-screen relative">
           <img
@@ -233,11 +233,11 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
             alt="A professional man smiling"
             className="absolute w-full h-full object-cover top-0 right-0 bottom-0 left-0"
           />
-          <div className="absolute inset-0 bg-black/40" />
+          <div className="absolute inset-0 bg-foreground/40 dark:bg-black/40" />
           <div className="z-10 flex flex-col relative h-full p-12 justify-end">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur w-fit mb-6"
+              className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur w-fit mb-6"
             >
               <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
                 {/* Refresh icon */}
@@ -263,21 +263,21 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 ResuMate AI
               </span>
             </Link>
-            <h2 className="text-3xl font-semibold tracking-tight text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            <h2 className="text-3xl font-semibold tracking-tight text-foreground dark:text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
               Land your dream job faster.
             </h2>
-            <p className="mt-2 text-white/70 max-w-md">
+            <p className="mt-2 text-foreground/70 dark:text-white/70 max-w-md">
               Our AI optimizes your resume for every application, getting you past the bots and in front of hiring managers.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col min-h-screen sm:p-6 lg:p-8 bg-black p-4 justify-center">
+        <div className="flex flex-col min-h-screen sm:p-6 lg:p-8 bg-background dark:bg-black p-4 justify-center">
           <div className="mx-auto w-full max-w-sm">
             <div className="text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 backdrop-blur w-fit mb-6"
+              className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur w-fit mb-6"
             >
               <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
                 {/* Refresh icon */}
@@ -303,19 +303,19 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 ResuMate AI
               </span>
             </Link>
-              <h1 className="text-3xl font-semibold tracking-tight text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground dark:text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
                 Welcome
               </h1>
-              <p className="mt-2 text-sm text-white/60">Sign in or create an account to get started.</p>
+              <p className="mt-2 text-sm text-foreground/60 dark:text-white/60">Sign in or create an account to get started.</p>
             </div>
 
             <div className="mt-8">
               {/* Tabs */}
               <div className="mb-6">
-                <div className="flex gap-1 bg-white/5 border-white/10 border rounded-full p-1 backdrop-blur items-center">
+                <div className="flex gap-1 bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 border rounded-full p-1 backdrop-blur items-center">
                   <button
                     className={`w-full rounded-full px-4 py-2 text-sm font-medium ${
-                      tab === "signin" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
+                      tab === "signin" ? "bg-surface-muted dark:bg-white/10 text-foreground dark:text-white" : "text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white"
                     }`}
                     onClick={() => handleTabChange("signin")}
                   >
@@ -323,7 +323,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   </button>
                   <button
                     className={`w-full rounded-full px-4 py-2 text-sm font-medium ${
-                      tab === "signup" ? "bg-white/10 text-white" : "text-white/70 hover:text-white"
+                      tab === "signup" ? "bg-surface-muted dark:bg-white/10 text-foreground dark:text-white" : "text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white"
                     }`}
                     onClick={() => handleTabChange("signup")}
                   >
@@ -336,7 +336,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               <div className={tab === "signin" ? "block" : "hidden"}>
                 <form className="space-y-4" onSubmit={handleSignInSubmit}>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="email-signin">
+                    <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="email-signin">
                       Email address
                     </label>
                     <input
@@ -346,12 +346,12 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                       required
                       value={signInEmail}
                       onChange={event => setSignInEmail(event.target.value)}
-                      className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                     />
                   </div>
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-white/80" htmlFor="password-signin">
+                      <label className="text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="password-signin">
                         Password
                       </label>
                       <Link href="/auth/forgot-password" className="text-sm font-medium text-emerald-500 hover:text-emerald-400">
@@ -365,7 +365,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                       required
                       value={signInPassword}
                       onChange={event => setSignInPassword(event.target.value)}
-                      className="mt-1.5 block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      className="mt-1.5 block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                     />
                   </div>
 
@@ -388,7 +388,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 {!isVerifying ? (
                   <form className="space-y-4" onSubmit={handleSignUpSubmit}>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="name-signup">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="name-signup">
                         Full Name
                       </label>
                       <input
@@ -398,11 +398,11 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={signUpName}
                         onChange={event => setSignUpName(event.target.value)}
-                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="email-signup">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="email-signup">
                         Email address
                       </label>
                       <input
@@ -412,11 +412,11 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={signUpEmail}
                         onChange={event => setSignUpEmail(event.target.value)}
-                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="password-signup">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="password-signup">
                         Password
                       </label>
                       <input
@@ -426,7 +426,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={signUpPassword}
                         onChange={event => setSignUpPassword(event.target.value)}
-                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                       />
                     </div>
 
@@ -447,7 +447,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 ) : (
                   <form className="space-y-4" onSubmit={handleVerificationSubmit}>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-white/80" htmlFor="verification-code">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="verification-code">
                         Enter the 6-digit code sent to {signUpEmail}
                       </label>
                       <input
@@ -458,7 +458,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={verificationCode}
                         onChange={event => setVerificationCode(event.target.value)}
-                        className="block w-full rounded-full border border-white/10 bg-white/5 px-3 py-2 text-white shadow-sm placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                       />
                     </div>
 
@@ -472,7 +472,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                       <button
                         type="button"
                         onClick={handleResendVerification}
-                        className="text-sm font-medium text-white/70 transition-colors hover:text-white"
+                        className="text-sm font-medium text-foreground/70 dark:text-white/70 transition-colors hover:text-foreground dark:hover:text-white"
                       >
                         Resend code
                       </button>
@@ -490,10 +490,10 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="w-full border-t border-white/10" />
+                  <div className="w-full border-t border-border dark:border-white/10" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-black px-2 text-white/50">Or continue with</span>
+                  <span className="bg-background dark:bg-black px-2 text-foreground/50 dark:text-white/50">Or continue with</span>
                 </div>
               </div>
 
@@ -507,7 +507,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => handleOAuth("oauth_google")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/90 shadow-sm transition-colors hover:bg-white/10"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 shadow-sm transition-colors hover:bg-surface-muted dark:hover:bg-white/10"
                 >
                   <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -520,7 +520,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 </button>
                 <button
                   onClick={() => handleOAuth("oauth_linkedin")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/90 shadow-sm transition-colors hover:bg-white/10"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 shadow-sm transition-colors hover:bg-surface-muted dark:hover:bg-white/10"
                 >
                   <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M4.983 3.5C3.334 3.5 2 4.845 2 6.503c0 1.63 1.31 2.998 2.958 2.998h.035c1.676 0 2.983-1.368 2.983-2.998C7.941 4.845 6.658 3.5 4.983 3.5zM2.337 20.5h5.246V9.25H2.337V20.5zM9.337 9.25v11.25h5.04v-6.219c0-1.654.31-3.257 2.365-3.257 2.03 0 2.062 1.877 2.062 3.357V20.5H24v-6.691c0-3.359-.729-5.95-4.676-5.95-1.894 0-3.165 1.04-3.688 2.02h-.053V9.25H9.337z" />

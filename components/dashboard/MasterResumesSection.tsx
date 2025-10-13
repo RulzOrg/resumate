@@ -112,18 +112,18 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+    <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-medium text-white/90">Master Resumes</h3>
-        <span className="text-xs font-medium text-white/50">{masterResumes.length} of 3 files</span>
+        <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Master Resumes</h3>
+        <span className="text-xs font-medium text-foreground/50 dark:text-white/50">{masterResumes.length} of 3 files</span>
       </div>
 
       {masterResumes.length > 0 ? (
         <div className="space-y-2">
           {masterResumes.map((resume) => (
-            <div key={resume.id} className="group rounded-lg bg-white/5 p-3 transition-colors hover:bg-white/10">
+            <div key={resume.id} className="group rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 p-3 transition-colors hover:bg-surface-muted dark:hover:bg-white/10">
               <div className="flex items-center gap-3">
-                <FileCheck className="h-5 w-5 flex-shrink-0 text-white/70" />
+                <FileCheck className="h-5 w-5 flex-shrink-0 text-foreground/70 dark:text-white/70" />
                 <div className="flex flex-1 flex-col gap-0.5 text-left">
                   {editingId === resume.id ? (
                     <div className="space-y-2">
@@ -131,7 +131,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         type="text"
                         value={editingTitle}
                         onChange={(e) => setEditingTitle(e.target.value)}
-                        className="w-full text-sm font-medium bg-white/10 border border-white/20 rounded px-2 py-1 text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full text-sm font-medium bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 rounded px-2 py-1 text-foreground dark:text-white focus:outline-none focus:border-emerald-500"
                         disabled={isUpdating === resume.id}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -160,7 +160,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         <button
                           onClick={handleCancelEdit}
                           disabled={isUpdating === resume.id}
-                          className="text-xs px-2 py-1 bg-white/10 text-white/80 rounded hover:bg-white/20 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          className="text-xs px-2 py-1 bg-surface-muted dark:bg-white/10 text-foreground/80 dark:text-white/80 rounded hover:bg-surface-strong dark:hover:bg-white/20 transition-colors disabled:opacity-50 flex items-center gap-1"
                         >
                           <X className="h-3 w-3" />
                           Cancel
@@ -172,8 +172,8 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                     </div>
                   ) : (
                     <>
-                      <p className="truncate text-sm font-medium text-white/90">{resume.title}</p>
-                      <p className="text-xs text-white/50">
+                      <p className="truncate text-sm font-medium text-foreground/90 dark:text-white/90">{resume.title}</p>
+                      <p className="text-xs text-foreground/50 dark:text-white/50">
                         {resume.processing_status === "completed"
                           ? `Last updated ${formatDistanceToNow(new Date(resume.updated_at), { addSuffix: true })}`
                           : resume.processing_status === "processing"
@@ -195,7 +195,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                   >
                     <button
                       onClick={() => handleStartEdit(resume.id, resume.title)}
-                      className="text-white/70 sm:text-white/60 transition-colors hover:text-white"
+                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
                       title="Edit resume name"
                     >
                       <Pencil className="h-4 w-4" />
@@ -206,7 +206,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         setDeleteError(null)
                       }}
                       disabled={isDeleting === resume.id}
-                      className="text-white/70 sm:text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
+                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
                       title="Delete resume"
                     >
                       <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} />
@@ -231,7 +231,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         setConfirmingDeleteId(null)
                         setDeleteError(null)
                       }}
-                      className="flex-1 rounded-full border border-white/20 px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:text-white"
+                      className="flex-1 rounded-full border border-border/80 dark:border-white/20 px-3 py-2 text-sm font-medium text-foreground/80 dark:text-white/80 transition-colors hover:text-foreground dark:hover:text-white"
                     >
                       Cancel
                     </button>
@@ -245,14 +245,14 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
           ))}
         </div>
       ) : (
-        <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-white/5 border border-dashed border-white/20">
-          <p className="text-sm text-white/60">Upload your master resumes to get started.</p>
+        <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-surface-subtle dark:bg-white/5 border border-dashed border-border/80 dark:border-white/20">
+          <p className="text-sm text-foreground/60 dark:text-white/60">Upload your master resumes to get started.</p>
         </div>
       )}
 
       {masterResumes.length < 3 && (
         <UploadMasterResumeDialog currentResumeCount={masterResumes.length}>
-          <button className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-white/80 hover:text-white transition bg-white/10 rounded-full py-2">
+          <button className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white transition bg-surface-muted dark:bg-white/10 rounded-full py-2">
             <UploadCloud className="h-4 w-4" />
             <span>Upload New</span>
           </button>
@@ -261,7 +261,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
 
       {masterResumes.length >= 3 && (
         <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-          <p className="text-xs text-amber-200 text-center">
+          <p className="text-xs text-amber-900 dark:text-amber-200 text-center">
             You've reached the maximum of 3 resumes. Delete an existing resume to upload a new one.
           </p>
         </div>

@@ -14,7 +14,7 @@ const DynamicUserButton = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="relative h-9 w-9 rounded-full bg-white/10 animate-pulse" />
+      <div className="relative h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 animate-pulse" />
     ),
   }
 )
