@@ -57,27 +57,27 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   <UserAvatar user={user} />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-lg border-white/10" align="end" forceMount>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium text-white">{user.name}</p>
-                    <p className="w-[200px] truncate text-sm text-white/60">{user.email}</p>
+                    <p className="font-medium text-popover-foreground">{user.name}</p>
+                    <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="bg-white/10" />
-                <DropdownMenuItem asChild className="text-white/80 hover:text-white hover:bg-white/10">
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
                   <Link href="/dashboard/profile">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="text-white/80 hover:text-white hover:bg-white/10">
+                <DropdownMenuItem asChild>
                   <Link href="/dashboard/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuSeparator />
                 <LogoutButton />
               </DropdownMenuContent>
             </DropdownMenu>
