@@ -748,7 +748,7 @@ export default function OptimizerUiOnly({
                   title={isAnalyzing ? "Please wait for AI analysis to complete" : "Continue to next step"}
                 >
                   <Wand2 className="h-4 w-4" />
-                  {isAnalyzing ? "Analyzing..." : "Continue"}
+                  {isAnalyzing ? "Please wait..." : "Continue"}
                 </button>
               </div>
             </div>
@@ -816,7 +816,7 @@ export default function OptimizerUiOnly({
                   ) : score ? (
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center justify-between"><span>Overall</span><span className="text-foreground/80 dark:text-white/80">{score.overall}%</span></div>
-                      {([['skills', 'Skills'], ['responsibilities','Responsibilities'], ['domain','Domain'], ['seniority','Seniority']] as const).map(([k, label]) => (
+                      {([['skills', 'Skills'], ['responsibilities', 'Responsibilities'], ['domain', 'Domain'], ['seniority', 'Seniority']] as const).map(([k, label]) => (
                         <div key={k}>
                           <div className="flex items-center justify-between"><span>{label}</span><span className="text-foreground/70 dark:text-white/70">{(score.dimensions as any)[k]}%</span></div>
                           <div className="w-full h-1.5 rounded bg-surface-muted dark:bg-white/10 overflow-hidden"><div className="h-1.5 bg-emerald-500" style={{ width: `${(score.dimensions as any)[k]}%` }}></div></div>
@@ -1002,8 +1002,8 @@ export default function OptimizerUiOnly({
                 disabled={isAnalyzing}
                 title={isAnalyzing ? "Please wait for AI analysis to complete" : "Continue to optimization"}
               >
-                <Sparkles className="h-4 w-4" />
-                {isAnalyzing ? "Analyzing..." : "Continue to Optimize"}
+                <Wand2 className="h-4 w-4" />
+                {isAnalyzing ? "Please wait..." : "Continue to Optimize"}
               </button>
             </div>
           </div>
