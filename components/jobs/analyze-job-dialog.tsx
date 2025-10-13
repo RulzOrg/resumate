@@ -628,8 +628,8 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     >
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent
-        overlayClassName="bg-black/80 backdrop-blur-sm"
-        className="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-white/10 bg-[#111111] p-0"
+        overlayClassName="bg-foreground/80 dark:bg-black/80 backdrop-blur-sm"
+        className="sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border dark:border-white/10 bg-card dark:bg-[#111111] p-0"
         showCloseButton={false}
       >
         <div className="p-6 sm:p-8">
@@ -637,7 +637,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
             <div className="flex-1">
               <DialogHeader className="text-left">
                 <DialogTitle className="text-2xl tracking-tight">Add Target Job</DialogTitle>
-                <DialogDescription className="mt-1 text-white/60 text-sm">
+                <DialogDescription className="mt-1 text-foreground/60 dark:text-white/60 text-sm">
                   Enter the job details and description to analyze.
                 </DialogDescription>
               </DialogHeader>
@@ -650,7 +650,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                     className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                       autoSave.enabled 
                         ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' 
-                        : 'bg-white/10 text-white/50 hover:bg-white/20'
+                        : 'bg-surface-muted dark:bg-white/10 text-foreground/50 dark:text-white/50 hover:bg-surface-strong dark:hover:bg-white/20'
                     }`}
                   >
                     <Save className="w-3 h-3" />
@@ -658,14 +658,14 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                   </button>
                   
                   {autoSave.saving && (
-                    <div className="flex items-center gap-1 text-xs text-white/50">
+                    <div className="flex items-center gap-1 text-xs text-foreground/50 dark:text-white/50">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       Saving...
                     </div>
                   )}
                   
                   {autoSave.lastSaved && !autoSave.saving && (
-                    <div className="flex items-center gap-1 text-xs text-white/50">
+                    <div className="flex items-center gap-1 text-xs text-foreground/50 dark:text-white/50">
                       <Clock className="w-3 h-3" />
                       Saved {autoSave.lastSaved.toLocaleTimeString()}
                     </div>
@@ -687,7 +687,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
             
             <button
               onClick={() => setOpen(false)}
-              className="text-white/50 hover:text-white transition-colors"
+              className="text-foreground/50 dark:text-white/50 hover:text-foreground dark:hover:text-white transition-colors"
               aria-label="Close"
             >
               <X className="h-6 w-6" />
@@ -758,10 +758,10 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
           <div className="mt-6 space-y-6">
             {false && (
               <>
-                <Label htmlFor="job-url" className="mb-2 block text-white/80">Job Post URL</Label>
+                <Label htmlFor="job-url" className="mb-2 block text-foreground/80 dark:text-white/80">Job Post URL</Label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <span className="h-5 w-5 text-white/40">🔗</span>
+                    <span className="h-5 w-5 text-foreground/40 dark:text-white/40">🔗</span>
                   </div>
                   <Input
                     id="job-url"
@@ -770,13 +770,13 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                     value={""}
                     onChange={() => {}}
                     disabled
-                    className={`bg-white/5 border-white/10 text-white placeholder-white/40 pl-10 pr-24`}
+                    className={`bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 text-foreground dark:text-white placeholder-foreground/40 dark:placeholder-white/40 pl-10 pr-24`}
                   />
                   <button
                     type="button"
                     onClick={() => {}}
                     disabled
-                    className="absolute right-1 top-1 bottom-1 inline-flex items-center gap-2 rounded-md bg-white/10 hover:bg-white/20 px-3 text-sm text-white/90 disabled:opacity-50"
+                    className="absolute right-1 top-1 bottom-1 inline-flex items-center gap-2 rounded-md bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20 px-3 text-sm text-foreground/90 dark:text-white/90 disabled:opacity-50"
                   >
                     <>Preview</>
                   </button>
@@ -788,7 +788,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                   }`}>
                     <p>Validation</p>
                     {false && (
-                      <p className="text-white/50 mt-1">Suggestion</p>
+                      <p className="text-foreground/50 dark:text-white/50 mt-1">Suggestion</p>
                     )}
                   </div>
                 )}
@@ -798,15 +798,15 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
             {/* Content Preview */}
             {false && (
               <div className="space-y-4">
-                <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                <div className="rounded-lg border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <span className="h-4 w-4 text-emerald-400">👁</span>
-                      <h4 className="font-medium text-white">Content Preview</h4>
+                      <h4 className="font-medium text-foreground dark:text-white">Content Preview</h4>
                     </div>
                     <button
                       onClick={() => {}}
-                      className="text-white/50 hover:text-red-400 transition-colors"
+                      className="text-foreground/50 dark:text-white/50 hover:text-red-400 transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -814,7 +814,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                   
                   <div className="space-y-3">
                     <div>
-                      <p className="text-sm text-white/60">Job Title:</p>
+                      <p className="text-sm text-foreground/60 dark:text-white/60">Job Title:</p>
                       <p className={`font-medium text-yellow-400`}>
                         Not detected automatically
                       </p>
@@ -822,9 +822,9 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                     
                     {false && (
                       <div>
-                        <p className="text-sm text-white/60">Company:</p>
+                        <p className="text-sm text-foreground/60 dark:text-white/60">Company:</p>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium text-white">Company</p>
+                          <p className="font-medium text-foreground dark:text-white">Company</p>
                           <span className="text-xs text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded">
                             Auto-detected
                           </span>
@@ -833,13 +833,13 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                     )}
                     
                     <div>
-                      <p className="text-sm text-white/60">Content Preview:</p>
-                      <div className="mt-1 max-h-32 overflow-y-auto rounded bg-white/5 p-3">
-                        <p className="text-sm text-white/80 whitespace-pre-wrap">
+                      <p className="text-sm text-foreground/60 dark:text-white/60">Content Preview:</p>
+                      <div className="mt-1 max-h-32 overflow-y-auto rounded bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 p-3">
+                        <p className="text-sm text-foreground/80 dark:text-white/80 whitespace-pre-wrap">
                           ...
                         </p>
                       </div>
-                      <p className="text-xs text-white/50 mt-1">
+                      <p className="text-xs text-foreground/50 dark:text-white/50 mt-1">
                         0 characters
                       </p>
                     </div>
@@ -857,7 +857,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                     <Button
                       onClick={() => {}}
                       variant="outline"
-                      className="flex-1 border-white/20 text-white hover:bg-white/10"
+                      className="flex-1 border-border/80 dark:border-white/20 text-foreground dark:text-white hover:bg-surface-muted dark:hover:bg-white/10"
                       size="sm"
                     >
                       <span className="h-4 w-4 mr-2">✎</span>
@@ -923,7 +923,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
             )}
 
             <div>
-              <Label htmlFor="job-title" className="mb-2 block text-white/80">Job Title</Label>
+              <Label htmlFor="job-title" className="mb-2 block text-foreground/80 dark:text-white/80">Job Title</Label>
               <Input
                 id="job-title"
                 placeholder="e.g., Senior Frontend Engineer"
@@ -933,31 +933,31 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                   setJobTitle(value)
                 }}
                 disabled={isAnalyzing}
-                className="bg-white/5 border-white/10 text-white placeholder-white/40"
+                className="bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 text-foreground dark:text-white placeholder-foreground/40 dark:placeholder-white/40"
               />
               {jobTitle.trim() ? (
-                <p className="mt-2 text-xs text-white/40">
+                <p className="mt-2 text-xs text-foreground/40 dark:text-white/40">
                   You can tweak the title before running the analysis.
                 </p>
               ) : null}
             </div>
 
             <div>
-              <Label htmlFor="company" className="mb-2 block text-white/80">Company</Label>
+              <Label htmlFor="company" className="mb-2 block text-foreground/80 dark:text-white/80">Company</Label>
               <Input
                 id="company"
                 placeholder="e.g., Meta"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
                 disabled={isAnalyzing}
-                className="bg-white/5 border-white/10 text-white placeholder-white/40"
+                className="bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 text-foreground dark:text-white placeholder-foreground/40 dark:placeholder-white/40"
               />
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="job-description">Job Description</Label>
-                <div className="flex items-center gap-2 text-xs text-white/50">
+                <div className="flex items-center gap-2 text-xs text-foreground/50 dark:text-white/50">
                   <FileText className="w-3 h-3" />
                   <span>
                     {contentValidation.charCount.toLocaleString()} / {MAX_LENGTH.toLocaleString()}
@@ -973,7 +973,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                   onChange={(e) => handleDescriptionChange(e.target.value)}
                   disabled={isAnalyzing}
                   rows={10}
-                  className={`resize-none bg-white/5 border-white/10 text-white placeholder-white/40 ${
+                  className={`resize-none bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 text-foreground dark:text-white placeholder-foreground/40 dark:placeholder-white/40 ${
                     !contentValidation.isValid && contentValidation.level === 'error' 
                       ? 'border-red-500/50 focus:border-red-500' 
                       : contentValidation.level === 'warning'
@@ -986,7 +986,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                 
                 {/* Character count progress bar */}
                 <div className="absolute bottom-2 right-2 left-2">
-                  <div className="bg-black/20 rounded-full h-1 overflow-hidden">
+                  <div className="bg-foreground/20 dark:bg-black/20 rounded-full h-1 overflow-hidden">
                     <div 
                       className={`h-full transition-all duration-300 ${
                         contentValidation.level === 'error' 
@@ -1038,26 +1038,26 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4 text-xs">
                         <div className={`flex items-center gap-1 ${
-                          contentValidation.charCount >= MIN_LENGTH ? 'text-emerald-400' : 'text-white/40'
+                          contentValidation.charCount >= MIN_LENGTH ? 'text-emerald-400' : 'text-foreground/40 dark:text-white/40'
                         }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${
-                            contentValidation.charCount >= MIN_LENGTH ? 'bg-emerald-400' : 'bg-white/20'
+                            contentValidation.charCount >= MIN_LENGTH ? 'bg-emerald-400' : 'bg-surface-strong dark:bg-white/20'
                           }`} />
                           Minimum ({MIN_LENGTH})
                         </div>
                         <div className={`flex items-center gap-1 ${
-                          contentValidation.charCount >= RECOMMENDED_MIN_LENGTH ? 'text-emerald-400' : 'text-white/40'
+                          contentValidation.charCount >= RECOMMENDED_MIN_LENGTH ? 'text-emerald-400' : 'text-foreground/40 dark:text-white/40'
                         }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${
-                            contentValidation.charCount >= RECOMMENDED_MIN_LENGTH ? 'bg-emerald-400' : 'bg-white/20'
+                            contentValidation.charCount >= RECOMMENDED_MIN_LENGTH ? 'bg-emerald-400' : 'bg-surface-strong dark:bg-white/20'
                           }`} />
                           Good ({RECOMMENDED_MIN_LENGTH})
                         </div>
                         <div className={`flex items-center gap-1 ${
-                          contentValidation.charCount >= IDEAL_MIN_LENGTH ? 'text-emerald-400' : 'text-white/40'
+                          contentValidation.charCount >= IDEAL_MIN_LENGTH ? 'text-emerald-400' : 'text-foreground/40 dark:text-white/40'
                         }`}>
                           <div className={`w-1.5 h-1.5 rounded-full ${
-                            contentValidation.charCount >= IDEAL_MIN_LENGTH ? 'bg-emerald-400' : 'bg-white/20'
+                            contentValidation.charCount >= IDEAL_MIN_LENGTH ? 'bg-emerald-400' : 'bg-surface-strong dark:bg-white/20'
                           }`} />
                           Ideal ({IDEAL_MIN_LENGTH})
                         </div>
@@ -1086,7 +1086,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Brain className="h-4 w-4 text-blue-400" />
-                        <h4 className="font-medium text-white">AI Analysis Preview</h4>
+                        <h4 className="font-medium text-foreground dark:text-white">AI Analysis Preview</h4>
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1 text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
                             <Sparkles className="w-3 h-3" />
@@ -1102,7 +1102,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
                       </div>
                       <button
                         onClick={() => setShowAiPreview(false)}
-                        className="text-white/50 hover:text-blue-400 transition-colors"
+                        className="text-foreground/50 dark:text-white/50 hover:text-blue-400 transition-colors"
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -1247,12 +1247,12 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
           </div>
         </div>
 
-        <div className="px-6 sm:px-8 py-4 bg-black/30 border-t border-white/10 flex flex-col-reverse sm:flex-row sm:justify-between gap-3 rounded-b-2xl">
+        <div className="px-6 sm:px-8 py-4 bg-muted dark:bg-black/30 border-t border-border dark:border-white/10 flex flex-col-reverse sm:flex-row sm:justify-between gap-3 rounded-b-2xl">
           <div className="flex gap-2">
             <Button
               type="button"
               onClick={() => setOpen(false)}
-              className="text-white/80 bg-white/10 hover:bg-white/20"
+              className="text-foreground/80 dark:text-white/80 bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20"
               variant="secondary"
             >
               Cancel

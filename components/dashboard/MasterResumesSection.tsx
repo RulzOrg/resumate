@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { FileCheck, Pencil, Trash2, UploadCloud } from "lucide-react"
+import { FileCheck, Pencil, Trash2, UploadCloud, Check, X } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { UploadMasterResumeDialog } from "./master-resume-dialog"
 import { Resume } from "@/lib/db"
@@ -16,14 +16,62 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<{ id: string; message: string } | null>(null)
-  
-  const masterResumes = resumes.filter(resume => 
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState("")
+  const [isUpdating, setIsUpdating] = useState<string | null>(null)
+  const [updateError, setUpdateError] = useState<{ id: string; message: string } | null>(null)
+
+  const masterResumes = resumes.filter(resume =>
     resume.kind === 'master' || resume.kind === 'uploaded'
   ).slice(0, 3)
 
-  const handleEdit = (resumeId: string) => {
-    // Navigate to resume edit page (we'll need to create this)
-    router.push(`/dashboard/resumes/${resumeId}/edit`)
+  const handleStartEdit = (resumeId: string, currentTitle: string) => {
+    setEditingId(resumeId)
+    setEditingTitle(currentTitle)
+    setUpdateError(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditingTitle("")
+    setUpdateError(null)
+  }
+
+  const handleSaveEdit = async (resumeId: string) => {
+    if (!editingTitle.trim()) {
+      setUpdateError({ id: resumeId, message: "Resume title cannot be empty" })
+      return
+    }
+
+    setIsUpdating(resumeId)
+    setUpdateError(null)
+
+    try {
+      const response = await fetch(`/api/resumes/${resumeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: editingTitle.trim() })
+      })
+
+      if (response.ok) {
+        setEditingId(null)
+        setEditingTitle("")
+        router.refresh()
+      } else {
+        const error = await response.json()
+        setUpdateError({
+          id: resumeId,
+          message: error.error || error.message || 'Failed to update resume title. Please try again.',
+        })
+      }
+    } catch (error) {
+      setUpdateError({
+        id: resumeId,
+        message: 'Failed to update resume title. Please try again.',
+      })
+    } finally {
+      setIsUpdating(null)
+    }
   }
 
   const handleDelete = async (resumeId: string, fileName: string) => {
@@ -38,7 +86,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
       })
 
       console.log('Delete response status:', response.status)
-      
+
       if (response.ok) {
         const result = await response.json()
         console.log('Delete successful:', result)
@@ -64,57 +112,107 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+    <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-medium text-white/90">Master Resumes</h3>
-        <span className="text-xs font-medium text-white/50">{masterResumes.length} of 3 files</span>
+        <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Master Resumes</h3>
+        <span className="text-xs font-medium text-foreground/50 dark:text-white/50">{masterResumes.length} of 3 files</span>
       </div>
-      
+
       {masterResumes.length > 0 ? (
         <div className="space-y-2">
           {masterResumes.map((resume) => (
-            <div key={resume.id} className="group rounded-lg bg-white/5 p-3 transition-colors hover:bg-white/10">
+            <div key={resume.id} className="group rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 p-3 transition-colors hover:bg-surface-muted dark:hover:bg-white/10">
               <div className="flex items-center gap-3">
-                <FileCheck className="h-5 w-5 flex-shrink-0 text-white/70" />
+                <FileCheck className="h-5 w-5 flex-shrink-0 text-foreground/70 dark:text-white/70" />
                 <div className="flex flex-1 flex-col gap-0.5 text-left">
-                  <p className="truncate text-sm font-medium text-white/90">{resume.file_name}</p>
-                  <p className="text-xs text-white/50">
-                    {resume.processing_status === "completed"
-                      ? `Last updated ${formatDistanceToNow(new Date(resume.updated_at), { addSuffix: true })}`
-                      : resume.processing_status === "processing"
-                      ? "Processing... this usually takes under a minute"
-                      : resume.processing_status === "failed"
-                      ? "Latest processing attempt failed"
-                      : "Ready"}
-                  </p>
-                  {resume.processing_error && (
-                    <p className="text-xs text-red-400">{resume.processing_error}</p>
+                  {editingId === resume.id ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        className="w-full text-sm font-medium bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 rounded px-2 py-1 text-foreground dark:text-white focus:outline-none focus:border-emerald-500"
+                        disabled={isUpdating === resume.id}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSaveEdit(resume.id)
+                          } else if (e.key === 'Escape') {
+                            handleCancelEdit()
+                          }
+                        }}
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSaveEdit(resume.id)}
+                          disabled={isUpdating === resume.id}
+                          className="text-xs px-2 py-1 bg-emerald-500 text-black rounded hover:bg-emerald-400 transition-colors disabled:opacity-50 flex items-center gap-1"
+                        >
+                          {isUpdating === resume.id ? (
+                            "Saving..."
+                          ) : (
+                            <>
+                              <Check className="h-3 w-3" />
+                              Save
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isUpdating === resume.id}
+                          className="text-xs px-2 py-1 bg-surface-muted dark:bg-white/10 text-foreground/80 dark:text-white/80 rounded hover:bg-surface-strong dark:hover:bg-white/20 transition-colors disabled:opacity-50 flex items-center gap-1"
+                        >
+                          <X className="h-3 w-3" />
+                          Cancel
+                        </button>
+                      </div>
+                      {updateError?.id === resume.id && (
+                        <p className="text-xs text-red-400">{updateError.message}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="truncate text-sm font-medium text-foreground/90 dark:text-white/90">{resume.title}</p>
+                      <p className="text-xs text-foreground/50 dark:text-white/50">
+                        {resume.processing_status === "completed"
+                          ? `Last updated ${formatDistanceToNow(new Date(resume.updated_at), { addSuffix: true })}`
+                          : resume.processing_status === "processing"
+                            ? "Processing... this usually takes under a minute"
+                            : resume.processing_status === "failed"
+                              ? "Latest processing attempt failed"
+                              : "Ready"}
+                      </p>
+                      {resume.processing_error && (
+                        <p className="text-xs text-red-400">{resume.processing_error}</p>
+                      )}
+                    </>
                   )}
                 </div>
-                <div
-                  className={`flex items-center gap-2 transition-opacity ${
-                    confirmingDeleteId === resume.id ? "opacity-0" : "opacity-0 group-hover:opacity-100"
-                  }`}
-                >
-                  <button
-                    onClick={() => handleEdit(resume.id)}
-                    className="text-white/60 transition-colors hover:text-white"
-                    title="Edit resume"
+                {editingId !== resume.id && (
+                  <div
+                    className={`flex items-center gap-2 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                      } sm:bg-transparent bg-black/20 rounded-md p-1 sm:p-0`}
                   >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setConfirmingDeleteId(prev => (prev === resume.id ? null : resume.id))
-                      setDeleteError(null)
-                    }}
-                    disabled={isDeleting === resume.id}
-                    className="text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
-                    title="Delete resume"
-                  >
-                    <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} />
-                  </button>
-                </div>
+                    <button
+                      onClick={() => handleStartEdit(resume.id, resume.title)}
+                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
+                      title="Edit resume name"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setConfirmingDeleteId(prev => (prev === resume.id ? null : resume.id))
+                        setDeleteError(null)
+                      }}
+                      disabled={isDeleting === resume.id}
+                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
+                      title="Delete resume"
+                    >
+                      <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} />
+                    </button>
+                  </div>
+                )}
               </div>
 
               {confirmingDeleteId === resume.id && (
@@ -133,7 +231,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         setConfirmingDeleteId(null)
                         setDeleteError(null)
                       }}
-                      className="flex-1 rounded-full border border-white/20 px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:text-white"
+                      className="flex-1 rounded-full border border-border/80 dark:border-white/20 px-3 py-2 text-sm font-medium text-foreground/80 dark:text-white/80 transition-colors hover:text-foreground dark:hover:text-white"
                     >
                       Cancel
                     </button>
@@ -147,18 +245,26 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
           ))}
         </div>
       ) : (
-        <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-white/5 border border-dashed border-white/20">
-          <p className="text-sm text-white/60">Upload your master resumes to get started.</p>
+        <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-surface-subtle dark:bg-white/5 border border-dashed border-border/80 dark:border-white/20">
+          <p className="text-sm text-foreground/60 dark:text-white/60">Upload your master resumes to get started.</p>
         </div>
       )}
-      
+
       {masterResumes.length < 3 && (
-        <UploadMasterResumeDialog>
-          <button className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-white/80 hover:text-white transition bg-white/10 rounded-full py-2">
+        <UploadMasterResumeDialog currentResumeCount={masterResumes.length}>
+          <button className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white transition bg-surface-muted dark:bg-white/10 rounded-full py-2">
             <UploadCloud className="h-4 w-4" />
             <span>Upload New</span>
           </button>
         </UploadMasterResumeDialog>
+      )}
+
+      {masterResumes.length >= 3 && (
+        <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <p className="text-xs text-amber-900 dark:text-amber-200 text-center">
+            You've reached the maximum of 3 resumes. Delete an existing resume to upload a new one.
+          </p>
+        </div>
       )}
     </div>
   )

@@ -15,7 +15,7 @@ interface OptimizedDetailViewProps {
 
 function classifyMatch(score?: number | null) {
   const s = typeof score === 'number' ? score : null
-  if (s === null) return { label: 'N/A', className: 'text-white/70' }
+  if (s === null) return { label: 'N/A', className: 'text-foreground/70 dark:text-white/70' }
   if (s === 0) return { label: `${s}%`, className: 'text-red-400' }
   if (s < 60) return { label: `${s}%`, className: 'text-amber-400' }
   return { label: `${s}%`, className: 'text-emerald-400' }
@@ -71,29 +71,29 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
 
   return (
     <div className="space-y-6">
-      <Card className="border-white/10 bg-white/5">
+      <Card className="border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <CardTitle className="text-lg">{title}</CardTitle>
-            <div className="text-sm text-white/60">Match: <span className={match.className}>{match.label}</span></div>
+            <div className="text-sm text-foreground/60 dark:text-white/60">Match: <span className={match.className}>{match.label}</span></div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-white/10 border-white/10" onClick={() => copyText(optimizedContent)}>
+            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
               <Copy className="h-4 w-4 mr-2" /> Copy
             </Button>
-            <Button variant="outline" className="bg-white/10 border-white/10" onClick={() => download('pdf')}>
+            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('pdf')}>
               <Download className="h-4 w-4 mr-2" /> PDF
             </Button>
-            <Button variant="outline" className="bg-white/10 border-white/10" onClick={() => download('docx')}>
+            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
               <Download className="h-4 w-4 mr-2" /> DOCX
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+            <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
               <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-4 w-4 text-white/70" />
+                <FileText className="h-4 w-4 text-foreground/70 dark:text-white/70" />
                 <span className="text-sm font-medium">Optimized</span>
               </div>
               <div className="prose prose-invert max-w-none text-sm leading-6 whitespace-pre-wrap">
@@ -101,12 +101,12 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+            <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/30 p-4">
               <div className="flex items-center gap-2 mb-2">
-                <SplitSquareVertical className="h-4 w-4 text-white/70" />
+                <SplitSquareVertical className="h-4 w-4 text-foreground/70 dark:text-white/70" />
                 <span className="text-sm font-medium">Source (original)</span>
               </div>
-              <pre className="text-xs text-white/80 whitespace-pre-wrap leading-6">{orig}</pre>
+              <pre className="text-xs text-foreground/80 dark:text-white/80 whitespace-pre-wrap leading-6">{orig}</pre>
             </div>
           </div>
         </CardContent>

@@ -13,7 +13,7 @@ interface TargetJobsEmptyStateProps {
 export function TargetJobsEmptyState({ existingAnalyses = [] }: TargetJobsEmptyStateProps) {
   return (
     <EmptyStateCard
-      icon={<FileText className="h-8 w-8 text-white/80" />}
+      icon={<FileText className="h-8 w-8 text-foreground/80 dark:text-white/80" />}
       title="Generate your first resume"
       description="Add a job description to get started. ResuMate AI will tailor your resume to match the job's requirements."
       action={

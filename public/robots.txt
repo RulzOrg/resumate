@@ -1,0 +1,50 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /auth/
+Disallow: /_next/
+Disallow: /admin/
+Disallow: /*.pdf$
+Disallow: /*.docx$
+Disallow: /*.json$
+
+Allow: /images/
+Allow: /favicon.ico
+
+# AI/Search Engine Crawler Directives
+User-agent: GPTBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /auth/
+Allow: /images/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /dashboard/
+Disallow: /auth/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /dashboard/
+Disallow: /auth/
+
+User-agent: anthropic-ai
+Allow: /
+Disallow: /dashboard/
+Disallow: /auth/
+
+User-agent: Claude-Web
+Allow: /
+Disallow: /dashboard/
+Disallow: /auth/
+
+# Allow search engines to crawl important pages
+User-agent: *
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://www.useresumate.com/sitemap.xml
+
+# Host directive (optional, for Yandex)
+# Host: https://www.useresumate.com

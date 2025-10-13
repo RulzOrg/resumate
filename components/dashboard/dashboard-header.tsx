@@ -12,6 +12,7 @@ import { RefreshCw, Settings, Plus, User } from "lucide-react"
 import Link from "next/link"
 import { LogoutButton } from "./logout-button"
 import { UploadResumeDialog } from "./upload-resume-dialog"
+import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import type { User as UserType } from "@/lib/db"
 import { UserAvatar } from "./user-avatar"
 
@@ -21,7 +22,7 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 bg-black/50 backdrop-blur-lg border-b border-white/10">
+    <header className="sticky top-0 z-30 bg-background/50 backdrop-blur-lg border-b border-border">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
@@ -40,6 +41,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                 New Generation
               </Button>
             </UploadResumeDialog>
+            <ThemeSwitcher />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div
@@ -57,27 +59,27 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   <UserAvatar user={user} />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56 bg-foreground/90 dark:bg-black/90 backdrop-blur-lg border-border dark:border-white/10" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium text-popover-foreground">{user.name}</p>
-                    <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>
+                    <p className="font-medium text-foreground dark:text-white">{user.name}</p>
+                    <p className="w-[200px] truncate text-sm text-foreground/60 dark:text-white/60">{user.email}</p>
                   </div>
                 </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
+                <DropdownMenuSeparator className="bg-surface-muted dark:bg-white/10" />
+                <DropdownMenuItem asChild className="text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/10">
                   <Link href="/dashboard/profile">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className="text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/10">
                   <Link href="/dashboard/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-surface-muted dark:bg-white/10" />
                 <LogoutButton />
               </DropdownMenuContent>
             </DropdownMenu>
