@@ -116,9 +116,9 @@ export function PricingCard({
 
   return (
     <Card
-      className={`relative overflow-hidden rounded-2xl border ${
-        popular ? 'border-emerald-500/50 ring-1 ring-emerald-500' : 'border-white/10'
-      } bg-white/5 backdrop-blur p-0 ${isCurrentPlan ? 'ring-2 ring-emerald-500' : ''}`}
+      className={`relative overflow-hidden rounded-2xl bg-surface-subtle dark:bg-white/5 backdrop-blur p-0 border ${
+        popular ? 'border-emerald-500/50 ring-1 ring-emerald-500' : '[border-color:#d1d5db] dark:border-white/10'
+      } ${isCurrentPlan ? 'ring-2 ring-emerald-500' : ''}`}
     >
       {popular && (
         <Badge className="absolute top-3 right-3 bg-emerald-500/10 text-emerald-200 border border-emerald-500/30">
@@ -134,13 +134,13 @@ export function PricingCard({
       )}
 
       <CardHeader className="text-center pb-4 pt-8">
-        <CardTitle className="text-xl text-white tracking-tight">{tier.name}</CardTitle>
+        <CardTitle className="text-xl text-foreground dark:text-white tracking-tight">{tier.name}</CardTitle>
         <div className="mt-4 flex items-baseline justify-center gap-2">
-          <span className="text-4xl font-semibold text-white">
+          <span className="text-4xl font-semibold text-foreground dark:text-white">
             {isFreeTier ? '$0' : formatPrice(displayPrice)}
           </span>
           {!isFreeTier && (
-            <span className="text-sm text-white/70">
+            <span className="text-sm text-foreground/70 dark:text-white/70">
               /{billingCycle === 'annual' ? 'month' : tier.interval}
             </span>
           )}
@@ -150,7 +150,7 @@ export function PricingCard({
             Save {annualSavings}%
           </Badge>
         )}
-        <CardDescription className="text-sm mt-3 text-white/70">
+        <CardDescription className="text-sm mt-3 text-foreground/70 dark:text-white/70">
           {tier.description}
         </CardDescription>
       </CardHeader>
@@ -160,7 +160,7 @@ export function PricingCard({
           {tier.features.map((feature, index) => (
             <li key={index} className="flex items-start gap-3">
               <Check className="h-5 w-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <span className="text-sm text-white/90">{feature}</span>
+              <span className="text-sm text-foreground/90 dark:text-white/90">{feature}</span>
             </li>
           ))}
         </ul>
@@ -169,7 +169,7 @@ export function PricingCard({
           className={`${
             popular || tier.id === 'pro'
               ? 'bg-emerald-500 text-black hover:bg-emerald-400'
-              : 'bg-white/10 text-white hover:bg-white/20 border border-white/20'
+              : 'bg-surface-muted dark:bg-white/10 text-foreground dark:text-white hover:bg-surface-strong dark:hover:bg-white/20 border border-border/80 dark:border-white/20'
           } w-full`}
           variant={getButtonVariant()}
           onClick={handleSubscribe}
@@ -178,7 +178,7 @@ export function PricingCard({
           {getButtonText()}
         </Button>
         {tier.id === 'pro' && (
-          <p className="text-xs text-center text-white/60">7-day free trial • Cancel anytime</p>
+          <p className="text-xs text-center text-foreground/60 dark:text-white/60">7-day free trial • Cancel anytime</p>
         )}
       </CardContent>
     </Card>

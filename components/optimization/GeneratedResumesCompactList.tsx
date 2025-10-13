@@ -16,7 +16,7 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   )
   const matchClass = (score?: number | null) => {
     const s = finiteScore(score)
-    if (s === null) return 'text-white/60'
+    if (s === null) return 'text-foreground/60 dark:text-white/60'
     if (s === 0) return 'text-red-400'
     if (s < 60) return 'text-amber-400'
     return 'text-emerald-400'
@@ -43,16 +43,16 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   }
 
   return (
-    <div className="divide-y divide-white/10">
-      {items.map((resume) => (
-        <div key={resume.id} className="flex flex-col sm:flex-row sm:items-center gap-4 py-4">
+    <div className="space-y-0">
+      {items.map((resume, index) => (
+        <div key={resume.id} className={`flex flex-col sm:flex-row sm:items-center gap-4 py-4 ${index > 0 ? 'border-t border-gray-300 dark:border-white/10' : ''}`}>
           <div className="flex items-center gap-4 flex-1">
-            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-white/5">
-              <FileText className="h-5 w-5 text-white/70" />
+            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10">
+              <FileText className="h-5 w-5 text-foreground/70 dark:text-white/70" />
             </div>
             <div>
               <p className="font-medium">Resume for {resume.title}</p>
-              <p className="text-sm text-white/60">
+              <p className="text-sm text-foreground/60 dark:text-white/60">
                 Generated {new Date(resume.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
             </div>
@@ -62,9 +62,9 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
               <p className={`font-medium ${matchClass(resume.match_score)}`}>
                 {finiteScore(resume.match_score) === null ? '—' : `${finiteScore(resume.match_score)}%`}
               </p>
-              <p className="text-xs text-white/60">Match</p>
+              <p className="text-xs text-foreground/60 dark:text-white/60">Match</p>
             </div>
-            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id)}>
+            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id)}>
               <Download className="h-4 w-4" />
             </Button>
           </div>
@@ -73,5 +73,4 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
     </div>
   )
 }
-
 

@@ -58,19 +58,19 @@ type JobOption = {
 
 const initialEditorHtml = `
   <div class="text-lg font-space-grotesk font-semibold tracking-tight">Sarah Johnson</div>
-  <div class="text-white/70">Senior Product Manager • sjohnson@example.com • San Francisco, CA</div>
-  <div class="h-px bg-white/10 my-4"></div>
+  <div class="text-foreground/70 dark:text-white/70">Senior Product Manager • sjohnson@example.com • San Francisco, CA</div>
+  <div class="h-px bg-surface-muted dark:bg-white/10 my-4"></div>
 
-  <div class="font-medium text-white/90">Summary</div>
-  <p class="mt-1 text-white/80">Product leader with 7+ years delivering developer-facing platforms. Drives roadmap with data-informed experimentation and cross-functional collaboration. Deep familiarity with frontend frameworks and performance tooling.</p>
+  <div class="font-medium text-foreground/90 dark:text-white/90">Summary</div>
+  <p class="mt-1 text-foreground/80 dark:text-white/80">Product leader with 7+ years delivering developer-facing platforms. Drives roadmap with data-informed experimentation and cross-functional collaboration. Deep familiarity with frontend frameworks and performance tooling.</p>
 
-  <div class="font-medium text-white/90 mt-4">Experience</div>
+  <div class="font-medium text-foreground/90 dark:text-white/90 mt-4">Experience</div>
   <div class="mt-1">
     <div class="flex items-center justify-between">
       <div class="font-medium">Product Manager, Developer Experience — Acme Cloud</div>
-      <div class="text-white/50 text-xs">2021 — Present</div>
+      <div class="text-foreground/50 dark:text-white/50 text-xs">2021 — Present</div>
     </div>
-    <ul class="list-disc pl-5 mt-1 space-y-1 text-white/80">
+    <ul class="list-disc pl-5 mt-1 space-y-1 text-foreground/80 dark:text-white/80">
       <li>Owned DX platform roadmap; shipped features improving build performance by 28% and deploy reliability by 15%.</li>
       <li>Led A/B tests on onboarding; increased activation by 12% across 50k+ developers.</li>
       <li>Partnered with design and engineering to launch workflow analytics; reduced time-to-diagnosis by 35%.</li>
@@ -80,20 +80,20 @@ const initialEditorHtml = `
   <div class="mt-3">
     <div class="flex items-center justify-between">
       <div class="font-medium">Product Manager — Beta Tools</div>
-      <div class="text-white/50 text-xs">2018 — 2021</div>
+      <div class="text-foreground/50 dark:text-white/50 text-xs">2018 — 2021</div>
     </div>
-    <ul class="list-disc pl-5 mt-1 space-y-1 text-white/80">
+    <ul class="list-disc pl-5 mt-1 space-y-1 text-foreground/80 dark:text-white/80">
       <li>Prioritized roadmap via discovery, SQL analyses, and customer research with enterprise users.</li>
       <li>Launched API-based integrations enabling 3rd-party workflows; +200 partners in first year.</li>
       <li>Introduced experimentation platform governance; standardized metrics and guardrails.</li>
     </ul>
   </div>
 
-  <div class="font-medium text-white/90 mt-4">Skills</div>
-  <p class="text-white/80">Roadmapping, Product Discovery, A/B Testing, Analytics (SQL), Frontend Frameworks, API Design, Developer Experience, Enterprise</p>
+  <div class="font-medium text-foreground/90 dark:text-white/90 mt-4">Skills</div>
+  <p class="text-foreground/80 dark:text-white/80">Roadmapping, Product Discovery, A/B Testing, Analytics (SQL), Frontend Frameworks, API Design, Developer Experience, Enterprise</p>
 
-  <div class="font-medium text-white/90 mt-4">Education</div>
-  <p class="text-white/80">B.S. in Computer Science — University of Somewhere</p>
+  <div class="font-medium text-foreground/90 dark:text-white/90 mt-4">Education</div>
+  <p class="text-foreground/80 dark:text-white/80">B.S. in Computer Science — University of Somewhere</p>
 `
 
 function extractKeywords(text: string) {
@@ -468,7 +468,7 @@ export default function OptimizerUiOnly({
       "Senior product leader with 7+ years scaling developer platforms. Shapes strategy, aligns cross-functional teams, and delivers measurable outcomes through experimentation and disciplined execution."
 
     const summaryRegex = new RegExp(
-      '(<div class=\\"font-medium text-white\\\\/90\\">Summary<\\/div>\\s*<p class=\\"mt-1 text-white\\\\/80\\">)([^<]+)(<\\/p>)',
+      '(<div class=\\"font-medium text-foreground dark:text-white\\\\/90\\">Summary<\\/div>\\s*<p class=\\"mt-1 text-foreground dark:text-white\\\\/80\\">)([^<]+)(<\\/p>)',
       'i'
     )
     html = html.replace(
@@ -493,7 +493,7 @@ export default function OptimizerUiOnly({
     // Emphasis: bold selected in Skills line
     if (config.emphasize.length) {
       const skillsRegex = new RegExp(
-        '(<div class=\\"font-medium text-white\\\\/90 mt-4\\">Skills<\\/div>\\s*<p class=\\"text-white\\\\/80\\">)([^<]+)(<\\/p>)',
+        '(<div class=\\"font-medium text-foreground dark:text-white\\\\/90 mt-4\\">Skills<\\/div>\\s*<p class=\\"text-foreground dark:text-white\\\\/80\\">)([^<]+)(<\\/p>)',
         'i'
       )
       html = html.replace(skillsRegex, (_m: string, a: string, skills: string, c: string) => {
@@ -518,13 +518,13 @@ export default function OptimizerUiOnly({
     return (
       <div className="mt-2 flex flex-wrap gap-2 text-xs">
         {items.map((it, i) => (
-          <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
+          <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1">
             <it.icon className="h-3.5 w-3.5" />
             <span>{it.label}</span>
           </span>
         ))}
         {config.emphasize.length > 0 && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1">
             <Hash className="h-3.5 w-3.5" />
             <span>
               {config.emphasize
@@ -543,32 +543,32 @@ export default function OptimizerUiOnly({
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
         <div className="mb-2">
-          <Link href="/dashboard" className="group inline-flex items-center gap-2 text-sm text-white/70 hover:text-white">
+          <Link href="/dashboard" className="group inline-flex items-center gap-2 text-sm text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white">
             <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
             Back to Dashboard
           </Link>
         </div>
         <h1 className="text-3xl sm:text-4xl tracking-tight font-space-grotesk font-semibold">AI Resume Optimization</h1>
-        <p className="mt-1 text-base text-white/60">
+        <p className="mt-1 text-base text-foreground/60 dark:text-white/60">
           Target: {selectedJobTitle} — {selectedCompany}
         </p>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 mb-8">
+      <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-4 mb-8">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className={`h-7 w-7 rounded-full ${step === 1 ? "bg-emerald-500 text-black" : "bg-white/10 text-white"} flex items-center justify-center text-sm font-medium`}>1</div>
-            <span className={`text-sm font-medium ${step === 1 ? "text-white" : "text-white/80"}`}>Select Master Resume</span>
+            <div className={`h-7 w-7 rounded-full ${step === 1 ? "bg-emerald-500 text-black" : "bg-surface-muted dark:bg-white/10 text-foreground dark:text-white"} flex items-center justify-center text-sm font-medium`}>1</div>
+            <span className={`text-sm font-medium ${step === 1 ? "text-foreground dark:text-white" : "text-foreground/80 dark:text-white/80"}`}>Select Master Resume</span>
           </div>
-          <div className="h-px flex-1 bg-white/10"></div>
+          <div className="h-px flex-1 bg-surface-muted dark:bg-white/10"></div>
           <div className="flex items-center gap-2">
-            <div className={`h-7 w-7 rounded-full ${step === 2 ? "bg-emerald-500 text-black" : "bg-white/10 text-white"} flex items-center justify-center text-sm font-medium`}>2</div>
-            <span className={`text-sm font-medium ${step === 2 ? "text-white" : "text-white/80"}`}>Review Job</span>
+            <div className={`h-7 w-7 rounded-full ${step === 2 ? "bg-emerald-500 text-black" : "bg-surface-muted dark:bg-white/10 text-foreground dark:text-white"} flex items-center justify-center text-sm font-medium`}>2</div>
+            <span className={`text-sm font-medium ${step === 2 ? "text-foreground dark:text-white" : "text-foreground/80 dark:text-white/80"}`}>Review Job</span>
           </div>
-          <div className="h-px flex-1 bg-white/10"></div>
+          <div className="h-px flex-1 bg-surface-muted dark:bg-white/10"></div>
           <div className="flex items-center gap-2">
-            <div className={`h-7 w-7 rounded-full ${step === 3 ? "bg-emerald-500 text-black" : "bg-white/10 text-white"} flex items-center justify-center text-sm font-medium`}>3</div>
-            <span className={`text-sm font-medium ${step === 3 ? "text-white" : "text-white/80"}`}>Optimize</span>
+            <div className={`h-7 w-7 rounded-full ${step === 3 ? "bg-emerald-500 text-black" : "bg-surface-muted dark:bg-white/10 text-foreground dark:text-white"} flex items-center justify-center text-sm font-medium`}>3</div>
+            <span className={`text-sm font-medium ${step === 3 ? "text-foreground dark:text-white" : "text-foreground/80 dark:text-white/80"}`}>Optimize</span>
           </div>
         </div>
       </div>
@@ -576,54 +576,54 @@ export default function OptimizerUiOnly({
       <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
         <div className="lg:col-span-2 space-y-8">
           {/* Setup (Step 1) */}
-          <div className={`${step === 1 ? "block" : "hidden"} relative rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8`}>
+          <div className={`${step === 1 ? "block" : "hidden"} relative rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8`}>
             <div className="flex items-start justify-between mb-6">
               <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Setup</h2>
-              <span className="text-xs text-white/50">Step 1–2</span>
+              <span className="text-xs text-foreground/50 dark:text-white/50">Step 1–2</span>
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-2 text-white/80">Master Resume</label>
+              <label className="block text-sm font-medium mb-2 text-foreground/80 dark:text-white/80">Master Resume</label>
               <div className="relative">
                 <button
                   type="button"
-                  className="w-full inline-flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm hover:bg-black/30 focus:outline-none"
+                  className="w-full inline-flex items-center justify-between gap-2 rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 px-4 py-3 text-sm hover:bg-muted dark:hover:bg-black/30 focus:outline-none"
                   onClick={() => setResumeMenuOpen((v) => !v)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center">
-                      <FileText className="h-4 w-4 text-white/70" />
+                    <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
+                      <FileText className="h-4 w-4 text-foreground/70 dark:text-white/70" />
                     </div>
                     <div className="text-left">
                       <p className="font-medium">{currentResume?.label ?? "Select resume"}</p>
-                      <p className="text-xs text-white/60">
+                      <p className="text-xs text-foreground/60 dark:text-white/60">
                         {currentResume?.updatedAt
                           ? `Updated ${new Date(currentResume.updatedAt).toLocaleDateString()}`
                           : "Uploaded resume"}
                       </p>
                     </div>
                   </div>
-                  <ChevronDown className="h-4 w-4 text-white/60" />
+                  <ChevronDown className="h-4 w-4 text-foreground/60 dark:text-white/60" />
                 </button>
 
                 {resumeMenuOpen && (
-                  <div className="absolute z-20 mt-2 w-full rounded-xl border border-white/10 bg-black/90 backdrop-blur-xl shadow-2xl">
+                  <div className="absolute z-20 mt-2 w-full rounded-xl border border-border dark:border-white/10 bg-card/95 dark:bg-black/90 backdrop-blur-xl shadow-2xl">
                     <div className="p-2">
                       {resolvedResumes.map((resume) => (
                         <button
                           key={resume.id}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-white/10 transition text-left"
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted dark:hover:bg-white/10 transition text-left"
                           onClick={() => {
                             setSelectedResume(resume.id)
                             setResumeMenuOpen(false)
                           }}
                         >
-                          <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center">
-                            <FileText className="h-4 w-4 text-white/70" />
+                          <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
+                            <FileText className="h-4 w-4 text-foreground/70 dark:text-white/70" />
                           </div>
                           <div className="flex-1">
                             <p className="text-sm font-medium">{resume.label}</p>
-                            <p className="text-xs text-white/60">
+                            <p className="text-xs text-foreground/60 dark:text-white/60">
                               {formatFileMeta(resume) || "Uploaded resume"}
                             </p>
                           </div>
@@ -637,36 +637,36 @@ export default function OptimizerUiOnly({
 
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-white/80">Analyzed Job Description</label>
+                <label className="block text-sm font-medium text-foreground/80 dark:text-white/80">Analyzed Job Description</label>
                 <button
-                  className="inline-flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white"
+                  className="inline-flex items-center gap-2 text-xs font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white"
                   onClick={replaceJD}
                 >
                   <RefreshCw className="h-4 w-4" />
                   Replace text
                 </button>
               </div>
-              <div className="rounded-xl border border-white/10 bg-black/40">
+              <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40">
                 <textarea
                   rows={8}
-                  className="w-full bg-transparent outline-none p-4 text-sm leading-6 placeholder-white/40 resize-y"
+                  className="w-full bg-transparent outline-none p-4 text-sm leading-6 placeholder-foreground/40 dark:placeholder-white/40 resize-y"
                   placeholder="Paste the full job description here..."
                   value={jobDesc}
                   onChange={(e) => setJobDesc(e.target.value)}
                 />
-                <div className="border-t border-white/10 p-3 flex items-center justify-between">
+                <div className="border-t border-border dark:border-white/10 p-3 flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-white/50">Detected keywords:</span>
+                    <span className="text-xs text-foreground/50 dark:text-white/50">Detected keywords:</span>
                     <div className="flex flex-wrap gap-2">
                       {keywords.map((k) => (
-                        <span key={k} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
+                        <span key={k} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                           {k.replace(/^\w/, (c) => c.toUpperCase())}
                         </span>
                       ))}
                     </div>
                   </div>
                   <button
-                    className="inline-flex items-center gap-2 text-xs font-medium text-white/70 hover:text-white"
+                    className="inline-flex items-center gap-2 text-xs font-medium text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white"
                     onClick={reanalyze}
                   >
                     <RefreshCcw className="h-4 w-4" />
@@ -680,13 +680,13 @@ export default function OptimizerUiOnly({
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 text-xs text-white/60">
+              <div className="flex items-center gap-3 text-xs text-foreground/60 dark:text-white/60">
                 <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
                 Ready to optimize
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-white bg-white/10 rounded-full py-2 px-4 hover:bg-white/20 transition-colors disabled:opacity-60"
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground dark:text-white bg-surface-muted dark:bg-white/10 rounded-full py-2 px-4 hover:bg-surface-strong dark:hover:bg-white/20 transition-colors disabled:opacity-60"
                   onClick={handleAnalyzeWithAI}
                   disabled={isAnalyzing}
                   title="Analyze this job with AI to extract keywords and skills"
@@ -709,49 +709,49 @@ export default function OptimizerUiOnly({
           </div>
 
           {/* Review (Step 2) */}
-          <div className={`${step === 2 ? "block" : "hidden"} rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8`}>
+          <div className={`${step === 2 ? "block" : "hidden"} rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8`}>
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Review Job</h2>
-                <p className="text-sm text-white/60 mt-1">Confirm alignment and address gaps before generating your tailored resume.</p>
+                <p className="text-sm text-foreground/60 dark:text-white/60 mt-1">Confirm alignment and address gaps before generating your tailored resume.</p>
               </div>
-              <span className="text-xs text-white/50">Step 2–3</span>
+              <span className="text-xs text-foreground/50 dark:text-white/50">Step 2–3</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="inline-flex items-center gap-2">
                     <Target className="h-4 w-4" />
                     <span className="text-sm font-medium">Match overview</span>
                   </div>
-                  <span className="text-xs text-white/60">{matchPct}% match</span>
+                  <span className="text-xs text-foreground/60 dark:text-white/60">{matchPct}% match</span>
                 </div>
                 <div className="mt-2">
-                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-surface-muted dark:bg-white/10 overflow-hidden">
                     <div className="h-2 bg-emerald-500 rounded-full" style={{ width: `${matchPct}%` }}></div>
                   </div>
-                  <div className="flex items-center justify-between mt-2 text-xs text-white/60">
+                  <div className="flex items-center justify-between mt-2 text-xs text-foreground/60 dark:text-white/60">
                     <span>Keywords coverage</span>
                     <span>{coveredCount}/{keywords.length || 0}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+              <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="inline-flex items-center gap-2">
                     <Hash className="h-4 w-4" />
                     <span className="text-sm font-medium">Top keywords</span>
                   </div>
-                  <button className="inline-flex items-center gap-1 text-xs text-white/70 hover:text-white" onClick={reanalyze}>
+                  <button className="inline-flex items-center gap-1 text-xs text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white" onClick={reanalyze}>
                     <RefreshCcw className="h-3.5 w-3.5" />
                     Refresh
                   </button>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {keywords.map((k) => (
-                    <span key={k} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
+                    <span key={k} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                       {k.replace(/^\w/, (c) => c.toUpperCase())}
                     </span>
                   ))}
@@ -760,24 +760,24 @@ export default function OptimizerUiOnly({
 
               {/* Evidence & Scoring (server) */}
               <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="rounded-xl border border-white/10 bg-black/40 p-4 lg:col-span-1">
+                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4 lg:col-span-1">
                   <div className="inline-flex items-center gap-2 mb-2">
                     <Target className="h-4 w-4" />
                     <span className="text-sm font-medium">AI score</span>
                   </div>
                   {isScoring ? (
-                    <div className="text-xs text-white/60">Scoring…</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">Scoring…</div>
                   ) : score ? (
                     <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between"><span>Overall</span><span className="text-white/80">{score.overall}%</span></div>
+                      <div className="flex items-center justify-between"><span>Overall</span><span className="text-foreground/80 dark:text-white/80">{score.overall}%</span></div>
                       {([['skills', 'Skills'], ['responsibilities','Responsibilities'], ['domain','Domain'], ['seniority','Seniority']] as const).map(([k, label]) => (
                         <div key={k}>
-                          <div className="flex items-center justify-between"><span>{label}</span><span className="text-white/70">{(score.dimensions as any)[k]}%</span></div>
-                          <div className="w-full h-1.5 rounded bg-white/10 overflow-hidden"><div className="h-1.5 bg-emerald-500" style={{ width: `${(score.dimensions as any)[k]}%` }}></div></div>
+                          <div className="flex items-center justify-between"><span>{label}</span><span className="text-foreground/70 dark:text-white/70">{(score.dimensions as any)[k]}%</span></div>
+                          <div className="w-full h-1.5 rounded bg-surface-muted dark:bg-white/10 overflow-hidden"><div className="h-1.5 bg-emerald-500" style={{ width: `${(score.dimensions as any)[k]}%` }}></div></div>
                         </div>
                       ))}
                       {score.missingMustHaves?.length > 0 && (
-                        <div className="pt-2"><div className="text-white/70 mb-1">Missing must‑haves</div>
+                        <div className="pt-2"><div className="text-foreground/70 dark:text-white/70 mb-1">Missing must‑haves</div>
                           <ul className="list-disc pl-5 space-y-0.5">
                             {score.missingMustHaves.slice(0,6).map((m) => (<li key={m}>{m}</li>))}
                           </ul>
@@ -787,16 +787,16 @@ export default function OptimizerUiOnly({
                   ) : scoreError ? (
                     <div className="text-xs text-red-400">{scoreError}</div>
                   ) : (
-                    <div className="text-xs text-white/60">No score yet.</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">No score yet.</div>
                   )}
                 </div>
-                <div className="rounded-xl border border-white/10 bg-black/40 p-4 lg:col-span-2">
+                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4 lg:col-span-2">
                   <div className="flex items-center justify-between mb-2">
                     <div className="inline-flex items-center gap-2"><FileText className="h-4 w-4" /><span className="text-sm font-medium">Evidence</span></div>
-                    <span className="text-xs text-white/60">Selected: {selectedEvidenceIds.size}</span>
+                    <span className="text-xs text-foreground/60 dark:text-white/60">Selected: {selectedEvidenceIds.size}</span>
                   </div>
                   {isScoring ? (
-                    <div className="text-xs text-white/60">Fetching evidence…</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">Fetching evidence…</div>
                   ) : evidence.length ? (
                     <ul className="space-y-2 text-sm">
                       {evidence.slice(0,20).map((ev) => {
@@ -804,7 +804,7 @@ export default function OptimizerUiOnly({
                         const shown = editedEvidence[eid] || ev.text
                         const selected = selectedEvidenceIds.has(eid)
                         return (
-                          <li key={ev.id} className={`rounded-lg border border-white/10 p-3 bg-white/5 ${selected ? 'ring-1 ring-emerald-500/40' : ''}`}>
+                          <li key={ev.id} className={`rounded-lg border border-border dark:border-white/10 p-3 bg-surface-subtle dark:bg-white/5 ${selected ? 'ring-1 ring-emerald-500/40' : ''}`}>
                             <div className="flex items-start gap-3">
                               <input
                                 type="checkbox"
@@ -813,10 +813,10 @@ export default function OptimizerUiOnly({
                                 onChange={() => setSelectedEvidenceIds((s) => { const n = new Set(s); if (selected) n.delete(eid); else n.add(eid); return n })}
                               />
                               <div className="flex-1">
-                                <div className="text-white/90">{shown}</div>
+                                <div className="text-foreground/90 dark:text-white/90">{shown}</div>
                                 <div className="mt-2 flex items-center gap-2 text-xs">
                                   <button
-                                    className="inline-flex items-center gap-1 rounded border border-white/10 px-2 py-1 hover:bg-white/10"
+                                    className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 px-2 py-1 hover:bg-surface-muted dark:hover:bg-white/10"
                                     disabled={rephrasingId === eid}
                                     onClick={async () => {
                                       try {
@@ -838,14 +838,14 @@ export default function OptimizerUiOnly({
                       })}
                     </ul>
                   ) : (
-                    <div className="text-xs text-white/60">No evidence found. Try adjusting queries or ensure resume is indexed.</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">No evidence found. Try adjusting queries or ensure resume is indexed.</div>
                   )}
                 </div>
               </div>
 
               {/* Skills breakdown */}
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
                   <div className="inline-flex items-center gap-2 mb-2">
                     <ListChecksIcon />
                     <span className="text-sm font-medium">Required skills</span>
@@ -853,16 +853,16 @@ export default function OptimizerUiOnly({
                   {reqSkills.length ? (
                     <div className="flex flex-wrap gap-2">
                       {reqSkills.map((s) => (
-                        <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
+                        <span key={s} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                           {s}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-white/60">Run Analyze with AI to extract required skills.</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">Run Analyze with AI to extract required skills.</div>
                   )}
                 </div>
-                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
                   <div className="inline-flex items-center gap-2 mb-2">
                     <ListChecksIcon />
                     <span className="text-sm font-medium">Preferred skills</span>
@@ -870,52 +870,52 @@ export default function OptimizerUiOnly({
                   {prefSkills.length ? (
                     <div className="flex flex-wrap gap-2">
                       {prefSkills.map((s) => (
-                        <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
+                        <span key={s} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                           {s}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-xs text-white/60">Run Analyze with AI to extract preferred skills.</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">Run Analyze with AI to extract preferred skills.</div>
                   )}
                 </div>
               </div>
 
               {/* Culture & Benefits */}
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
                   <div className="inline-flex items-center gap-2 mb-2">
                     <ListChecksIcon />
                     <span className="text-sm font-medium">Culture</span>
                   </div>
                   {culture.length ? (
-                    <ul className="list-disc pl-5 text-xs text-white/80 space-y-1">
+                    <ul className="list-disc pl-5 text-xs text-foreground/80 dark:text-white/80 space-y-1">
                       {culture.map((c) => (
                         <li key={c}>{c}</li>
                       ))}
                     </ul>
                   ) : (
-                    <div className="text-xs text-white/60">No culture details yet.</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">No culture details yet.</div>
                   )}
                 </div>
-                <div className="rounded-xl border border-white/10 bg-black/40 p-4">
+                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
                   <div className="inline-flex items-center gap-2 mb-2">
                     <ListChecksIcon />
                     <span className="text-sm font-medium">Benefits</span>
                   </div>
                   {benefits.length ? (
-                    <ul className="list-disc pl-5 text-xs text-white/80 space-y-1">
+                    <ul className="list-disc pl-5 text-xs text-foreground/80 dark:text-white/80 space-y-1">
                       {benefits.map((b) => (
                         <li key={b}>{b}</li>
                       ))}
                     </ul>
                   ) : (
-                    <div className="text-xs text-white/60">No benefits extracted yet.</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60">No benefits extracted yet.</div>
                   )}
                 </div>
               </div>
 
-              <div className="md:col-span-2 rounded-xl border border-white/10 bg-black/40 p-4">
+              <div className="md:col-span-2 rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
                 <div className="inline-flex items-center gap-2 mb-2">
                   <ListChecksIcon />
                   <span className="text-sm font-medium">Key requirements</span>
@@ -924,13 +924,13 @@ export default function OptimizerUiOnly({
                   {keywords.map((k) => {
                     const covered = resumeText.toLowerCase().includes(k.toLowerCase())
                     return (
-                      <div key={k} className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
-                        <div className={`h-8 w-8 rounded-md flex items-center justify-center ${covered ? "bg-emerald-500/20 text-emerald-400" : "bg-white/5 text-white/70"}`}>
+                      <div key={k} className="flex items-start gap-3 rounded-lg border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-3">
+                        <div className={`h-8 w-8 rounded-md flex items-center justify-center ${covered ? "bg-emerald-500/20 text-emerald-400" : "bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 text-foreground/70 dark:text-white/70"}`}>
                           {covered ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
                         </div>
                         <div className="flex-1">
                           <div className="text-sm font-medium">{k.replace(/^\w/, (c) => c.toUpperCase())}</div>
-                          <div className="text-xs text-white/60 mt-0.5">{covered ? "Mentioned in your resume" : "Not detected — consider adding a relevant bullet or skill"}</div>
+                          <div className="text-xs text-foreground/60 dark:text-white/60 mt-0.5">{covered ? "Mentioned in your resume" : "Not detected — consider adding a relevant bullet or skill"}</div>
                         </div>
                       </div>
                     )
@@ -941,7 +941,7 @@ export default function OptimizerUiOnly({
 
             <div className="mt-6 flex items-center justify-between">
               <button
-                className="inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-4 hover:bg-white/20 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-foreground dark:text-white bg-surface-muted dark:bg-white/10 rounded-full py-2 px-4 hover:bg-surface-strong dark:hover:bg-white/20 transition-colors"
                 onClick={() => setStep(1)}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -961,25 +961,25 @@ export default function OptimizerUiOnly({
           </div>
 
           {/* Optimize (Step 3) */}
-          <div className={`${step === 3 ? "block" : "hidden"} relative rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8`}>
+          <div className={`${step === 3 ? "block" : "hidden"} relative rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8`}>
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Optimize</h2>
-                <p className="text-sm text-white/60 mt-1">Choose preferences, then generate your tailored resume.</p>
+                <p className="text-sm text-foreground/60 dark:text-white/60 mt-1">Choose preferences, then generate your tailored resume.</p>
               </div>
-              <span className="text-xs text-white/50">Step 3</span>
+              <span className="text-xs text-foreground/50 dark:text-white/50">Step 3</span>
             </div>
 
             <div className="space-y-6">
               <div>
-                <div className="text-sm font-medium text-white/80 mb-2">Tone</div>
+                <div className="text-sm font-medium text-foreground/80 dark:text-white/80 mb-2">Tone</div>
                 <div className="flex flex-wrap gap-2">
                   {["neutral", "impactful", "executive"].map((t) => {
                     const active = config.tone === t
                     return (
                       <button
                         key={t}
-                        className={`inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium ${active ? "bg-white text-black" : "bg-transparent text-white/70 hover:bg-white/10"}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full border border-border dark:border-white/10 px-3 py-1.5 text-xs font-medium ${active ? "bg-white text-black" : "bg-transparent text-foreground/70 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/10"}`}
                         onClick={() => setConfig((c) => ({ ...c, tone: t as any }))}
                       >
                         {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -990,14 +990,14 @@ export default function OptimizerUiOnly({
               </div>
 
               <div>
-                <div className="text-sm font-medium text-white/80 mb-2">Emphasize</div>
+                <div className="text-sm font-medium text-foreground/80 dark:text-white/80 mb-2">Emphasize</div>
                 <div className="flex flex-wrap gap-2">
                   {(config.emphasize || []).map((k) => {
                     const active = (config.emphasize || []).includes(k)
                     return (
                       <button
                         key={k}
-                        className={`inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium ${active ? "bg-white text-black" : "bg-transparent text-white/70 hover:bg-white/10"}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full border border-border dark:border-white/10 px-3 py-1.5 text-xs font-medium ${active ? "bg-white text-black" : "bg-transparent text-foreground/70 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/10"}`}
                         onClick={() =>
                           setConfig((c) => ({
                             ...c,
@@ -1014,14 +1014,14 @@ export default function OptimizerUiOnly({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm font-medium text-white/80 mb-2">Length</div>
+                  <div className="text-sm font-medium text-foreground/80 dark:text-white/80 mb-2">Length</div>
                   <div className="flex flex-wrap gap-2">
                     {["short", "standard", "detailed"].map((l) => {
                       const active = config.length === l
                       return (
                         <button
                           key={l}
-                          className={`inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium ${active ? "bg-white text-black" : "bg-transparent text-white/70 hover:bg-white/10"}`}
+                          className={`inline-flex items-center gap-1.5 rounded-full border border-border dark:border-white/10 px-3 py-1.5 text-xs font-medium ${active ? "bg-white text-black" : "bg-transparent text-foreground/70 dark:text-white/70 hover:bg-surface-muted dark:hover:bg-white/10"}`}
                           onClick={() => setConfig((c) => ({ ...c, length: l as any }))}
                         >
                           {l.charAt(0).toUpperCase() + l.slice(1)}
@@ -1031,12 +1031,12 @@ export default function OptimizerUiOnly({
                   </div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-white/80 mb-2">Formatting</div>
+                  <div className="text-sm font-medium text-foreground/80 dark:text-white/80 mb-2">Formatting</div>
                   <button
-                    className={`inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-medium ${config.ats ? "bg-white/10" : "bg-transparent"}`}
+                    className={`inline-flex items-center gap-2 rounded-xl border border-border dark:border-white/10 px-3 py-2 text-xs font-medium ${config.ats ? "bg-surface-muted dark:bg-white/10" : "bg-transparent"}`}
                     onClick={() => setConfig((c) => ({ ...c, ats: !c.ats }))}
                   >
-                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-md ${config.ats ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-white/60"}`}>
+                    <span className={`inline-flex h-5 w-5 items-center justify-center rounded-md ${config.ats ? "bg-emerald-500/20 text-emerald-400" : "bg-surface-muted dark:bg-white/10 text-foreground/60 dark:text-white/60"}`}>
                       <Check className="h-3.5 w-3.5" />
                     </span>
                     ATS-friendly
@@ -1044,14 +1044,14 @@ export default function OptimizerUiOnly({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-dashed border-white/20 p-4 text-xs text-white/60">
+              <div className="rounded-xl border border-dashed border-border/80 dark:border-white/20 p-4 text-xs text-foreground/60 dark:text-white/60">
                 Tips: Keep tone consistent with company voice, emphasize 3–5 most relevant skills, and keep bullets tight and outcome-oriented.
               </div>
             </div>
 
             <div className="mt-6 flex items-center justify-between">
               <button
-                className="inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-4 hover:bg-white/20 transition-colors"
+                className="inline-flex items-center gap-2 text-sm font-medium text-foreground dark:text-white bg-surface-muted dark:bg-white/10 rounded-full py-2 px-4 hover:bg-surface-strong dark:hover:bg-white/20 transition-colors"
                 onClick={() => setStep(2)}
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -1074,23 +1074,23 @@ export default function OptimizerUiOnly({
           </div>
 
           {/* Optimized (Final) */}
-          <div className={`${step === 4 ? "block" : "hidden"} rounded-2xl border border-white/10 bg-white/5 p-6 sm:p-8`}>
+          <div className={`${step === 4 ? "block" : "hidden"} rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <div>
                 <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Optimized Resume</h2>
-                <p className="text-sm text-white/60 mt-1">Tailored to: {selectedJobTitle} — {selectedCompany}</p>
+                <p className="text-sm text-foreground/60 dark:text-white/60 mt-1">Tailored to: {selectedJobTitle} — {selectedCompany}</p>
                 {appliedSettingsChips}
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  className={`inline-flex items-center gap-2 text-sm font-medium rounded-full py-2 px-3 transition-colors ${editable ? "text-black bg-emerald-500 hover:bg-emerald-400" : "text-white bg-white/10 hover:bg-white/20"}`}
+                  className={`inline-flex items-center gap-2 text-sm font-medium rounded-full py-2 px-3 transition-colors ${editable ? "text-black bg-emerald-500 hover:bg-emerald-400" : "text-foreground dark:text-white bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20"}`}
                   onClick={() => setEditable((v) => !v)}
                 >
                   <PencilLine className="h-4 w-4" />
                   {editable ? "Editing" : "Edit"}
                 </button>
                 <button
-                  className="inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-3 hover:bg-white/20 transition-colors"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-foreground dark:text-white bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 rounded-full py-2 px-3 hover:bg-surface-strong dark:hover:bg-white/20 transition-colors"
                   onClick={async () => {
                     try {
                       const tmp = document.createElement("div")
@@ -1139,7 +1139,7 @@ export default function OptimizerUiOnly({
                 {optimizedId && (
                   <Link
                     href={`/dashboard/optimized/${optimizedId}`}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-white bg-white/10 rounded-full py-2 px-3 hover:bg-white/20 transition-colors"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-foreground dark:text-white bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 rounded-full py-2 px-3 hover:bg-surface-strong dark:hover:bg-white/20 transition-colors"
                   >
                     <Eye className="h-4 w-4" />
                     View Details
@@ -1148,7 +1148,7 @@ export default function OptimizerUiOnly({
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/10 bg-black/40">
+            <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40">
               <div
                 ref={editorRef}
                 contentEditable={editable}
@@ -1157,15 +1157,15 @@ export default function OptimizerUiOnly({
                 dangerouslySetInnerHTML={{ __html: editorHtml }}
                 onInput={(e) => setEditorHtml((e.target as HTMLDivElement).innerHTML)}
               />
-              <div className="border-t border-white/10 p-3 flex items-center justify-between">
-                <div className="text-xs text-white/60">Editable content. Use the toolbar above to toggle edit or download.</div>
+              <div className="border-t border-border dark:border-white/10 p-3 flex items-center justify-between">
+                <div className="text-xs text-foreground/60 dark:text-white/60">Editable content. Use the toolbar above to toggle edit or download.</div>
                 <button
-                  className="inline-flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white"
+                  className="inline-flex items-center gap-2 text-xs font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white"
                   onClick={() => {
                     // simple refine: bold first two keywords in skills
                     const keys = keywords.slice(0, 5).map((k) => k.toLowerCase())
                     const skillsRegex2 = new RegExp(
-                      '(<div class=\\"font-medium text-white\\\\/90 mt-4\\">Skills<\\/div>\\s*<p class=\\"text-white\\\\/80\\">)([^<]+)(<\\/p>)',
+                      '(<div class=\\"font-medium text-foreground dark:text-white\\\\/90 mt-4\\">Skills<\\/div>\\s*<p class=\\"text-foreground dark:text-white\\\\/80\\">)([^<]+)(<\\/p>)',
                       'i'
                     )
                     const html = editorHtml.replace(
@@ -1192,44 +1192,44 @@ export default function OptimizerUiOnly({
 
         {/* Right column */}
         <div className="space-y-8 mt-8 lg:mt-0">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-medium text-white/90">Job Summary</h3>
-              <span className="text-xs font-medium text-white/50">{resolvedJobs.length ? "Imported" : "Mock"}</span>
+              <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Job Summary</h3>
+              <span className="text-xs font-medium text-foreground/50 dark:text-white/50">{resolvedJobs.length ? "Imported" : "Mock"}</span>
             </div>
             <div className="mt-4 space-y-3">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center">
-                  <Briefcase className="h-4 w-4 text-white/70" />
+                <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
+                  <Briefcase className="h-4 w-4 text-foreground/70 dark:text-white/70" />
                 </div>
                 <div>
                   <div className="text-sm font-medium">{selectedJobTitle || "Job title"}</div>
-                  <div className="text-xs text-white/60">{selectedCompany || "Company"}{jobLocation ? ` • ${jobLocation}` : ""}</div>
+                  <div className="text-xs text-foreground/60 dark:text-white/60">{selectedCompany || "Company"}{jobLocation ? ` • ${jobLocation}` : ""}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center">
+                <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
                   <ScaleIcon />
                 </div>
                 <div>
                   <div className="text-sm font-medium">Seniority</div>
-                  <div className="text-xs text-white/60">{jobSeniority || "Senior • IC"}</div>
+                  <div className="text-xs text-foreground/60 dark:text-white/60">{jobSeniority || "Senior • IC"}</div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center">
-                  <Grid className="h-4 w-4 text-white/70" />
+                <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
+                  <Grid className="h-4 w-4 text-foreground/70 dark:text-white/70" />
                 </div>
                 <div>
                   <div className="text-sm font-medium">Category</div>
-                  <div className="text-xs text-white/60">{resolvedInitialJob?.category ?? "Developer Experience • Platform"}</div>
+                  <div className="text-xs text-foreground/60 dark:text-white/60">{resolvedInitialJob?.category ?? "Developer Experience • Platform"}</div>
                 </div>
               </div>
               <div className="pt-2">
-                <div className="text-xs text-white/60 mb-1">Top skills</div>
+                <div className="text-xs text-foreground/60 dark:text-white/60 mb-1">Top skills</div>
                 <div className="flex flex-wrap gap-2">
                   {(keywords.length ? keywords : ["Roadmap", "A/B Testing", "Analytics", "Frontend", "APIs"]).map((s) => (
-                    <span key={s} className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 text-xs">
+                    <span key={s} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                       {s}
                     </span>
                   ))}
@@ -1238,14 +1238,14 @@ export default function OptimizerUiOnly({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-dashed border-white/20 bg-transparent p-6">
+          <div className="rounded-2xl border border-dashed border-border/80 dark:border-white/20 bg-transparent p-6">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center">
-                <Star className="h-5 w-5 text-white/80" />
+              <div className="h-10 w-10 rounded-full bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
+                <Star className="h-5 w-5 text-foreground/80 dark:text-white/80" />
               </div>
               <div>
                 <div className="text-sm font-medium">Tip</div>
-                <div className="text-xs text-white/60">Mirror role language, quantify outcomes, and prioritize relevant projects.</div>
+                <div className="text-xs text-foreground/60 dark:text-white/60">Mirror role language, quantify outcomes, and prioritize relevant projects.</div>
               </div>
             </div>
           </div>
@@ -1265,7 +1265,7 @@ function ListChecksIcon() {
 
 function ScaleIcon() {
   return (
-    <svg className="h-4 w-4 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg className="h-4 w-4 text-foreground/70 dark:text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3h18" />
       <path d="M12 3v18" />
       <path d="M7 21h10" />

@@ -26,7 +26,7 @@ interface OptimizedResumeListProps {
 export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListProps) {
   const matchClasses = (score?: number | null) => {
     const s = typeof score === 'number' ? score : null
-    if (s === null) return { badge: 'bg-white/10 text-white/70', icon: 'text-white/70' }
+    if (s === null) return { badge: 'bg-surface-muted dark:bg-white/10 text-foreground/70 dark:text-white/70', icon: 'text-foreground/70 dark:text-white/70' }
     if (s === 0) return { badge: 'bg-red-500/10 text-red-400', icon: 'text-red-400' }
     if (s < 60) return { badge: 'bg-amber-500/10 text-amber-400', icon: 'text-amber-400' }
     return { badge: 'bg-emerald-500/10 text-emerald-400', icon: 'text-emerald-400' }
