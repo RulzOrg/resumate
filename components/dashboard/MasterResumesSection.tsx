@@ -190,8 +190,8 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                 </div>
                 {editingId !== resume.id && (
                   <div
-                    className={`flex items-center gap-2 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-0 group-hover:opacity-100"
-                      }`}
+                    className={`flex items-center gap-2 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                      } sm:bg-transparent bg-black/20 rounded-md p-1 sm:p-0`}
                   >
                     <button
                       onClick={() => handleStartEdit(resume.id, resume.title)}
