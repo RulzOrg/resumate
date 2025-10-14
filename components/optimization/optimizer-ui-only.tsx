@@ -726,18 +726,27 @@ export default function OptimizerUiOnly({
               <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40">
                 <textarea
                   rows={8}
-                  className="w-full bg-transparent outline-none p-4 text-sm leading-6 placeholder-foreground/40 dark:placeholder-white/40 resize-y"
+                  className="w-full bg-transparent outline-none p-4 text-sm leading-6 placeholder-foreground/40 dark:placeholder-white/40 resize-y disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="Paste the full job description here..."
                   value={jobDesc}
                   onChange={(e) => setJobDesc(e.target.value)}
+                  disabled={isAnalyzing}
                 />
                 <div className="border-t border-border dark:border-white/10 p-3 flex items-center justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-foreground/50 dark:text-white/50">Detected keywords:</span>
                     <div className="flex flex-wrap gap-2">
                       {keywords.map((k) => (
-                        <span key={k} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
+                        <span key={k} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                           {k.replace(/^\w/, (c) => c.toUpperCase())}
+                          <button
+                            onClick={() => removeKeyword(k)}
+                            className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            title={`Remove "${k}" keyword`}
+                            disabled={isAnalyzing}
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
                         </span>
                       ))}
                     </div>
@@ -780,7 +789,7 @@ export default function OptimizerUiOnly({
                   title={isAnalyzing ? "Please wait for AI analysis to complete" : "Continue to next step"}
                 >
                   <Wand2 className="h-4 w-4" />
-                  {isAnalyzing ? "Analyzing..." : "Continue"}
+                  {isAnalyzing ? "Please wait..." : "Continue"}
                 </button>
               </div>
             </div>
@@ -829,8 +838,16 @@ export default function OptimizerUiOnly({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {keywords.map((k) => (
-                    <span key={k} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
+                    <span key={k} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                       {k.replace(/^\w/, (c) => c.toUpperCase())}
+                      <button
+                        onClick={() => removeKeyword(k)}
+                        className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        title={`Remove "${k}" keyword`}
+                        disabled={isAnalyzing}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
                     </span>
                   ))}
                 </div>
@@ -848,7 +865,7 @@ export default function OptimizerUiOnly({
                   ) : score ? (
                     <div className="space-y-2 text-xs">
                       <div className="flex items-center justify-between"><span>Overall</span><span className="text-foreground/80 dark:text-white/80">{score.overall}%</span></div>
-                      {([['skills', 'Skills'], ['responsibilities','Responsibilities'], ['domain','Domain'], ['seniority','Seniority']] as const).map(([k, label]) => (
+                      {([['skills', 'Skills'], ['responsibilities', 'Responsibilities'], ['domain', 'Domain'], ['seniority', 'Seniority']] as const).map(([k, label]) => (
                         <div key={k}>
                           <div className="flex items-center justify-between"><span>{label}</span><span className="text-foreground/70 dark:text-white/70">{(score.dimensions as any)[k]}%</span></div>
                           <div className="w-full h-1.5 rounded bg-surface-muted dark:bg-white/10 overflow-hidden"><div className="h-1.5 bg-emerald-500" style={{ width: `${(score.dimensions as any)[k]}%` }}></div></div>
@@ -1034,8 +1051,8 @@ export default function OptimizerUiOnly({
                 disabled={isAnalyzing}
                 title={isAnalyzing ? "Please wait for AI analysis to complete" : "Continue to optimization"}
               >
-                <Sparkles className="h-4 w-4" />
-                {isAnalyzing ? "Analyzing..." : "Continue to Optimize"}
+                <Wand2 className="h-4 w-4" />
+                {isAnalyzing ? "Please wait..." : "Continue to Optimize"}
               </button>
             </div>
           </div>
@@ -1212,8 +1229,18 @@ export default function OptimizerUiOnly({
                 <div className="text-xs text-foreground/60 dark:text-white/60 mb-1">Top skills</div>
                 <div className="flex flex-wrap gap-2">
                   {(keywords.length ? keywords : ["Roadmap", "A/B Testing", "Analytics", "Frontend", "APIs"]).map((s) => (
-                    <span key={s} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
+                    <span key={s} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                       {s}
+                      {keywords.length > 0 && (
+                        <button
+                          onClick={() => removeKeyword(s)}
+                          className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                          title={`Remove "${s}" keyword`}
+                          disabled={isAnalyzing}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
