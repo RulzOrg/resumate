@@ -14,11 +14,11 @@ const salaryRangeSchema = z.union([
   z.string(),
   z.null(),
   z.object({
-    min: z.number().optional(),
-    max: z.number().optional(),
-    currency: z.string().optional(),
-    period: z.string().optional().nullable(),
-    verbatim: z.string().optional().nullable(),
+    min: z.number().nullable().optional(),
+    max: z.number().nullable().optional(),
+    currency: z.string().nullable().optional(),
+    period: z.string().nullable().optional(),
+    verbatim: z.string().nullable().optional(),
   }),
 ])
 
