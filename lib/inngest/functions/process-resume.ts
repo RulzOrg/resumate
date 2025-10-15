@@ -8,6 +8,7 @@ import { primaryExtract, fallbackExtract } from "@/lib/extract"
 import type { ExtractResult } from "@/lib/llamaparse"
 import { getSignedDownloadUrl } from "@/lib/storage"
 import { updateResumeAnalysis, getResumeById } from "@/lib/db"
+import { indexResume } from "@/lib/resume-indexer"
 import { openai } from "@ai-sdk/openai"
 import { generateObject, generateText } from "ai"
 import { z } from "zod"
@@ -687,6 +688,32 @@ export const processResumeJob = inngest.createFunction(
         pageCount: extractResult.page_count,
         source_metadata: metadata,
       })
+
+      // Index resume into Qdrant for evidence search
+      console.log("[Inngest] Starting Qdrant indexing...")
+
+      try {
+        const resumeRecord = await getResumeById(resumeId, userId)
+        const indexResult = await indexResume({
+          resumeId,
+          userId,
+          content: extractResult.text,
+          metadata: {
+            file_name: resumeRecord?.file_name,
+            file_type: fileType,
+            indexed_at: new Date().toISOString()
+          }
+        })
+
+        if (indexResult.success) {
+          console.log(`[Inngest] ✓ Indexed ${indexResult.chunksIndexed} chunks to Qdrant`)
+        } else {
+          console.warn(`[Inngest] ✗ Qdrant indexing failed: ${indexResult.error}`)
+        }
+      } catch (indexError: any) {
+        console.error(`[Inngest] Qdrant indexing error: ${indexError.message}`)
+        // Don't fail the job if indexing fails - resume processing was successful
+      }
 
       console.log("[Inngest] Resume processing completed successfully", {
         processingDurationMs,

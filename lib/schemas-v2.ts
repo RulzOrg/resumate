@@ -346,6 +346,8 @@ export const PreferencesSchema = z.object({
   length_mode: z.enum(['full', 'short']).optional(),
   ats_optimization: z.boolean().optional().default(true),
   emphasize_keywords: z.array(z.string()).optional().default([]),
+  // Evidence selection from Step 2
+  selected_evidence_bullets: z.array(z.string()).optional(),
 })
 
 export type Preferences = z.infer<typeof PreferencesSchema>

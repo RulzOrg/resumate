@@ -8,6 +8,43 @@ import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { SystemPromptV1OutputSchema, PreferencesSchema, type SystemPromptV1Output } from "@/lib/schemas-v2"
 import { buildSystemPromptV1 } from "@/lib/prompts/system-prompt-v1"
+import { qdrant, QDRANT_COLLECTION } from "@/lib/qdrant"
+
+// Helper to fetch evidence texts from Qdrant
+async function getEvidenceTextsFromQdrant(userId: string, evidenceIds: string[]): Promise<string[]> {
+  try {
+    const result = await qdrant.scroll(QDRANT_COLLECTION, {
+      filter: {
+        must: [
+          { key: "userId", match: { value: userId } },
+          { key: "evidence_id", match: { any: evidenceIds } }
+        ]
+      },
+      limit: Math.min(evidenceIds.length + 10, 100),
+      with_payload: true,
+      with_vector: false,
+    })
+
+    const texts: string[] = []
+    const points = result.points || []
+
+    for (const p of points) {
+      const payload: any = (p as any).payload || {}
+      const text: string = payload.text || payload.content || payload.body || ""
+      const eid = payload.evidence_id
+
+      if (eid && evidenceIds.includes(eid) && text && text.trim().length > 10) {
+        texts.push(text.trim())
+      }
+    }
+
+    console.log(`[optimize-v2] Fetched ${texts.length}/${evidenceIds.length} evidence texts from Qdrant`)
+    return texts
+  } catch (error: any) {
+    console.error('[optimize-v2] Error fetching evidence from Qdrant:', error.message)
+    return []
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,14 +82,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { resume_id, job_analysis_id, preferences: rawPreferences } = body
+    const { resume_id, job_analysis_id, preferences: rawPreferences, selected_evidence_ids } = body
 
     if (!resume_id || !job_analysis_id) {
       throw new AppError("Resume ID and Job Analysis ID are required", 400)
     }
 
-    // Validate preferences with Zod if provided
-    const preferences = rawPreferences ? PreferencesSchema.parse(rawPreferences) : undefined
+    // Fetch evidence texts from Qdrant if IDs provided
+    let selectedEvidenceBullets: string[] | undefined
+    if (selected_evidence_ids && Array.isArray(selected_evidence_ids) && selected_evidence_ids.length > 0) {
+      console.log(`[optimize-v2] Fetching ${selected_evidence_ids.length} selected evidence bullets from Qdrant`)
+      selectedEvidenceBullets = await getEvidenceTextsFromQdrant(user.id, selected_evidence_ids)
+
+      if (selectedEvidenceBullets.length === 0) {
+        console.warn('[optimize-v2] No evidence texts found in Qdrant for selected IDs')
+      }
+    }
+
+    // Validate preferences with Zod if provided, and inject evidence bullets
+    const preferences = rawPreferences ? PreferencesSchema.parse({
+      ...rawPreferences,
+      selected_evidence_bullets: selectedEvidenceBullets
+    }) : (selectedEvidenceBullets ? PreferencesSchema.parse({ selected_evidence_bullets: selectedEvidenceBullets }) : undefined)
 
     // Get the resume and job analysis
     const resume = await getResumeById(resume_id, user.id)

@@ -84,45 +84,7 @@ type JobOption = {
   matchScore?: number
 }
 
-const initialEditorHtml = `
-  <div class="text-lg font-space-grotesk font-semibold tracking-tight">Sarah Johnson</div>
-  <div class="text-foreground/70 dark:text-white/70">Senior Product Manager • sjohnson@example.com • San Francisco, CA</div>
-  <div class="h-px bg-surface-muted dark:bg-white/10 my-4"></div>
-
-  <div class="font-medium text-foreground/90 dark:text-white/90">Summary</div>
-  <p class="mt-1 text-foreground/80 dark:text-white/80">Product leader with 7+ years delivering developer-facing platforms. Drives roadmap with data-informed experimentation and cross-functional collaboration. Deep familiarity with frontend frameworks and performance tooling.</p>
-
-  <div class="font-medium text-foreground/90 dark:text-white/90 mt-4">Experience</div>
-  <div class="mt-1">
-    <div class="flex items-center justify-between">
-      <div class="font-medium">Product Manager, Developer Experience — Acme Cloud</div>
-      <div class="text-foreground/50 dark:text-white/50 text-xs">2021 — Present</div>
-    </div>
-    <ul class="list-disc pl-5 mt-1 space-y-1 text-foreground/80 dark:text-white/80">
-      <li>Owned DX platform roadmap; shipped features improving build performance by 28% and deploy reliability by 15%.</li>
-      <li>Led A/B tests on onboarding; increased activation by 12% across 50k+ developers.</li>
-      <li>Partnered with design and engineering to launch workflow analytics; reduced time-to-diagnosis by 35%.</li>
-    </ul>
-  </div>
-
-  <div class="mt-3">
-    <div class="flex items-center justify-between">
-      <div class="font-medium">Product Manager — Beta Tools</div>
-      <div class="text-foreground/50 dark:text-white/50 text-xs">2018 — 2021</div>
-    </div>
-    <ul class="list-disc pl-5 mt-1 space-y-1 text-foreground/80 dark:text-white/80">
-      <li>Prioritized roadmap via discovery, SQL analyses, and customer research with enterprise users.</li>
-      <li>Launched API-based integrations enabling 3rd-party workflows; +200 partners in first year.</li>
-      <li>Introduced experimentation platform governance; standardized metrics and guardrails.</li>
-    </ul>
-  </div>
-
-  <div class="font-medium text-foreground/90 dark:text-white/90 mt-4">Skills</div>
-  <p class="text-foreground/80 dark:text-white/80">Roadmapping, Product Discovery, A/B Testing, Analytics (SQL), Frontend Frameworks, API Design, Developer Experience, Enterprise</p>
-
-  <div class="font-medium text-foreground/90 dark:text-white/90 mt-4">Education</div>
-  <p class="text-foreground/80 dark:text-white/80">B.S. in Computer Science — University of Somewhere</p>
-`
+// Removed hardcoded mock resume - will use actual user data or show empty state
 
 function extractKeywords(text: string) {
   const stop = new Set([
@@ -182,46 +144,7 @@ interface OptimizerUiOnlyProps {
   initialJob?: JobOption | null
 }
 
-const mockResumeOptions: ResumeOption[] = [
-  {
-    id: "mock-resume-1",
-    label: "Sarah Johnson — Product Leader (Master)",
-    fileName: "Sarah_Johnson_Resume_2024.pdf",
-    fileType: "application/pdf",
-    fileSize: 164 * 1024,
-    updatedAt: new Date().toISOString(),
-    isPrimary: true,
-  },
-  {
-    id: "mock-resume-2",
-    label: "General Tech Resume v2",
-    fileName: "General_Tech_Resume_v2.docx",
-    fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    fileSize: 120 * 1024,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "mock-resume-3",
-    label: "PM Master V3",
-    fileName: "PM_Master_V3.docx",
-    fileType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    fileSize: 132 * 1024,
-    updatedAt: new Date().toISOString(),
-  },
-]
-
-const mockJobOptions: JobOption[] = [
-  {
-    id: "mock-job-1",
-    jobTitle: "Senior Product Manager",
-    companyName: "Vercel",
-    jobDescription:
-      "Vercel is seeking a Senior Product Manager to drive the roadmap for our developer experience. You will define strategy, collaborate with engineering and design, and ship products that improve performance, reliability, and developer workflows. Responsibilities include product discovery, roadmap prioritization, A/B testing, and launching user-facing features. Requirements: 6+ years PM experience, strong technical background, familiarity with frontend frameworks, experimentation platforms, SQL, and analytics. Nice to have: experience with platform products, devtools, enterprise customers, and API design.",
-    keywords: ["roadmap", "developer", "experimentation", "frontend", "sql", "platform", "enterprise"],
-    requiredSkills: ["Roadmap", "A/B Testing", "Frontend", "Analytics"],
-    niceToHave: ["API design", "Enterprise"]
-  },
-]
+// Mock data removed - component should handle empty states gracefully
 
 const formatFileMeta = (resume: ResumeOption) => {
   const parts: string[] = []
@@ -245,8 +168,8 @@ export default function OptimizerUiOnly({
 }: OptimizerUiOnlyProps) {
   const [mounted, setMounted] = useState(false)
 
-  const resolvedResumes = resumes && resumes.length > 0 ? resumes : mockResumeOptions
-  const resolvedJobs = jobOptions && jobOptions.length > 0 ? jobOptions : mockJobOptions
+  const resolvedResumes = resumes || []
+  const resolvedJobs = jobOptions || []
 
   const resolvedInitialResume =
     initialResume || resolvedResumes.find((r) => r.isPrimary) || resolvedResumes[0] || null
@@ -254,10 +177,10 @@ export default function OptimizerUiOnly({
 
   const router = useRouter()
   const [step, setStep] = useState<Step>(1)
-  const [selectedResume, setSelectedResume] = useState<string>(resolvedInitialResume?.id ?? mockResumeOptions[0].id)
+  const [selectedResume, setSelectedResume] = useState<string>(resolvedInitialResume?.id ?? '')
   const [resumeMenuOpen, setResumeMenuOpen] = useState(false)
   const [jobDesc, setJobDesc] = useState(
-    resolvedInitialJob?.jobDescription ?? mockJobOptions[0].jobDescription
+    resolvedInitialJob?.jobDescription ?? ''
   )
   const [keywords, setKeywords] = useState<string[]>(resolvedInitialJob?.keywords ?? [])
   const [reqSkills, setReqSkills] = useState<string[]>(resolvedInitialJob?.requiredSkills ?? [])
@@ -290,9 +213,11 @@ export default function OptimizerUiOnly({
   const [selectedEvidenceIds, setSelectedEvidenceIds] = useState<Set<string>>(new Set())
   const [editedEvidence, setEditedEvidence] = useState<Record<string, string>>({})
   const [rephrasingId, setRephrasingId] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [qdrantWarning, setQdrantWarning] = useState<string | null>(null)
 
-  const [editorHtml, setEditorHtml] = useState<string>(initialEditorHtml)
-  const [baseEditorHtml] = useState<string>(initialEditorHtml)
+  const [editorHtml, setEditorHtml] = useState<string>('')
+  const [baseEditorHtml] = useState<string>('')
   const editorRef = useRef<HTMLDivElement | null>(null)
   const [editable, setEditable] = useState(false)
 
@@ -350,17 +275,33 @@ export default function OptimizerUiOnly({
     setKeywords(extractKeywords(jobDesc))
   }, [])
 
+  // Real-time keyword extraction as user types (debounced)
+  useEffect(() => {
+    if (!jobDesc || jobDesc.length < 50) return
+    const timer = setTimeout(() => {
+      setKeywords(extractKeywords(jobDesc))
+    }, 1000) // 1 second debounce
+    return () => clearTimeout(timer)
+  }, [jobDesc])
+
   // Fetch evidence + score when entering Step 2 with a selected job
   useEffect(() => {
     async function run() {
       if (step !== 2 || !selectedJobId) return
       setIsScoring(true)
       setScoreError(null)
+      setQdrantWarning(null)
       try {
         const res = await scoreFit({ job_analysis_id: selectedJobId, resume_id: selectedResume, top_k: 5 })
         setEvidence(res.evidence || [])
         setScore(res.score || null)
+        setDebugInfo(res.debug || null)
         setSelectedEvidenceIds(new Set())
+
+        // Check for Qdrant availability warning
+        if (res.debug?.qdrantAvailable === false || res.debug?.warning) {
+          setQdrantWarning(res.debug?.warning || 'Vector search unavailable - evidence scoring may be limited')
+        }
       } catch (e: any) {
         setScoreError(e?.error || e?.message || 'Failed to score')
         setEvidence([])
@@ -457,43 +398,41 @@ export default function OptimizerUiOnly({
     }
     setIsOptimizing(true)
     try {
-      let optimized: any
+      // Always use v2 optimizer endpoint for better structured output
+      const payload: any = {
+        resume_id: selectedResume,
+        job_analysis_id: selectedJobId,
+        preferences: {
+          tone: config.tone,                    // 'neutral' | 'impactful' | 'executive'
+          length_mode: config.length === 'short' ? 'short' : 'full',  // Map: short→short, standard/detailed→full
+          ats_optimization: config.ats,         // true | false
+          emphasize_keywords: config.emphasize  // keywords to emphasize
+        }
+      }
+
+      // Include selected evidence IDs if user selected any
       if (selectedEvidenceIds.size > 0) {
-        const payload = {
-          resume_id: selectedResume,
-          job_analysis_id: selectedJobId,
-          selected_evidence: Array.from(selectedEvidenceIds).map((eid) => ({ evidence_id: eid })),
-          options: { tone: config.tone, length: config.length },
-        }
-        const resp = await rewriteResume(payload)
-        optimized = resp.optimized_resume
-      } else {
-        // Use v2 endpoint with preferences
-        const res = await fetch('/api/resumes/optimize-v2', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            resume_id: selectedResume, 
-            job_analysis_id: selectedJobId,
-            preferences: {
-              tone: config.tone,                    // 'neutral' | 'impactful' | 'executive'
-              length_mode: config.length === 'short' ? 'short' : 'full',  // Map: short→short, standard/detailed→full
-              ats_optimization: config.ats,         // true | false
-              emphasize_keywords: config.emphasize  // keywords to emphasize
-            }
-          }),
-        })
-        const data = await res.json()
-        if (!res.ok) throw new Error(data?.error || 'Failed to optimize')
-        optimized = {
-          id: data.optimized_resume.id,
-          structured_output: data.structured_output,
-          optimized_content: data.structured_output?.tailored_resume_text?.ats_plain_text || data.optimized_resume.optimized_content
-        }
-        // Store structured output for the form editor
-        if (data.structured_output) {
-          setStructuredOutput(data.structured_output)
-        }
+        payload.selected_evidence_ids = Array.from(selectedEvidenceIds)
+        console.log(`[Optimizer] Sending ${payload.selected_evidence_ids.length} selected evidence IDs to v2 optimizer`)
+      }
+
+      const res = await fetch('/api/resumes/optimize-v2', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to optimize')
+
+      const optimized = {
+        id: data.optimized_resume.id,
+        structured_output: data.structured_output,
+        optimized_content: data.structured_output?.tailored_resume_text?.ats_plain_text || data.optimized_resume.optimized_content
+      }
+
+      // Store structured output for the form editor
+      if (data.structured_output) {
+        setStructuredOutput(data.structured_output)
       }
       if (optimized?.optimized_content) {
         // Store the original markdown for the structured editor
@@ -686,7 +625,12 @@ export default function OptimizerUiOnly({
                 {resumeMenuOpen && (
                   <div className="absolute z-20 mt-2 w-full rounded-xl border border-border dark:border-white/10 bg-card/95 dark:bg-black/90 backdrop-blur-xl shadow-2xl">
                     <div className="p-2">
-                      {resolvedResumes.map((resume) => (
+                      {resolvedResumes.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-foreground/60 dark:text-white/60">
+                          No resumes uploaded yet. Please upload a resume first.
+                        </div>
+                      ) : (
+                        resolvedResumes.map((resume) => (
                         <button
                           key={resume.id}
                           className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted dark:hover:bg-white/10 transition text-left"
@@ -705,7 +649,8 @@ export default function OptimizerUiOnly({
                             </p>
                           </div>
                         </button>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
                 )}
@@ -853,6 +798,22 @@ export default function OptimizerUiOnly({
                 </div>
               </div>
 
+              {/* Qdrant Warning Banner */}
+              {qdrantWarning && (
+                <div className="md:col-span-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="text-sm font-medium text-yellow-500 mb-1">Limited Evidence Search</div>
+                      <div className="text-xs text-foreground/80 dark:text-white/80">{qdrantWarning}</div>
+                      <div className="text-xs text-foreground/60 dark:text-white/60 mt-2">
+                        Optimization will still work using AI analysis, but evidence-based scoring is unavailable.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Evidence & Scoring (server) */}
               <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4 lg:col-span-1">
@@ -934,6 +895,18 @@ export default function OptimizerUiOnly({
                     </ul>
                   ) : (
                     <div className="text-xs text-foreground/60 dark:text-white/60">No evidence found. Try adjusting queries or ensure resume is indexed.</div>
+                  )}
+                  {/* Debug Info Display */}
+                  {debugInfo && (
+                    <details className="mt-3 text-xs">
+                      <summary className="cursor-pointer text-foreground/50 dark:text-white/50 hover:text-foreground/70 dark:hover:text-white/70">Debug info</summary>
+                      <div className="mt-2 space-y-1 text-foreground/60 dark:text-white/60 font-mono text-[10px]">
+                        <div>Queries: {debugInfo.totalQueries}</div>
+                        <div>Evidence: {debugInfo.evidenceCount}</div>
+                        <div>Duration: {debugInfo.searchDurationMs}ms</div>
+                        <div>Qdrant: {debugInfo.qdrantAvailable ? '✓ Available' : '✗ Unavailable'}</div>
+                      </div>
+                    </details>
                   )}
                 </div>
               </div>
@@ -1195,7 +1168,9 @@ export default function OptimizerUiOnly({
             <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Job Summary</h3>
-                <span className="text-xs font-medium text-foreground/50 dark:text-white/50">{resolvedJobs.length ? "Imported" : "Mock"}</span>
+                {selectedJobId && (
+                  <span className="text-xs font-medium text-emerald-500">AI Analyzed</span>
+                )}
               </div>
               <div className="mt-4 space-y-3">
               <div className="flex items-center gap-3">

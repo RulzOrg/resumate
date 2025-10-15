@@ -41,23 +41,39 @@ const optimizationSchema = z.object({
 })
 
 async function getEvidenceTextsFromQdrant(userId: string, evidenceIds: string[]) {
-  const qdrantIds = evidenceIds.map((eid) => `${userId}:${eid}`)
   try {
-    const points = await qdrant.retrieve(QDRANT_COLLECTION, {
-      ids: qdrantIds,
+    // Use scroll API with filter to find points by evidence_id in payload
+    // This works with our integer point IDs + evidence_id stored in payload
+    const result = await qdrant.scroll(QDRANT_COLLECTION, {
+      filter: {
+        must: [
+          { key: "userId", match: { value: userId } },
+          { key: "evidence_id", match: { any: evidenceIds } }
+        ]
+      },
+      limit: Math.min(evidenceIds.length + 10, 100), // Fetch enough to cover all requested
       with_payload: true,
       with_vector: false,
     })
+
     const map: Record<string, string> = {}
+    const points = result.points || []
+
     for (const p of points) {
       const payload: any = (p as any).payload || {}
       const text: string = payload.text || payload.content || payload.body || ""
-      const eid = payload.evidence_id || String(p.id).split(":")[1]
-      const ownerOk = payload.userId ? String(payload.userId) === String(userId) : true
-      if (eid && text && ownerOk) map[eid] = text
+      const eid = payload.evidence_id
+
+      // Only add if we have valid text and this evidence_id was requested
+      if (eid && evidenceIds.includes(eid) && text && text.trim().length > 0) {
+        map[eid] = text
+      }
     }
+
+    console.log(`[getEvidenceTextsFromQdrant] Found ${Object.keys(map).length}/${evidenceIds.length} evidence items`)
     return map
-  } catch {
+  } catch (error: any) {
+    console.error('[getEvidenceTextsFromQdrant] Error:', error.message)
     return {}
   }
 }

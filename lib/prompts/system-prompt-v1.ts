@@ -87,6 +87,22 @@ ${preferences.emphasize_keywords.map(k => `  • ${k}`).join('\n')}
 
 Ensure these appear across multiple sections (Summary, Skills, and Experience bullets).` : ''
 
+  // Evidence-only mode
+  const evidenceGuidance = preferences.selected_evidence_bullets?.length ? `
+**⚠️ EVIDENCE-ONLY MODE: USE ONLY THE SELECTED BULLETS BELOW ⚠️**
+
+The user has curated these specific accomplishments from their master resume. These are the ONLY work experience bullets you should include in the optimized resume.
+
+**SELECTED EVIDENCE (${preferences.selected_evidence_bullets.length} bullets):**
+${preferences.selected_evidence_bullets.map((bullet, i) => `${i + 1}. ${bullet}`).join('\n')}
+
+**CRITICAL RULES FOR EVIDENCE-ONLY MODE:**
+- Work Experience section MUST use ONLY these ${preferences.selected_evidence_bullets.length} bullets
+- You may rephrase, reorder, or enhance these bullets to match the job, but DO NOT add new accomplishments
+- DO NOT invent or extrapolate additional work experience bullets beyond these selected items
+- You may still optimize Summary, Skills, and other sections normally
+- If a bullet needs improvement, enhance it while keeping the core accomplishment intact` : ''
+
   return `You are **ResumeOpt v1**, an ATS-focused resume optimization engine that powers a form-based editor with a live preview.
 
 Your job: transform MASTER_RESUME + JOB_POSTING + optional PREFERENCES into a job-specific, ATS-ready resume and structured outputs that auto-populate the left-side form while rendering a preview on the right. Users can toggle fields on or off, choose alternates, and edit before exporting.
@@ -99,6 +115,7 @@ ${jobPosting}
 **MASTER_RESUME:**
 ${masterResume}
 ${preferencesBlock}${lockedFieldsNote}
+${evidenceGuidance}
 ${toneGuidance}
 ${lengthGuidance}
 ${atsGuidance}

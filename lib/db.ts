@@ -495,6 +495,33 @@ export async function createResumeVersion(data: {
   change_type?: string
   change_summary?: string | null
 }): Promise<ResumeVersionSnapshot> {
+  // Ensure user exists in users_sync to satisfy FK constraint
+  const userRow = await getUserById(data.user_id)
+  if (!userRow) {
+    // Try to get current user and sync
+    const currentClerkUser = await currentUser()
+    if (currentClerkUser) {
+      await ensureUserSyncRecord({
+        id: data.user_id,
+        email: currentClerkUser.emailAddresses[0]?.emailAddress || 'unknown@example.com',
+        name: `${currentClerkUser.firstName || ''} ${currentClerkUser.lastName || ''}`.trim() || 'Unknown User',
+        clerkUserId: currentClerkUser.id,
+        subscription_plan: 'free',
+        subscription_status: 'active',
+      })
+    } else {
+      console.warn(`[createResumeVersion] User ${data.user_id} not found in users_sync, creating placeholder`)
+      await ensureUserSyncRecord({
+        id: data.user_id,
+        email: 'placeholder@example.com',
+        name: 'Unknown User',
+        clerkUserId: data.user_id,
+        subscription_plan: 'free',
+        subscription_status: 'active',
+      })
+    }
+  }
+
   const metadata = data.metadata ? JSON.stringify(data.metadata) : null
   const changeType = data.change_type ?? "upload"
   const changeSummary = data.change_summary ?? null
@@ -1055,9 +1082,9 @@ export async function createOptimizedResume(data: {
         skills_highlighted, created_at, updated_at
       )
       VALUES (
-        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id}, 
+        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id},
         ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
-        ${data.match_score || null}, ${data.optimization_summary.changes_made}, 
+        ${data.match_score || null}, ${data.optimization_summary.changes_made},
         ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
         NOW(), NOW()
       )

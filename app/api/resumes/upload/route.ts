@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createResume, getOrCreateUser } from "@/lib/db"
 import { buildS3Key, uploadBufferToS3 } from "@/lib/storage"
+import { indexResume } from "@/lib/resume-indexer"
 
 import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
@@ -102,7 +103,42 @@ export async function POST(request: NextRequest) {
       source_metadata: { storage: "r2", key },
     })
 
-    return NextResponse.json({ resume })
+    // Index resume into Qdrant for evidence search
+    let indexingResult = null
+    if (extractionSuccess && contentText.length > 50) {
+      try {
+        console.log(`[upload] Starting indexing for resume ${resume.id}...`)
+        indexingResult = await indexResume({
+          resumeId: resume.id,
+          userId: user.id,
+          content: contentText,
+          metadata: {
+            file_name: file.name,
+            file_type: file.type,
+            title: title,
+            indexed_at: new Date().toISOString()
+          }
+        })
+
+        if (indexingResult.success) {
+          console.log(`[upload] ✓ Resume ${resume.id} indexed: ${indexingResult.chunksIndexed} chunks`)
+        } else {
+          console.warn(`[upload] ✗ Resume ${resume.id} indexing failed: ${indexingResult.error}`)
+        }
+      } catch (err: any) {
+        console.error(`[upload] Resume indexing error for ${resume.id}:`, err.message)
+        // Don't fail the upload if indexing fails
+      }
+    }
+
+    return NextResponse.json({
+      resume,
+      indexing: indexingResult ? {
+        success: indexingResult.success,
+        chunksIndexed: indexingResult.chunksIndexed,
+        error: indexingResult.error
+      } : null
+    })
   } catch (error) {
     console.error("Resume upload error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

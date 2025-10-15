@@ -42,31 +42,56 @@ export async function POST(req: NextRequest) {
 
     let evidence: any[] = []
     let score = null
-    
+    let debugInfo: any = {}
+
     try {
-      evidence = await searchEvidence(user.id, derivedQueries, top_k)
+      const searchStartTime = Date.now()
+      // Pass resume_id to filter evidence to specific resume if provided
+      evidence = await searchEvidence(user.id, derivedQueries, top_k, resume_id)
+      const searchDuration = Date.now() - searchStartTime
+
       score = computeScore(analysis as any, evidence)
+
+      // Debug information
+      debugInfo = {
+        queriesUsed: derivedQueries.slice(0, 10), // First 10 queries
+        totalQueries: derivedQueries.length,
+        evidenceCount: evidence.length,
+        searchDurationMs: searchDuration,
+        jobAnalysisId: job_analysis_id,
+        resumeId: resume_id || 'all resumes',
+        resumeFiltered: !!resume_id,
+        qdrantAvailable: evidence.length > 0 || derivedQueries.length === 0,
+        scoreWeighting: {
+          note: 'Weights adjusted based on seniority level and role type'
+        }
+      }
     } catch (vectorError: any) {
       console.error("Vector search error:", vectorError)
-      
+
       // Check if it's a Qdrant connection error
-      if (vectorError.message?.includes("ECONNREFUSED") || 
+      if (vectorError.message?.includes("ECONNREFUSED") ||
           vectorError.message?.includes("fetch failed") ||
           vectorError.code === "ECONNREFUSED") {
+        // Graceful degradation: return empty results with warning
+        debugInfo = {
+          warning: 'Qdrant vector search unavailable - returning empty evidence',
+          error: vectorError.message,
+          queriesAttempted: derivedQueries.length,
+          qdrantAvailable: false
+        }
+        evidence = []
+        score = null
+      } else {
+        // For other vector errors, throw
         throw new AppError(
-          "Vector search service unavailable. Please ensure QDRANT_URL is configured in production environment variables.",
-          503
+          `Vector search failed: ${vectorError.message || "Unknown error"}. Check Qdrant configuration.`,
+          500
         )
       }
-      
-      // For other vector errors, provide helpful message
-      throw new AppError(
-        `Vector search failed: ${vectorError.message || "Unknown error"}. Check Qdrant configuration.`,
-        500
-      )
     }
 
-    return NextResponse.json({ evidence, score })
+    return NextResponse.json({ evidence, score, debug: debugInfo })
   } catch (err) {
     const e = handleApiError(err)
     return NextResponse.json({ error: e.error, code: e.code }, { status: e.statusCode })
