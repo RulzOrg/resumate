@@ -342,13 +342,7 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-4xl tracking-tight sm:text-6xl md:text-7xl mx-auto font-space-grotesk font-semibold">
-              <span
-                className="text-foreground dark:text-white font-space-grotesk font-semibold"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                AI Resume Optimizer
-              </span>{" "}
-              - Create ATS-Friendly Resume Versions for Multiple Jobs
+             Create ATS-Friendly Resume Versions for Multiple Jobs
             </h1>
 
             <p className="max-w-2xl text-base sm:text-lg font-normal text-foreground/70 dark:text-white/70 mt-6 mx-auto font-sans">
