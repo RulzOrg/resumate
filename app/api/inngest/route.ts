@@ -11,6 +11,11 @@ import { processResumeJob } from "@/lib/inngest/functions/process-resume"
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
+// Ensure signing key is present in production
+if (process.env.NODE_ENV === 'production' && !process.env.INNGEST_SIGNING_KEY) {
+  throw new Error('INNGEST_SIGNING_KEY is required in production')
+}
+
 // Suppress Inngest dev server body parsing errors in development
 const handler = serve({
   client: inngest,
@@ -20,7 +25,6 @@ const handler = serve({
   ...(process.env.NODE_ENV === 'production' && process.env.INNGEST_SIGNING_KEY
     ? { signingKey: process.env.INNGEST_SIGNING_KEY }
     : {}),
-  landingPage: process.env.NODE_ENV === 'development',
 })
 
 export const { GET, POST, PUT } = handler

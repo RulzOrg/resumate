@@ -218,9 +218,8 @@ export async function indexResume(input: IndexResumeInput): Promise<{
     const points = chunks.map((text, index) => {
       // Create a stable UUID from resumeId + index using SHA-256
       const hashString = `${resumeId}-${index}`
-      const sha256Hash = createHash('sha256').update(hashString).digest()
-      // Use full SHA-256 hash as hex-encoded UUID (no truncation to avoid collisions)
-      const pointId = sha256Hash.toString('hex')
+      const sha256Hash = createHash('sha256').update(hashString).digest('hex')
+      const pointId = `${sha256Hash.slice(0, 8)}-${sha256Hash.slice(8, 12)}-5${sha256Hash.slice(13, 16)}-${sha256Hash.slice(16, 20)}-${sha256Hash.slice(20, 32)}`
 
       const evidenceId = `${resumeId}:${index}` // Keep this for payload/metadata
 
