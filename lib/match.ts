@@ -96,7 +96,8 @@ export async function searchEvidence(
       const pointId = String(point.id)
       const payload: any = (point as any).payload || {}
       const text: string = payload.text || payload.content || payload.body || ""
-      const evidenceId = payload.evidence_id || pointId
+      // Use explicit evidence_id if present, otherwise create guaranteed-unique fallback
+      const evidenceId = payload.evidence_id ? String(payload.evidence_id) : `point:${pointId}`
 
       const prev = merged[evidenceId]
       const currentScore = point.score ?? 0
@@ -107,7 +108,7 @@ export async function searchEvidence(
           text,
           metadata: {
             resume_id: payload.resume_id,
-            evidence_id: evidenceId,
+            evidence_id: payload.evidence_id, // Preserve original evidence_id (or undefined)
             section: payload.section,
             ...payload,
           },
@@ -422,6 +423,7 @@ export function computeScore(
 
   // Boost score for strong evidence scenarios
   // If responsibilities data is missing (0 items) but skills/domain are strong, don't penalize
+  let usedAdjustedScore = false
   if (keyReqs.length === 0 && skillsCov.pct >= 80) {
     // Recalculate without responsibilities weight
     const adjustedOverall = Math.round(
@@ -430,6 +432,7 @@ export function computeScore(
       (seniorWeight / (skillsWeight + domainWeight + seniorWeight)) * seniorScore
     )
     overall = Math.max(overall, adjustedOverall)
+    usedAdjustedScore = true
     console.log('[computeScore] Responsibilities data missing, using adjusted score:', {
       original: overall,
       adjusted: adjustedOverall,
@@ -438,10 +441,14 @@ export function computeScore(
   }
 
   // Confidence boost: if we have strong skills match (90%+) and good evidence count
-  if (skillsCov.pct >= 90 && evidence.length >= 5) {
+  // Do not apply if we already used adjusted score (mutually exclusive boosts)
+  if (skillsCov.pct >= 90 && evidence.length >= 5 && !usedAdjustedScore) {
     overall = Math.min(100, overall + 10)
     console.log('[computeScore] Strong evidence boost applied: +10 points')
   }
+
+  // Ensure final score is clamped to 100
+  overall = Math.min(100, overall)
 
   return {
     overall,

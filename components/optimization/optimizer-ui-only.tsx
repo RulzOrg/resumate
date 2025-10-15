@@ -54,7 +54,7 @@ import {
   X,
 } from "lucide-react"
 import { toast } from "sonner"
-import { scoreFit, rephraseBullet, rewriteResume } from "@/lib/api"
+import { scoreFit, rephraseBullet } from "@/lib/api"
 import type { EvidencePoint, ScoreBreakdown } from "@/lib/match"
 import { ResumeEditorV2 } from "./resume-editor-v2"
 

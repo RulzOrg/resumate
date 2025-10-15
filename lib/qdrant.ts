@@ -63,3 +63,18 @@ export async function upsertPoints(points: UpsertPoint[]) {
     points: points.map((p) => ({ id: p.id, vector: p.vector, payload: p.payload })),
   })
 }
+
+export async function deletePoints(filter: Record<string, any>) {
+  await ensureCollection()
+  await qdrant.delete(QDRANT_COLLECTION, {
+    wait: true,
+    filter: {
+      must: [
+        {
+          key: Object.keys(filter)[0],
+          match: { value: Object.values(filter)[0] }
+        }
+      ]
+    }
+  })
+}

@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { createJobAnalysis, getOrCreateUser, createResumeDuplicate } from "@/lib/db"
-import type { Resume } from "@/lib/db"
+import { createJobAnalysis, getOrCreateUser } from "@/lib/db"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
@@ -63,17 +62,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get or create user in our database with enhanced verification
-    let user = await getOrCreateUser()
+    // Get or create user in our database
+    const user = await getOrCreateUser()
     if (!user) {
-      console.error('Failed to get or create user in analyze API')
+      console.error('[analyze] Failed to get or create user')
       throw new AppError("Unable to verify user account. Please try again in a moment.", 500)
     }
-
-    console.log('User verification successful in analyze API:', { 
-      user_id: user.id, 
-      clerk_user_id: user.clerk_user_id 
-    })
 
     const { job_title, company_name, job_url, job_description } = await request.json()
 
@@ -172,36 +166,17 @@ CONSTRAINTS
     }
 
     // Validate analysis quality before saving
-    if (!analysis) {
-      throw new AppError("Analysis validation failed - no analysis result", 500)
-    }
-
-    // Log analysis structure for debugging
-    console.log('Analysis structure:', {
-      hasAnalysisQuality: !!analysis.analysis_quality,
-      keys: Object.keys(analysis),
-      confidence: analysis.analysis_quality?.confidence
-    })
-
-    if (!analysis.analysis_quality) {
-      throw new AppError("Analysis validation failed - missing analysis_quality field", 500)
+    if (!analysis?.analysis_quality) {
+      console.error('[analyze] Analysis validation failed:', { hasAnalysis: !!analysis, hasQuality: !!analysis?.analysis_quality })
+      throw new AppError("Analysis validation failed. Please try again.", 500)
     }
 
     if (analysis.analysis_quality.confidence < 30) {
       throw new AppError(
-        `Analysis confidence too low (${analysis.analysis_quality.confidence}%). The job description may be too brief or unclear. Please provide more detailed content.`, 
+        `Analysis confidence too low (${analysis.analysis_quality.confidence}%). The job description may be too brief or unclear. Please provide more detailed content.`,
         400
       )
     }
-
-    // Save the analysis to the database with enhanced verification
-    console.log('Saving job analysis with enhanced verification:', {
-      user_id: user.id,
-      job_title,
-      company_name,
-      has_analysis_result: !!analysis,
-      analysis_keys: analysis ? Object.keys(analysis) : []
-    })
 
     let jobAnalysis
     let generatedResume: Resume

@@ -7,44 +7,72 @@ config({ path: join(__dirname, '..', '.env.local') })
 import { sql } from "../lib/db"
 import { indexResume } from "../lib/resume-indexer"
 
+type ResumeRow = {
+  id: number
+  user_id: string
+  title: string
+  file_name: string
+  file_type: string
+  content_text: string
+  kind: string
+  is_primary: boolean
+  created_at: Date
+}
+
 async function reindexMasterResumes() {
   try {
     console.log('[reindex-masters] Starting reindex of master resumes...')
 
-    // Get all resumes
-    const allResumes = await sql`
-      SELECT id, user_id, title, file_name, file_type, content_text, kind, is_primary
-      FROM resumes
-      WHERE deleted_at IS NULL
-      ORDER BY created_at DESC
-    `
-
-    console.log(`[reindex-masters] Found ${allResumes.length} total resumes`)
-
-    // Filter to only MASTER resumes (kind='master' or 'uploaded')
-    // This excludes: generated resumes, duplicates
-    // Includes: ALL user master resumes (up to 3 per user)
-    const masterResumes = allResumes.filter((r: any) =>
-      r.kind === 'master' || r.kind === 'uploaded'
-    )
-
-    console.log(`[reindex-masters] Filtered to ${masterResumes.length} master resumes (excludes generated/duplicates)`)
-
-    if (masterResumes.length === 0) {
-      console.log('[reindex-masters] No master resumes to index')
-      return
-    }
-
+    const BATCH_SIZE = 100
     const results = {
-      totalResumes: masterResumes.length,
+      totalResumes: 0,
       indexed: 0,
       skipped: 0,
       failed: 0,
       details: [] as any[]
     }
 
-    // Index each master resume
-    for (const resume of masterResumes) {
+    let lastCreatedAt: Date | null = null
+    let lastId: number | null = null
+    let batchNum = 0
+
+    while (true) {
+      batchNum++
+      
+      // Fetch batch using cursor-based pagination
+      let batch: ResumeRow[]
+      
+      if (lastCreatedAt === null && lastId === null) {
+        batch = await sql`
+          SELECT id, user_id, title, file_name, file_type, content_text, kind, is_primary, created_at
+          FROM resumes
+          WHERE deleted_at IS NULL
+            AND (kind = 'master' OR kind = 'uploaded')
+          ORDER BY created_at DESC, id DESC
+          LIMIT ${BATCH_SIZE}
+        ` as ResumeRow[]
+      } else {
+        batch = await sql`
+          SELECT id, user_id, title, file_name, file_type, content_text, kind, is_primary, created_at
+          FROM resumes
+          WHERE deleted_at IS NULL
+            AND (kind = 'master' OR kind = 'uploaded')
+            AND (created_at < ${lastCreatedAt} OR (created_at = ${lastCreatedAt} AND id < ${lastId}))
+          ORDER BY created_at DESC, id DESC
+          LIMIT ${BATCH_SIZE}
+        ` as ResumeRow[]
+      }
+
+      if (batch.length === 0) {
+        console.log(`[reindex-masters] No more resumes to process (completed ${batchNum - 1} batches)`)
+        break
+      }
+
+      console.log(`[reindex-masters] Processing batch ${batchNum}: ${batch.length} resumes`)
+
+      // Process each resume in the batch
+      for (const resume of batch) {
+        results.totalResumes++
       if (!resume.content_text || resume.content_text.length < 50) {
         results.skipped++
         results.details.push({
@@ -59,7 +87,7 @@ async function reindexMasterResumes() {
 
       try {
         const result = await indexResume({
-          resumeId: resume.id,
+          resumeId: resume.id.toString(),
           userId: resume.user_id,
           content: resume.content_text,
           metadata: {
@@ -99,6 +127,14 @@ async function reindexMasterResumes() {
         })
         console.error(`[reindex-masters] Error indexing ${resume.id}:`, error.message)
       }
+      }
+
+      // Update cursor for next batch
+      if (batch.length > 0) {
+        const lastResume = batch[batch.length - 1]
+        lastCreatedAt = lastResume.created_at
+        lastId = lastResume.id
+      }
     }
 
     console.log('\n[reindex-masters] Summary:')
@@ -124,8 +160,4 @@ reindexMasterResumes()
   .then(() => {
     console.log('\n[reindex-masters] Complete ✓')
     process.exit(0)
-  })
-  .catch((err) => {
-    console.error('[reindex-masters] Fatal error:', err)
-    process.exit(1)
   })

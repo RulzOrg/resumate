@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         message: "No master resumes found to index",
         totalResumes: allResumes.length,
         indexed: 0,
-        skipped: allResumes.length,
+        skipped: 0,
         failed: 0
       })
     }

@@ -5,8 +5,9 @@
  * into Qdrant vector database for evidence-based scoring.
  */
 
+import { createHash } from "crypto"
 import { embedTexts } from "./embeddings"
-import { upsertPoints } from "./qdrant"
+import { upsertPoints, deletePoints } from "./qdrant"
 
 export interface IndexResumeInput {
   resumeId: string
@@ -57,7 +58,7 @@ export function splitResumeIntoChunks(content: string): string[] {
     }
 
     // Skip very short lines, headers, and pure uppercase lines (likely section titles)
-    if (line.length < 15 || line === line.toUpperCase()) continue
+    if (line.length < 15 || (/[A-Za-z]/.test(line) && line === line.toUpperCase())) continue
 
     // Detect bullet points (•, -, *, or numbered lists)
     const bulletMatch = line.match(/^[\s]*[•\-*◦▪▫‣⁃∙][\s]+(.+)$/) ||
@@ -102,7 +103,7 @@ export function splitResumeIntoChunks(content: string): string[] {
 
     for (const line of lines) {
       // Skip very short, very long, or all-caps lines
-      if (line.length < 20 || line.length > 300 || line === line.toUpperCase()) continue
+      if (line.length < 20 || line.length > 300 || (/[A-Za-z]/.test(line) && line === line.toUpperCase())) continue
 
       // Skip lines that are likely headers/metadata
       if (/^(name|email|phone|address|linkedin|github|portfolio)/i.test(line)) continue
@@ -127,7 +128,7 @@ export function splitResumeIntoChunks(content: string): string[] {
 
     for (const line of lines) {
       if (line.length < 25 || line.length > 350) continue
-      if (line === line.toUpperCase()) continue
+      if (/[A-Za-z]/.test(line) && line === line.toUpperCase()) continue
       if (/^(name|email|phone|address|linkedin|github|portfolio):/i.test(line)) continue
 
       // Accept any line that looks like a sentence (has multiple words)
@@ -213,14 +214,13 @@ export async function indexResume(input: IndexResumeInput): Promise<{
 
     // Prepare points for Qdrant
     // Note: Qdrant requires point IDs to be either integers or UUIDs, not strings like "uuid:0"
-    // We'll use a hash of the resume ID + index to generate a consistent integer ID
+    // We'll use SHA-256 hash of the resume ID + index to generate a stable unsigned 32-bit integer ID
     const points = chunks.map((text, index) => {
-      // Create a simple hash from resumeId + index for consistent integer IDs
+      // Create a stable hash from resumeId + index using SHA-256
       const hashString = `${resumeId}-${index}`
-      const hash = hashString.split('').reduce((acc, char) => {
-        return ((acc << 5) - acc) + char.charCodeAt(0)
-      }, 0)
-      const pointId = Math.abs(hash) // Ensure positive integer
+      const sha256Hash = createHash('sha256').update(hashString).digest()
+      // Derive unsigned 32-bit integer from first 4 bytes of hash
+      const pointId = sha256Hash.readUInt32BE(0)
 
       const evidenceId = `${resumeId}:${index}` // Keep this for payload/metadata
 
@@ -295,7 +295,12 @@ function detectSection(text: string): string {
  * Delete all indexed chunks for a resume
  */
 export async function deleteResumeIndex(resumeId: string): Promise<void> {
-  // This would require a Qdrant delete operation
-  // For now, we'll rely on overwriting with new upserts since we use deterministic IDs
-  console.log(`[resume-indexer] Deleting index for resume ${resumeId} (will be overwritten on next index)`)
+  try {
+    await deletePoints({ resume_id: resumeId })
+    console.log(`[resume-indexer] Successfully deleted index for resume ${resumeId}`)
+    return
+  } catch (error: any) {
+    console.error(`[resume-indexer] Error deleting index for resume ${resumeId}:`, error)
+    throw error
+  }
 }

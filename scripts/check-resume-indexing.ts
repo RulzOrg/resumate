@@ -6,7 +6,16 @@ const userId = '26335e84-cd04-43d1-826e-7dbba4af7f16'
 
 async function checkResume() {
   console.log('=== Checking Resume in Database ===')
-  const resume = await getResumeById(resumeId, userId)
+  
+  let resume
+  try {
+    resume = await getResumeById(resumeId, userId)
+  } catch (error: any) {
+    console.error('❌ Database error fetching resume:')
+    console.error('Message:', error.message)
+    console.error('Stack:', error.stack)
+    process.exit(1)
+  }
   
   if (!resume) {
     console.log('❌ Resume not found in database')
@@ -62,8 +71,15 @@ async function checkResume() {
       console.log('❌ No chunks found in Qdrant - resume needs to be indexed!')
     }
   } catch (error: any) {
-    console.error('❌ Error checking Qdrant:', error.message)
+    console.error('❌ Error checking Qdrant:')
+    console.error('Message:', error.message)
+    console.error('Stack:', error.stack)
   }
 }
 
-checkResume()
+checkResume().catch((error: any) => {
+  console.error('❌ Unhandled error in checkResume:')
+  console.error('Message:', error.message)
+  console.error('Stack:', error.stack)
+  process.exit(1)
+})

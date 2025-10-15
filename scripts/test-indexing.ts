@@ -59,7 +59,13 @@ async function testIndexing() {
     }
   } catch (error) {
     console.error('\n❌ Error:', error)
+    throw error
   }
 }
 
 testIndexing()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })

@@ -496,29 +496,47 @@ export async function createResumeVersion(data: {
   change_summary?: string | null
 }): Promise<ResumeVersionSnapshot> {
   // Ensure user exists in users_sync to satisfy FK constraint
-  const userRow = await getUserById(data.user_id)
+  let userRow = await getUserById(data.user_id)
+  
   if (!userRow) {
-    // Try to get current user and sync
+    // User not found in database - verify current Clerk user owns this user_id before creating
     const currentClerkUser = await currentUser()
-    if (currentClerkUser) {
-      await ensureUserSyncRecord({
-        id: data.user_id,
-        email: currentClerkUser.emailAddresses[0]?.emailAddress || 'unknown@example.com',
-        name: `${currentClerkUser.firstName || ''} ${currentClerkUser.lastName || ''}`.trim() || 'Unknown User',
-        clerkUserId: currentClerkUser.id,
-        subscription_plan: 'free',
-        subscription_status: 'active',
-      })
+    
+    if (!currentClerkUser) {
+      throw new Error(
+        `[createResumeVersion] User ${data.user_id} not found in users_sync and no authenticated Clerk user available. ` +
+        `Call ensureUserExists() or getOrCreateUser() first to establish proper user record.`
+      )
+    }
+    
+    // Check if current Clerk user has an existing users_sync record
+    const clerkUserRow = await getUserByClerkId(currentClerkUser.id)
+    
+    if (clerkUserRow) {
+      // Clerk user exists in database - verify it matches the requested user_id
+      if (clerkUserRow.id !== data.user_id) {
+        throw new Error(
+          `[createResumeVersion] Clerk user ${currentClerkUser.id} is authenticated but owns database user ${clerkUserRow.id}, ` +
+          `not the requested user_id ${data.user_id}. Cannot create resume version for different user.`
+        )
+      }
+      // IDs match, use the existing record
+      userRow = clerkUserRow
     } else {
-      console.warn(`[createResumeVersion] User ${data.user_id} not found in users_sync, creating placeholder`)
-      await ensureUserSyncRecord({
-        id: data.user_id,
-        email: 'placeholder@example.com',
-        name: 'Unknown User',
-        clerkUserId: data.user_id,
-        subscription_plan: 'free',
-        subscription_status: 'active',
-      })
+      // Current Clerk user has no users_sync record - cannot safely create one with data.user_id
+      throw new Error(
+        `[createResumeVersion] User ${data.user_id} not found and current Clerk user ${currentClerkUser.id} has no users_sync record. ` +
+        `Call ensureUserExists() or getOrCreateUser() first to establish proper user mapping.`
+      )
+    }
+  } else {
+    // User exists - optionally verify it matches current Clerk user
+    const currentClerkUser = await currentUser()
+    if (currentClerkUser && userRow.clerk_user_id && userRow.clerk_user_id !== currentClerkUser.id) {
+      throw new Error(
+        `[createResumeVersion] User ${data.user_id} exists but is linked to Clerk user ${userRow.clerk_user_id}, ` +
+        `not current authenticated Clerk user ${currentClerkUser.id}. Cannot create resume version for different user.`
+      )
     }
   }
 

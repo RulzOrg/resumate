@@ -10,7 +10,13 @@ import { SystemPromptV1OutputSchema, PreferencesSchema, type SystemPromptV1Outpu
 import { buildSystemPromptV1 } from "@/lib/prompts/system-prompt-v1"
 import { qdrant, QDRANT_COLLECTION } from "@/lib/qdrant"
 
-// Helper to fetch evidence texts from Qdrant
+/**
+ * Fetch evidence text bullets from Qdrant by their evidence IDs
+ * @param userId - User ID for filtering
+ * @param evidenceIds - Array of evidence IDs to fetch
+ * @returns Array of evidence text strings
+ * @throws Error if Qdrant query fails
+ */
 async function getEvidenceTextsFromQdrant(userId: string, evidenceIds: string[]): Promise<string[]> {
   try {
     const result = await qdrant.scroll(QDRANT_COLLECTION, {
@@ -33,16 +39,19 @@ async function getEvidenceTextsFromQdrant(userId: string, evidenceIds: string[])
       const text: string = payload.text || payload.content || payload.body || ""
       const eid = payload.evidence_id
 
-      if (eid && evidenceIds.includes(eid) && text && text.trim().length > 10) {
+      if (eid && text && text.trim().length > 10) {
         texts.push(text.trim())
       }
     }
 
-    console.log(`[optimize-v2] Fetched ${texts.length}/${evidenceIds.length} evidence texts from Qdrant`)
+    if (texts.length < evidenceIds.length) {
+      console.warn(`[optimize-v2] Only found ${texts.length}/${evidenceIds.length} evidence texts in Qdrant`)
+    }
+
     return texts
   } catch (error: any) {
-    console.error('[optimize-v2] Error fetching evidence from Qdrant:', error.message)
-    return []
+    console.error('[optimize-v2] Qdrant query failed:', error.message)
+    throw new AppError("Failed to retrieve selected evidence. Please try again.", 500)
   }
 }
 
@@ -91,11 +100,10 @@ export async function POST(request: NextRequest) {
     // Fetch evidence texts from Qdrant if IDs provided
     let selectedEvidenceBullets: string[] | undefined
     if (selected_evidence_ids && Array.isArray(selected_evidence_ids) && selected_evidence_ids.length > 0) {
-      console.log(`[optimize-v2] Fetching ${selected_evidence_ids.length} selected evidence bullets from Qdrant`)
       selectedEvidenceBullets = await getEvidenceTextsFromQdrant(user.id, selected_evidence_ids)
 
       if (selectedEvidenceBullets.length === 0) {
-        console.warn('[optimize-v2] No evidence texts found in Qdrant for selected IDs')
+        throw new AppError("Selected evidence not found. Please try reselecting evidence from Step 2.", 404)
       }
     }
 
@@ -130,8 +138,6 @@ export async function POST(request: NextRequest) {
       preferences,
     })
 
-    console.log('[optimize-v2] Calling GPT-4o with System Prompt v1.1...')
-
     // Call GPT-4o with structured output
     const optimization = await withRetry(
       async () => {
@@ -146,14 +152,6 @@ export async function POST(request: NextRequest) {
       3,
       2000,
     )
-
-    console.log('[optimize-v2] Optimization complete:', {
-      hasAnalysis: !!optimization.analysis,
-      hasUI: !!optimization.ui,
-      hasQA: !!optimization.qa,
-      qaScore: optimization.qa.scores.keyword_coverage_0_to_100,
-      mustHaveCoverage: optimization.qa.must_have_coverage.length,
-    })
 
     // Ensure user row exists for FK integrity
     const userRow = await getUserById(resume.user_id)
@@ -194,11 +192,6 @@ export async function POST(request: NextRequest) {
       match_score: optimization.qa.scores.keyword_coverage_0_to_100,
       structured_output: optimization,
       qa_metrics: optimization.qa,
-    })
-
-    console.log('[optimize-v2] Created optimized resume:', {
-      id: optimizedResume.id,
-      qaScore: optimization.qa.scores.keyword_coverage_0_to_100,
     })
 
     return NextResponse.json(

@@ -87,14 +87,29 @@ ${preferences.emphasize_keywords.map(k => `  • ${k}`).join('\n')}
 
 Ensure these appear across multiple sections (Summary, Skills, and Experience bullets).` : ''
 
-  // Evidence-only mode
+  // Evidence-only mode with sanitization to prevent prompt injection
   const evidenceGuidance = preferences.selected_evidence_bullets?.length ? `
 **⚠️ EVIDENCE-ONLY MODE: USE ONLY THE SELECTED BULLETS BELOW ⚠️**
 
 The user has curated these specific accomplishments from their master resume. These are the ONLY work experience bullets you should include in the optimized resume.
 
 **SELECTED EVIDENCE (${preferences.selected_evidence_bullets.length} bullets):**
-${preferences.selected_evidence_bullets.map((bullet, i) => `${i + 1}. ${bullet}`).join('\n')}
+${preferences.selected_evidence_bullets
+  .filter(bullet => bullet != null && typeof bullet === 'string')
+  .map((bullet, i) => {
+    // Sanitize bullet to prevent prompt injection attacks
+    const sanitized = String(bullet)
+      .replace(/ignore\s+(all\s+)?previous\s+instructions?/gi, '[redacted instruction phrase]')
+      .replace(/system\s+prompt/gi, '[redacted phrase]')
+      .replace(/you\s+are\s+(now\s+)?a\s+/gi, '[redacted phrase] ')
+      .replace(/disregard\s+(all\s+)?(prior|previous|above)/gi, '[redacted instruction]')
+      .replace(/new\s+instructions?:/gi, '[redacted]:')
+      .replace(/\n{2,}/g, '\n')  // Collapse multiple newlines
+      .replace(/\n/g, ' ')  // Replace remaining newlines to prevent format breaking
+      .trim()
+    return `${i + 1}. ${sanitized}`
+  })
+  .join('\n')}
 
 **CRITICAL RULES FOR EVIDENCE-ONLY MODE:**
 - Work Experience section MUST use ONLY these ${preferences.selected_evidence_bullets.length} bullets
