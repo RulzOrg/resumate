@@ -43,6 +43,19 @@ export async function ensureCollection() {
         // Don't throw - index might already exist or be in progress
       }
     }
+
+    // Ensure resume_id index exists for filtering
+    try {
+      await qdrant.createPayloadIndex(QDRANT_COLLECTION, {
+        field_name: "resume_id",
+        field_schema: "keyword",
+      } as any)
+    } catch (error: any) {
+      const status = (error && (error.status ?? error.response?.status)) ?? undefined
+      if (status !== 409) {
+        console.warn("Failed to create resume_id index:", error.message || error)
+      }
+    }
   } catch (err) {
     // If list fails (server down), rethrow so callers can handle 503s
     throw err
