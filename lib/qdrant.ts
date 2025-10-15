@@ -56,6 +56,19 @@ export async function ensureCollection() {
         console.warn("Failed to create resume_id index:", error.message || error)
       }
     }
+
+    // Ensure evidence_id index exists for filtering
+    try {
+      await qdrant.createPayloadIndex(QDRANT_COLLECTION, {
+        field_name: "evidence_id",
+        field_schema: "keyword",
+      } as any)
+    } catch (error: any) {
+      const status = (error && (error.status ?? error.response?.status)) ?? undefined
+      if (status !== 409) {
+        console.warn("Failed to create evidence_id index:", error.message || error)
+      }
+    }
   } catch (err) {
     // If list fails (server down), rethrow so callers can handle 503s
     throw err
