@@ -11,13 +11,15 @@ import { processResumeJob } from "@/lib/inngest/functions/process-resume"
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
-// Suppress Inngest dev server body parsing errors
+// Suppress Inngest dev server body parsing errors in development
 const handler = serve({
   client: inngest,
   functions: [processResumeJob],
   streaming: false,
-  signingKey: process.env.INNGEST_SIGNING_KEY,
-  // Custom body handler to prevent double-parsing
+  // Only enable signing in production to avoid body parsing errors in dev
+  ...(process.env.NODE_ENV === 'production' && process.env.INNGEST_SIGNING_KEY
+    ? { signingKey: process.env.INNGEST_SIGNING_KEY }
+    : {}),
   landingPage: process.env.NODE_ENV === 'development',
 })
 

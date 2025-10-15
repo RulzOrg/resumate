@@ -213,19 +213,19 @@ export async function indexResume(input: IndexResumeInput): Promise<{
     const embeddings = await embedTexts(chunks)
 
     // Prepare points for Qdrant
-    // Note: Qdrant requires point IDs to be either integers or UUIDs, not strings like "uuid:0"
-    // We'll use SHA-256 hash of the resume ID + index to generate a stable unsigned 32-bit integer ID
+    // Note: Qdrant requires point IDs to be either integers or UUIDs
+    // We'll use full SHA-256 hash as a UUID to avoid collision risks with 32-bit truncation
     const points = chunks.map((text, index) => {
-      // Create a stable hash from resumeId + index using SHA-256
+      // Create a stable UUID from resumeId + index using SHA-256
       const hashString = `${resumeId}-${index}`
       const sha256Hash = createHash('sha256').update(hashString).digest()
-      // Derive unsigned 32-bit integer from first 4 bytes of hash
-      const pointId = sha256Hash.readUInt32BE(0)
+      // Use full SHA-256 hash as hex-encoded UUID (no truncation to avoid collisions)
+      const pointId = sha256Hash.toString('hex')
 
       const evidenceId = `${resumeId}:${index}` // Keep this for payload/metadata
 
       return {
-        id: pointId, // Use integer ID for Qdrant
+        id: pointId, // Use full hash UUID for Qdrant
         vector: embeddings[index],
         payload: {
           text,

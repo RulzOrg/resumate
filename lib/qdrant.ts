@@ -65,14 +65,27 @@ export async function upsertPoints(points: UpsertPoint[]) {
 }
 
 export async function deletePoints(filter: Record<string, any>) {
+  // Validate filter is a non-empty object
+  if (!filter || typeof filter !== 'object' || Object.keys(filter).length === 0) {
+    throw new Error('deletePoints: filter must be a non-empty object')
+  }
+
+  const filterKey = Object.keys(filter)[0]
+  const filterValue = Object.values(filter)[0]
+
+  // Validate the first key and value are defined
+  if (filterKey === undefined || filterValue === undefined) {
+    throw new Error('deletePoints: filter key and value must be defined')
+  }
+
   await ensureCollection()
   await qdrant.delete(QDRANT_COLLECTION, {
     wait: true,
     filter: {
       must: [
         {
-          key: Object.keys(filter)[0],
-          match: { value: Object.values(filter)[0] }
+          key: filterKey,
+          match: { value: filterValue }
         }
       ]
     }

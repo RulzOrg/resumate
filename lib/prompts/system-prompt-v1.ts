@@ -12,7 +12,7 @@ interface SystemPromptInput {
 }
 
 export function buildSystemPromptV1(input: SystemPromptInput): string {
-  const { masterResume, jobPosting, preferences = {} } = input
+  const { masterResume, jobPosting, preferences = {} as Preferences } = input
 
   const lockedFieldsNote = preferences.locked_fields?.length
     ? `\n**LOCKED FIELDS (DO NOT MODIFY):** ${preferences.locked_fields.join(', ')}\n`
@@ -99,11 +99,11 @@ ${preferences.selected_evidence_bullets
   .map((bullet, i) => {
     // Sanitize bullet to prevent prompt injection attacks
     const sanitized = String(bullet)
-      .replace(/ignore\s+(all\s+)?previous\s+instructions?/gi, '[redacted instruction phrase]')
-      .replace(/system\s+prompt/gi, '[redacted phrase]')
-      .replace(/you\s+are\s+(now\s+)?a\s+/gi, '[redacted phrase] ')
-      .replace(/disregard\s+(all\s+)?(prior|previous|above)/gi, '[redacted instruction]')
-      .replace(/new\s+instructions?:/gi, '[redacted]:')
+      .replace(/\bignore\s+(all\s+)?previous\s+instructions?\b/gi, '[redacted instruction phrase]')
+      .replace(/\bsystem\s+prompt\b/gi, '[redacted phrase]')
+      .replace(/\byou\s+are\s+(now\s+)?a\s+/gi, '[redacted phrase] ')
+      .replace(/\bdisregard\s+(all\s+)?(prior|previous|above)\b/gi, '[redacted instruction]')
+      .replace(/\bnew\s+instructions?:/gi, '[redacted]:')
       .replace(/\n{2,}/g, '\n')  // Collapse multiple newlines
       .replace(/\n/g, ' ')  // Replace remaining newlines to prevent format breaking
       .trim()

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { createJobAnalysis, getOrCreateUser } from "@/lib/db"
+import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, type Resume } from "@/lib/db"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
