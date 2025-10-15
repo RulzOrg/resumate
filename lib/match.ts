@@ -304,13 +304,29 @@ export function computeScore(
     return false
   }
 
-  const covered = (items: string[]) => {
+  const covered = (items: string[], useStrictMatch = true) => {
     const arr = Array.from(new Set((items || []).filter(Boolean)))
     if (arr.length === 0) return { pct: 0, missing: [] as string[] }
     const miss: string[] = []
     let hits = 0
     for (const item of arr) {
-      const ok = texts.some((t) => includesSkill(item, t))
+      let ok = false
+      if (useStrictMatch) {
+        ok = texts.some((t) => includesSkill(item, t))
+      } else {
+        // Looser semantic matching for responsibilities
+        // Extract key action words and nouns from the requirement
+        const reqWords = tok(item)
+          .split(/\s+/)
+          .filter(w => w.length > 3) // Keep meaningful words
+          .filter(w => !['with', 'from', 'that', 'this', 'will', 'have', 'been', 'were', 'their', 'such', 'also', 'into', 'over', 'through'].includes(w))
+
+        // Match if evidence contains 30%+ of key words from requirement
+        ok = texts.some((t) => {
+          const matchCount = reqWords.filter(w => t.includes(w)).length
+          return matchCount >= Math.max(1, Math.ceil(reqWords.length * 0.3))
+        })
+      }
       if (ok) hits++
       else miss.push(item)
     }
@@ -343,8 +359,8 @@ export function computeScore(
       ? (jobProfile as any).analysis_result.keywords
       : []
 
-  const skillsCov = covered(reqSkills)
-  const respCov = covered(keyReqs)
+  const skillsCov = covered(reqSkills, true)  // Strict matching for skills
+  const respCov = covered(keyReqs, false)     // Looser matching for responsibilities
 
   // Debug logging
   console.log('[computeScore] Scoring metrics:', {
