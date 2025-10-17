@@ -100,7 +100,7 @@ export function ProfessionalSummarySection({ data, onChange }: ProfessionalSumma
   }, [charCount, wordCount, data.char_limit_hint])
 
   const getQualityColor = (score: number) => {
-    return "text-slate-400"
+    return "text-muted-foreground"
   }
 
   const getQualityLabel = (score: number) => {
@@ -201,14 +201,14 @@ export function ProfessionalSummarySection({ data, onChange }: ProfessionalSumma
 
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-4">
-                <span className="text-slate-400">
+                <span className="text-muted-foreground">
                   Characters: {charCount} / {data.char_limit_hint}
                 </span>
-                <span className="text-slate-400">
+                <span className="text-muted-foreground">
                   Words: {wordCount}
                 </span>
               </div>
-              <span className="text-slate-400">
+              <span className="text-muted-foreground">
                 Quality Score: {qualityScore}%
               </span>
             </div>
