@@ -28,3 +28,6 @@ next-env.d.ts
 # test artifacts
 test-results/.last-run.json
 .DS_Store
+
+# marketing content (local only)
+docs/marketing/
