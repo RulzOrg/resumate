@@ -1,9 +1,22 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { cleanupDuplicateJobAnalyses, sql } from "@/lib/db"
+import { cleanupDuplicateJobAnalyses, sql, getUserById } from "@/lib/db"
 import { handleApiError, AppError } from "@/lib/error-handler"
 
-// Admin-only endpoint to cleanup duplicate job analyses
+const ADMIN_USER_IDS = new Set(
+  (process.env.ADMIN_USER_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
+)
+
+// UUID validation function
+function isValidUUID(id: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  return uuidRegex.test(id)
+}
+
+// Endpoint to cleanup duplicate job analyses (admins can target any user, others can only cleanup their own data)
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
@@ -11,15 +24,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // TODO: Add proper admin check if needed
-    // For now, any authenticated user can run cleanup on their own data
-    // Or implement an admin list from environment variables
-
+    const isAdmin = ADMIN_USER_IDS.has(userId)
     const { target_user_id } = await request.json()
 
-    // If target_user_id is provided, only cleanup that user's duplicates (admin privilege)
-    // Otherwise cleanup the requesting user's duplicates
-    const userToCleanup = target_user_id || userId
+    // Determine which user to cleanup based on admin privileges
+    let userToCleanup: string
+    
+    if (target_user_id) {
+      // Only admins can specify a target_user_id different from their own
+      if (!isAdmin) {
+        return NextResponse.json({ 
+          error: "Forbidden: Only administrators can perform cleanup operations on other users" 
+        }, { status: 403 })
+      }
+      
+      // Validate target_user_id format
+      if (!isValidUUID(target_user_id)) {
+        return NextResponse.json({ 
+          error: "Invalid user ID format. Expected UUID format." 
+        }, { status: 400 })
+      }
+      
+      // Verify the user exists in the database
+      const targetUser = await getUserById(target_user_id)
+      if (!targetUser) {
+        return NextResponse.json({ 
+          error: "User not found" 
+        }, { status: 404 })
+      }
+      
+      userToCleanup = target_user_id
+    } else {
+      // Non-admin users can only cleanup their own data
+      userToCleanup = userId
+    }
 
     console.log(`[Cleanup Endpoint] Starting duplicate cleanup for user: ${userToCleanup}`)
 

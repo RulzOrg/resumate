@@ -55,3 +55,21 @@ export function normalizeSalaryRange(value: SalaryRangeInput): string | null {
 
   return null
 }
+
+/**
+ * Normalizes job title and company name for consistent duplicate detection
+ * - Trims whitespace
+ * - Collapses consecutive whitespace to single space
+ * - Converts to lowercase
+ * - Treats empty strings as null
+ */
+export function normalizeJobField(value: string | null | undefined): string | null {
+  if (!value) return null
+  
+  const normalized = value
+    .trim()
+    .replace(/\s+/g, ' ') // Collapse consecutive whitespace
+    .toLowerCase()
+  
+  return normalized === '' ? null : normalized
+}

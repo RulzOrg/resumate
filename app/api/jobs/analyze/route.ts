@@ -7,7 +7,7 @@ import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { intelligentTruncate, analyzeContentLength, summarizeContent } from "@/lib/content-processor"
-import { normalizeSalaryRange } from "@/lib/normalizers"
+import { normalizeSalaryRange, normalizeJobField } from "@/lib/normalizers"
 
 const salaryRangeSchema = z.union([
   z.string(),
@@ -77,6 +77,32 @@ export async function POST(request: NextRequest) {
 
     if (job_description.trim().length < 100) {
       throw new AppError("Job description is too short. Please provide a more detailed job posting.", 400)
+    }
+
+    // Check for existing job analysis to prevent duplicates (early return)
+    // Normalize job title and company name for consistent duplicate detection
+    const normalizedJobTitle = normalizeJobField(job_title)
+    const normalizedCompanyName = normalizeJobField(company_name)
+    
+    if (!normalizedJobTitle) {
+      throw new AppError("Job title is required and cannot be empty", 400)
+    }
+    
+    let existingJobAnalysis = await getExistingJobAnalysis(user.id, normalizedJobTitle, normalizedCompanyName || undefined)
+    if (existingJobAnalysis) {
+      console.log('Duplicate job analysis found, returning existing:', { 
+        existing_id: existingJobAnalysis.id,
+        job_title,
+        company_name
+      })
+      return NextResponse.json(
+        { 
+          analysis: existingJobAnalysis, 
+          generated_resume_id: null,
+          isDuplicate: true 
+        },
+        { headers: getRateLimitHeaders(rateLimitResult) },
+      )
     }
 
     // Analyze and process content for optimal analysis
@@ -178,20 +204,6 @@ CONSTRAINTS
       )
     }
 
-    // Check for existing job analysis to prevent duplicates
-    let existingJobAnalysis = await getExistingJobAnalysis(user.id, job_title, company_name)
-    if (existingJobAnalysis) {
-      console.log('Duplicate job analysis found, returning existing:', { 
-        existing_id: existingJobAnalysis.id,
-        job_title,
-        company_name
-      })
-      return NextResponse.json(
-        { analysis: existingJobAnalysis, isDuplicate: true },
-        { headers: getRateLimitHeaders(rateLimitResult) },
-      )
-    }
-
     let jobAnalysis
     let generatedResume: Resume
     try {
@@ -271,14 +283,15 @@ Output ONLY the Markdown resume as resume_markdown. Sections to include: Header 
         { 
           analysis: jobAnalysis, 
           warning: "Job analysis completed successfully, but resume generation failed. You can still use the analysis results.",
-          generated_resume_id: null 
+          generated_resume_id: null,
+          isDuplicate: false
         },
         { headers: getRateLimitHeaders(rateLimitResult) },
       )
     }
 
     return NextResponse.json(
-      { analysis: jobAnalysis, generated_resume_id: generatedResume.id },
+      { analysis: jobAnalysis, generated_resume_id: generatedResume.id, isDuplicate: false },
       { headers: getRateLimitHeaders(rateLimitResult) },
     )
   } catch (error) {

@@ -1,6 +1,6 @@
 import { neon } from "@neondatabase/serverless"
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
-import { normalizeSalaryRange, type SalaryRangeInput } from "./normalizers"
+import { normalizeSalaryRange, normalizeJobField, type SalaryRangeInput } from "./normalizers"
 import type { SystemPromptV1Output, QASection } from "./schemas-v2"
 
 const databaseUrl = process.env.DATABASE_URL
@@ -1074,14 +1074,19 @@ export async function getJobAnalysisById(id: string, user_id: string) {
 }
 
 export async function getExistingJobAnalysis(user_id: string, job_title: string, company_name?: string) {
-  const normalizedTitle = job_title.trim().toLowerCase()
-  const normalizedCompany = company_name ? company_name.trim().toLowerCase() : ''
+  // The job_title and company_name are already normalized by the caller
+  // but we'll apply additional normalization here for safety
+  const normalizedTitle = normalizeJobField(job_title)
+  if (!normalizedTitle) {
+    throw new Error('job_title must be a non-empty string')
+  }
+  const normalizedCompany = normalizeJobField(company_name)
   
   const [analysis] = await sql`
     SELECT * FROM job_analysis 
     WHERE user_id = ${user_id}
-      AND LOWER(TRIM(job_title)) = ${normalizedTitle}
-      AND LOWER(TRIM(COALESCE(company_name, ''))) = ${normalizedCompany}
+      AND LOWER(TRIM(REGEXP_REPLACE(job_title, '\s+', ' ', 'g'))) = ${normalizedTitle}
+      AND LOWER(TRIM(REGEXP_REPLACE(COALESCE(company_name, ''), '\s+', ' ', 'g'))) = ${normalizedCompany || ''}
     ORDER BY created_at ASC
     LIMIT 1
   `
