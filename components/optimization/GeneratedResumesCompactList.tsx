@@ -45,7 +45,7 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   return (
     <div className="space-y-0">
       {items.map((resume, index) => (
-        <div key={resume.id} className={`flex flex-col sm:flex-row sm:items-center gap-4 py-4 ${index > 0 ? 'border-t border-gray-300 dark:border-white/10' : ''}`}>
+        <div key={resume.id} className={`flex flex-col sm:flex-row sm:items-center gap-4 py-4 ${index > 0 ? 'border-t' : ''}`}>
           <div className="flex items-center gap-4 flex-1">
             <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10">
               <FileText className="h-5 w-5 text-foreground/70 dark:text-white/70" />
