@@ -138,14 +138,14 @@ export function QAPanel({ metrics, jobAnalysis }: QAPanelProps) {
 
         {/* Warnings */}
         {metrics.warnings.length > 0 && (
-          <div className="bg-slate-900/80 ring-slate-700/80 ring-1 rounded-xl">
-            <div className="flex gap-2 md:px-4 border-slate-800/80 border-b pt-2.5 pr-3 pb-2.5 pl-3 items-center">
+          <div className="bg-muted/50 ring-1 ring-border rounded-xl">
+            <div className="flex gap-2 md:px-4 border-b pt-2.5 pr-3 pb-2.5 pl-3 items-center">
               <div className="flex items-center gap-2">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/15 ring-1 ring-inset ring-amber-500/30">
                   <AlertCircle className="h-3.5 w-3.5 text-amber-300" />
                 </div>
                 <div>
-                  <h2 className="text-xs font-medium tracking-tight text-slate-100">Recommendations</h2>
+                  <h2 className="text-xs font-medium tracking-tight text-foreground">Recommendations</h2>
                 </div>
               </div>
             </div>
@@ -153,8 +153,8 @@ export function QAPanel({ metrics, jobAnalysis }: QAPanelProps) {
               <ul className="space-y-2">
                 {metrics.warnings.map((warning, idx) => (
                   <li key={idx} className="flex gap-2">
-                    <span className="mt-0.5 inline-flex h-1.5 w-1.5 flex-none rounded-full bg-amber-400 ring-1 ring-offset-1 ring-offset-slate-900 ring-amber-400/40"></span>
-                    <p className="text-xs leading-relaxed text-slate-200">{warning}</p>
+                    <span className="mt-0.5 inline-flex h-1.5 w-1.5 flex-none rounded-full bg-amber-400 ring-1 ring-offset-1 ring-offset-background ring-amber-400/40"></span>
+                    <p className="text-xs leading-relaxed text-foreground">{warning}</p>
                   </li>
                 ))}
               </ul>
