@@ -31,3 +31,6 @@ test-results/.last-run.json
 
 # marketing content (local only)
 docs/marketing/
+
+# ai dev tasks (local only)
+ai-dev-tasks/
