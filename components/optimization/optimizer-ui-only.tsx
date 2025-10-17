@@ -1156,8 +1156,8 @@ export default function OptimizerUiOnly({
           {/* Fallback message if no structured output */}
           {step === 4 && !structuredOutput && (
             <div className="rounded-lg border-2 border-dashed border-neutral-800 bg-neutral-900/50 p-12 text-center">
-              <p className="text-neutral-400">Resume editor requires structured output from optimization.</p>
-              <p className="text-sm text-neutral-500 mt-2">Please re-optimize your resume to use the enhanced editor.</p>
+              <p className="text-muted-foreground">Resume editor requires structured output from optimization.</p>
+              <p className="text-sm text-muted-foreground mt-2">Please re-optimize your resume to use the enhanced editor.</p>
             </div>
           )}
         </div>
