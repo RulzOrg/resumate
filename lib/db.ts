@@ -1073,6 +1073,21 @@ export async function getJobAnalysisById(id: string, user_id: string) {
   return analysis as JobAnalysis | undefined
 }
 
+export async function getExistingJobAnalysis(user_id: string, job_title: string, company_name?: string) {
+  const normalizedTitle = job_title.trim().toLowerCase()
+  const normalizedCompany = company_name ? company_name.trim().toLowerCase() : ''
+  
+  const [analysis] = await sql`
+    SELECT * FROM job_analysis 
+    WHERE user_id = ${user_id}
+      AND LOWER(TRIM(job_title)) = ${normalizedTitle}
+      AND LOWER(TRIM(COALESCE(company_name, ''))) = ${normalizedCompany}
+    ORDER BY created_at ASC
+    LIMIT 1
+  `
+  return analysis as JobAnalysis | undefined
+}
+
 export async function deleteJobAnalysis(id: string, user_id: string) {
   const [analysis] = await sql`
     DELETE FROM job_analysis 
@@ -1080,6 +1095,77 @@ export async function deleteJobAnalysis(id: string, user_id: string) {
     RETURNING *
   `
   return analysis as JobAnalysis | undefined
+}
+
+export async function cleanupDuplicateJobAnalyses(specificUserId?: string) {
+  try {
+    // Find all duplicate job analyses (same user_id + job_title + company_name with multiple records)
+    const duplicateGroups = await sql`
+      SELECT 
+        user_id,
+        LOWER(TRIM(job_title)) as normalized_title,
+        LOWER(TRIM(COALESCE(company_name, ''))) as normalized_company,
+        COUNT(*) as count,
+        MIN(id) as oldest_id,
+        ARRAY_AGG(id ORDER BY created_at) as all_ids
+      FROM job_analysis
+      ${specificUserId ? sql`WHERE user_id = ${specificUserId}` : sql``}
+      GROUP BY user_id, normalized_title, normalized_company
+      HAVING COUNT(*) > 1
+      ORDER BY user_id, normalized_title
+    `
+
+    if (!duplicateGroups || duplicateGroups.length === 0) {
+      return {
+        success: true,
+        duplicateGroupsFound: 0,
+        duplicatesDeleted: 0,
+        optimizedResumesUpdated: 0,
+        message: 'No duplicate job analyses found'
+      }
+    }
+
+    let totalDeleted = 0
+    let totalUpdated = 0
+
+    for (const group of duplicateGroups) {
+      const oldestId = group.oldest_id
+      const allIds = group.all_ids as string[]
+      const idsToDelete = allIds.filter((id: string) => id !== oldestId)
+
+      if (idsToDelete.length === 0) continue
+
+      // Step 1: Update optimized_resumes to point to the oldest job analysis
+      const updateResult = await sql`
+        UPDATE optimized_resumes
+        SET job_analysis_id = ${oldestId}
+        WHERE job_analysis_id = ANY(${idsToDelete}::uuid[])
+        RETURNING id
+      `
+      totalUpdated += updateResult.length
+
+      // Step 2: Delete the duplicate job analyses
+      const deleteResult = await sql`
+        DELETE FROM job_analysis
+        WHERE id = ANY(${idsToDelete}::uuid[])
+        RETURNING id
+      `
+      totalDeleted += deleteResult.length
+
+      console.log(`[Cleanup] Removed ${deleteResult.length} duplicates for "${group.normalized_title}" (${group.normalized_company || 'N/A'}) - kept: ${oldestId}`)
+    }
+
+    return {
+      success: true,
+      duplicateGroupsFound: duplicateGroups.length,
+      duplicatesDeleted: totalDeleted,
+      optimizedResumesUpdated: totalUpdated,
+      message: `Cleaned up ${totalDeleted} duplicate job analyses and updated ${totalUpdated} optimized resume references`
+    }
+  } catch (error: any) {
+    console.error('[Cleanup] Failed to cleanup duplicate job analyses:', error.message)
+    throw error
+  }
 }
 
 // Optimized resume functions

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, type Resume } from "@/lib/db"
+import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, getExistingJobAnalysis, type Resume } from "@/lib/db"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
@@ -175,6 +175,20 @@ CONSTRAINTS
       throw new AppError(
         `Analysis confidence too low (${analysis.analysis_quality.confidence}%). The job description may be too brief or unclear. Please provide more detailed content.`,
         400
+      )
+    }
+
+    // Check for existing job analysis to prevent duplicates
+    let existingJobAnalysis = await getExistingJobAnalysis(user.id, job_title, company_name)
+    if (existingJobAnalysis) {
+      console.log('Duplicate job analysis found, returning existing:', { 
+        existing_id: existingJobAnalysis.id,
+        job_title,
+        company_name
+      })
+      return NextResponse.json(
+        { analysis: existingJobAnalysis, isDuplicate: true },
+        { headers: getRateLimitHeaders(rateLimitResult) },
       )
     }
 
