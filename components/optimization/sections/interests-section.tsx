@@ -85,7 +85,7 @@ export function InterestsSection({ data, onChange }: InterestsSectionProps) {
       case 'Intellectual': return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
       case 'Technology': return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
       case 'Adventure': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-      default: return 'bg-gray-500/10 text-gray-500 border-gray-500/20'
+      default: return 'bg-muted text-muted-foreground border'
     }
   }
 
@@ -234,21 +234,21 @@ export function InterestsSection({ data, onChange }: InterestsSectionProps) {
           <div className="space-y-3">
             <Label className="text-sm font-medium">Suggested Categories</Label>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
-              <div className="p-2 border border-slate-700/60 rounded-lg bg-slate-900/60">
-                <div className="text-xs font-medium text-slate-200 mb-1">Professional Development</div>
-                <div className="text-xs text-slate-400">
+              <div className="p-2 border rounded-lg bg-card">
+                <div className="text-xs font-medium text-foreground mb-1">Professional Development</div>
+                <div className="text-xs text-muted-foreground">
                   Industry publications, conferences, continuous learning, networking
                 </div>
               </div>
-              <div className="p-2 border border-slate-700/60 rounded-lg bg-slate-900/60">
-                <div className="text-xs font-medium text-slate-200 mb-1">Creative Pursuits</div>
-                <div className="text-xs text-slate-400">
+              <div className="p-2 border rounded-lg bg-card">
+                <div className="text-xs font-medium text-foreground mb-1">Creative Pursuits</div>
+                <div className="text-xs text-muted-foreground">
                   Music, photography, art, writing, design, cooking, gardening
                 </div>
               </div>
-              <div className="p-2 border border-slate-700/60 rounded-lg bg-slate-900/60">
-                <div className="text-xs font-medium text-slate-200 mb-1">Active Lifestyle</div>
-                <div className="text-xs text-slate-400">
+              <div className="p-2 border rounded-lg bg-card">
+                <div className="text-xs font-medium text-foreground mb-1">Active Lifestyle</div>
+                <div className="text-xs text-muted-foreground">
                   Sports, fitness, yoga, hiking, running, cycling, team activities
                 </div>
               </div>

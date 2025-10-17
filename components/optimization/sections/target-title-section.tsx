@@ -135,7 +135,7 @@ export function TargetTitleSection({ data, onChange, jobContext }: TargetTitleSe
           {showSuggestions && (
             <div className="space-y-2 mt-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-slate-300">
+                <p className="text-xs font-medium text-muted-foreground">
                   AI Suggestions {!isGenerating && `(${suggestions.length})`}
                 </p>
                 {!isGenerating && suggestions.length > 0 && (
@@ -163,20 +163,20 @@ export function TargetTitleSection({ data, onChange, jobContext }: TargetTitleSe
                     <button
                       key={idx}
                       onClick={() => handleApplySuggestion(suggestion.title)}
-                      className="w-full text-left p-3 rounded-lg border border-slate-700 bg-slate-900/60 hover:bg-slate-800/60 hover:border-emerald-500/50 transition-all group cursor-pointer"
+                      className="w-full text-left p-3 rounded-lg border bg-card hover:bg-accent hover:border-primary/50 transition-all group cursor-pointer"
                     >
                       <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <p className="text-sm font-medium text-slate-100 group-hover:text-emerald-400">
+                        <p className="text-sm font-medium text-foreground group-hover:text-primary">
                           {suggestion.title}
                         </p>
-                        <Badge 
-                          variant="outline" 
-                          className="text-xs shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                        <Badge
+                          variant="outline"
+                          className="text-xs shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-500"
                         >
                           {suggestion.matchScore}% match
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-400 leading-relaxed">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
                         {suggestion.reason}
                       </p>
                     </button>
