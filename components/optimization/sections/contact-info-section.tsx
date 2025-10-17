@@ -69,14 +69,14 @@ export function ContactInfoSection({ data, onChange }: ContactInfoSectionProps) 
 
   const getFieldValidation = (field: string, value: string) => {
     if (!value.trim()) return null
-    
+
     switch (field) {
       case "email":
-        return validateEmail(value) ? "text-neutral-300" : "text-red-500"
+        return validateEmail(value) ? "text-muted-foreground" : "text-red-500"
       case "phone":
-        return validatePhone(value) ? "text-neutral-300" : "text-red-500"
+        return validatePhone(value) ? "text-muted-foreground" : "text-red-500"
       case "linkedin":
-        return validateLinkedin(value) ? "text-neutral-300" : "text-red-500"
+        return validateLinkedin(value) ? "text-muted-foreground" : "text-red-500"
       default:
         return null
     }
@@ -178,13 +178,13 @@ export function ContactInfoSection({ data, onChange }: ContactInfoSectionProps) 
                   {data.fields[field.key] && getFieldValidation(field.key, data.fields[field.key]) && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                       {validateEmail(data.fields[field.key]) && field.key === 'email' && (
-                        <Mail className="h-4 w-4 text-neutral-400" />
+                        <Mail className="h-4 w-4 text-muted-foreground" />
                       )}
                       {validatePhone(data.fields[field.key]) && field.key === 'phone' && (
-                        <Phone className="h-4 w-4 text-neutral-400" />
+                        <Phone className="h-4 w-4 text-muted-foreground" />
                       )}
                       {validateLinkedin(data.fields[field.key]) && field.key === 'linkedin' && (
-                        <Linkedin className="h-4 w-4 text-neutral-400" />
+                        <Linkedin className="h-4 w-4 text-muted-foreground" />
                       )}
                     </div>
                   )}
