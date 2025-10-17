@@ -346,7 +346,7 @@ export function QAPanelEnhanced({ metrics, jobAnalysis, structuredOutput, onVali
                 key={idx}
                 className="p-3 rounded-lg bg-slate-900/80 ring-slate-700/80 ring-1 text-xs flex items-start gap-2"
               >
-                <span className="flex-1 text-slate-200 leading-relaxed">{suggestion}</span>
+                <span className="flex-1 text-foreground leading-relaxed">{suggestion}</span>
                 <Button
                   variant="ghost"
                   size="icon"
