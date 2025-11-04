@@ -5,6 +5,7 @@ import { getUserByClerkId } from "@/lib/db"
 // E2E test mode: disable auth when explicitly enabled for tests
 const E2E_MODE = process.env.E2E_TEST_MODE === "1"
 
+// Protected routes that require authentication
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/onboarding(.*)",
@@ -12,6 +13,12 @@ const isProtectedRoute = createRouteMatcher([
   "/api/jobs(.*)",
   "/api/job-targets(.*)",
 ])
+
+// Public routes (no authentication required):
+// - / (landing page)
+// - /resume-builder (lead magnet)
+// - /api/public/* (public API endpoints)
+// - /pricing, /auth/*, etc.
 
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"])
 
