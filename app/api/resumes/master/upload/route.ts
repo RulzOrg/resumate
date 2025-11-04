@@ -15,6 +15,7 @@ import {
 } from "@/lib/db"
 import { buildS3Key, scanBufferForViruses, uploadBufferToS3 } from "@/lib/storage"
 import { inngest } from "@/lib/inngest/client"
+import { validateFileUpload, sanitizeFilename, basicMalwareScan } from "@/lib/file-validation"
 
 const TEN_MB = 10 * 1024 * 1024
 

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server"
 import { createResume, getOrCreateUser } from "@/lib/db"
 import { buildS3Key, uploadBufferToS3 } from "@/lib/storage"
 import { indexResume } from "@/lib/resume-indexer"
+import { validateFileUpload, sanitizeFilename, basicMalwareScan } from "@/lib/file-validation"
 
 import { openai } from "@ai-sdk/openai"
 import { generateText } from "ai"
@@ -20,34 +21,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // Validate file upload with comprehensive security checks
+    const validation = await validateFileUpload(request)
+    if (!validation.valid || !validation.file) {
+      return NextResponse.json(
+        { error: validation.error || "Invalid file upload" },
+        { status: 400 }
+      )
+    }
+
     const formData = await request.formData()
-    const file = formData.get("file") as File
+    const file = validation.file
     const title = formData.get("title") as string
 
-    if (!file || !title) {
-      return NextResponse.json({ error: "File and title are required" }, { status: 400 })
+    if (!title) {
+      return NextResponse.json({ error: "Title is required" }, { status: 400 })
     }
 
-    // Validate file type
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ]
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: "Invalid file type. Please upload a PDF or Word document." }, { status: 400 })
-    }
+    // Sanitize filename for storage
+    const sanitizedFilename = sanitizeFilename(file.name)
 
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File size must be less than 10MB" }, { status: 400 })
-    }
-
-    // Upload file to S3 and store URL
+    // Read file content for additional validation and upload
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const key = buildS3Key({ userId: user.id, kind: "uploaded", fileName: file.name })
-    const { url: fileUrl } = await uploadBufferToS3({ buffer, key, contentType: file.type })
+
+    // Basic malware scan
+    const malwareScan = basicMalwareScan(buffer)
+    if (!malwareScan.valid) {
+      return NextResponse.json(
+        { error: malwareScan.error || "File failed security scan" },
+        { status: 400 }
+      )
+    }
+    // Upload file to S3 with sanitized filename
+    const key = buildS3Key({ userId: user.id, kind: "uploaded", fileName: sanitizedFilename })
+    const { url: fileUrl } = await uploadBufferToS3({ buffer, key, contentType: validation.validationResult?.fileType || file.type })
 
     let extractionSuccess = false
     let contentText = ""
