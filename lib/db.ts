@@ -1688,3 +1688,189 @@ function extractPrimaryEmail(clerkUser: any): string {
 
   return clerkUser.email_address || clerkUser.email || ""
 }
+
+// ==================== USAGE TRACKING FUNCTIONS ====================
+
+export type FeatureType = 'resume_optimization' | 'job_analysis' | 'resume_version'
+
+export interface UsageTracking {
+  id: string
+  user_id: string
+  feature_type: FeatureType
+  usage_count: number
+  period_start: Date
+  period_end: Date
+  subscription_plan: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+/**
+ * Get or create usage tracking record for a user and feature in the current period
+ */
+export async function getOrCreateUsageTracking(
+  userId: string,
+  featureType: FeatureType,
+  subscriptionPlan: string = 'free'
+): Promise<UsageTracking> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1) // First day of current month
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999) // Last day of current month
+
+  const result = await sql`
+    INSERT INTO usage_tracking (
+      user_id, feature_type, usage_count, period_start, period_end, subscription_plan
+    ) VALUES (
+      ${userId}, ${featureType}, 0, ${periodStart}, ${periodEnd}, ${subscriptionPlan}
+    )
+    ON CONFLICT (user_id, feature_type, period_start, period_end)
+    DO UPDATE SET updated_at = NOW()
+    RETURNING *
+  `
+
+  return result[0]
+}
+
+/**
+ * Get current usage for a user and feature in the current period
+ */
+export async function getCurrentUsage(
+  userId: string,
+  featureType: FeatureType
+): Promise<number> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  const result = await sql`
+    SELECT usage_count
+    FROM usage_tracking
+    WHERE user_id = ${userId}
+      AND feature_type = ${featureType}
+      AND period_start <= ${now}
+      AND period_end >= ${now}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+
+  return result.length > 0 ? result[0].usage_count : 0
+}
+
+/**
+ * Get all usage for a user in the current period
+ */
+export async function getAllCurrentUsage(userId: string): Promise<{
+  resumeOptimizations: number
+  jobAnalyses: number
+  resumeVersions: number
+}> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  const result = await sql`
+    SELECT feature_type, usage_count
+    FROM usage_tracking
+    WHERE user_id = ${userId}
+      AND period_start <= ${now}
+      AND period_end >= ${now}
+  `
+
+  const usage = {
+    resumeOptimizations: 0,
+    jobAnalyses: 0,
+    resumeVersions: 0
+  }
+
+  for (const row of result) {
+    switch (row.feature_type) {
+      case 'resume_optimization':
+        usage.resumeOptimizations = row.usage_count
+        break
+      case 'job_analysis':
+        usage.jobAnalyses = row.usage_count
+        break
+      case 'resume_version':
+        usage.resumeVersions = row.usage_count
+        break
+    }
+  }
+
+  return usage
+}
+
+/**
+ * Increment usage for a user and feature
+ */
+export async function incrementUsage(
+  userId: string,
+  featureType: FeatureType,
+  subscriptionPlan: string = 'free'
+): Promise<number> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  // First ensure the record exists
+  await getOrCreateUsageTracking(userId, featureType, subscriptionPlan)
+
+  // Then increment the count
+  const result = await sql`
+    UPDATE usage_tracking
+    SET usage_count = usage_count + 1,
+        updated_at = NOW()
+    WHERE user_id = ${userId}
+      AND feature_type = ${featureType}
+      AND period_start <= ${now}
+      AND period_end >= ${now}
+    RETURNING usage_count
+  `
+
+  return result.length > 0 ? result[0].usage_count : 1
+}
+
+/**
+ * Reset usage for a user (used when subscription is upgraded/renewed)
+ */
+export async function resetUsage(
+  userId: string,
+  featureType?: FeatureType
+): Promise<void> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  if (featureType) {
+    await sql`
+      UPDATE usage_tracking
+      SET usage_count = 0,
+          updated_at = NOW()
+      WHERE user_id = ${userId}
+        AND feature_type = ${featureType}
+        AND period_start <= ${now}
+        AND period_end >= ${now}
+    `
+  } else {
+    // Reset all features
+    await sql`
+      UPDATE usage_tracking
+      SET usage_count = 0,
+          updated_at = NOW()
+      WHERE user_id = ${userId}
+        AND period_start <= ${now}
+        AND period_end >= ${now}
+    `
+  }
+}
+
+/**
+ * Check if user has exceeded their usage limit for a feature
+ */
+export async function hasExceededUsageLimit(
+  userId: string,
+  featureType: FeatureType,
+  limit: number
+): Promise<boolean> {
+  const currentUsage = await getCurrentUsage(userId, featureType)
+  return currentUsage >= limit
+}

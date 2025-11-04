@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, getJobAnalysisById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord } from "@/lib/db"
+import { getResumeById, getJobAnalysisById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
@@ -173,6 +173,9 @@ Focus on making the resume highly relevant to this specific job while maintainin
       optimization_summary: optimization,
       match_score: optimization.match_score_after,
     })
+
+    // Increment usage tracking for this successful optimization
+    await incrementUsage(user.id, 'resume_optimization', user.subscription_plan || 'free')
 
     return NextResponse.json({ optimized_resume: optimizedResume }, { headers: getRateLimitHeaders(rateLimitResult) })
   } catch (error) {

@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server"
-import { getOrCreateUser } from "./db"
+import { getOrCreateUser, getAllCurrentUsage } from "./db"
 import { pricingTiers, getPricingTier, canUserPerformAction } from "./pricing"
 
 export type SubscriptionStatus = 
@@ -106,28 +106,24 @@ export async function getUsageLimits(): Promise<UsageLimits | null> {
     const tier = getPricingTier(subscription.plan)
     if (!tier) return null
 
-    // Mock usage data - replace with actual database queries
-    const mockUsage = {
-      resumeOptimizations: 2,
-      jobAnalyses: 3,
-      resumeVersions: 2
-    }
+    // Get real usage from the database
+    const actualUsage = await getAllCurrentUsage(user.id)
 
     return {
       resumeOptimizations: {
-        used: mockUsage.resumeOptimizations,
+        used: actualUsage.resumeOptimizations,
         limit: tier.limits.resumeOptimizations,
-        canUse: canUserPerformAction(subscription.plan, mockUsage.resumeOptimizations, 'resumeOptimizations')
+        canUse: canUserPerformAction(subscription.plan, actualUsage.resumeOptimizations, 'resumeOptimizations')
       },
       jobAnalyses: {
-        used: mockUsage.jobAnalyses,
+        used: actualUsage.jobAnalyses,
         limit: tier.limits.jobAnalyses,
-        canUse: canUserPerformAction(subscription.plan, mockUsage.jobAnalyses, 'jobAnalyses')
+        canUse: canUserPerformAction(subscription.plan, actualUsage.jobAnalyses, 'jobAnalyses')
       },
       resumeVersions: {
-        used: mockUsage.resumeVersions,
+        used: actualUsage.resumeVersions,
         limit: tier.limits.resumeVersions,
-        canUse: canUserPerformAction(subscription.plan, mockUsage.resumeVersions, 'resumeVersions')
+        canUse: canUserPerformAction(subscription.plan, actualUsage.resumeVersions, 'resumeVersions')
       }
     }
   } catch (error) {
