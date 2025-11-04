@@ -100,6 +100,10 @@ export interface User {
   stripe_customer_id?: string
   stripe_subscription_id?: string
   onboarding_completed_at?: string | null
+  newsletter_subscribed?: boolean
+  beehiiv_subscriber_id?: string | null
+  newsletter_subscribed_at?: string | null
+  newsletter_unsubscribed_at?: string | null
   created_at: string
   updated_at: string
 }

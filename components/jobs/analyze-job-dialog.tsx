@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   Dialog,
@@ -88,7 +88,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   const MAX_LENGTH = 10000
 
   // Auto-save functions
-  const saveDraft = async (force: boolean = false) => {
+  const saveDraft = useCallback(async (force: boolean = false) => {
     if (!autoSave.enabled && !force) return
     if (!jobDescription.trim() || jobDescription.trim().length < 50) return
     if (autoSave.saving) return
@@ -110,9 +110,9 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
 
       if (response.ok) {
         const data = await response.json()
-        setAutoSave(prev => ({ 
-          ...prev, 
-          saving: false, 
+        setAutoSave(prev => ({
+          ...prev,
+          saving: false,
           lastSaved: new Date(),
           currentDraftId: data.draft.id
         }))
@@ -122,7 +122,7 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     } catch (err) {
       setAutoSave(prev => ({ ...prev, saving: false }))
     }
-  }
+  }, [autoSave.enabled, autoSave.saving, jobDescription, jobUrl, detectedCompany, jobTitle])
 
   const loadDrafts = async () => {
     try {
@@ -170,12 +170,15 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   }
 
   // Debounced auto-save
-  const autoSaveDebounced = useCallback(
-    debounce(() => {
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const autoSaveDebounced = useCallback(() => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    autoSaveTimeoutRef.current = setTimeout(() => {
       saveDraft()
-    }, 3000), // Save after 3 seconds of no changes
-    [jobDescription, jobUrl, detectedCompany, jobTitle, autoSave.enabled]
-  )
+    }, 3000) // Save after 3 seconds of no changes
+  }, [saveDraft])
 
   // Load drafts when dialog opens
   useEffect(() => {
@@ -185,13 +188,13 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
   }, [open])
 
   // AI Preview Analysis function
-  const performAiPreview = async (content: string) => {
+  const performAiPreview = useCallback(async (content: string) => {
     if (content.trim().length < 100) return // Don't analyze too short content
     if (aiPreview.lastAnalyzedContent === content.trim()) return // Don't re-analyze same content
-    
-    setAiPreview(prev => ({ 
-      ...prev, 
-      isAnalyzing: true, 
+
+    setAiPreview(prev => ({
+      ...prev,
+      isAnalyzing: true,
       error: null,
       lastAnalyzedContent: content.trim()
     }))
@@ -209,46 +212,49 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
 
       if (response.ok) {
         const data = await response.json()
-        setAiPreview(prev => ({ 
-          ...prev, 
-          analysis: data.analysis, 
+        setAiPreview(prev => ({
+          ...prev,
+          analysis: data.analysis,
           isAnalyzing: false,
           error: null
         }))
         setShowAiPreview(true)
-        
+
         // Show truncation notice if content was truncated
         if (data.truncation_info?.was_truncated) {
           console.log("Content was truncated for preview analysis:", data.truncation_info)
         }
       } else {
         const result = await response.json()
-        setAiPreview(prev => ({ 
-          ...prev, 
-          error: result.error || "Preview analysis failed", 
-          isAnalyzing: false 
+        setAiPreview(prev => ({
+          ...prev,
+          error: result.error || "Preview analysis failed",
+          isAnalyzing: false
         }))
       }
     } catch (err) {
-      setAiPreview(prev => ({ 
-        ...prev, 
-        error: "Failed to generate preview", 
-        isAnalyzing: false 
+      setAiPreview(prev => ({
+        ...prev,
+        error: "Failed to generate preview",
+        isAnalyzing: false
       }))
     }
-  }
+  }, [aiPreview.lastAnalyzedContent, jobTitle, detectedCompany])
 
   // URL-based title extraction removed
 
   // Debounced AI preview trigger
-  const triggerAiPreviewDebounced = useCallback(
-    debounce((content: string) => {
+  const aiPreviewTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const triggerAiPreviewDebounced = useCallback((content: string) => {
+    if (aiPreviewTimeoutRef.current) {
+      clearTimeout(aiPreviewTimeoutRef.current)
+    }
+    aiPreviewTimeoutRef.current = setTimeout(() => {
       if (content.trim().length >= 200 && contentValidation.isValid) {
         performAiPreview(content)
       }
-    }, 2000), // 2 second delay
-    [contentValidation.isValid, detectedCompany, jobTitle]
-  )
+    }, 2000) // 2 second delay
+  }, [contentValidation.isValid, performAiPreview])
 
   // Content validation function
   const validateJobContent = (content: string): {
