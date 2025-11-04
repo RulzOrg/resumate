@@ -87,15 +87,14 @@ describe('llamaParseExtract', () => {
       const buffer = Buffer.from('PDF content')
       const result = await llamaParseExtract(buffer, 'application/pdf', 'user123', 'fast')
 
-      expect(result).toEqual({
-        text: extractedText,
-        total_chars: extractedText.length,
-        page_count: 2,
-        warnings: [],
-        mode_used: 'llamaparse_fast',
-        truncated: false,
-        coverage: expect.any(Number)
-      })
+      expect(result.text).toBe(extractedText)
+      expect(result.total_chars).toBe(extractedText.length)
+      expect(result.page_count).toBe(2)
+      expect(result.mode_used).toBe('llamaparse_fast')
+      expect(result.truncated).toBe(false)
+      expect(result.coverage).toBeLessThan(1) // Low coverage due to short text
+      // Warnings are expected due to short text
+      expect(result.warnings.length).toBeGreaterThan(0)
 
       // Verify API calls
       expect(mockFetch).toHaveBeenCalledTimes(3)
@@ -435,7 +434,8 @@ describe('llamaParseExtract', () => {
       const result = await llamaParseExtract(buffer, 'application/pdf', 'user123')
 
       expect(result.mode_used).toBe('llamaparse_premium') // accurate = premium
-      expect(result.warnings).toHaveLength(0) // No warning since min_chars is 50
+      // Low coverage warning is still expected since 60 chars for 1 page is below 200 chars/page
+      expect(result.warnings.some(w => w.includes('Low coverage'))).toBe(true)
     })
 
     it('should override mode parameter', async () => {

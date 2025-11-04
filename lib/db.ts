@@ -100,10 +100,6 @@ export interface User {
   stripe_customer_id?: string
   stripe_subscription_id?: string
   onboarding_completed_at?: string | null
-  newsletter_subscribed?: boolean
-  beehiiv_subscriber_id?: string | null
-  newsletter_subscribed_at?: string | null
-  newsletter_unsubscribed_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -377,17 +373,53 @@ export async function getUserByClerkId(clerkUserId: string) {
 
 export async function getUserById(id: string) {
   const [user] = await sql`
-    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan, 
-           subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
+           subscription_period_end, stripe_customer_id, stripe_subscription_id,
+           onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE id = ${id} AND deleted_at IS NULL
   `
   return user as User | undefined
 }
 
+export async function updateUser(id: string, data: Partial<any>) {
+  const validFields = [
+    'email', 'name'
+  ]
+
+  const updates: string[] = []
+  const values: any[] = []
+  let paramIndex = 1
+
+  for (const [key, value] of Object.entries(data)) {
+    if (validFields.includes(key) && value !== undefined) {
+      updates.push(`${key} = $${paramIndex}`)
+      values.push(value)
+      paramIndex++
+    }
+  }
+
+  if (updates.length === 0) {
+    return null
+  }
+
+  updates.push(`updated_at = NOW()`)
+  values.push(id) // For WHERE clause
+
+  const query = `
+    UPDATE users_sync
+    SET ${updates.join(', ')}
+    WHERE id = $${paramIndex} AND deleted_at IS NULL
+    RETURNING *
+  `
+
+  const result = await sql.unsafe(query, values)
+  return result[0] as User | undefined
+}
+
 export async function updateUserFromClerk(clerkUserId: string, data: { email?: string; name?: string }) {
   const [user] = await sql`
-    UPDATE users_sync 
+    UPDATE users_sync
     SET email = COALESCE(${data.email}, email),
         name = COALESCE(${data.name}, name),
         updated_at = NOW()

@@ -129,7 +129,7 @@ describe('normalizeSalaryRange', () => {
         min: 80500.75,
         max: 120999.99
       }
-      expect(normalizeSalaryRange(input)).toBe('80,501 - 120,1000')
+      expect(normalizeSalaryRange(input)).toBe('80,501 - 121,000')
     })
 
     it('should handle large numbers correctly', () => {

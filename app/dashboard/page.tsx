@@ -215,18 +215,6 @@ export default async function DashboardPage({
 
               {/* Master Resumes */}
               <MasterResumesSection resumes={resumes} />
-
-              {/* Cover Letter CTA */}
-              <div className="rounded-2xl border border-dashed border-border/80 dark:border-white/20 bg-transparent p-6 text-center">
-                <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 mb-2">
-                  <FileText className="h-6 w-6 text-foreground/80 dark:text-white/80" />
-                </div>
-                <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Need a Cover Letter?</h3>
-                <p className="text-sm text-foreground/60 dark:text-white/60 mt-1 mb-4">Generate a tailored cover letter in seconds.</p>
-                <Button className="w-full text-center text-sm font-medium text-black bg-emerald-500 rounded-full py-2 hover:bg-emerald-400 transition">
-                  Generate Letter
-                </Button>
-              </div>
             </div>
           </div>
         </div>
