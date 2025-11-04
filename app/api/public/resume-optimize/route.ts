@@ -49,28 +49,35 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-real-ip') ||
       'unknown';
 
-    // Check rate limit
+    // Check rate limit (optional - gracefully handle Redis connection failures)
     if (uploadRateLimit) {
-      const rateLimitResult = await uploadRateLimit.limit(ip);
+      try {
+        const rateLimitResult = await uploadRateLimit.limit(ip);
 
-      if (!rateLimitResult.success) {
-        const resetDate = new Date(rateLimitResult.reset);
-        return NextResponse.json(
-          {
-            status: 'error',
-            error: `Too many uploads. Please try again after ${resetDate.toLocaleTimeString()}`,
-            code: 'RATE_LIMIT_EXCEEDED',
-          },
-          {
-            status: 429,
-            headers: {
-              'X-RateLimit-Limit': rateLimitResult.limit.toString(),
-              'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
-              'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+        if (!rateLimitResult.success) {
+          const resetDate = new Date(rateLimitResult.reset);
+          return NextResponse.json(
+            {
+              status: 'error',
+              error: `Too many uploads. Please try again after ${resetDate.toLocaleTimeString()}`,
+              code: 'RATE_LIMIT_EXCEEDED',
             },
-          }
-        );
+            {
+              status: 429,
+              headers: {
+                'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+                'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+                'X-RateLimit-Reset': rateLimitResult.reset.toString(),
+              },
+            }
+          );
+        }
+      } catch (rateLimitError) {
+        // Log error but don't block the request
+        console.warn('[Lead Magnet] Rate limit check failed, allowing request:', rateLimitError);
       }
+    } else {
+      console.warn('[Lead Magnet] Rate limiting disabled - Redis not configured');
     }
 
     // Parse form data
