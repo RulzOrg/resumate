@@ -17,22 +17,29 @@ import {
 } from '@/lib/lead-magnet';
 
 // Rate limiter for public uploads (5 per hour per IP)
-const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      })
-    : null;
+let redis: Redis | null = null;
+let uploadRateLimit: Ratelimit | null = null;
 
-const uploadRateLimit = redis
-  ? new Ratelimit({
+// Initialize Redis with error handling
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  try {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+
+    uploadRateLimit = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(5, '1 h'),
       analytics: true,
       prefix: 'ratelimit:public:upload',
-    })
-  : null;
+    });
+  } catch (error) {
+    console.warn('[Lead Magnet] Redis initialization failed, rate limiting disabled:', error);
+    redis = null;
+    uploadRateLimit = null;
+  }
+}
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -49,7 +56,7 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-real-ip') ||
       'unknown';
 
-    // Check rate limit (optional - gracefully handle Redis connection failures)
+    // Check rate limit with error handling
     if (uploadRateLimit) {
       try {
         const rateLimitResult = await uploadRateLimit.limit(ip);
@@ -73,8 +80,8 @@ export async function POST(request: NextRequest) {
           );
         }
       } catch (rateLimitError) {
-        // Log error but don't block the request
-        console.warn('[Lead Magnet] Rate limit check failed, allowing request:', rateLimitError);
+        // Log the error but continue processing without rate limiting
+        console.warn('[Lead Magnet] Rate limit check failed, continuing without rate limiting:', rateLimitError);
       }
     } else {
       console.warn('[Lead Magnet] Rate limiting disabled - Redis not configured');
@@ -182,11 +189,23 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Lead Magnet] Upload failed:', error);
+    console.error('[Lead Magnet] Error stack:', error.stack);
+    console.error('[Lead Magnet] Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+    });
+
+    // Return more specific error message in development
+    const isDev = process.env.NODE_ENV === 'development';
+    const errorMessage = isDev && error.message
+      ? `Upload failed: ${error.message}`
+      : 'Failed to upload resume. Please try again.';
 
     return NextResponse.json(
       {
         status: 'error',
-        error: 'Failed to upload resume. Please try again.',
+        error: errorMessage,
         code: 'UPLOAD_FAILED',
       },
       { status: 500 }

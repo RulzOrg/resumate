@@ -25,22 +25,29 @@ import { addBeehiivSubscriber } from '@/lib/beehiiv';
 import { getDownloadUrl } from '@/lib/r2';
 
 // Rate limiter for email submissions (10 per day per IP)
-const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      })
-    : null;
+let redis: Redis | null = null;
+let emailRateLimit: Ratelimit | null = null;
 
-const emailRateLimit = redis
-  ? new Ratelimit({
+// Initialize Redis with error handling
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  try {
+    redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+
+    emailRateLimit = new Ratelimit({
       redis,
       limiter: Ratelimit.slidingWindow(10, '24 h'),
       analytics: true,
       prefix: 'ratelimit:public:email',
-    })
-  : null;
+    });
+  } catch (error) {
+    console.warn('[Lead Magnet] Redis initialization failed, rate limiting disabled:', error);
+    redis = null;
+    emailRateLimit = null;
+  }
+}
 
 export async function POST(
   request: NextRequest,
@@ -71,7 +78,7 @@ export async function POST(
       );
     }
 
-    // Check rate limit (optional - gracefully handle Redis connection failures)
+    // Check rate limit with error handling
     if (emailRateLimit) {
       try {
         const rateLimitResult = await emailRateLimit.limit(ip);
@@ -95,8 +102,8 @@ export async function POST(
           );
         }
       } catch (rateLimitError) {
-        // Log error but don't block the request
-        console.warn('[Lead Magnet] Rate limit check failed, allowing request:', rateLimitError);
+        // Log the error but continue processing without rate limiting
+        console.warn('[Lead Magnet] Rate limit check failed, continuing without rate limiting:', rateLimitError);
       }
     } else {
       console.warn('[Lead Magnet] Rate limiting disabled - Redis not configured');
