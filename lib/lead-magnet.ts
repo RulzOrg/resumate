@@ -105,57 +105,46 @@ export async function updateLeadMagnetSubmission(
     downloadedAt?: Date;
   }
 ): Promise<LeadMagnetSubmission> {
-  const updates: string[] = [];
-  const values: any[] = [];
-
-  if (data.status !== undefined) {
-    updates.push(`status = $${values.length + 1}`);
-    values.push(data.status);
+  // Get current submission to merge with updates
+  const current = await getLeadMagnetSubmission(id);
+  if (!current) {
+    throw new Error(`Submission not found: ${id}`);
   }
 
-  if (data.optimizedFileUrl !== undefined) {
-    updates.push(`optimized_file_url = $${values.length + 1}`);
-    values.push(data.optimizedFileUrl);
-  }
+  // Prepare final values (use provided or keep existing)
+  const status = data.status ?? current.status;
+  const optimizedFileUrl = data.optimizedFileUrl ?? current.optimized_file_url;
+  const optimizedFileHash = data.optimizedFileHash ?? current.optimized_file_hash;
+  const improvementsSummary = data.improvementsSummary !== undefined
+    ? data.improvementsSummary
+    : current.improvements_summary;
+  const processingError = data.processingError ?? current.processing_error;
+  const emailSentAt = data.emailSentAt ?? current.email_sent_at;
+  const downloadedAt = data.downloadedAt ?? current.downloaded_at;
 
-  if (data.optimizedFileHash !== undefined) {
-    updates.push(`optimized_file_hash = $${values.length + 1}`);
-    values.push(data.optimizedFileHash);
-  }
+  // Convert dates to ISO strings for SQL
+  const emailSentAtStr = emailSentAt ? (emailSentAt instanceof Date ? emailSentAt.toISOString() : emailSentAt) : null;
+  const downloadedAtStr = downloadedAt ? (downloadedAt instanceof Date ? downloadedAt.toISOString() : downloadedAt) : null;
 
-  if (data.improvementsSummary !== undefined) {
-    updates.push(`improvements_summary = $${values.length + 1}`);
-    values.push(JSON.stringify(data.improvementsSummary));
-  }
-
-  if (data.processingError !== undefined) {
-    updates.push(`processing_error = $${values.length + 1}`);
-    values.push(data.processingError);
-  }
-
-  if (data.emailSentAt !== undefined) {
-    updates.push(`email_sent_at = $${values.length + 1}`);
-    values.push(data.emailSentAt.toISOString());
-  }
-
-  if (data.downloadedAt !== undefined) {
-    updates.push(`downloaded_at = $${values.length + 1}`);
-    values.push(data.downloadedAt.toISOString());
-  }
-
-  updates.push(`updated_at = NOW()`);
-
-  // Build the query manually since sql`` doesn't support dynamic updates easily
-  const query = `
+  // Update all fields at once
+  const result = await sql<LeadMagnetSubmission>`
     UPDATE lead_magnet_submissions
-    SET ${updates.join(', ')}
-    WHERE id = $${values.length + 1}
+    SET
+      status = ${status},
+      optimized_file_url = ${optimizedFileUrl},
+      optimized_file_hash = ${optimizedFileHash},
+      improvements_summary = ${JSON.stringify(improvementsSummary)},
+      processing_error = ${processingError},
+      email_sent_at = ${emailSentAtStr},
+      downloaded_at = ${downloadedAtStr},
+      updated_at = NOW()
+    WHERE id = ${id}
     RETURNING *
   `;
-  values.push(id);
 
-  // Execute with raw SQL
-  const result = await sql.unsafe<LeadMagnetSubmission>(query, values);
+  if (!result[0]) {
+    throw new Error(`Failed to update submission: ${id}`);
+  }
 
   return result[0];
 }
@@ -278,12 +267,20 @@ export async function checkLeadMagnetRateLimit(
 ): Promise<number> {
   const timeWindow = limitType === 'upload' ? 1 : 24; // 1 hour for uploads, 24 hours for emails
 
-  const result = await sql<{ count: number }>`
-    SELECT COUNT(*) as count
-    FROM lead_magnet_submissions
-    WHERE ${limitType === 'email' ? sql`email = ${identifier}` : sql`ip_address = ${identifier}`}
-    AND created_at > NOW() - INTERVAL '${timeWindow} hours'
-  `;
+  // Use separate queries based on limit type
+  const result = limitType === 'email'
+    ? await sql<{ count: string }>`
+        SELECT COUNT(*) as count
+        FROM lead_magnet_submissions
+        WHERE email = ${identifier}
+        AND created_at > NOW() - INTERVAL '1 day'
+      `
+    : await sql<{ count: string }>`
+        SELECT COUNT(*) as count
+        FROM lead_magnet_submissions
+        WHERE ip_address = ${identifier}
+        AND created_at > NOW() - INTERVAL '1 hour'
+      `;
 
   return Number(result[0]?.count || 0);
 }

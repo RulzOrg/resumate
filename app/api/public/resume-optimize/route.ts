@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { sql } from '@/lib/db';
 import { primaryExtract } from '@/lib/extract';
 import {
   createLeadMagnetSubmission,
@@ -185,6 +186,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-// Import sql for the update queries
-import { sql } from '@/lib/db';
