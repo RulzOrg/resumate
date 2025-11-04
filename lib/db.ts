@@ -979,10 +979,37 @@ export async function createJobAnalysisWithVerification(data: {
   })
 
   try {
-    // Step 1: Verify user exists in database
-    const user = await getUserById(data.user_id)
+    // Step 1: Verify user exists in database with retry logic
+    let user = await getUserById(data.user_id)
+    
+    // If user not found, try to ensure they exist via ensureUserSyncRecord
     if (!user) {
-      console.error('User not found for job analysis creation:', { user_id: data.user_id })
+      console.warn('User not found on first lookup, attempting to ensure user sync:', { user_id: data.user_id })
+      
+      try {
+        // Try to get user by their original ID to find clerk_user_id
+        const userRecord = await sql`SELECT * FROM users_sync WHERE id = ${data.user_id} LIMIT 1`
+        if (userRecord && userRecord.length > 0) {
+          user = userRecord[0] as User
+        } else {
+          // Last resort: ensure the user record exists
+          await ensureUserSyncRecord({
+            id: data.user_id,
+          })
+          
+          // Wait a moment for the transaction to commit
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // Try one more time
+          user = await getUserById(data.user_id)
+        }
+      } catch (syncError: any) {
+        console.error('Failed to sync user record:', { error: syncError.message, user_id: data.user_id })
+      }
+    }
+    
+    if (!user) {
+      console.error('User not found for job analysis creation after retries:', { user_id: data.user_id })
       throw new Error(`User not found with ID: ${data.user_id}. Cannot create job analysis.`)
     }
 

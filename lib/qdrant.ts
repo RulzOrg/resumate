@@ -5,9 +5,12 @@ export const QDRANT_API_KEY = process.env.QDRANT_API_KEY
 export const QDRANT_COLLECTION = process.env.QDRANT_COLLECTION || "resume_bullets"
 export const EMBEDDING_DIMENSION = 3072
 
+// Only use API key for non-localhost connections to avoid "unsecure connection" warnings
+const isLocalhost = QDRANT_URL.includes('localhost') || QDRANT_URL.includes('127.0.0.1')
+
 export const qdrant = new QdrantClient({ 
   url: QDRANT_URL,
-  apiKey: QDRANT_API_KEY,
+  ...(isLocalhost ? {} : { apiKey: QDRANT_API_KEY }),
 })
 
 export async function ensureCollection() {

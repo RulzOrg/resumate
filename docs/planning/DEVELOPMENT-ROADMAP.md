@@ -6,6 +6,31 @@ This document outlines the prioritized tasks for ResuMate AI based on comprehens
 
 ---
 
+## Recently Completed & In Progress
+
+### Beehiiv Newsletter Integration
+**Status**: In Progress
+**Started**: 2025-11-04
+**Priority**: 🔴 Critical
+**Why**: Email marketing and waitlist management for user acquisition.
+
+**Current State**:
+- ✅ Beehiiv client library implemented (`lib/beehiiv.ts`)
+- ✅ Newsletter subscription columns added to database
+- ✅ Integration planning documents created
+- 🔄 Webhook integration in progress (`app/api/webhooks/clerk/route.ts`)
+- ❌ UI components for newsletter signup pending
+- ❌ Testing and deployment pending
+
+**Files Modified**:
+- `lib/beehiiv.ts` (new)
+- `lib/db.ts` (modified)
+- `app/api/webhooks/clerk/route.ts` (modified)
+- `scripts/add-newsletter-columns.sql` (new)
+- Various documentation files in `docs/`
+
+---
+
 ## Critical Priority Tasks
 
 ### Task 1: Implement Real Usage Tracking System
@@ -334,42 +359,52 @@ This document outlines the prioritized tasks for ResuMate AI based on comprehens
 ---
 
 ### Task 9: Expand Test Coverage
-**Status**: Minimal (1 E2E test)
-**Estimated Effort**: 8-12 hours
+**Status**: Partially Complete
+**Estimated Effort**: 8-12 hours (6 hours remaining)
 **Priority**: 🟢 Medium
-**Why**: Low confidence in refactoring. Only 1 E2E test exists.
+**Why**: Low confidence in refactoring. Test coverage improving.
 
 **Current State**:
 - ✅ 1 E2E test: `tests/e2e/smoke-optimizer.spec.ts`
-- ❌ No unit tests
-- ❌ No integration tests for API routes
+- ✅ 115 unit tests for lib/ utilities (COMPLETED 2025-11-04)
+- ✅ Test coverage for: embeddings, normalizers, qdrant, storage, llamaparse
+- ✅ 5 existing API route tests
+- ❌ No integration tests for remaining API routes
 - ❌ No component tests
 
-**Steps**:
-1. Add unit tests for `lib/match.ts` (scoring logic)
+**Completed Steps**:
+1. ✅ Add unit tests for core lib/ utilities (COMPLETED 2025-11-04)
+   - ✅ `lib/embeddings.ts` - 9 tests
+   - ✅ `lib/normalizers.ts` - 43 tests
+   - ✅ `lib/qdrant.ts` - 26 tests
+   - ✅ `lib/storage.ts` - 22 tests
+   - ✅ `lib/llamaparse.ts` - 15 tests
+
+**Remaining Steps**:
+2. Add unit tests for `lib/match.ts` (scoring logic)
    - Test score calculation
    - Test evidence matching
    - Test edge cases (empty resume, no matches)
-2. Add unit tests for `lib/subscription.ts` (limits)
+3. Add unit tests for `lib/subscription.ts` (limits)
    - Test limit checking (once real usage implemented)
    - Test tier permissions
    - Test usage calculations
-3. Add integration tests for key API routes
+4. Add integration tests for remaining API routes
    - `/api/resumes/upload`
    - `/api/jobs/analyze`
    - `/api/resumes/optimize`
    - Test success and error cases
-4. Add E2E tests for onboarding flow
+5. Add E2E tests for onboarding flow
    - Complete onboarding as new user
    - Upload resume
    - Set job targets
    - Verify redirection
-5. Add E2E tests for optimization flow
+6. Add E2E tests for optimization flow
    - Upload resume
    - Analyze job
    - Run optimizer
    - Download result
-6. Set up CI/CD to run tests
+7. Set up CI/CD to run tests
    - GitHub Actions workflow
    - Run tests on PR
    - Block merge if tests fail
@@ -640,6 +675,16 @@ Task 11-14 (Low Priority) → Can be done after critical tasks
 
 Update this section as tasks are completed:
 
+### In Progress
+- 🔄 **Beehiiv Integration**: Newsletter signup and automation (Started 2025-11-04)
+- 🔄 **Task 9: Testing**: Unit tests for lib/ utilities completed (115 tests), integration & E2E tests pending
+
+### Completed
+- ✅ **Task 9 (Partial)**: Unit tests for core lib/ utilities (2025-11-04)
+  - 115 tests added for embeddings, normalizers, qdrant, storage, llamaparse
+  - All tests passing with proper mocking and isolation
+
+### Not Started
 - [ ] Task 1: Usage Tracking
 - [ ] Task 2: API Testing
 - [ ] Task 3: React Hooks
@@ -648,11 +693,16 @@ Update this section as tasks are completed:
 - [ ] Task 6: Settings/Support
 - [ ] Task 7: Logging
 - [ ] Task 8: File Validation
-- [ ] Task 9: Testing
 - [ ] Task 10: Env Validation
 - [ ] Task 11: Application Tracking
 - [ ] Task 12: User Profiles
 - [ ] Task 13: Analytics
 - [ ] Task 14: Code Cleanup
 
-**Last Updated**: 2025-09-30
+### Recent Changes (2025-11-04)
+- Added comprehensive test coverage for 5 critical lib/ utilities
+- Beehiiv newsletter integration implementation started
+- Database schema updated with newsletter subscription fields
+- Modified auth webhook to handle newsletter signups
+
+**Last Updated**: 2025-11-04

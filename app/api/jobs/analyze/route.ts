@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, getExistingJobAnalysis, incrementUsage, ensureUserSyncRecord, type Resume } from "@/lib/db"
+import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, getExistingJobAnalysis, incrementUsage, type Resume } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
@@ -70,14 +70,12 @@ export async function POST(request: NextRequest) {
       throw new AppError("Unable to verify user account. Please try again in a moment.", 500)
     }
 
-    // Ensure user is fully synced to users_sync table before creating job analysis
-    await ensureUserSyncRecord({
-      id: user.id,
-      clerkUserId: user.clerk_user_id,
-      email: user.email,
-      name: user.name,
-      subscription_plan: user.subscription_plan,
-      subscription_status: user.subscription_status,
+    // The user is already created and synced by getOrCreateUser
+    // No need to call ensureUserSyncRecord again as it would try to insert with an existing ID
+    console.log('[analyze] User verified:', {
+      user_id: user.id,
+      clerk_user_id: user.clerk_user_id,
+      email: user.email
     })
 
     // Check subscription limits
