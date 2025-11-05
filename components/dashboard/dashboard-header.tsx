@@ -1,6 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,10 +7,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { RefreshCw, Settings, Plus, User } from "lucide-react"
+import { RefreshCw, Settings, User } from "lucide-react"
 import Link from "next/link"
 import { LogoutButton } from "./logout-button"
-import { UploadResumeDialog } from "./upload-resume-dialog"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import type { User as UserType } from "@/lib/db"
 import { UserAvatar } from "./user-avatar"
@@ -35,12 +33,6 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <UploadResumeDialog>
-              <Button className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors">
-                <Plus className="h-4 w-4" />
-                New Generation
-              </Button>
-            </UploadResumeDialog>
             <ThemeSwitcher />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -136,6 +136,7 @@ export default async function DashboardPage({
                   <>
                     <TargetJobsCompactList
                       analyses={paginatedAnalyses}
+                      allAnalyses={allAnalyses}
                       limit={jobsPerPage}
                       defaultResumeId={resumes.find((r) => r.is_primary)?.id || resumes[0]?.id}
                     />

@@ -100,6 +100,12 @@ export async function canPerformAction(action: 'resumeOptimizations' | 'jobAnaly
  */
 export async function getUsageLimits(): Promise<UsageLimits | null> {
   try {
+    const { userId } = await auth()
+    if (!userId) return null
+
+    const user = await getOrCreateUser(userId)
+    if (!user) return null
+
     const subscription = await getCurrentSubscription()
     if (!subscription) return null
 
