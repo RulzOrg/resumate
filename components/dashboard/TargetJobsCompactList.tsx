@@ -198,7 +198,7 @@ export function TargetJobsCompactList({ analyses, allAnalyses, limit = 2, defaul
                 href={createGenerateHref(job.id)}
                 className="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition"
               >
-                Generate
+                Generate New Resume
               </Link>
               <button
                 onClick={() => handleDelete(job.id)}

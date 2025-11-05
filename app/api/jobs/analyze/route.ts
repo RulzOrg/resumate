@@ -26,6 +26,12 @@ const jobAnalysisSchema = z.object({
   keywords: z.array(z.string()).describe("Important keywords and phrases from the job posting"),
   required_skills: z.array(z.string()).describe("Must-have technical and soft skills"),
   preferred_skills: z.array(z.string()).describe("Nice-to-have skills and qualifications"),
+  // NEW: Categorized skills for ATS matching
+  categorized_skills: z.object({
+    hard: z.array(z.string()).describe("Technical skills: programming languages, tools, frameworks, certifications"),
+    soft: z.array(z.string()).describe("Interpersonal skills: communication, leadership, teamwork, problem-solving"),
+    other: z.array(z.string()).describe("Other keywords: methodologies, domain knowledge, industry terms")
+  }).describe("Skills categorized by ATS standards"),
   experience_level: z.union([z.string(), z.null()]).describe(
     "Required experience level (e.g., Entry Level, Mid Level, Senior) or null",
   ),
@@ -149,15 +155,20 @@ export async function POST(request: NextRequest) {
 
 OBJECTIVE
 • Identify exact, copyable keywords/phrases from the posting and normalize them (aliases, acronyms, US/UK spellings) to improve ATS matching.
+• CATEGORIZE all skills into Hard Skills, Soft Skills, or Other Keywords based on ATS standards.
 • Separate REQUIRED vs PREFERRED/NICE-TO-HAVE skills.
 • Convert responsibilities/requirements into crisp, action-oriented bullets that could be reused in a resume (while staying truthful).
 • Capture seniority/experience level, location/work model, benefits, culture signals, and salary (only if explicitly stated).
 
 METHOD
-• Extract n-grams (1–4 words) from headings like “Requirements,” “Responsibilities,” “Qualifications,” and from the job title. Preserve proper nouns (e.g., “PostgreSQL”, “Snowflake”).
+• Extract n-grams (1–4 words) from headings like "Requirements," "Responsibilities," "Qualifications," and from the job title. Preserve proper nouns (e.g., "PostgreSQL", "Snowflake").
 • Normalize skills to canonical names and keep exact phrases separately (e.g., exact: "CI/CD"; canonical: "Continuous Integration/Continuous Delivery"). Include common aliases and acronyms in parentheses in the same string only when useful for ATS (e.g., "JavaScript (JS)").
-• Identify seniority terms (“Junior/Intermediate/Senior/Lead/Manager”), clearance/visa constraints, travel %, shift, and work model (onsite/hybrid/remote).
-• Mark must-have skills based on explicit cues (“required”, “must”, “minimum”) and title/summary emphasis; nice-to-have from “preferred”, “plus”, “bonus”.
+• CATEGORIZATION: Classify each extracted skill/keyword as:
+  - HARD SKILLS: Technical, measurable abilities (programming languages, frameworks, tools, software, certifications, technical methodologies)
+  - SOFT SKILLS: Interpersonal and behavioral traits (communication, leadership, teamwork, problem-solving, time management, adaptability)
+  - OTHER: Domain knowledge, industry terms, methodologies that don't clearly fit hard/soft categories
+• Identify seniority terms ("Junior/Intermediate/Senior/Lead/Manager"), clearance/visa constraints, travel %, shift, and work model (onsite/hybrid/remote).
+• Mark must-have skills based on explicit cues ("required", "must", "minimum") and title/summary emphasis; nice-to-have from "preferred", "plus", "bonus".
 • Keep bullets concise (start with a strong verb), avoid first person, and do not manufacture metrics that are not present.
 • Salary: parse exactly as written; if ranges/period/currency are missing, set fields to null and keep the verbatim phrase.
 
@@ -173,13 +184,17 @@ OUTPUT FIELDS (must match jobAnalysisSchema)
 1) Important keywords that should appear in a resume → return a prioritized array of exact phrases (10–25 items, most critical first). Prefer specificity over broad terms.
 2) Required technical and soft skills → arrays of canonical skill names (no duplicates).
 3) Preferred/nice-to-have skills → arrays of canonical skill names.
-4) Experience level required → a short string (e.g., "Senior (5–7 years)") or null if unspecified.
-5) Salary range (if mentioned) → parse into min, max, currency, and period if present; include the source phrase in a “verbatim” subfield if the schema permits; otherwise nulls.
-6) Location (if mentioned) → include city/region and identify work model (onsite/remote/hybrid) in the string if schema doesn’t have a separate field.
-7) Key job requirements and responsibilities → 6–12 action-oriented bullets phrased so they can be adapted into resume statements; embed high-priority keywords naturally.
-8) Nice-to-have qualifications → 3–8 bullets.
-9) Company culture aspects mentioned → short phrases (e.g., “collaborative”, “fast-paced”, “customer-obsessed”).
-10) Benefits and perks mentioned → short phrases (e.g., “stock options”, “private healthcare”, “L&D budget”).
+4) CATEGORIZED SKILLS → Organize ALL extracted skills/keywords from the job into three categories:
+   - hard: Technical skills found in the job (programming, tools, frameworks, databases, etc.)
+   - soft: Soft skills found in the job (communication, leadership, teamwork, etc.)
+   - other: Other important keywords (methodologies, domain terms, industry knowledge)
+5) Experience level required → a short string (e.g., "Senior (5–7 years)") or null if unspecified.
+6) Salary range (if mentioned) → parse into min, max, currency, and period if present; include the source phrase in a "verbatim" subfield if the schema permits; otherwise nulls.
+7) Location (if mentioned) → include city/region and identify work model (onsite/remote/hybrid) in the string if schema doesn't have a separate field.
+8) Key job requirements and responsibilities → 6–12 action-oriented bullets phrased so they can be adapted into resume statements; embed high-priority keywords naturally.
+9) Nice-to-have qualifications → 3–8 bullets.
+10) Company culture aspects mentioned → short phrases (e.g., "collaborative", "fast-paced", "customer-obsessed").
+11) Benefits and perks mentioned → short phrases (e.g., "stock options", "private healthcare", "L&D budget").
 
 ANALYSIS QUALITY
 • confidence (0–100): based on clarity and redundancy of the posting.

@@ -4,14 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { 
-  Building2, 
-  MapPin, 
-  Clock, 
-  DollarSign, 
-  Users, 
-  Star, 
-  CheckCircle, 
+import {
+  Building2,
+  MapPin,
+  Clock,
+  DollarSign,
+  Users,
+  Star,
+  CheckCircle,
   Target,
   ExternalLink,
   Zap,
@@ -20,13 +20,46 @@ import {
 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import type { JobAnalysis } from "@/lib/db"
+import { useEffect, useState } from "react"
 
 interface JobAnalysisDetailProps {
   analysis: JobAnalysis
 }
 
+interface SkillMatchData {
+  match: {
+    hard: { matched: number; total: number }
+    soft: { matched: number; total: number }
+    other: { matched: number; total: number }
+  }
+  userSkills?: any
+  jobSkills?: any
+}
+
 export function JobAnalysisDetail({ analysis }: JobAnalysisDetailProps) {
   const analysisData = analysis.analysis_result
+  const [skillMatch, setSkillMatch] = useState<SkillMatchData | null>(null)
+  const [loadingMatch, setLoadingMatch] = useState(false)
+
+  // Fetch skill match data
+  useEffect(() => {
+    const fetchSkillMatch = async () => {
+      try {
+        setLoadingMatch(true)
+        const response = await fetch(`/api/skills/match?jobId=${analysis.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setSkillMatch(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch skill match:', error)
+      } finally {
+        setLoadingMatch(false)
+      }
+    }
+
+    fetchSkillMatch()
+  }, [analysis.id])
 
   return (
     <div className="space-y-6">
@@ -150,22 +183,76 @@ export function JobAnalysisDetail({ analysis }: JobAnalysisDetailProps) {
           </Card>
         )}
 
-        {/* Keywords */}
+        {/* Categorized Keywords with Match Ratios */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center text-lg">
               <Target className="w-5 h-5 mr-2 text-accent" />
-              Key Keywords
+              Detected Keywords
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {analysisData.keywords.map((keyword, index) => (
-                <Badge key={index} variant="secondary">
-                  {keyword}
-                </Badge>
-              ))}
-            </div>
+          <CardContent className="space-y-4">
+            {/* If we have categorized skills, show them categorized */}
+            {analysisData.categorized_skills ? (
+              <>
+                {/* Hard Skills */}
+                {analysisData.categorized_skills.hard.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Hard Skills {skillMatch && `(${skillMatch.match.hard.matched}/${skillMatch.match.hard.total})`}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisData.categorized_skills.hard.map((skill, index) => (
+                        <Badge key={`hard-${index}`} variant="default" className="bg-blue-500/10 text-blue-700 border-blue-500/20">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Soft Skills */}
+                {analysisData.categorized_skills.soft.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Soft Skills {skillMatch && `(${skillMatch.match.soft.matched}/${skillMatch.match.soft.total})`}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisData.categorized_skills.soft.map((skill, index) => (
+                        <Badge key={`soft-${index}`} variant="secondary" className="bg-green-500/10 text-green-700 border-green-500/20">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Keywords */}
+                {analysisData.categorized_skills.other.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Others {skillMatch && `(${skillMatch.match.other.matched}/${skillMatch.match.other.total})`}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisData.categorized_skills.other.map((skill, index) => (
+                        <Badge key={`other-${index}`} variant="outline">
+                          {skill}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Fallback: Show keywords as before if no categorization */
+              <div className="flex flex-wrap gap-2">
+                {analysisData.keywords.map((keyword, index) => (
+                  <Badge key={index} variant="secondary">
+                    {keyword}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 

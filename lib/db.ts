@@ -196,6 +196,12 @@ export interface JobAnalysis {
       completeness: number
       content_processed: boolean
     }
+    // Categorized skills for ATS matching
+    categorized_skills?: {
+      hard: string[]
+      soft: string[]
+      other: string[]
+    }
   }
   keywords: string[]
   required_skills: string[]
@@ -251,6 +257,12 @@ export interface UserProfile {
   job_title?: string
   experience_level?: string
   skills: string[]
+  // Categorized skills for ATS matching
+  categorized_skills?: {
+    hard: string[]
+    soft: string[]
+    other: string[]
+  }
   preferences: Record<string, any>
   created_at: string
   updated_at: string

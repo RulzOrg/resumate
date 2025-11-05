@@ -124,7 +124,7 @@ export default async function DashboardPage({
                   <AnalyzeJobDialog existingAnalyses={jobAnalyses}>
                     <Button className="mt-4 sm:mt-0 inline-flex items-center gap-2 text-sm font-medium text-foreground dark:text-white bg-surface-muted dark:bg-white/10 rounded-full py-2 px-4 hover:bg-surface-strong dark:hover:bg-white/20 transition-colors self-start sm:self-center">
                       <Plus className="h-4 w-4" />
-                      Add Job
+                      Add Job Description
                     </Button>
                   </AnalyzeJobDialog>
                 </div>

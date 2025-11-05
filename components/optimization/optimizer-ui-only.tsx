@@ -56,6 +56,7 @@ import {
 import { toast } from "sonner"
 import { scoreFit, rephraseBullet } from "@/lib/api"
 import type { EvidencePoint, ScoreBreakdown } from "@/lib/match"
+import type { CategorizedSkills } from "@/lib/skills/categorizer"
 import { ResumeEditorV2 } from "./resume-editor-v2"
 
 type Step = 1 | 2 | 3 | 4
@@ -196,8 +197,17 @@ export default function OptimizerUiOnly({
   const [selectedJobTitle, setSelectedJobTitle] = useState<string>(resolvedInitialJob?.jobTitle ?? "Target Role")
   const [selectedCompany, setSelectedCompany] = useState<string>(resolvedInitialJob?.companyName ?? "Company")
 
+  // Categorized skills state
+  const [categorizedSkills, setCategorizedSkills] = useState<CategorizedSkills | null>(null)
+  const [skillMatch, setSkillMatch] = useState<{
+    hard: { matched: number; total: number }
+    soft: { matched: number; total: number }
+    other: { matched: number; total: number }
+  } | null>(null)
+
   // Async states
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [hasAnalyzedInSession, setHasAnalyzedInSession] = useState(false)
   const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [optimizeError, setOptimizeError] = useState<string | null>(null)
@@ -320,14 +330,34 @@ export default function OptimizerUiOnly({
     [selectedResume, resolvedResumes]
   )
 
-  const reanalyze = () => setKeywords(extractKeywords(jobDesc))
+  const reanalyze = () => {
+    setKeywords(extractKeywords(jobDesc))
+    setCategorizedSkills(null)
+    setSkillMatch(null)
+  }
   const replaceJD = () => {
     setJobDesc("")
     setKeywords([])
+    setCategorizedSkills(null)
+    setSkillMatch(null)
+    setHasAnalyzedInSession(false) // Reset analysis flag when replacing job description
   }
 
   const removeKeyword = (keywordToRemove: string) => {
+    // Update flat keywords array
     setKeywords(prev => prev.filter(k => k !== keywordToRemove))
+
+    // Update categorized skills if they exist
+    if (categorizedSkills) {
+      setCategorizedSkills(prev => {
+        if (!prev) return null
+        return {
+          hard: prev.hard.filter(s => s !== keywordToRemove),
+          soft: prev.soft.filter(s => s !== keywordToRemove),
+          other: prev.other.filter(s => s !== keywordToRemove)
+        }
+      })
+    }
   }
 
   const populateEmphasisFromJD = () => setConfig((c) => ({ ...c, emphasize: extractKeywords(jobDesc) }))
@@ -367,8 +397,23 @@ export default function OptimizerUiOnly({
       const bens = result?.benefits || []
       const loc = result?.location || analysis?.location || jobLocation
       const senior = result?.experience_level || result?.seniority || analysis?.experienceLevel || jobSeniority
+
+      // Extract categorized skills if available
+      const categorized = result?.categorized_skills
+      if (categorized && categorized.hard && categorized.soft && categorized.other) {
+        setCategorizedSkills(categorized)
+        // Also populate flat arrays for backward compatibility
+        const allSkills = [...categorized.hard, ...categorized.soft, ...categorized.other]
+        if (allSkills.length > 0) {
+          setKeywords(allSkills)
+        }
+      } else if (Array.isArray(aiKeywords) && aiKeywords.length) {
+        // Fallback to regular keywords if no categorization
+        setKeywords(aiKeywords)
+        setCategorizedSkills(null)
+      }
+
       setSelectedJobId(analysis?.id || null)
-      if (Array.isArray(aiKeywords) && aiKeywords.length) setKeywords(aiKeywords)
       setReqSkills(Array.isArray(must) ? must : [])
       setPrefSkills(Array.isArray(nice) ? nice : [])
       setKeyReqs(Array.isArray(reqs) ? reqs : [])
@@ -379,10 +424,24 @@ export default function OptimizerUiOnly({
       // Update title/company from analysis if present
       if (analysis?.job_title) setSelectedJobTitle(analysis.job_title)
       if (analysis?.company_name) setSelectedCompany(analysis.company_name)
+
+      // Fetch skill match ratios if we have a job ID and categorized skills
+      if (analysis?.id && categorized) {
+        try {
+          const matchRes = await fetch(`/api/skills/match?jobId=${analysis.id}`)
+          if (matchRes.ok) {
+            const matchData = await matchRes.json()
+            setSkillMatch(matchData.match)
+          }
+        } catch (e) {
+          console.log('Could not fetch skill match ratios:', e)
+        }
+      }
       if (!Number.isNaN(remaining) && remaining <= 2) {
         toast.warning(`Approaching rate limit — ${remaining} request${remaining === 1 ? '' : 's'} left`)
       }
       toast.success('Job analyzed')
+      setHasAnalyzedInSession(true) // Mark as analyzed in this session
     } catch (e: any) {
       setAnalyzeError(e?.message || 'Analysis failed')
       toast.error(e?.message || 'Analysis failed')
@@ -679,10 +738,94 @@ export default function OptimizerUiOnly({
                   onChange={(e) => setJobDesc(e.target.value)}
                   disabled={isAnalyzing}
                 />
-                <div className="border-t border-border dark:border-white/10 p-3 flex items-center justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
+                <div className="border-t border-border dark:border-white/10 p-3">
+                  <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-foreground/50 dark:text-white/50">Detected keywords:</span>
-                    <div className="flex flex-wrap gap-2">
+                    <button
+                      className="inline-flex items-center gap-2 text-xs font-medium text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white"
+                      onClick={reanalyze}
+                    >
+                      <RefreshCcw className="h-4 w-4" />
+                      Reanalyze
+                    </button>
+                  </div>
+                  {categorizedSkills ? (
+                    <div className="space-y-3">
+                      {/* Hard Skills */}
+                      {categorizedSkills.hard.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium text-foreground/60 dark:text-white/60 mb-1.5">
+                            Hard Skills {skillMatch && `(${skillMatch.hard.matched}/${skillMatch.hard.total})`}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {categorizedSkills.hard.map((skill) => (
+                              <span key={`hard-${skill}`} className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 border border-blue-500/20 dark:border-blue-500/30 px-2.5 py-1 text-xs">
+                                {skill.replace(/^\w/, (c) => c.toUpperCase())}
+                                <button
+                                  onClick={() => removeKeyword(skill)}
+                                  className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                  title={`Remove "${skill}"`}
+                                  disabled={isAnalyzing}
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Soft Skills */}
+                      {categorizedSkills.soft.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium text-foreground/60 dark:text-white/60 mb-1.5">
+                            Soft Skills {skillMatch && `(${skillMatch.soft.matched}/${skillMatch.soft.total})`}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {categorizedSkills.soft.map((skill) => (
+                              <span key={`soft-${skill}`} className="inline-flex items-center gap-1.5 rounded-full bg-green-500/10 dark:bg-green-500/20 text-green-700 dark:text-green-400 border border-green-500/20 dark:border-green-500/30 px-2.5 py-1 text-xs">
+                                {skill.replace(/^\w/, (c) => c.toUpperCase())}
+                                <button
+                                  onClick={() => removeKeyword(skill)}
+                                  className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                  title={`Remove "${skill}"`}
+                                  disabled={isAnalyzing}
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Other Keywords */}
+                      {categorizedSkills.other.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium text-foreground/60 dark:text-white/60 mb-1.5">
+                            Others {skillMatch && `(${skillMatch.other.matched}/${skillMatch.other.total})`}
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {categorizedSkills.other.map((skill) => (
+                              <span key={`other-${skill}`} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
+                                {skill.replace(/^\w/, (c) => c.toUpperCase())}
+                                <button
+                                  onClick={() => removeKeyword(skill)}
+                                  className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                  title={`Remove "${skill}"`}
+                                  disabled={isAnalyzing}
+                                >
+                                  <X className="h-2.5 w-2.5" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : keywords.length > 0 ? (
+                    // Fallback to regular keywords if no categorization
+                    <div className="flex flex-wrap gap-1.5">
                       {keywords.map((k) => (
                         <span key={k} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
                           {k.replace(/^\w/, (c) => c.toUpperCase())}
@@ -697,14 +840,11 @@ export default function OptimizerUiOnly({
                         </span>
                       ))}
                     </div>
-                  </div>
-                  <button
-                    className="inline-flex items-center gap-2 text-xs font-medium text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white"
-                    onClick={reanalyze}
-                  >
-                    <RefreshCcw className="h-4 w-4" />
-                    Reanalyze
-                  </button>
+                  ) : (
+                    <div className="text-xs text-foreground/50 dark:text-white/50">
+                      Click "Analyze with AI" to extract keywords
+                    </div>
+                  )}
                 </div>
               </div>
               {analyzeError && (
@@ -717,9 +857,20 @@ export default function OptimizerUiOnly({
                 <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
                 Ready to optimize
               </div>
-              <div className="flex items-center gap-2">
+              {hasAnalyzedInSession && !isAnalyzing ? (
                 <button
-                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground dark:text-white bg-surface-muted dark:bg-white/10 rounded-full py-2 px-4 hover:bg-surface-strong dark:hover:bg-white/20 transition-colors disabled:opacity-60"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors"
+                  onClick={() => {
+                    setStep(2)
+                  }}
+                  title="Continue to next step"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  Continue
+                </button>
+              ) : (
+                <button
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60 disabled:bg-white/20 disabled:text-white/40"
                   onClick={handleAnalyzeWithAI}
                   disabled={isAnalyzing}
                   title="Analyze this job with AI to extract keywords and skills"
@@ -727,18 +878,7 @@ export default function OptimizerUiOnly({
                   <Sparkles className="h-4 w-4" />
                   {isAnalyzing ? 'Analyzing…' : 'Analyze with AI'}
                 </button>
-                <button
-                  className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors disabled:opacity-60 disabled:bg-white/20 disabled:text-white/40"
-                  onClick={() => {
-                    setStep(2)
-                  }}
-                  disabled={isAnalyzing}
-                  title={isAnalyzing ? "Please wait for AI analysis to complete" : "Continue to next step"}
-                >
-                  <Wand2 className="h-4 w-4" />
-                  {isAnalyzing ? "Please wait..." : "Continue"}
-                </button>
-              </div>
+              )}
             </div>
           </div>
 

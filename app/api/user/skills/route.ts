@@ -39,10 +39,33 @@ export async function GET(request: NextRequest) {
 
     // 1. Check if skills already cached in user_profile
     const profile = await getUserProfile(userId)
+
+    // Check for categorized skills first (new format)
+    if (profile?.categorized_skills) {
+      const totalCount =
+        profile.categorized_skills.hard.length +
+        profile.categorized_skills.soft.length +
+        profile.categorized_skills.other.length
+
+      console.log('Returning cached categorized skills:', {
+        hard: profile.categorized_skills.hard.length,
+        soft: profile.categorized_skills.soft.length,
+        other: profile.categorized_skills.other.length
+      })
+
+      return NextResponse.json({
+        skills: profile.skills || [], // backward compatibility
+        categorized_skills: profile.categorized_skills,
+        source: "cached",
+        count: totalCount
+      })
+    }
+
+    // Backward compatibility: check old skills array
     if (profile?.skills && profile.skills.length > 0) {
-      console.log('Returning cached skills:', { count: profile.skills.length })
-      return NextResponse.json({ 
-        skills: profile.skills, 
+      console.log('Returning cached skills (legacy):', { count: profile.skills.length })
+      return NextResponse.json({
+        skills: profile.skills,
         source: "cached",
         count: profile.skills.length
       })
@@ -114,21 +137,49 @@ ${masterResume.content_text.slice(0, 8000)}
 IMPORTANT: Be exhaustive. Extract every identifiable skill, tool, technology, or expertise area.`,
     })
 
+    // Process and categorize skills
+    const categorized_skills = {
+      hard: [...new Set(object.technical_skills.concat(object.tools))]
+        .map(s => s.trim())
+        .filter(Boolean),
+      soft: [...new Set(object.soft_skills)]
+        .map(s => s.trim())
+        .filter(Boolean),
+      other: [...new Set(object.domain_expertise)]
+        .map(s => s.trim())
+        .filter(Boolean)
+    }
+
+    // Also create flat list for backward compatibility
     const skills = [...new Set(object.all_skills)]
       .map(s => s.toLowerCase().trim())
       .filter(Boolean)
 
-    console.log('AI extracted skills:', { count: skills.length, sample: skills.slice(0, 10) })
+    const totalCount =
+      categorized_skills.hard.length +
+      categorized_skills.soft.length +
+      categorized_skills.other.length
 
-    // 5. Cache in user profile
+    console.log('AI extracted categorized skills:', {
+      hard: categorized_skills.hard.length,
+      soft: categorized_skills.soft.length,
+      other: categorized_skills.other.length,
+      total: totalCount
+    })
+
+    // 5. Cache in user profile with both formats
     if (skills.length > 0) {
-      await updateUserProfile(userId, { skills })
+      await updateUserProfile(userId, {
+        skills, // backward compatibility
+        categorized_skills
+      })
     }
 
-    return NextResponse.json({ 
-      skills, 
+    return NextResponse.json({
+      skills, // backward compatibility
+      categorized_skills,
       source: "ai_extracted",
-      count: skills.length
+      count: totalCount
     })
   } catch (error) {
     console.error('Error in GET /api/user/skills:', error)
