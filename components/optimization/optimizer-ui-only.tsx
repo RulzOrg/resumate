@@ -168,8 +168,8 @@ export default function OptimizerUiOnly({
 }: OptimizerUiOnlyProps) {
   const [mounted, setMounted] = useState(false)
 
-  const resolvedResumes = resumes || []
-  const resolvedJobs = jobOptions || []
+  const resolvedResumes = useMemo(() => resumes || [], [resumes])
+  const resolvedJobs = useMemo(() => jobOptions || [], [jobOptions])
 
   const resolvedInitialResume =
     initialResume || resolvedResumes.find((r) => r.isPrimary) || resolvedResumes[0] || null
@@ -272,8 +272,10 @@ export default function OptimizerUiOnly({
 
   useEffect(() => {
     setMounted(true)
-    setKeywords(extractKeywords(jobDesc))
-  }, [])
+    if (jobDesc) {
+      setKeywords(extractKeywords(jobDesc))
+    }
+  }, [jobDesc])
 
   // Real-time keyword extraction as user types (debounced)
   useEffect(() => {

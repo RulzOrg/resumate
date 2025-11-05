@@ -1,46 +1,33 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getOrCreateUser } from "@/lib/db"
-import { getStripe, isStripeConfigured } from "@/lib/stripe"
-import { getBillingProvider } from "@/lib/billing/config"
-import { createPolarPortalSession } from "@/lib/billing/polar"
+import { createPortalSession } from "@/lib/billing/polar"
+import { handleApiError } from "@/lib/error-handler"
 
 export async function POST(request: NextRequest) {
   try {
-    const provider = getBillingProvider()
     const { userId } = await auth()
-
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const user = await getOrCreateUser()
-
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
-
-    if (provider === 'polar') {
-      // For Polar, use a hosted portal URL (env) until we implement server-side
-      return await createPolarPortalSession({ returnUrl: `${appUrl}/dashboard`, clerkUserId: userId })
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    if (!isStripeConfigured()) {
-      return NextResponse.json({ error: "Billing not configured" }, { status: 503 })
-    }
+    const { returnUrl } = await request.json()
+    const fullReturnUrl = returnUrl || `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard/settings`
 
-    if (!user?.stripe_customer_id) {
-      return NextResponse.json({ error: "No subscription found" }, { status: 404 })
-    }
+    // Create Polar customer portal session
+    const { url } = await createPortalSession(userId, fullReturnUrl)
 
-    // Create Stripe customer portal session
-    const stripe = getStripe()
-    const session = await stripe.billingPortal.sessions.create({
-      customer: user.stripe_customer_id,
-      return_url: `${appUrl}/dashboard`,
-    })
-
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ url })
   } catch (error) {
-    console.error("Error creating portal session:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const errorInfo = handleApiError(error)
+    return NextResponse.json(
+      { error: errorInfo.error, code: errorInfo.code },
+      { status: errorInfo.statusCode }
+    )
   }
 }

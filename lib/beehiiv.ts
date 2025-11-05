@@ -11,7 +11,7 @@
 const BEEHIIV_API_KEY = process.env.BEEHIIV_API_KEY
 const BEEHIIV_PUBLICATION_ID = process.env.BEEHIIV_PUBLICATION_ID
 const BEEHIIV_API_URL = 'https://api.beehiiv.com/v2'
-const BEEHIIV_ENABLED = process.env.BEEHIIV_ENABLED !== 'false' // Default to enabled if not explicitly disabled
+const BEEHIIV_ENABLED = process.env.BEEHIIV_ENABLED === 'true'
 
 interface BeehiivSubscriber {
   email: string
@@ -27,7 +27,7 @@ interface BeehiivSubscriber {
   }>
 }
 
-interface BeehiivResponseData {
+interface BeehiivResponse {
   data: {
     id: string
     email: string
@@ -36,15 +36,10 @@ interface BeehiivResponseData {
   }
 }
 
-interface BeehiivResponse {
+interface BeehiivResult {
   success: boolean
   subscriberId?: string
   error?: string
-  data?: {
-    id: string
-    email: string
-    status: string
-  }
 }
 
 /**
@@ -89,12 +84,10 @@ export async function subscribeToBeehiiv(
   options: {
     name?: string
     source?: string
-    campaign?: string
-    medium?: string
     sendWelcome?: boolean
     customFields?: Record<string, string>
   } = {}
-): Promise<BeehiivResponse> {
+): Promise<BeehiivResult> {
   // Check if Beehiiv is enabled
   if (!BEEHIIV_ENABLED) {
     console.log('[BEEHIIV] Integration disabled via BEEHIIV_ENABLED flag')
@@ -103,7 +96,7 @@ export async function subscribeToBeehiiv(
 
   // Check if API credentials are configured
   if (!BEEHIIV_API_KEY || !BEEHIIV_PUBLICATION_ID) {
-    console.warn('[BEEHIIV] Missing API credentials', {
+    console.error('[BEEHIIV] Missing API credentials', {
       has_api_key: Boolean(BEEHIIV_API_KEY),
       has_publication_id: Boolean(BEEHIIV_PUBLICATION_ID),
     })
@@ -130,8 +123,8 @@ export async function subscribeToBeehiiv(
       reactivate_existing: false,
       send_welcome_email: options.sendWelcome ?? true,
       utm_source: options.source || 'app_signup',
-      utm_campaign: options.campaign || 'new_user_welcome',
-      utm_medium: options.medium || 'email',
+      utm_campaign: 'new_user_welcome',
+      utm_medium: 'email',
     }
 
     // Only add custom fields if there are any
@@ -168,23 +161,18 @@ export async function subscribeToBeehiiv(
     }
 
     // Parse successful response
-    const responseData: BeehiivResponseData = await response.json()
+    const data: BeehiivResponse = await response.json()
 
     console.log('[BEEHIIV] User subscribed successfully:', {
       email: redactEmail(email),
-      subscriber_id: responseData.data.id,
-      status: responseData.data.status,
+      subscriber_id: data.data.id,
+      status: data.data.status,
       timestamp: new Date().toISOString(),
     })
 
     return {
       success: true,
-      subscriberId: responseData.data.id,
-      data: {
-        id: responseData.data.id,
-        email: responseData.data.email,
-        status: responseData.data.status,
-      }
+      subscriberId: data.data.id,
     }
   } catch (error: any) {
     console.error('[BEEHIIV] Unexpected error during subscription:', {
@@ -198,31 +186,6 @@ export async function subscribeToBeehiiv(
       error: error.message || 'Unknown error'
     }
   }
-}
-
-/**
- * Add a subscriber to Beehiiv publication (legacy compatibility wrapper)
- * This function maintains backward compatibility with existing code
- * @param email - Subscriber email address
- * @param metadata - Additional metadata for subscriber
- * @returns Promise with success status
- */
-export async function addBeehiivSubscriber(
-  email: string,
-  metadata?: {
-    utmSource?: string;
-    utmCampaign?: string;
-    utmMedium?: string;
-    customFields?: Record<string, string>;
-  }
-): Promise<BeehiivResponse> {
-  return subscribeToBeehiiv(email, {
-    source: metadata?.utmSource || 'resume-builder',
-    campaign: metadata?.utmCampaign || 'lead-magnet',
-    medium: metadata?.utmMedium || 'web',
-    customFields: metadata?.customFields,
-    sendWelcome: true,
-  })
 }
 
 /**
@@ -241,13 +204,12 @@ export async function addBeehiivSubscriber(
  */
 export async function unsubscribeFromBeehiiv(
   email: string
-): Promise<BeehiivResponse> {
+): Promise<BeehiivResult> {
   if (!BEEHIIV_ENABLED) {
     return { success: false, error: 'Beehiiv integration disabled' }
   }
 
   if (!BEEHIIV_API_KEY || !BEEHIIV_PUBLICATION_ID) {
-    console.warn('[BEEHIIV] API key or publication ID not configured')
     return { success: false, error: 'Beehiiv not configured' }
   }
 
@@ -294,18 +256,6 @@ export async function unsubscribeFromBeehiiv(
 }
 
 /**
- * Remove Beehiiv subscriber (legacy compatibility wrapper)
- * This function maintains backward compatibility with existing code
- * @param email - Subscriber email address
- * @returns Promise with success status
- */
-export async function removeBeehiivSubscriber(
-  email: string
-): Promise<BeehiivResponse> {
-  return unsubscribeFromBeehiiv(email)
-}
-
-/**
  * Update subscriber custom fields in Beehiiv
  * Use this to track user milestones, subscription status changes, etc.
  *
@@ -325,7 +275,7 @@ export async function removeBeehiivSubscriber(
 export async function updateBeehiivSubscriber(
   email: string,
   customFields: Record<string, string>
-): Promise<BeehiivResponse> {
+): Promise<BeehiivResult> {
   if (!BEEHIIV_ENABLED) {
     return { success: false, error: 'Beehiiv integration disabled' }
   }

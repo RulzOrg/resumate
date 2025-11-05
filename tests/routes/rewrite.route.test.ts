@@ -10,7 +10,19 @@ vi.mock('@/lib/db', async () => ({
   ensureUserSyncRecord: vi.fn(async () => ({})),
 }))
 vi.mock('@/lib/qdrant', async () => ({
-  qdrant: { retrieve: vi.fn(async () => ([{ id: 'u1:e1', payload: { userId: 'u1', evidence_id: 'e1', text: 'Delivered X' } }])) },
+  qdrant: {
+    retrieve: vi.fn(async () => ([{ id: 'u1:e1', payload: { userId: 'u1', evidence_id: 'e1', text: 'Delivered X' } }])),
+    scroll: vi.fn(async () => ({
+      points: [{
+        id: 'u1:e1',
+        payload: {
+          userId: 'u1',
+          evidence_id: 'e1',
+          text: 'Delivered X - Successfully delivered critical project resulting in 40% efficiency improvement'
+        }
+      }]
+    }))
+  },
   QDRANT_COLLECTION: 'resume_bullets'
 }))
 vi.mock('@/lib/error-handler', async (orig) => ({

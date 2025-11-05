@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, getExistingJobAnalysis, type Resume } from "@/lib/db"
+import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, getExistingJobAnalysis, incrementUsage, type Resume } from "@/lib/db"
+import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
@@ -67,6 +68,20 @@ export async function POST(request: NextRequest) {
     if (!user) {
       console.error('[analyze] Failed to get or create user')
       throw new AppError("Unable to verify user account. Please try again in a moment.", 500)
+    }
+
+    // The user is already created and synced by getOrCreateUser
+    // No need to call ensureUserSyncRecord again as it would try to insert with an existing ID
+    console.log('[analyze] User verified:', {
+      user_id: user.id,
+      clerk_user_id: user.clerk_user_id,
+      email: user.email
+    })
+
+    // Check subscription limits
+    const canAnalyze = await canPerformAction('jobAnalyses')
+    if (!canAnalyze) {
+      throw new AppError("You've reached your monthly limit for job analyses. Please upgrade your plan to continue.", 403)
     }
 
     const { job_title, company_name, job_url, job_description } = await request.json()
@@ -221,10 +236,13 @@ CONSTRAINTS
           location: analysis.location ?? undefined,
         },
       })
-      
-      console.log('Job analysis saved successfully:', { 
+
+      // Increment usage tracking for successful job analysis
+      await incrementUsage(user.id, 'job_analysis', user.subscription_plan || 'free')
+
+      console.log('Job analysis saved successfully:', {
         analysis_id: jobAnalysis.id,
-        user_id: jobAnalysis.user_id 
+        user_id: jobAnalysis.user_id
       })
     } catch (error: any) {
       console.error('Failed to create job analysis:', {

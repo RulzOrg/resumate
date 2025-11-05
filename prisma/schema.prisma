@@ -24,6 +24,7 @@ model UserSync {
   deletedAt              DateTime? @map("deleted_at")
 
   resumes         Resume[]
+  resumeVersions  ResumeVersion[]
   jobAnalyses     JobAnalysis[]
   jobApplications JobApplication[]
 

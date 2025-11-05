@@ -373,17 +373,53 @@ export async function getUserByClerkId(clerkUserId: string) {
 
 export async function getUserById(id: string) {
   const [user] = await sql`
-    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan, 
-           subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
+           subscription_period_end, stripe_customer_id, stripe_subscription_id,
+           onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE id = ${id} AND deleted_at IS NULL
   `
   return user as User | undefined
 }
 
+export async function updateUser(id: string, data: Partial<any>) {
+  const validFields = [
+    'email', 'name'
+  ]
+
+  const updates: string[] = []
+  const values: any[] = []
+  let paramIndex = 1
+
+  for (const [key, value] of Object.entries(data)) {
+    if (validFields.includes(key) && value !== undefined) {
+      updates.push(`${key} = $${paramIndex}`)
+      values.push(value)
+      paramIndex++
+    }
+  }
+
+  if (updates.length === 0) {
+    return null
+  }
+
+  updates.push(`updated_at = NOW()`)
+  values.push(id) // For WHERE clause
+
+  const query = `
+    UPDATE users_sync
+    SET ${updates.join(', ')}
+    WHERE id = $${paramIndex} AND deleted_at IS NULL
+    RETURNING *
+  `
+
+  const result = await sql.unsafe(query, values)
+  return result[0] as User | undefined
+}
+
 export async function updateUserFromClerk(clerkUserId: string, data: { email?: string; name?: string }) {
   const [user] = await sql`
-    UPDATE users_sync 
+    UPDATE users_sync
     SET email = COALESCE(${data.email}, email),
         name = COALESCE(${data.name}, name),
         updated_at = NOW()
@@ -943,10 +979,37 @@ export async function createJobAnalysisWithVerification(data: {
   })
 
   try {
-    // Step 1: Verify user exists in database
-    const user = await getUserById(data.user_id)
+    // Step 1: Verify user exists in database with retry logic
+    let user = await getUserById(data.user_id)
+    
+    // If user not found, try to ensure they exist via ensureUserSyncRecord
     if (!user) {
-      console.error('User not found for job analysis creation:', { user_id: data.user_id })
+      console.warn('User not found on first lookup, attempting to ensure user sync:', { user_id: data.user_id })
+      
+      try {
+        // Try to get user by their original ID to find clerk_user_id
+        const userRecord = await sql`SELECT * FROM users_sync WHERE id = ${data.user_id} LIMIT 1`
+        if (userRecord && userRecord.length > 0) {
+          user = userRecord[0] as User
+        } else {
+          // Last resort: ensure the user record exists
+          await ensureUserSyncRecord({
+            id: data.user_id,
+          })
+          
+          // Wait a moment for the transaction to commit
+          await new Promise(resolve => setTimeout(resolve, 100))
+          
+          // Try one more time
+          user = await getUserById(data.user_id)
+        }
+      } catch (syncError: any) {
+        console.error('Failed to sync user record:', { error: syncError.message, user_id: data.user_id })
+      }
+    }
+    
+    if (!user) {
+      console.error('User not found for job analysis creation after retries:', { user_id: data.user_id })
       throw new Error(`User not found with ID: ${data.user_id}. Cannot create job analysis.`)
     }
 
@@ -1683,4 +1746,190 @@ function extractPrimaryEmail(clerkUser: any): string {
   }
 
   return clerkUser.email_address || clerkUser.email || ""
+}
+
+// ==================== USAGE TRACKING FUNCTIONS ====================
+
+export type FeatureType = 'resume_optimization' | 'job_analysis' | 'resume_version'
+
+export interface UsageTracking {
+  id: string
+  user_id: string
+  feature_type: FeatureType
+  usage_count: number
+  period_start: Date
+  period_end: Date
+  subscription_plan: string | null
+  created_at: Date
+  updated_at: Date
+}
+
+/**
+ * Get or create usage tracking record for a user and feature in the current period
+ */
+export async function getOrCreateUsageTracking(
+  userId: string,
+  featureType: FeatureType,
+  subscriptionPlan: string = 'free'
+): Promise<UsageTracking> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1) // First day of current month
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999) // Last day of current month
+
+  const result = await sql`
+    INSERT INTO usage_tracking (
+      user_id, feature_type, usage_count, period_start, period_end, subscription_plan
+    ) VALUES (
+      ${userId}, ${featureType}, 0, ${periodStart}, ${periodEnd}, ${subscriptionPlan}
+    )
+    ON CONFLICT (user_id, feature_type, period_start, period_end)
+    DO UPDATE SET updated_at = NOW()
+    RETURNING *
+  `
+
+  return result[0]
+}
+
+/**
+ * Get current usage for a user and feature in the current period
+ */
+export async function getCurrentUsage(
+  userId: string,
+  featureType: FeatureType
+): Promise<number> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  const result = await sql`
+    SELECT usage_count
+    FROM usage_tracking
+    WHERE user_id = ${userId}
+      AND feature_type = ${featureType}
+      AND period_start <= ${now}
+      AND period_end >= ${now}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+
+  return result.length > 0 ? result[0].usage_count : 0
+}
+
+/**
+ * Get all usage for a user in the current period
+ */
+export async function getAllCurrentUsage(userId: string): Promise<{
+  resumeOptimizations: number
+  jobAnalyses: number
+  resumeVersions: number
+}> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  const result = await sql`
+    SELECT feature_type, usage_count
+    FROM usage_tracking
+    WHERE user_id = ${userId}
+      AND period_start <= ${now}
+      AND period_end >= ${now}
+  `
+
+  const usage = {
+    resumeOptimizations: 0,
+    jobAnalyses: 0,
+    resumeVersions: 0
+  }
+
+  for (const row of result) {
+    switch (row.feature_type) {
+      case 'resume_optimization':
+        usage.resumeOptimizations = row.usage_count
+        break
+      case 'job_analysis':
+        usage.jobAnalyses = row.usage_count
+        break
+      case 'resume_version':
+        usage.resumeVersions = row.usage_count
+        break
+    }
+  }
+
+  return usage
+}
+
+/**
+ * Increment usage for a user and feature
+ */
+export async function incrementUsage(
+  userId: string,
+  featureType: FeatureType,
+  subscriptionPlan: string = 'free'
+): Promise<number> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  // First ensure the record exists
+  await getOrCreateUsageTracking(userId, featureType, subscriptionPlan)
+
+  // Then increment the count
+  const result = await sql`
+    UPDATE usage_tracking
+    SET usage_count = usage_count + 1,
+        updated_at = NOW()
+    WHERE user_id = ${userId}
+      AND feature_type = ${featureType}
+      AND period_start <= ${now}
+      AND period_end >= ${now}
+    RETURNING usage_count
+  `
+
+  return result.length > 0 ? result[0].usage_count : 1
+}
+
+/**
+ * Reset usage for a user (used when subscription is upgraded/renewed)
+ */
+export async function resetUsage(
+  userId: string,
+  featureType?: FeatureType
+): Promise<void> {
+  const now = new Date()
+  const periodStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const periodEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
+
+  if (featureType) {
+    await sql`
+      UPDATE usage_tracking
+      SET usage_count = 0,
+          updated_at = NOW()
+      WHERE user_id = ${userId}
+        AND feature_type = ${featureType}
+        AND period_start <= ${now}
+        AND period_end >= ${now}
+    `
+  } else {
+    // Reset all features
+    await sql`
+      UPDATE usage_tracking
+      SET usage_count = 0,
+          updated_at = NOW()
+      WHERE user_id = ${userId}
+        AND period_start <= ${now}
+        AND period_end >= ${now}
+    `
+  }
+}
+
+/**
+ * Check if user has exceeded their usage limit for a feature
+ */
+export async function hasExceededUsageLimit(
+  userId: string,
+  featureType: FeatureType,
+  limit: number
+): Promise<boolean> {
+  const currentUsage = await getCurrentUsage(userId, featureType)
+  return currentUsage >= limit
 }

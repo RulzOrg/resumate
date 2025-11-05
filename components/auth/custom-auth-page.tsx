@@ -28,6 +28,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   const [signUpName, setSignUpName] = useState("")
   const [signUpEmail, setSignUpEmail] = useState("")
   const [signUpPassword, setSignUpPassword] = useState("")
+  const [newsletterConsent, setNewsletterConsent] = useState(false)
   const [signUpError, setSignUpError] = useState<string | null>(null)
   const [isSigningUp, setIsSigningUp] = useState(false)
   const [isVerifying, setIsVerifying] = useState(false)
@@ -42,6 +43,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     setSignUpName("")
     setSignUpEmail("")
     setSignUpPassword("")
+    setNewsletterConsent(false)
     setSignUpError(null)
     setIsSigningUp(false)
     setIsVerifying(false)
@@ -125,6 +127,9 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
         password: signUpPassword,
         firstName,
         lastName,
+        unsafeMetadata: {
+          newsletter_consent: newsletterConsent,
+        },
       })
 
       if (result.status === "complete" && result.createdSessionId) {
@@ -428,6 +433,19 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         onChange={event => setSignUpPassword(event.target.value)}
                         className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
                       />
+                    </div>
+
+                    <div className="flex items-start space-x-2">
+                      <input
+                        id="newsletter-consent"
+                        type="checkbox"
+                        checked={newsletterConsent}
+                        onChange={event => setNewsletterConsent(event.target.checked)}
+                        className="mt-0.5 h-4 w-4 rounded border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+                      />
+                      <label htmlFor="newsletter-consent" className="text-sm text-foreground/70 dark:text-white/70 cursor-pointer">
+                        I want to receive resume tips, job search advice, and product updates
+                      </label>
                     </div>
 
                     {signUpError && (
