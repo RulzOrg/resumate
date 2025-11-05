@@ -61,14 +61,15 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     currentDraftId: string | null
     availableDrafts: any[]
     showDraftSelector: boolean
-  }>({ 
-    enabled: true, 
-    saving: false, 
-    lastSaved: null, 
+  }>({
+    enabled: true,
+    saving: false,
+    lastSaved: null,
     currentDraftId: null,
     availableDrafts: [],
     showDraftSelector: false
   })
+  const [lastSubmitTime, setLastSubmitTime] = useState(0)
 
   const router = useRouter()
 
@@ -516,8 +517,25 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
       return
     }
 
+    // Prevent double-clicks and multiple submissions
+    if (isAnalyzing) {
+      console.log('Analysis already in progress, ignoring duplicate submission')
+      return
+    }
+
+    // Debounce check: Prevent rapid successive submissions (within 2 seconds)
+    const now = Date.now()
+    if (now - lastSubmitTime < 2000) {
+      console.log('Too rapid submission, ignoring to prevent duplicates')
+      return
+    }
+    setLastSubmitTime(now)
+
     setIsAnalyzing(true)
     setError("")
+
+    // Generate idempotency key for this submission to prevent duplicates
+    const idempotencyKey = `job-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 
     const deriveTitle = () => {
       if (jobTitle.trim()) {
@@ -557,7 +575,10 @@ export function AnalyzeJobDialog({ children, existingAnalyses = [] }: AnalyzeJob
     try {
       const response = await fetch("/api/jobs/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey
+        },
         body: JSON.stringify({
           job_title: deriveTitle(),
           company_name: finalCompany,

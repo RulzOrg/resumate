@@ -125,6 +125,7 @@ model JobAnalysis {
 
   user UserSync @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, jobTitle, companyName])
   @@index([userId])
   @@index([createdAt])
   @@map("job_analysis")

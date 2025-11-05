@@ -48,11 +48,37 @@ const jobAnalysisSchema = z.object({
   }).describe("Quality metrics for the analysis")
 })
 
+// Simple in-memory cache for idempotency (could be upgraded to Redis for production)
+const idempotencyCache = new Map<string, { response: any, timestamp: number }>()
+
+// Clean up old cache entries every 15 minutes
+setInterval(() => {
+  const now = Date.now()
+  const fiveMinutesAgo = now - 5 * 60 * 1000
+  for (const [key, value] of idempotencyCache.entries()) {
+    if (value.timestamp < fiveMinutesAgo) {
+      idempotencyCache.delete(key)
+    }
+  }
+}, 15 * 60 * 1000)
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Check for idempotency key
+    const idempotencyKey = request.headers.get('X-Idempotency-Key')
+    if (idempotencyKey) {
+      const cacheKey = `${userId}:${idempotencyKey}`
+      const cached = idempotencyCache.get(cacheKey)
+
+      if (cached) {
+        console.log('Returning cached response for idempotency key:', idempotencyKey)
+        return NextResponse.json(cached.response)
+      }
     }
 
     const rateLimitResult = rateLimit(`analyze:${userId}`, 10, 300000) // 10 requests per 5 minutes
@@ -239,8 +265,8 @@ CONSTRAINTS
     try {
       jobAnalysis = await createJobAnalysis({
         user_id: user.id,
-        job_title,
-        company_name,
+        job_title: normalizedJobTitle, // Use normalized title for consistency
+        company_name: normalizedCompanyName || company_name, // Use normalized company name
         job_url,
         job_description, // Save original content, not processed
         analysis_result: {
@@ -266,12 +292,29 @@ CONSTRAINTS
         user_id: user.id,
         job_title
       })
-      
+
+      // Handle unique constraint violation - try to fetch existing analysis
+      if (error.code === 'P2002' || error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+        console.log('Unique constraint violation, fetching existing analysis')
+        existingJobAnalysis = await getExistingJobAnalysis(user.id, normalizedJobTitle, normalizedCompanyName || undefined)
+        if (existingJobAnalysis) {
+          return NextResponse.json(
+            {
+              analysis: existingJobAnalysis,
+              generated_resume_id: null,
+              isDuplicate: true,
+              message: "This job analysis already exists in your account."
+            },
+            { headers: getRateLimitHeaders(rateLimitResult) },
+          )
+        }
+      }
+
       // Provide user-friendly error messages
       if (error.message.includes('User not found') || error.message.includes('does not exist')) {
         throw new AppError("User account verification failed. Please refresh the page and try again.", 500)
       }
-      
+
       throw error
     }
 
@@ -312,19 +355,35 @@ Output ONLY the Markdown resume as resume_markdown. Sections to include: Header 
       // Return analysis without generated resume rather than failing completely
       console.log("Continuing without generated resume due to:", resumeError.message)
       
+      const response = {
+        analysis: jobAnalysis,
+        warning: "Job analysis completed successfully, but resume generation failed. You can still use the analysis results.",
+        generated_resume_id: null,
+        isDuplicate: false
+      }
+
+      // Cache the response if idempotency key was provided
+      if (idempotencyKey) {
+        const cacheKey = `${userId}:${idempotencyKey}`
+        idempotencyCache.set(cacheKey, { response, timestamp: Date.now() })
+      }
+
       return NextResponse.json(
-        { 
-          analysis: jobAnalysis, 
-          warning: "Job analysis completed successfully, but resume generation failed. You can still use the analysis results.",
-          generated_resume_id: null,
-          isDuplicate: false
-        },
+        response,
         { headers: getRateLimitHeaders(rateLimitResult) },
       )
     }
 
+    const response = { analysis: jobAnalysis, generated_resume_id: generatedResume.id, isDuplicate: false }
+
+    // Cache the successful response if idempotency key was provided
+    if (idempotencyKey) {
+      const cacheKey = `${userId}:${idempotencyKey}`
+      idempotencyCache.set(cacheKey, { response, timestamp: Date.now() })
+    }
+
     return NextResponse.json(
-      { analysis: jobAnalysis, generated_resume_id: generatedResume.id, isDuplicate: false },
+      response,
       { headers: getRateLimitHeaders(rateLimitResult) },
     )
   } catch (error) {
