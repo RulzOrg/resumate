@@ -11,13 +11,18 @@ import crypto from "crypto"
  * Initialize S3 client for R2/S3
  */
 function getS3Client() {
-  const endpoint = process.env.R2_ENDPOINT || process.env.S3_ENDPOINT
+  // For Cloudflare R2, construct the endpoint from the account ID
+  const r2AccountId = process.env.R2_ACCOUNT_ID
+  const endpoint = process.env.R2_ENDPOINT ||
+                  process.env.S3_ENDPOINT ||
+                  (r2AccountId ? `https://${r2AccountId}.r2.cloudflarestorage.com` : undefined)
+
   const accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID
   const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY
   const region = process.env.R2_REGION || process.env.AWS_REGION || "auto"
 
   if (!endpoint || !accessKeyId || !secretAccessKey) {
-    throw new Error("R2/S3 storage not configured. Set R2_ENDPOINT, R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY")
+    throw new Error("R2/S3 storage not configured. Set R2_ACCOUNT_ID (or R2_ENDPOINT), R2_ACCESS_KEY_ID, and R2_SECRET_ACCESS_KEY")
   }
 
   return new S3Client({
