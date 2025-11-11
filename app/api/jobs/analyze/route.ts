@@ -2,13 +2,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createJobAnalysis, getOrCreateUser, createResumeDuplicate, getExistingJobAnalysis, incrementUsage, type Resume } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
-import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { intelligentTruncate, analyzeContentLength, summarizeContent } from "@/lib/content-processor"
 import { normalizeSalaryRange, normalizeJobField } from "@/lib/normalizers"
+import { getAIProvider, getModelForUseCase, getProviderInfo } from "@/lib/ai-providers"
 
 const salaryRangeSchema = z.union([
   z.string(),
@@ -153,29 +153,62 @@ export async function POST(request: NextRequest) {
     }
 
     // Analyze and process content for optimal analysis
+    const providerInfo = getProviderInfo()
     const contentAnalysis = analyzeContentLength(job_description, 'analysis')
     let processedContent = job_description.trim()
     let contentProcessed = false
     let processingNote = ""
 
-    // Handle overly long content
-    if (job_description.trim().length > 50000) {
-      processedContent = summarizeContent(job_description.trim(), 30000)
+    // Handle overly long content based on provider capabilities
+    // Moonshot supports 256K context (~300K chars), OpenAI ~128K context (~100K chars)
+    const maxContentLength = providerInfo.recommendedMaxChars
+
+    if (job_description.trim().length > maxContentLength * 1.5) {
+      // Extremely long - summarize
+      processedContent = summarizeContent(job_description.trim(), maxContentLength)
       contentProcessed = true
-      processingNote = "Content was summarized to focus on key sections due to length."
-    } else if (job_description.trim().length > 30000) {
-      const truncationResult = intelligentTruncate(job_description.trim(), 25000, true)
+      processingNote = `Content was summarized to focus on key sections (original: ${job_description.length} chars, processed: ${processedContent.length} chars).`
+      console.log(`[analyze] Content summarized for ${providerInfo.provider}:`, {
+        original_length: job_description.length,
+        processed_length: processedContent.length,
+        provider: providerInfo.provider
+      })
+    } else if (job_description.trim().length > maxContentLength) {
+      // Long but manageable - intelligent truncate
+      const truncationResult = intelligentTruncate(job_description.trim(), maxContentLength * 0.9, true)
       processedContent = truncationResult.truncatedContent
       contentProcessed = truncationResult.wasTruncated
       if (contentProcessed) {
         processingNote = `Content was intelligently truncated, preserving: ${truncationResult.preservedSections.join(', ')}.`
+        console.log(`[analyze] Content truncated for ${providerInfo.provider}:`, {
+          original_length: job_description.length,
+          processed_length: processedContent.length,
+          preserved_sections: truncationResult.preservedSections,
+          provider: providerInfo.provider
+        })
       }
+    } else {
+      console.log(`[analyze] Using full content with ${providerInfo.provider}:`, {
+        content_length: job_description.length,
+        provider: providerInfo.provider,
+        max_supported: maxContentLength
+      })
     }
+
+    const provider = getAIProvider()
+    const modelName = getModelForUseCase('analysis')
+
+    console.log(`[analyze] Using AI provider:`, {
+      provider: providerInfo.provider,
+      model: modelName,
+      content_length: processedContent.length,
+      was_processed: contentProcessed
+    })
 
     const rawAnalysis = await withRetry(
       async () => {
         const { object } = await generateObject({
-          model: openai("gpt-4o-mini"),
+          model: provider(modelName),
           schema: jobAnalysisSchema,
           prompt: `You are an expert ATS analyst and resume optimization specialist. Analyze the provided job posting text to extract structured, ATS-ready data and actionable guidance to update a resume with the required keywords. Do not fabricate experience, credentials, or salary figures. If information is not present, return null or an empty list. Output must strictly conform to the provided jobAnalysisSchema and contain JSON only (no prose or markdown).
 
@@ -320,8 +353,9 @@ CONSTRAINTS
 
     // Generate a first-pass resume tailored to this job with error handling
     try {
+      const generationModel = getModelForUseCase('generation')
       const { object: resumeGen } = await generateObject({
-        model: openai("gpt-4o"),
+        model: provider(generationModel),
         schema: z.object({
           resume_markdown: z.string().describe("A complete, ATS-friendly resume in Markdown"),
         }),

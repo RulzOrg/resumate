@@ -3,10 +3,10 @@
  * Provides callJsonModel() for all LLM JSON calls with schema enforcement
  */
 
-import { openai } from "@ai-sdk/openai"
 import { generateObject, generateText } from "ai"
 import { z } from "zod"
 import { toJsonSchema, validateSchema } from "./jsonSchema"
+import { getAIProvider, getModelForUseCase } from "./ai-providers"
 
 /**
  * Configuration for LLM calls
@@ -40,6 +40,7 @@ export async function callJsonModel<T extends z.ZodType>(
   config: LLMConfig = {}
 ): Promise<z.infer<T>> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config }
+  const provider = getAIProvider()
 
   const controller = new AbortController()
   let timeoutId: ReturnType<typeof setTimeout> | undefined
@@ -51,7 +52,7 @@ export async function callJsonModel<T extends z.ZodType>(
 
     // Use generateObject for structured output with schema
     const result = await generateObject({
-      model: openai(finalConfig.model),
+      model: provider(finalConfig.model),
       schema,
       prompt,
       temperature: finalConfig.temperature,
@@ -160,6 +161,7 @@ export async function callTextModel(
   config: LLMConfig = {}
 ): Promise<string> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config }
+  const provider = getAIProvider()
 
   const controller = new AbortController()
   let timeoutId: ReturnType<typeof setTimeout> | undefined
@@ -170,7 +172,7 @@ export async function callTextModel(
     }
 
     const result = await generateText({
-      model: openai(finalConfig.model),
+      model: provider(finalConfig.model),
       prompt,
       temperature: finalConfig.temperature,
       maxOutputTokens: finalConfig.maxTokens,
