@@ -183,3 +183,71 @@ export async function sendWelcomeEmail(email: string): Promise<EmailResponse> {
     };
   }
 }
+
+/**
+ * Send support email from contact form
+ * @param params - Support email parameters
+ * @returns Promise with success status
+ */
+export async function sendSupportEmail({
+  name,
+  email,
+  subject,
+  message,
+}: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}): Promise<EmailResponse> {
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@resumate.com';
+  // Send to the support email address (or the sender themselves if testing)
+  // In production, this should go to your support inbox
+  const supportEmail = process.env.SUPPORT_EMAIL || fromEmail;
+
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[Email] RESEND_API_KEY not configured - skipping support email');
+    return {
+      success: true,
+      messageId: 'mock-' + Date.now(),
+    };
+  }
+
+  try {
+    const { data, error } = await resend!.emails.send({
+      from: `Support Form <${fromEmail}>`,
+      to: supportEmail,
+      replyTo: email,
+      subject: `[Support] ${subject}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>New Support Message</h2>
+          <p><strong>From:</strong> ${name} (${email})</p>
+          <p><strong>Subject:</strong> ${subject}</p>
+          <hr />
+          <h3>Message:</h3>
+          <p style="white-space: pre-wrap;">${message}</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error('[Email] Failed to send support email:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to send email',
+      };
+    }
+
+    return {
+      success: true,
+      messageId: data?.id,
+    };
+  } catch (error) {
+    console.error('[Email] Error sending support email:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
