@@ -40,13 +40,27 @@ export default function SupportPage() {
     e.preventDefault()
     setLoading(true)
 
-    // TODO: Implement actual contact form submission
-    // For now, just show a success message
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/support", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send message")
+      }
+
       toast.success("Message sent! We'll get back to you within 24 hours.")
       setFormData({ name: "", email: "", subject: "", message: "" })
+    } catch (error: any) {
+      console.error("Support form error:", error)
+      toast.error(error.message || "Something went wrong. Please try again.")
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
 
   const faqs = [

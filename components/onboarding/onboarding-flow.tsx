@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
-import { UploadCloud, CheckCircle2, Loader2 } from "lucide-react"
+import { Upload, CheckCircle2, FileText, AlertCircle, Loader2, ArrowRight } from "lucide-react"
 
 // Dynamically import UserButton to avoid SSR issues
 const DynamicUserButton = dynamic(
@@ -12,7 +12,7 @@ const DynamicUserButton = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="relative h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 animate-pulse" />
+      <div className="relative h-9 w-9 rounded-full bg-muted animate-pulse" />
     ),
   }
 )
@@ -58,6 +58,7 @@ export function OnboardingFlow({
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isFinishing, setIsFinishing] = useState(false)
   const [completionError, setCompletionError] = useState<string | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
 
   const resetUploadTimers = () => {
     if (uploadProgressTimer.current) {
@@ -85,7 +86,7 @@ export function OnboardingFlow({
     const fileName = file.name.toLowerCase()
     const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
     const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
-    
+
     if (!hasValidExtension) {
       return "Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported."
     }
@@ -94,15 +95,15 @@ export function OnboardingFlow({
     if (!ALLOWED_TYPES.includes(file.type)) {
       return "Upload a PDF, Word, or plain text resume"
     }
-    
+
     return null
   }
 
   const simulateProgress = useCallback(() => {
     resetUploadTimers()
     uploadProgressTimer.current = setInterval(() => {
-      setUploadProgress((prev) => (prev >= 80 ? prev : prev + 10))
-    }, 180)
+      setUploadProgress((prev) => (prev >= 90 ? prev : prev + 5))
+    }, 100)
   }, [])
 
   const performUpload = useCallback(
@@ -110,7 +111,7 @@ export function OnboardingFlow({
       setUploadStatus("uploading")
       setUploadError(null)
       setUploadWarning(null)
-      setUploadProgress(12)
+      setUploadProgress(10)
       simulateProgress()
 
       try {
@@ -136,10 +137,6 @@ export function OnboardingFlow({
         if (payload.error) {
           setUploadWarning(payload.error)
         }
-
-        setTimeout(() => {
-          setUploadProgress(0)
-        }, 600)
 
         router.refresh()
       } catch (error: any) {
@@ -191,177 +188,182 @@ export function OnboardingFlow({
     }
   }
 
-  return (
-    <div className="relative min-h-screen bg-background dark:bg-black text-foreground dark:text-white">
-      <div
-        className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[1400px] -translate-x-1/2 -z-10"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 50% -20%, rgba(120,119,198,0.2), hsla(0,0%,100%,0))",
-        }}
-      />
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
 
-      <header className="sticky top-0 z-30 border-b border-border dark:border-white/10 bg-foreground/50 dark:bg-black/50 backdrop-blur-lg">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="inline-flex items-center gap-2 text-foreground dark:text-white">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-4 w-4"
-                >
-                  <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                  <path d="M3 3v5h5" />
-                  <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-                  <path d="M21 21v-5h-5" />
-                </svg>
-              </span>
-              <span className="text-base font-medium tracking-tight" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-                ResuMate AI
-              </span>
-            </Link>
-          </div>
-          <div className="relative h-9 w-9">
-            <DynamicUserButton afterSignOutUrl="/auth/login" />
-          </div>
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const dropped = e.dataTransfer.files?.[0]
+    handleFileSelection(dropped ?? null)
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      {/* Header */}
+      <header className="w-full border-b border-border/40 bg-background/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 font-semibold text-lg tracking-tight">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-sm bg-primary" />
+            </div>
+            ResuMate AI
+          </Link>
+          <DynamicUserButton afterSignOutUrl="/auth/login" />
         </div>
       </header>
 
-      <main className="py-12 sm:py-20">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 text-center">
-            <h1
-              className="text-3xl font-semibold tracking-tight sm:text-4xl"
-              style={{ fontFamily: "var(--font-space-grotesk)" }}
-            >
-              {`Welcome to ResuMate AI${userName ? `, ${userName}` : ""}`}
+      <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-500">
+        <div className="w-full max-w-xl space-y-8">
+          {/* Welcome Section */}
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+              Welcome, {userName}
             </h1>
-            <p className="mt-2 text-base text-foreground/60 dark:text-white/60">
-              Upload your resume to get started with AI-powered optimization.
+            <p className="text-muted-foreground text-lg">
+              Let's set up your profile with your master resume.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 shadow-2xl">
-            <div className="space-y-8 p-6 sm:p-8">
-              <section>
-                <div className="mb-5">
-                  <h2
-                    className="text-lg font-medium tracking-tight"
-                    style={{ fontFamily: "var(--font-space-grotesk)" }}
+          {/* Upload Card */}
+          <div className="rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden">
+            <div className="p-6 sm:p-8 space-y-6">
+              <div className="space-y-2">
+                <h2 className="font-semibold text-lg flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Upload Master Resume
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  This resume will serve as the foundation for all your future applications.
+                  We support PDF, DOCX, and TXT (max 10MB).
+                </p>
+              </div>
+
+              {/* Upload Zone */}
+              <div
+                className={cn(
+                  "relative flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-border/80 dark:border-white/20 p-8 text-center transition-colors",
+                  uploadStatus === "error" && "border-red-500/40 bg-red-500/5",
+                  uploadStatus === "success" && "border-emerald-500/40 bg-emerald-500/5",
+                )}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  event.dataTransfer.dropEffect = "copy"
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  const dropped = event.dataTransfer.files?.[0]
+                  handleFileSelection(dropped ?? null)
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  className="hidden"
+                  onChange={(event) => handleFileSelection(event.target.files?.[0] ?? null)}
+                />
+
+                {uploadStatus === "uploading" ? (
+                  <div className="flex flex-col items-center gap-3 w-full max-w-[200px]">
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                    <div className="space-y-1 w-full text-center">
+                      <p className="text-sm font-medium">Uploading...</p>
+                      <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300 ease-out"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : uploadStatus === "success" ? (
+                  <div className="flex flex-col items-center gap-2 animate-in zoom-in-95 duration-300">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <CheckCircle2 className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="font-medium">Upload Complete</p>
+                      <p className="text-sm text-muted-foreground max-w-[250px] truncate">
+                        {uploadedFileName}
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="mt-2 h-8 text-xs" onClick={(e) => {
+                      e.stopPropagation()
+                      setUploadStatus("idle")
+                      setUploadedFileName(null)
+                    }}>
+                      Replace file
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center gap-2 cursor-pointer bg-transparent border-none p-0"
                   >
-                    Upload Your Master Resume
-                  </h2>
-                  <p className="text-sm text-foreground/60 dark:text-white/60">
-                    <span className="text-emerald-400 font-medium">Required:</span> This becomes the baseline for every AI-generated resume. We support PDF, DOCX, and TXT up to 10MB.
-                  </p>
-                </div>
-
-                <div
-                  className={cn(
-                    "relative flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-border/80 dark:border-white/20 p-8 text-center transition-colors",
-                    uploadStatus === "error" && "border-red-500/40 bg-red-500/5",
-                    uploadStatus === "success" && "border-emerald-500/40 bg-emerald-500/5",
-                  )}
-                  onDragOver={(event) => {
-                    event.preventDefault()
-                    event.dataTransfer.dropEffect = "copy"
-                  }}
-                  onDrop={(event) => {
-                    event.preventDefault()
-                    const dropped = event.dataTransfer.files?.[0]
-                    handleFileSelection(dropped ?? null)
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => fileInputRef.current?.click()}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      fileInputRef.current?.click()
-                    }
-                  }}
-                >
-                  <div className="flex flex-col items-center">
-                    <UploadCloud className="mb-3 h-10 w-10 text-foreground/30 dark:text-white/30" />
-                    <span className="text-sm font-medium text-foreground/80 dark:text-white/80">
-                      <span className="text-emerald-400">Click to upload</span> or drag and drop
-                    </span>
-                    <span className="mt-1 block text-xs text-foreground/50 dark:text-white/50">Max file size 10MB</span>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx,.txt"
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    onChange={(event) => handleFileSelection(event.target.files?.[0] ?? null)}
-                  />
-                </div>
-
-                {uploadStatus === "uploading" && (
-                  <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-center gap-2 text-sm text-foreground/60 dark:text-white/60">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Uploading and analyzing your resume…
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center group-hover:scale-110 transition-transform duration-200">
+                      <Upload className="h-6 w-6 text-muted-foreground" />
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted dark:bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-emerald-500 transition-all"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
+                    <div className="space-y-1">
+                      <p className="font-medium">Click to upload or drag and drop</p>
+                      <p className="text-xs text-muted-foreground">
+                        PDF, DOCX, or TXT
+                      </p>
                     </div>
-                  </div>
-                )}
-
-                {uploadStatus === "success" && uploadedFileName && (
-                  <div className="mt-3 flex items-center justify-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>Uploaded {uploadedFileName}</span>
-                  </div>
-                )}
-
-                {uploadWarning && (
-                  <Alert className="mt-3 border-amber-500/40 bg-amber-500/10 text-amber-100">
-                    <AlertDescription>{uploadWarning}</AlertDescription>
-                  </Alert>
-                )}
-
-                {uploadError && (
-                  <Alert variant="destructive" className="mt-3">
-                    <AlertDescription>{uploadError}</AlertDescription>
-                  </Alert>
-                )}
-              </section>
-            </div>
-
-            <div className="rounded-b-2xl border-t border-border dark:border-white/10 bg-foreground/30 dark:bg-black/30 px-6 py-5 sm:px-8">
-              {completionError && (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertDescription>{completionError}</AlertDescription>
-                </Alert>
-              )}
-              <div className="flex flex-col items-center gap-3">
-                <Button
-                  onClick={handleFinish}
-                  disabled={uploadStatus !== "success" || isFinishing}
-                  className="w-full rounded-lg bg-emerald-500 px-6 py-2.5 text-sm font-medium text-black transition-colors hover:bg-emerald-400 disabled:bg-surface-muted dark:disabled:bg-white/10 disabled:text-foreground/40 dark:disabled:text-white/40 sm:w-auto"
-                >
-                  {isFinishing ? "Opening dashboard…" : "Finish Setup & View Dashboard"}
-                </Button>
-                {uploadStatus !== "success" && !isFinishing && (
-                  <p className="text-xs text-foreground/50 dark:text-white/50 text-center">
-                    Upload your resume to continue
-                  </p>
+                  </button>
                 )}
               </div>
+
+              {/* Alerts */}
+              {uploadError && (
+                <Alert variant="destructive" className="animate-in slide-in-from-top-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{uploadError}</AlertDescription>
+                </Alert>
+              )}
+
+              {uploadWarning && (
+                <Alert className="border-amber-500/50 text-amber-600 dark:text-amber-400 bg-amber-500/10 animate-in slide-in-from-top-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{uploadWarning}</AlertDescription>
+                </Alert>
+              )}
+            </div>
+
+            {/* Footer Action */}
+            <div className="bg-muted/30 p-6 sm:p-8 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-muted-foreground text-center sm:text-left">
+                {uploadStatus === "success"
+                  ? "Ready to continue to your dashboard."
+                  : "Upload your resume to proceed."}
+              </div>
+              <Button
+                onClick={handleFinish}
+                disabled={uploadStatus !== "success" || isFinishing}
+                size="lg"
+                className="w-full sm:w-auto gap-2"
+              >
+                {isFinishing && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isFinishing ? "Setting up..." : "Continue to Dashboard"}
+                {!isFinishing && <ArrowRight className="h-4 w-4" />}
+              </Button>
             </div>
           </div>
+
+          {completionError && (
+            <Alert variant="destructive" className="animate-in slide-in-from-top-2">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{completionError}</AlertDescription>
+            </Alert>
+          )}
         </div>
       </main>
     </div>
@@ -369,3 +371,4 @@ export function OnboardingFlow({
 }
 
 export default OnboardingFlow
+

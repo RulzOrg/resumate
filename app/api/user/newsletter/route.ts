@@ -23,8 +23,24 @@ export async function POST(request: NextRequest) {
       newsletter_unsubscribed_at: !subscribed ? new Date() : undefined,
     })
 
-    // TODO: If Beehiiv is configured, update subscription there as well
-    // This would involve calling the Beehiiv API to add/remove the subscriber
+    // Sync with Beehiiv if configured
+    try {
+      // Dynamic import to avoid circular dependencies if any
+      const { subscribeToBeehiiv, unsubscribeFromBeehiiv } = await import("@/lib/beehiiv")
+
+      if (subscribed) {
+        await subscribeToBeehiiv(user.email, {
+          name: user.name,
+          source: "app_settings",
+          sendWelcome: false, // Don't send welcome email for re-subscriptions from settings
+        })
+      } else {
+        await unsubscribeFromBeehiiv(user.email)
+      }
+    } catch (error) {
+      // Log error but don't fail the request since DB update succeeded
+      console.error("Beehiiv sync error:", error)
+    }
 
     return NextResponse.json({
       success: true,
