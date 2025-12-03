@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getUserProfile, updateUserProfile, getMasterResume, getOrCreateUser } from "@/lib/db"
+import { getUserProfile, updateUserProfile, getMasterResume, getOrCreateUser, getUserResumes } from "@/lib/db"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
@@ -71,56 +71,73 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // 2. Get master resume
+    // 2. Build resume candidate list (master first, then primary/latest uploads)
+    const resumeCandidates: { resume: any; source: string }[] = []
+    const seenResumeIds = new Set<string>()
+
     const masterResume = await getMasterResume(user.id)
-    if (!masterResume) {
-      console.log('No master resume found for user:', user.id)
+    if (masterResume) {
+      resumeCandidates.push({ resume: masterResume, source: masterResume.kind === 'master' ? 'master_resume' : `${masterResume.kind}_resume` })
+      seenResumeIds.add(masterResume.id)
+    }
+
+    const userResumes = await getUserResumes(user.id)
+    for (const resume of userResumes) {
+      if (seenResumeIds.has(resume.id)) continue
+      const label = resume.is_primary ? 'primary_resume' : `${resume.kind || 'uploaded'}_resume`
+      resumeCandidates.push({ resume, source: label })
+      seenResumeIds.add(resume.id)
+    }
+
+    if (resumeCandidates.length === 0) {
+      console.log('No resumes found for user:', user.id)
       return NextResponse.json({ 
         skills: [], 
         needsProfile: true,
-        message: "No master resume found. Please upload your resume to get personalized match scores."
+        message: "No resume found. Please upload your resume to get personalized match scores."
       })
     }
 
-    // 3. Try parsed_sections first (fast path)
-    if (masterResume.parsed_sections && typeof masterResume.parsed_sections === 'object') {
-      const parsedSections = masterResume.parsed_sections as Record<string, any>
-      
-      if (parsedSections.skills && Array.isArray(parsedSections.skills)) {
-        const skills = [...new Set(
-          parsedSections.skills
-            .filter(s => typeof s === 'string' || (typeof s === 'object' && s.name))
-            .map(s => typeof s === 'string' ? s.toLowerCase().trim() : s.name.toLowerCase().trim())
-            .filter(Boolean)
-        )]
-        
-        if (skills.length > 0) {
-          console.log('Extracted skills from parsed_sections:', { count: skills.length })
-          await updateUserProfile(userId, { skills })
-          return NextResponse.json({ 
-            skills, 
-            source: "parsed_sections",
-            count: skills.length
-          })
+    // 3. Try parsed_sections on any candidate (fast path)
+    for (const candidate of resumeCandidates) {
+      const { resume, source } = candidate
+      if (resume.parsed_sections && typeof resume.parsed_sections === 'object') {
+        const parsedSections = resume.parsed_sections as Record<string, any>
+
+        if (parsedSections.skills && Array.isArray(parsedSections.skills)) {
+          const skills = [...new Set(
+            parsedSections.skills
+              .filter((s: any) => typeof s === 'string' || (typeof s === 'object' && s.name))
+              .map((s: any) => typeof s === 'string' ? s.toLowerCase().trim() : s.name.toLowerCase().trim())
+              .filter(Boolean)
+          )]
+
+          if (skills.length > 0) {
+            console.log('Extracted skills from parsed_sections:', { count: skills.length, source })
+            await updateUserProfile(userId, { skills })
+            return NextResponse.json({ 
+              skills, 
+              source: `parsed_sections:${source}`,
+              count: skills.length
+            })
+          }
         }
       }
     }
 
     // 4. Extract via AI from content_text (slow path)
-    if (!masterResume.content_text || masterResume.content_text.trim().length < 100) {
-      return NextResponse.json({ 
-        skills: [], 
-        needsProfile: true,
-        message: "Resume content is too short. Please upload a complete resume."
-      })
-    }
+    for (const candidate of resumeCandidates) {
+      const { resume, source } = candidate
+      if (!resume.content_text || resume.content_text.trim().length < 100) {
+        continue
+      }
 
-    console.log('Extracting skills via AI from content_text')
-    
-    const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
-      schema: SkillsExtractionSchema,
-      prompt: `Extract ALL skills from this resume. Be comprehensive and include:
+      console.log('Extracting skills via AI from resume content:', { source })
+
+      const { object } = await generateObject({
+        model: openai("gpt-4o-mini"),
+        schema: SkillsExtractionSchema,
+        prompt: `Extract ALL skills from this resume. Be comprehensive and include:
 
 - Technical skills (programming languages, frameworks, libraries, technologies etc)
 - Design skills (Figma, Sketch, Adobe XD, Phototyping, Wireframing, etc.)
@@ -132,54 +149,63 @@ export async function GET(request: NextRequest) {
 Return a comprehensive list. Include both specific tools (e.g., "Figma") and broader skills (e.g., "UI/UX Design").
 
 Resume:
-${masterResume.content_text.slice(0, 8000)}
+${resume.content_text.slice(0, 8000)}
 
 IMPORTANT: Be exhaustive. Extract every identifiable skill, tool, technology, or expertise area.`,
-    })
+      })
 
-    // Process and categorize skills
-    const categorized_skills = {
-      hard: [...new Set(object.technical_skills.concat(object.tools))]
-        .map(s => s.trim())
-        .filter(Boolean),
-      soft: [...new Set(object.soft_skills)]
-        .map(s => s.trim())
-        .filter(Boolean),
-      other: [...new Set(object.domain_expertise)]
-        .map(s => s.trim())
+      // Process and categorize skills
+      const categorized_skills = {
+        hard: [...new Set(object.technical_skills.concat(object.tools))]
+          .map((s: string) => s.trim())
+          .filter(Boolean),
+        soft: [...new Set(object.soft_skills)]
+          .map((s: string) => s.trim())
+          .filter(Boolean),
+        other: [...new Set(object.domain_expertise)]
+          .map((s: string) => s.trim())
+          .filter(Boolean)
+      }
+
+      // Also create flat list for backward compatibility
+      const skills = [...new Set(object.all_skills)]
+        .map((s: string) => s.toLowerCase().trim())
         .filter(Boolean)
-    }
 
-    // Also create flat list for backward compatibility
-    const skills = [...new Set(object.all_skills)]
-      .map(s => s.toLowerCase().trim())
-      .filter(Boolean)
+      const totalCount =
+        categorized_skills.hard.length +
+        categorized_skills.soft.length +
+        categorized_skills.other.length
 
-    const totalCount =
-      categorized_skills.hard.length +
-      categorized_skills.soft.length +
-      categorized_skills.other.length
+      console.log('AI extracted categorized skills:', {
+        hard: categorized_skills.hard.length,
+        soft: categorized_skills.soft.length,
+        other: categorized_skills.other.length,
+        total: totalCount,
+        source
+      })
 
-    console.log('AI extracted categorized skills:', {
-      hard: categorized_skills.hard.length,
-      soft: categorized_skills.soft.length,
-      other: categorized_skills.other.length,
-      total: totalCount
-    })
+      // 5. Cache in user profile with both formats
+      if (skills.length > 0) {
+        await updateUserProfile(userId, {
+          skills, // backward compatibility
+          categorized_skills
+        })
+      }
 
-    // 5. Cache in user profile with both formats
-    if (skills.length > 0) {
-      await updateUserProfile(userId, {
+      return NextResponse.json({
         skills, // backward compatibility
-        categorized_skills
+        categorized_skills,
+        source: `ai_extracted:${source}`,
+        count: totalCount
       })
     }
 
-    return NextResponse.json({
-      skills, // backward compatibility
-      categorized_skills,
-      source: "ai_extracted",
-      count: totalCount
+    // No resume had sufficient content to extract skills from
+    return NextResponse.json({ 
+      skills: [], 
+      needsProfile: true,
+      message: "Resume content is too short. Please upload a complete resume."
     })
   } catch (error) {
     console.error('Error in GET /api/user/skills:', error)

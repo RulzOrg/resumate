@@ -1081,10 +1081,24 @@ export async function createJobAnalysisWithVerification(data: {
         ${keywords}, ${required_skills}, ${preferred_skills}, ${experience_level},
         ${salary_range}, ${location}, NOW(), NOW()
       )
+      ON CONFLICT (user_id, job_title, company_name)
+      DO UPDATE SET
+        job_url = EXCLUDED.job_url,
+        job_description = EXCLUDED.job_description,
+        analysis_result = EXCLUDED.analysis_result,
+        keywords = EXCLUDED.keywords,
+        required_skills = EXCLUDED.required_skills,
+        preferred_skills = EXCLUDED.preferred_skills,
+        experience_level = EXCLUDED.experience_level,
+        salary_range = EXCLUDED.salary_range,
+        location = EXCLUDED.location,
+        updated_at = NOW()
       RETURNING *
     `
 
-    console.log('Job analysis created successfully:', { 
+    const isNewRecord = analysis.id === id
+
+    console.log(isNewRecord ? 'Job analysis created successfully:' : 'Job analysis upserted (duplicate resolved):', { 
       analysis_id: analysis.id, 
       user_id: analysis.user_id,
       job_title: analysis.job_title 

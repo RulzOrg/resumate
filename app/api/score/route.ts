@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { z } from "zod"
 import { getOrCreateUser, getJobAnalysisById, getResumeById } from "@/lib/db"
-import { searchEvidence, computeScore } from "@/lib/match"
+import { searchEvidence, computeScoreWithAI } from "@/lib/match"
 import { AppError, handleApiError } from "@/lib/error-handler"
 
 export const runtime = "nodejs"
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       evidence = await searchEvidence(user.id, derivedQueries, top_k, resume_id)
       const searchDuration = Date.now() - searchStartTime
 
-      score = computeScore(analysis as any, evidence)
+      score = await computeScoreWithAI(analysis as any, evidence)
 
       // Debug information
       debugInfo = {
@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
 
       // Check if it's a Qdrant connection error
       if (vectorError.message?.includes("ECONNREFUSED") ||
-          vectorError.message?.includes("fetch failed") ||
-          vectorError.code === "ECONNREFUSED") {
+        vectorError.message?.includes("fetch failed") ||
+        vectorError.code === "ECONNREFUSED") {
         // Graceful degradation: return empty results with warning
         debugInfo = {
           warning: 'Qdrant vector search unavailable - returning empty evidence',

@@ -1,3 +1,7 @@
+import { generateObject } from "ai"
+import { openai } from "@ai-sdk/openai"
+import { z } from "zod"
+
 /**
  * Evidence search & scoring helpers (scaffolding)
  *
@@ -33,7 +37,21 @@ export interface ScoreBreakdown {
     seniority: number
   }
   missingMustHaves: string[]
+  explanation?: string
 }
+
+// Schema for the AI scoring output
+const ScoreBreakdownSchema = z.object({
+  overall: z.number().min(0).max(100).describe("Overall fit score from 0-100"),
+  dimensions: z.object({
+    skills: z.number().min(0).max(100).describe("Skills match score 0-100"),
+    responsibilities: z.number().min(0).max(100).describe("Experience/Responsibilities match score 0-100"),
+    domain: z.number().min(0).max(100).describe("Industry/Domain knowledge score 0-100"),
+    seniority: z.number().min(0).max(100).describe("Seniority level match score 0-100"),
+  }),
+  missingMustHaves: z.array(z.string()).describe("List of critical missing skills or requirements"),
+  explanation: z.string().describe("Brief explanation of the score and key gaps"),
+})
 
 /**
  * searchEvidence is responsible for querying Qdrant (or another vector
@@ -225,255 +243,83 @@ export async function searchEvidence(
 }
 
 /**
- * computeScore will blend evidence coverage against the job profile to
- * produce an overall fit score and per-dimension breakdown.
+ * computeScoreWithAI uses GPT-4o-mini to analyze the fit between job requirements
+ * and resume evidence.
  *
  * @param jobProfile - Normalized job analysis structure
  * @param evidence - Evidence points returned from searchEvidence
  */
-export function computeScore(
+export async function computeScoreWithAI(
   jobProfile: JobAnalysis,
   evidence: EvidencePoint[],
-): ScoreBreakdown {
-  const texts = (evidence || []).map((e) => (e.text || "").toLowerCase())
-
-  const tok = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9+.#/ ]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-
-  // Skill synonym/acronym mapping for better matching
-  const skillSynonyms: Record<string, string[]> = {
-    'ux': ['user experience', 'ux design', 'user experience design'],
-    'ui': ['user interface', 'ui design', 'user interface design'],
-    'uiux': ['ui/ux', 'ux/ui', 'user interface user experience'],
-    'figma': ['figma design', 'design tool', 'prototyping tool'],
-    'sketch': ['sketch app', 'design tool'],
-    'wireframe': ['wireframing', 'low fidelity', 'lo fi'],
-    'prototype': ['prototyping', 'interactive prototype', 'clickable prototype'],
-    'usability': ['usability testing', 'user testing', 'ux research'],
-    'accessibility': ['a11y', 'wcag', 'ada compliance', 'inclusive design']
-  }
-
-  // Improved matching with fuzzy logic, synonym support, and acronym expansion
-  const includesSkill = (needle: string, hay: string) => {
-    const n = tok(needle)
-    if (!n) return false
-    const h = tok(hay)
-    if (!h) return false
-
-    // Check direct synonyms first
-    for (const [acronym, expansions] of Object.entries(skillSynonyms)) {
-      if (n.includes(acronym)) {
-        // If needle has acronym, also check if hay has expansions
-        for (const expansion of expansions) {
-          if (h.includes(expansion)) return true
-        }
-      }
-      // If needle has expansion, also check if hay has acronym
-      for (const expansion of expansions) {
-        if (n.includes(expansion) && h.includes(acronym)) return true
-      }
+): Promise<ScoreBreakdown> {
+  // If no evidence, return 0 score immediately to save AI tokens
+  if (!evidence || evidence.length === 0) {
+    return {
+      overall: 0,
+      dimensions: {
+        skills: 0,
+        responsibilities: 0,
+        domain: 0,
+        seniority: 0,
+      },
+      missingMustHaves: (jobProfile as any).required_skills || [],
+      explanation: "No relevant evidence found in resume to match against this job."
     }
-
-    // Extract key terms from needle (remove parentheses, split by common separators)
-    const needleTerms = n
-      .replace(/[()]/g, ' ')
-      .split(/[\/,&]/)
-      .map(t => t.trim())
-      .filter(Boolean)
-
-    // Check if ANY significant term from needle appears in hay
-    // This allows "User Experience (UX) Design" to match "UX Designer", "User Experience", etc.
-    for (const term of needleTerms) {
-      if (term.length < 2) continue // Skip single letters
-
-      // Exact word boundary match
-      const re = new RegExp(
-        `(?<![a-z0-9])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z0-9])`,
-        "i"
-      )
-      if (re.test(h)) return true
-
-      // Partial match for compound terms (e.g., "usability" matches "usability testing")
-      if (term.length >= 4 && h.includes(term)) return true
-    }
-
-    return false
   }
 
-  const covered = (items: string[], useStrictMatch = true) => {
-    const arr = Array.from(new Set((items || []).filter(Boolean)))
-    if (arr.length === 0) return { pct: 0, missing: [] as string[] }
-    const miss: string[] = []
-    let hits = 0
-    for (const item of arr) {
-      let ok = false
-      if (useStrictMatch) {
-        ok = texts.some((t) => includesSkill(item, t))
-      } else {
-        // Looser semantic matching for responsibilities
-        // Extract key action words and nouns from the requirement
-        const reqWords = tok(item)
-          .split(/\s+/)
-          .filter(w => w.length > 3) // Keep meaningful words
-          .filter(w => !['with', 'from', 'that', 'this', 'will', 'have', 'been', 'were', 'their', 'such', 'also', 'into', 'over', 'through'].includes(w))
+  const evidenceText = evidence
+    .map((e, i) => `[${i + 1}] ${e.text} (Source: ${e.metadata?.section || 'unknown'})`)
+    .join("\n")
 
-        // Match if evidence contains 30%+ of key words from requirement
-        ok = texts.some((t) => {
-          const matchCount = reqWords.filter(w => t.includes(w)).length
-          return matchCount >= Math.max(1, Math.ceil(reqWords.length * 0.3))
-        })
-      }
-      if (ok) hits++
-      else miss.push(item)
-    }
-    return { pct: Math.round((hits / arr.length) * 100), missing: miss }
-  }
+  const jobContext = `
+    Job Title: ${jobProfile.job_title}
+    Company: ${jobProfile.company_name || 'Unknown'}
+    Experience Level: ${(jobProfile as any).experience_level || 'Not specified'}
+    
+    Required Skills: ${((jobProfile as any).required_skills || []).join(", ")}
+    Key Requirements: ${((jobProfile as any).analysis_result?.key_requirements || []).join("; ")}
+    Keywords: ${((jobProfile as any).keywords || []).join(", ")}
+  `
 
-  const reqSkills = Array.isArray((jobProfile as any).required_skills)
-    ? (jobProfile as any).required_skills
-    : Array.isArray((jobProfile as any).analysis_result?.required_skills)
-      ? (jobProfile as any).analysis_result.required_skills
-      : []
+  try {
+    const { object } = await generateObject({
+      model: openai("gpt-4o-mini"),
+      schema: ScoreBreakdownSchema,
+      prompt: `
+        You are an expert ATS (Applicant Tracking System) scorer. 
+        Evaluate the candidate's fit for the job based ONLY on the provided evidence snippets.
+        
+        JOB CONTEXT:
+        ${jobContext}
 
-  // Responsibilities: try multiple fields with fallbacks
-  let keyReqs = Array.isArray((jobProfile as any).analysis_result?.key_requirements)
-    ? (jobProfile as any).analysis_result.key_requirements
-    : []
+        CANDIDATE EVIDENCE (Ranked by relevance):
+        ${evidenceText}
 
-  // Fallback: if no key_requirements, use responsibilities or required_skills
-  if (keyReqs.length === 0) {
-    keyReqs = Array.isArray((jobProfile as any).responsibilities)
-      ? (jobProfile as any).responsibilities
-      : Array.isArray((jobProfile as any).required_skills)
-        ? (jobProfile as any).required_skills
-        : []
-  }
+        INSTRUCTIONS:
+        1. Analyze how well the evidence supports the job requirements.
+        2. Score each dimension from 0-100 based on strength of evidence.
+        3. Be strict but fair. 100 requires perfect, explicit proof. 0 means no evidence.
+        4. Identify critical missing skills/requirements.
+        5. Provide a brief explanation.
 
-  const keywords = Array.isArray((jobProfile as any).keywords)
-    ? (jobProfile as any).keywords
-    : Array.isArray((jobProfile as any).analysis_result?.keywords)
-      ? (jobProfile as any).analysis_result.keywords
-      : []
-
-  const skillsCov = covered(reqSkills, true)  // Strict matching for skills
-  const respCov = covered(keyReqs, false)     // Looser matching for responsibilities
-
-  // Debug logging
-  console.log('[computeScore] Scoring metrics:', {
-    evidenceCount: evidence.length,
-    reqSkillsCount: reqSkills.length,
-    keyReqsCount: keyReqs.length,
-    keywordsCount: keywords.length,
-    skillsCoverage: skillsCov.pct,
-    respCoverage: respCov.pct,
-    skillsMissing: skillsCov.missing.slice(0, 3),
-    respMissing: respCov.missing.slice(0, 3)
-  })
-
-  // Simple domain heuristic from job title/company/keywords
-  const domainSeeds = [
-    (jobProfile as any).job_title,
-    (jobProfile as any).company_name,
-    ...keywords,
-  ].filter(Boolean) as string[]
-  const domainCov = covered(domainSeeds.slice(0, 10))
-
-  // Seniority heuristic from experience_level and evidence verbs/years
-  const level = String((jobProfile as any).experience_level || (jobProfile as any).analysis_result?.experience_level || "").toLowerCase()
-  const seniorTerms = ["senior", "lead", "principal", "staff", "manager", "director"]
-  const hasYears = texts.some((t) => /\b(\d{1,2})+\s*(\+\s*)?(years?|yrs)\b/i.test(t))
-  const hasLeadVerbs = texts.some((t) => /(led|managed|owned|architected|mentored|drove)\b/i.test(t))
-  let seniorScore = 30
-  if (seniorTerms.some((k) => level.includes(k))) seniorScore += 35
-  if (hasYears) seniorScore += 20
-  if (hasLeadVerbs) seniorScore += 15
-  seniorScore = Math.max(0, Math.min(100, seniorScore))
-
-  // Job-specific weighting based on seniority and role type
-  let skillsWeight = 0.4
-  let respWeight = 0.4
-  let domainWeight = 0.1
-  let seniorWeight = 0.1
-
-  // Adjust weights based on seniority level
-  if (level.includes('senior') || level.includes('lead') || level.includes('principal')) {
-    // Senior roles: emphasize responsibilities and leadership
-    respWeight = 0.45
-    skillsWeight = 0.35
-    seniorWeight = 0.15
-    domainWeight = 0.05
-  } else if (level.includes('entry') || level.includes('junior') || level.includes('associate')) {
-    // Entry roles: emphasize skills and domain knowledge
-    skillsWeight = 0.5
-    domainWeight = 0.2
-    respWeight = 0.25
-    seniorWeight = 0.05
-  } else if (level.includes('director') || level.includes('vp') || level.includes('executive')) {
-    // Executive roles: heavily emphasize responsibilities and seniority
-    respWeight = 0.5
-    seniorWeight = 0.25
-    skillsWeight = 0.15
-    domainWeight = 0.1
-  }
-
-  // Boost domain weight for specialized roles (fintech, healthcare, etc.)
-  const domainIntensiveTerms = ['fintech', 'healthcare', 'biotech', 'legal', 'regulatory', 'compliance', 'security']
-  if (domainIntensiveTerms.some(term =>
-    domainSeeds.some(seed => seed.toLowerCase().includes(term))
-  )) {
-    domainWeight += 0.1
-    skillsWeight -= 0.05
-    respWeight -= 0.05
-  }
-
-  let overall = Math.round(
-    skillsWeight * skillsCov.pct +
-    respWeight * respCov.pct +
-    domainWeight * domainCov.pct +
-    seniorWeight * seniorScore
-  )
-
-  // Boost score for strong evidence scenarios
-  // If responsibilities data is missing (0 items) but skills/domain are strong, don't penalize
-  let usedAdjustedScore = false
-  if (keyReqs.length === 0 && skillsCov.pct >= 80) {
-    // Recalculate without responsibilities weight
-    const adjustedOverall = Math.round(
-      (skillsWeight / (skillsWeight + domainWeight + seniorWeight)) * skillsCov.pct +
-      (domainWeight / (skillsWeight + domainWeight + seniorWeight)) * domainCov.pct +
-      (seniorWeight / (skillsWeight + domainWeight + seniorWeight)) * seniorScore
-    )
-    overall = Math.max(overall, adjustedOverall)
-    usedAdjustedScore = true
-    console.log('[computeScore] Responsibilities data missing, using adjusted score:', {
-      original: overall,
-      adjusted: adjustedOverall,
-      final: overall
+        SCORING GUIDE:
+        - Skills: Do they have the specific tech stack/tools required?
+        - Responsibilities: Have they done similar work/tasks?
+        - Domain: Do they know the industry/subject matter?
+        - Seniority: Do they show the right level of leadership/autonomy?
+      `,
     })
-  }
 
-  // Confidence boost: if we have strong skills match (90%+) and good evidence count
-  // Do not apply if we already used adjusted score (mutually exclusive boosts)
-  if (skillsCov.pct >= 90 && evidence.length >= 5 && !usedAdjustedScore) {
-    overall = Math.min(100, overall + 10)
-    console.log('[computeScore] Strong evidence boost applied: +10 points')
-  }
-
-  // Ensure final score is clamped to 100
-  overall = Math.min(100, overall)
-
-  return {
-    overall,
-    dimensions: {
-      skills: skillsCov.pct,
-      responsibilities: respCov.pct,
-      domain: domainCov.pct,
-      seniority: seniorScore,
-    },
-    missingMustHaves: skillsCov.missing,
+    return object
+  } catch (error) {
+    console.error("AI Scoring failed:", error)
+    // Fallback to 0 if AI fails
+    return {
+      overall: 0,
+      dimensions: { skills: 0, responsibilities: 0, domain: 0, seniority: 0 },
+      missingMustHaves: [],
+      explanation: "Scoring service temporarily unavailable."
+    }
   }
 }
