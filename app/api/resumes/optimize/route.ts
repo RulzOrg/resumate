@@ -7,6 +7,7 @@ import { generateObject } from "ai"
 import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
+import { computeScoreWithAI } from "@/lib/match"
 
 const optimizationSchema = z.object({
   optimized_content: z.string().describe("The optimized resume content in markdown format"),
@@ -161,6 +162,22 @@ Focus on making the resume highly relevant to this specific job while maintainin
       })
     }
 
+    // Compute accurate match score using dedicated AI scoring function
+    // This replaces the inline estimation from the optimization prompt
+    let matchScore = optimization.match_score_after // Fallback to inline estimate
+    try {
+      const scoreResult = await computeScoreWithAI(
+        jobAnalysis as any,
+        [], // No vector evidence, use optimized content as resume text
+        optimization.optimized_content
+      )
+      matchScore = scoreResult.overall
+      console.log(`[optimize] AI Score computed: ${matchScore} (confidence: ${scoreResult.confidence}, method: ${scoreResult.scoringMethod})`)
+    } catch (scoreError) {
+      console.warn('[optimize] AI scoring failed, using inline estimate:', scoreError)
+      // Keep the inline estimate as fallback
+    }
+
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
       // Use the resume's owner to satisfy FK constraints even if auth user
@@ -171,7 +188,7 @@ Focus on making the resume highly relevant to this specific job while maintainin
       title: `${resume.title} - Optimized for ${jobAnalysis.job_title}`,
       optimized_content: optimization.optimized_content,
       optimization_summary: optimization,
-      match_score: optimization.match_score_after,
+      match_score: matchScore,
     })
 
     // Increment usage tracking for this successful optimization

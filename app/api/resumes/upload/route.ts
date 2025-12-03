@@ -2,11 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { createResume, getOrCreateUser } from "@/lib/db"
 import { buildS3Key, uploadBufferToS3 } from "@/lib/storage"
-import { indexResume } from "@/lib/resume-indexer"
 import { validateFileUpload, sanitizeFilename, basicMalwareScan } from "@/lib/file-validation"
-
-import { openai } from "@ai-sdk/openai"
-import { generateText } from "ai"
+import { inngest } from "@/lib/inngest/client"
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,46 +54,7 @@ export async function POST(request: NextRequest) {
     const key = buildS3Key({ userId: user.id, kind: "uploaded", fileName: sanitizedFilename })
     const { url: fileUrl } = await uploadBufferToS3({ buffer, key, contentType: validation.validationResult?.fileType || file.type })
 
-    let extractionSuccess = false
-    let contentText = ""
-    try {
-      const base64 = buffer.toString("base64")
-      const { text } = await generateText({
-        model: openai("gpt-4o-mini"),
-        prompt: `Extract all text content from this resume file. The file is in ${file.type} format.
-        
-        Please extract and organize the content with clear section headers:
-        
-        PERSONAL INFORMATION:
-        - Name, contact details, location, LinkedIn, portfolio, etc.
-        
-        PROFESSIONAL SUMMARY/OBJECTIVE:
-        - Any summary or objective statement
-        
-        WORK EXPERIENCE:
-        - Job titles, companies, dates, descriptions, achievements
-        
-        EDUCATION:
-        - Degrees, institutions, dates, GPA if mentioned
-        
-        SKILLS:
-        - Technical skills, soft skills, languages, certifications
-        
-        ADDITIONAL SECTIONS:
-        - Projects, publications, awards, volunteer work, etc.
-        
-        Extract ALL text content accurately, maintaining the structure and formatting where possible.
-        
-        File data: ${base64.substring(0, 2000)}...`,
-      })
-      contentText = text
-      extractionSuccess = true
-    } catch (extractionError) {
-      console.error("Content extraction error:", extractionError)
-      // Fallback content if extraction fails
-      contentText = `Resume content from ${file.name}. Content extraction in progress - please re-upload if optimization doesn't work properly.`
-    }
-
+    // Create resume record with pending status - extraction will happen via Inngest
     const resume = await createResume({
       user_id: user.id,
       title,
@@ -104,48 +62,41 @@ export async function POST(request: NextRequest) {
       file_url: fileUrl,
       file_type: file.type,
       file_size: file.size,
-      content_text: contentText,
+      content_text: "", // Will be populated by Inngest job
       kind: "uploaded",
-      processing_status: extractionSuccess ? "completed" : "failed",
-      extracted_at: new Date().toISOString(),
+      processing_status: "pending", // Set to pending - Inngest will update to completed/failed
       source_metadata: { storage: "r2", key },
     })
 
-    // Index resume into Qdrant for evidence search
-    let indexingResult = null
-    if (extractionSuccess && contentText.length > 50) {
-      try {
-        console.log(`[upload] Starting indexing for resume ${resume.id}...`)
-        indexingResult = await indexResume({
+    console.log(`[upload] Resume ${resume.id} created, triggering Inngest processing...`)
+
+    // Trigger Inngest background job for robust text extraction
+    // This uses LlamaParse + fallback extractors + AI vision for comprehensive extraction
+    try {
+      await inngest.send({
+        name: "resume/uploaded",
+        data: {
           resumeId: resume.id,
           userId: user.id,
-          content: contentText,
-          metadata: {
-            file_name: file.name,
-            file_type: file.type,
-            title: title,
-            indexed_at: new Date().toISOString()
-          }
-        })
-
-        if (indexingResult.success) {
-          console.log(`[upload] ✓ Resume ${resume.id} indexed: ${indexingResult.chunksIndexed} chunks`)
-        } else {
-          console.warn(`[upload] ✗ Resume ${resume.id} indexing failed: ${indexingResult.error}`)
+          fileKey: key,
+          fileType: file.type,
+          fileSize: file.size,
+          enqueuedAt: new Date().toISOString(),
+          deadlineAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minute deadline
         }
-      } catch (err: any) {
-        console.error(`[upload] Resume indexing error for ${resume.id}:`, err.message)
-        // Don't fail the upload if indexing fails
-      }
+      })
+      console.log(`[upload] ✓ Inngest job triggered for resume ${resume.id}`)
+    } catch (inngestError: any) {
+      console.error(`[upload] Failed to trigger Inngest job:`, inngestError.message)
+      // Don't fail the upload - the resume is saved, user can manually trigger extraction
     }
 
     return NextResponse.json({
       resume,
-      indexing: indexingResult ? {
-        success: indexingResult.success,
-        chunksIndexed: indexingResult.chunksIndexed,
-        error: indexingResult.error
-      } : null
+      processing: {
+        status: "pending",
+        message: "Resume uploaded successfully. Text extraction is processing in the background. This usually takes 10-30 seconds."
+      }
     })
   } catch (error) {
     console.error("Resume upload error:", error)

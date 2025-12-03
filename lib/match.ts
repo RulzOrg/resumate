@@ -30,6 +30,7 @@ export interface EvidencePoint {
 
 export interface ScoreBreakdown {
   overall: number
+  confidence: number
   dimensions: {
     skills: number
     responsibilities: number
@@ -38,19 +39,22 @@ export interface ScoreBreakdown {
   }
   missingMustHaves: string[]
   explanation?: string
+  scoringMethod: 'evidence' | 'resume_text' | 'hybrid'
+  evidenceUsed: number
 }
 
 // Schema for the AI scoring output
 const ScoreBreakdownSchema = z.object({
   overall: z.number().min(0).max(100).describe("Overall fit score from 0-100"),
+  confidence: z.number().min(0).max(100).describe("Confidence in the score based on evidence quality and quantity. Higher when more relevant evidence is available."),
   dimensions: z.object({
-    skills: z.number().min(0).max(100).describe("Skills match score 0-100"),
-    responsibilities: z.number().min(0).max(100).describe("Experience/Responsibilities match score 0-100"),
-    domain: z.number().min(0).max(100).describe("Industry/Domain knowledge score 0-100"),
-    seniority: z.number().min(0).max(100).describe("Seniority level match score 0-100"),
+    skills: z.number().min(0).max(100).describe("Skills match score 0-100. How well do their technical skills match?"),
+    responsibilities: z.number().min(0).max(100).describe("Experience/Responsibilities match score 0-100. Have they done similar work?"),
+    domain: z.number().min(0).max(100).describe("Industry/Domain knowledge score 0-100. Do they understand the business context?"),
+    seniority: z.number().min(0).max(100).describe("Seniority level match score 0-100. Do they show appropriate leadership/autonomy?"),
   }),
-  missingMustHaves: z.array(z.string()).describe("List of critical missing skills or requirements"),
-  explanation: z.string().describe("Brief explanation of the score and key gaps"),
+  missingMustHaves: z.array(z.string()).describe("List of critical missing skills or requirements from the job posting"),
+  explanation: z.string().describe("2-3 sentence explanation of the score highlighting key strengths and gaps"),
 })
 
 /**
@@ -244,19 +248,36 @@ export async function searchEvidence(
 
 /**
  * computeScoreWithAI uses GPT-4o-mini to analyze the fit between job requirements
- * and resume evidence.
+ * and resume evidence (or full resume text as fallback).
  *
  * @param jobProfile - Normalized job analysis structure
  * @param evidence - Evidence points returned from searchEvidence
+ * @param resumeText - Optional: Full resume text for fallback when no evidence is available
  */
 export async function computeScoreWithAI(
   jobProfile: JobAnalysis,
   evidence: EvidencePoint[],
+  resumeText?: string,
 ): Promise<ScoreBreakdown> {
-  // If no evidence, return 0 score immediately to save AI tokens
-  if (!evidence || evidence.length === 0) {
+  const hasEvidence = evidence && evidence.length > 0
+  const hasResumeText = resumeText && resumeText.trim().length > 50
+
+  // Debug logging for fallback path tracing
+  console.log(`[computeScoreWithAI] Input state:`, {
+    jobTitle: jobProfile.job_title,
+    evidenceCount: evidence?.length || 0,
+    hasEvidence,
+    resumeTextLength: resumeText?.trim().length || 0,
+    hasResumeText,
+    willUseFallback: !hasEvidence && hasResumeText,
+  })
+
+  // If no evidence AND no resume text, return 0 score
+  if (!hasEvidence && !hasResumeText) {
+    console.warn(`[computeScoreWithAI] No evidence AND no resume text - returning 0 score`)
     return {
       overall: 0,
+      confidence: 0,
       dimensions: {
         skills: 0,
         responsibilities: 0,
@@ -264,62 +285,167 @@ export async function computeScoreWithAI(
         seniority: 0,
       },
       missingMustHaves: (jobProfile as any).required_skills || [],
-      explanation: "No relevant evidence found in resume to match against this job."
+      explanation: "No resume content available to match against this job. Please upload a resume first.",
+      scoringMethod: 'evidence',
+      evidenceUsed: 0,
     }
   }
 
-  const evidenceText = evidence
-    .map((e, i) => `[${i + 1}] ${e.text} (Source: ${e.metadata?.section || 'unknown'})`)
-    .join("\n")
+  // Build job context
+  const requiredSkills = ((jobProfile as any).required_skills || [])
+  const preferredSkills = ((jobProfile as any).preferred_skills || [])
+  const keyRequirements = ((jobProfile as any).analysis_result?.key_requirements || [])
+  const keywords = ((jobProfile as any).keywords || [])
+  const experienceLevel = (jobProfile as any).experience_level || (jobProfile as any).analysis_result?.experience_level || 'Not specified'
 
   const jobContext = `
-    Job Title: ${jobProfile.job_title}
-    Company: ${jobProfile.company_name || 'Unknown'}
-    Experience Level: ${(jobProfile as any).experience_level || 'Not specified'}
+JOB TITLE: ${jobProfile.job_title}
+COMPANY: ${jobProfile.company_name || 'Unknown'}
+EXPERIENCE LEVEL: ${experienceLevel}
+
+REQUIRED SKILLS (Must-Have): ${requiredSkills.join(", ") || 'None specified'}
+PREFERRED SKILLS (Nice-to-Have): ${preferredSkills.join(", ") || 'None specified'}
+KEY REQUIREMENTS: ${keyRequirements.join("; ") || 'None specified'}
+KEYWORDS: ${keywords.join(", ") || 'None specified'}
+  `.trim()
+
+  // Determine scoring method and build candidate content
+  let scoringMethod: 'evidence' | 'resume_text' | 'hybrid'
+  let candidateContent: string
+  let evidenceCount: number
+
+  if (hasEvidence && hasResumeText) {
+    // Hybrid: Use both evidence and full resume for context
+    scoringMethod = 'hybrid'
+    evidenceCount = evidence.length
+    const evidenceText = evidence
+      .slice(0, 15) // Limit to top 15 evidence points
+      .map((e, i) => `  [${i + 1}] ${e.text} (Section: ${e.metadata?.section || 'unknown'}, Relevance: ${((e.score || 0) * 100).toFixed(0)}%)`)
+      .join("\n")
     
-    Required Skills: ${((jobProfile as any).required_skills || []).join(", ")}
-    Key Requirements: ${((jobProfile as any).analysis_result?.key_requirements || []).join("; ")}
-    Keywords: ${((jobProfile as any).keywords || []).join(", ")}
-  `
+    // Truncate resume text for context
+    const truncatedResume = resumeText.length > 3000 ? resumeText.substring(0, 3000) + '...[truncated]' : resumeText
+
+    candidateContent = `
+MATCHED EVIDENCE (Most relevant experience bullets):
+${evidenceText}
+
+FULL RESUME CONTEXT (for additional context):
+${truncatedResume}
+    `.trim()
+  } else if (hasEvidence) {
+    // Evidence-only scoring
+    scoringMethod = 'evidence'
+    evidenceCount = evidence.length
+    const evidenceText = evidence
+      .slice(0, 15)
+      .map((e, i) => `  [${i + 1}] ${e.text} (Section: ${e.metadata?.section || 'unknown'}, Relevance: ${((e.score || 0) * 100).toFixed(0)}%)`)
+      .join("\n")
+
+    candidateContent = `
+MATCHED EVIDENCE (Most relevant experience from resume):
+${evidenceText}
+    `.trim()
+  } else {
+    // Resume text fallback (no vector search results)
+    scoringMethod = 'resume_text'
+    evidenceCount = 0
+    const truncatedResume = resumeText!.length > 4000 ? resumeText!.substring(0, 4000) + '...[truncated]' : resumeText!
+
+    candidateContent = `
+FULL RESUME TEXT:
+${truncatedResume}
+    `.trim()
+  }
+
+  console.log(`[computeScoreWithAI] Scoring method selected: ${scoringMethod}, evidenceCount: ${evidenceCount}`)
 
   try {
+    console.log(`[computeScoreWithAI] Calling GPT-4o-mini for AI scoring...`)
     const { object } = await generateObject({
       model: openai("gpt-4o-mini"),
       schema: ScoreBreakdownSchema,
-      prompt: `
-        You are an expert ATS (Applicant Tracking System) scorer. 
-        Evaluate the candidate's fit for the job based ONLY on the provided evidence snippets.
-        
-        JOB CONTEXT:
-        ${jobContext}
+      prompt: `You are an expert ATS (Applicant Tracking System) and recruiter. Your job is to evaluate how well a candidate matches a specific job posting.
 
-        CANDIDATE EVIDENCE (Ranked by relevance):
-        ${evidenceText}
+IMPORTANT SCORING RULES:
+- Be DISCRIMINATING. Different jobs should produce DIFFERENT scores for the same candidate.
+- Score based on SPECIFIC EVIDENCE, not general impressions.
+- A score of 70+ means strong evidence of fit. 50-69 means partial fit. Below 50 means significant gaps.
+- Each dimension should vary based on actual evidence - don't give similar scores across dimensions.
+- Confidence reflects how much evidence you have to make the assessment.
 
-        INSTRUCTIONS:
-        1. Analyze how well the evidence supports the job requirements.
-        2. Score each dimension from 0-100 based on strength of evidence.
-        3. Be strict but fair. 100 requires perfect, explicit proof. 0 means no evidence.
-        4. Identify critical missing skills/requirements.
-        5. Provide a brief explanation.
+=== JOB REQUIREMENTS ===
+${jobContext}
 
-        SCORING GUIDE:
-        - Skills: Do they have the specific tech stack/tools required?
-        - Responsibilities: Have they done similar work/tasks?
-        - Domain: Do they know the industry/subject matter?
-        - Seniority: Do they show the right level of leadership/autonomy?
-      `,
+=== CANDIDATE INFORMATION ===
+${candidateContent}
+
+=== SCORING INSTRUCTIONS ===
+
+For each dimension, evaluate SPECIFICALLY:
+
+1. SKILLS (0-100): 
+   - Count how many REQUIRED skills the candidate explicitly demonstrates
+   - Partial credit for related skills (e.g., "React" counts partially for "Vue.js")
+   - Formula: (matched_required / total_required) * 70 + bonus for preferred skills
+   
+2. RESPONSIBILITIES (0-100):
+   - Does the candidate have experience doing the ACTUAL WORK described in the job?
+   - Look for similar scope, scale, and type of responsibilities
+   - Penalize heavily if core responsibilities have no evidence
+   
+3. DOMAIN (0-100):
+   - Has the candidate worked in the same or similar industry?
+   - Do they understand the business context, terminology, regulations?
+   - Cross-industry experience should score lower unless explicitly relevant
+   
+4. SENIORITY (0-100):
+   - Does their experience level match what's required?
+   - Look for: years of experience, leadership evidence, scope of decisions
+   - Overqualified = 60-70, Underqualified = 30-50, Match = 80-95
+
+5. CONFIDENCE (0-100):
+   - How certain are you in this assessment?
+   - High (80-100): Rich evidence, clear signals
+   - Medium (50-79): Some evidence, some inference required
+   - Low (0-49): Limited evidence, mostly guessing
+
+6. OVERALL (0-100):
+   - Weighted average: Skills (30%) + Responsibilities (30%) + Domain (20%) + Seniority (20%)
+   - Adjust down if critical must-haves are missing
+
+Respond with your structured assessment.`,
     })
 
-    return object
-  } catch (error) {
-    console.error("AI Scoring failed:", error)
-    // Fallback to 0 if AI fails
+    console.log(`[computeScoreWithAI] AI scoring successful:`, {
+      overall: object.overall,
+      confidence: object.confidence,
+      dimensions: object.dimensions,
+      scoringMethod,
+      evidenceUsed: evidenceCount,
+    })
+
+    return {
+      ...object,
+      scoringMethod,
+      evidenceUsed: evidenceCount,
+    }
+  } catch (error: any) {
+    console.error("[computeScoreWithAI] AI Scoring failed:", {
+      error: error?.message || error,
+      scoringMethod,
+      evidenceCount,
+      hasResumeText: hasEvidence ? false : !!resumeText,
+    })
+    // Fallback if AI fails
     return {
       overall: 0,
+      confidence: 0,
       dimensions: { skills: 0, responsibilities: 0, domain: 0, seniority: 0 },
-      missingMustHaves: [],
-      explanation: "Scoring service temporarily unavailable."
+      missingMustHaves: requiredSkills,
+      explanation: "Scoring service temporarily unavailable. Please try again.",
+      scoringMethod,
+      evidenceUsed: hasEvidence ? evidence.length : 0,
     }
   }
 }

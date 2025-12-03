@@ -14,6 +14,7 @@ import {
   ensureUserSyncRecord,
 } from "@/lib/db"
 import { qdrant, QDRANT_COLLECTION } from "@/lib/qdrant"
+import { computeScoreWithAI } from "@/lib/match"
 
 export const runtime = "nodejs"
 
@@ -205,6 +206,20 @@ INSTRUCTIONS:
       })
     }
 
+    // Compute accurate match score using dedicated AI scoring function
+    let matchScore = (object as any).match_score_after // Fallback to inline estimate
+    try {
+      const scoreResult = await computeScoreWithAI(
+        analysis as any,
+        [], // No vector evidence for scoring, use rewritten content
+        (object as any).optimized_content
+      )
+      matchScore = scoreResult.overall
+      console.log(`[rewrite] AI Score computed: ${matchScore} (confidence: ${scoreResult.confidence}, method: ${scoreResult.scoringMethod})`)
+    } catch (scoreError) {
+      console.warn('[rewrite] AI scoring failed, using inline estimate:', scoreError)
+    }
+
     const optimized = await createOptimizedResume({
       user_id: resume.user_id,
       original_resume_id: resume_id,
@@ -212,7 +227,7 @@ INSTRUCTIONS:
       title: `${resume.title} - Evidence Rewrite for ${analysis.job_title}`,
       optimized_content: (object as any).optimized_content,
       optimization_summary: object as any,
-      match_score: (object as any).match_score_after,
+      match_score: matchScore,
     })
 
     return NextResponse.json({ optimized_resume: optimized }, { headers: getRateLimitHeaders(limiter) })

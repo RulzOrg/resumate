@@ -9,6 +9,7 @@ import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { SystemPromptV1OutputSchema, PreferencesSchema, type SystemPromptV1Output } from "@/lib/schemas-v2"
 import { buildSystemPromptV1 } from "@/lib/prompts/system-prompt-v1"
 import { qdrant, QDRANT_COLLECTION } from "@/lib/qdrant"
+import { computeScoreWithAI } from "@/lib/match"
 
 /**
  * Fetch evidence text bullets from Qdrant by their evidence IDs
@@ -166,6 +167,20 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Compute accurate match score using dedicated AI scoring function
+    let matchScore = optimization.qa.scores.keyword_coverage_0_to_100 // Fallback to QA coverage score
+    try {
+      const scoreResult = await computeScoreWithAI(
+        jobAnalysis as any,
+        [], // No vector evidence, use optimized content as resume text
+        optimization.tailored_resume_text.ats_plain_text
+      )
+      matchScore = scoreResult.overall
+      console.log(`[optimize-v2] AI Score computed: ${matchScore} (confidence: ${scoreResult.confidence}, method: ${scoreResult.scoringMethod})`)
+    } catch (scoreError) {
+      console.warn('[optimize-v2] AI scoring failed, using QA keyword coverage:', scoreError)
+    }
+
     // Create the optimized resume record with v2 fields
     // For now, we'll store structured_output in optimization_summary as a workaround
     // until we add the database columns
@@ -185,11 +200,11 @@ export async function POST(request: NextRequest) {
           ...optimization.skills_block.Tools,
         ],
         sections_improved: optimization.ui.include_parts_summary,
-        match_score_before: 0, // Not calculated yet
-        match_score_after: optimization.qa.scores.keyword_coverage_0_to_100,
+        match_score_before: 0, // Not calculated in v2 flow
+        match_score_after: matchScore,
         recommendations: optimization.qa.warnings,
       },
-      match_score: optimization.qa.scores.keyword_coverage_0_to_100,
+      match_score: matchScore,
       structured_output: optimization,
       qa_metrics: optimization.qa,
     })

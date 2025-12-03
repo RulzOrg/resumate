@@ -226,6 +226,10 @@ export default function OptimizerUiOnly({
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const [qdrantWarning, setQdrantWarning] = useState<string | null>(null)
 
+  // Master resume content for match calculation (before optimization)
+  const [masterResumeContent, setMasterResumeContent] = useState<string>('')
+  const [isLoadingResumeContent, setIsLoadingResumeContent] = useState(false)
+
   const [editorHtml, setEditorHtml] = useState<string>('')
   const [baseEditorHtml] = useState<string>('')
   const editorRef = useRef<HTMLDivElement | null>(null)
@@ -254,12 +258,18 @@ export default function OptimizerUiOnly({
     }
   }
 
+  // Resume text for match calculation - use optimized content if available, otherwise master resume
   const resumeText = useMemo(() => {
-    if (typeof document === "undefined") return ""
-    const tmp = document.createElement("div")
-    tmp.innerHTML = editorHtml
-    return tmp.textContent || (tmp as any).innerText || ""
-  }, [editorHtml])
+    // If we have optimized content in the editor, use that
+    if (editorHtml) {
+      if (typeof document === "undefined") return ""
+      const tmp = document.createElement("div")
+      tmp.innerHTML = editorHtml
+      return tmp.textContent || (tmp as any).innerText || ""
+    }
+    // Otherwise use the master resume content for match calculation
+    return masterResumeContent || ""
+  }, [editorHtml, masterResumeContent])
 
   const coveredCount = useMemo(() => {
     const lower = resumeText.toLowerCase()
@@ -324,6 +334,34 @@ export default function OptimizerUiOnly({
     }
     run()
   }, [step, selectedJobId, selectedResume])
+
+  // Fetch master resume content for match calculation
+  useEffect(() => {
+    async function fetchResumeContent() {
+      if (!selectedResume) {
+        setMasterResumeContent('')
+        return
+      }
+      
+      setIsLoadingResumeContent(true)
+      try {
+        const res = await fetch(`/api/resumes/${selectedResume}`)
+        if (res.ok) {
+          const data = await res.json()
+          setMasterResumeContent(data.resume?.content_text || '')
+        } else {
+          console.error('Failed to fetch resume content')
+          setMasterResumeContent('')
+        }
+      } catch (e) {
+        console.error('Error fetching resume content:', e)
+        setMasterResumeContent('')
+      } finally {
+        setIsLoadingResumeContent(false)
+      }
+    }
+    fetchResumeContent()
+  }, [selectedResume])
 
   const currentResume = useMemo(
     () => resolvedResumes.find((r) => r.id === selectedResume) ?? resolvedResumes[0],
@@ -899,16 +937,30 @@ export default function OptimizerUiOnly({
                     <Target className="h-4 w-4" />
                     <span className="text-sm font-medium">Match overview</span>
                   </div>
-                  <span className="text-xs text-foreground/60 dark:text-white/60">{matchPct}% match</span>
+                  {isLoadingResumeContent ? (
+                    <span className="text-xs text-foreground/60 dark:text-white/60">Loading...</span>
+                  ) : (
+                    <span className="text-xs text-foreground/60 dark:text-white/60">{matchPct}% match</span>
+                  )}
                 </div>
                 <div className="mt-2">
-                  <div className="w-full h-2 rounded-full bg-surface-muted dark:bg-white/10 overflow-hidden">
-                    <div className="h-2 bg-emerald-500 rounded-full" style={{ width: `${matchPct}%` }}></div>
-                  </div>
-                  <div className="flex items-center justify-between mt-2 text-xs text-foreground/60 dark:text-white/60">
-                    <span>Keywords coverage</span>
-                    <span>{coveredCount}/{keywords.length || 0}</span>
-                  </div>
+                  {isLoadingResumeContent ? (
+                    <div className="w-full h-2 rounded-full bg-surface-muted dark:bg-white/10 overflow-hidden animate-pulse" />
+                  ) : !resumeText && keywords.length > 0 ? (
+                    <p className="text-xs text-amber-500">No resume content available. Please ensure your resume is uploaded and processed.</p>
+                  ) : keywords.length === 0 ? (
+                    <p className="text-xs text-foreground/50 dark:text-white/50">Analyze the job description to extract keywords for matching.</p>
+                  ) : (
+                    <>
+                      <div className="w-full h-2 rounded-full bg-surface-muted dark:bg-white/10 overflow-hidden">
+                        <div className="h-2 bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${matchPct}%` }}></div>
+                      </div>
+                      <div className="flex items-center justify-between mt-2 text-xs text-foreground/60 dark:text-white/60">
+                        <span>Keywords coverage</span>
+                        <span>{coveredCount}/{keywords.length || 0}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
