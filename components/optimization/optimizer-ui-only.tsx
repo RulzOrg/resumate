@@ -32,23 +32,17 @@ import {
   ArrowLeft,
   AlertTriangle,
   Bot,
-  Briefcase,
   Check,
   CheckCircle2,
   ChevronDown,
-  Copy as CopyIcon,
-  Download,
   FileText,
-  Grid,
   Hash,
-  PencilLine,
   RefreshCcw,
   RefreshCw,
   Sparkles,
   Star,
   Target,
   Type,
-  Eye,
   Wand2,
   WandSparkles,
   X,
@@ -58,6 +52,9 @@ import { scoreFit, rephraseBullet } from "@/lib/api"
 import type { EvidencePoint, ScoreBreakdown } from "@/lib/match"
 import type { CategorizedSkills } from "@/lib/skills/categorizer"
 import { ResumeEditorV2 } from "./resume-editor-v2"
+import { ScoreHero } from "./score-hero"
+import { SkillsAnalysis } from "./skills-analysis"
+import { JobDetailsCard } from "./job-details-card"
 
 type Step = 1 | 2 | 3 | 4
 
@@ -317,12 +314,12 @@ export default function OptimizerUiOnly({
         const res = await scoreFit({ job_analysis_id: selectedJobId, resume_id: selectedResume, top_k: 5 })
         setEvidence(res.evidence || [])
         setScore(res.score || null)
-        setDebugInfo(res.debug || null)
+        setDebugInfo((res as any).debug || null)
         setSelectedEvidenceIds(new Set())
 
         // Check for Qdrant availability warning
-        if (res.debug?.qdrantAvailable === false || res.debug?.warning) {
-          setQdrantWarning(res.debug?.warning || 'Vector search unavailable - evidence scoring may be limited')
+        if ((res as any).debug?.qdrantAvailable === false || (res as any).debug?.warning) {
+          setQdrantWarning((res as any).debug?.warning || 'Vector search unavailable - evidence scoring may be limited')
         }
       } catch (e: any) {
         setScoreError(e?.error || e?.message || 'Failed to score')
@@ -342,7 +339,7 @@ export default function OptimizerUiOnly({
         setMasterResumeContent('')
         return
       }
-      
+
       setIsLoadingResumeContent(true)
       try {
         const res = await fetch(`/api/resumes/${selectedResume}`)
@@ -542,7 +539,7 @@ export default function OptimizerUiOnly({
         // Fallback to local transform if server returned unexpected shape
         applyOptimizations()
       }
-      const oid = optimized?.id || optimized?.optimized_resume_id || null
+      const oid = optimized?.id || (optimized as any)?.optimized_resume_id || null
       if (oid) {
         setOptimizedId(String(oid))
         toast.success('Optimized resume generated! Redirecting to editor...')
@@ -730,24 +727,24 @@ export default function OptimizerUiOnly({
                         </div>
                       ) : (
                         resolvedResumes.map((resume) => (
-                        <button
-                          key={resume.id}
-                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted dark:hover:bg-white/10 transition text-left"
-                          onClick={() => {
-                            setSelectedResume(resume.id)
-                            setResumeMenuOpen(false)
-                          }}
-                        >
-                          <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
-                            <FileText className="h-4 w-4 text-foreground/70 dark:text-white/70" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{resume.label}</p>
-                            <p className="text-xs text-foreground/60 dark:text-white/60">
-                              {formatFileMeta(resume) || "Uploaded resume"}
-                            </p>
-                          </div>
-                        </button>
+                          <button
+                            key={resume.id}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted dark:hover:bg-white/10 transition text-left"
+                            onClick={() => {
+                              setSelectedResume(resume.id)
+                              setResumeMenuOpen(false)
+                            }}
+                          >
+                            <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
+                              <FileText className="h-4 w-4 text-foreground/70 dark:text-white/70" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{resume.label}</p>
+                              <p className="text-xs text-foreground/60 dark:text-white/60">
+                                {formatFileMeta(resume) || "Uploaded resume"}
+                              </p>
+                            </div>
+                          </button>
                         ))
                       )}
                     </div>
@@ -921,8 +918,8 @@ export default function OptimizerUiOnly({
           </div>
 
           {/* Review (Step 2) */}
-          <div className={`${step === 2 ? "block" : "hidden"} rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8`}>
-            <div className="flex items-start justify-between mb-6">
+          <div className={`${step === 2 ? "block" : "hidden"} space-y-6`}>
+            <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-medium tracking-tight font-space-grotesk">Review Job</h2>
                 <p className="text-sm text-foreground/60 dark:text-white/60 mt-1">Confirm alignment and address gaps before generating your tailored resume.</p>
@@ -930,275 +927,106 @@ export default function OptimizerUiOnly({
               <span className="text-xs text-foreground/50 dark:text-white/50">Step 2–3</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="inline-flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    <span className="text-sm font-medium">Match overview</span>
-                  </div>
-                  {isLoadingResumeContent ? (
-                    <span className="text-xs text-foreground/60 dark:text-white/60">Loading...</span>
-                  ) : (
-                    <span className="text-xs text-foreground/60 dark:text-white/60">{matchPct}% match</span>
-                  )}
-                </div>
-                <div className="mt-2">
-                  {isLoadingResumeContent ? (
-                    <div className="w-full h-2 rounded-full bg-surface-muted dark:bg-white/10 overflow-hidden animate-pulse" />
-                  ) : !resumeText && keywords.length > 0 ? (
-                    <p className="text-xs text-amber-500">No resume content available. Please ensure your resume is uploaded and processed.</p>
-                  ) : keywords.length === 0 ? (
-                    <p className="text-xs text-foreground/50 dark:text-white/50">Analyze the job description to extract keywords for matching.</p>
-                  ) : (
-                    <>
-                      <div className="w-full h-2 rounded-full bg-surface-muted dark:bg-white/10 overflow-hidden">
-                        <div className="h-2 bg-emerald-500 rounded-full transition-all duration-300" style={{ width: `${matchPct}%` }}></div>
-                      </div>
-                      <div className="flex items-center justify-between mt-2 text-xs text-foreground/60 dark:text-white/60">
-                        <span>Keywords coverage</span>
-                        <span>{coveredCount}/{keywords.length || 0}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+            {/* 1. Score Hero */}
+            <ScoreHero
+              score={score}
+              isLoading={isScoring}
+              error={scoreError}
+            />
 
-              <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="inline-flex items-center gap-2">
-                    <Hash className="h-4 w-4" />
-                    <span className="text-sm font-medium">Top keywords</span>
-                  </div>
-                  <button className="inline-flex items-center gap-1 text-xs text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white" onClick={reanalyze}>
-                    <RefreshCcw className="h-3.5 w-3.5" />
-                    Refresh
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {keywords.map((k) => (
-                    <span key={k} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
-                      {k.replace(/^\w/, (c) => c.toUpperCase())}
-                      <button
-                        onClick={() => removeKeyword(k)}
-                        className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                        title={`Remove "${k}" keyword`}
-                        disabled={isAnalyzing}
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+            {/* 2. Skills Analysis */}
+            <SkillsAnalysis
+              keywords={keywords}
+              categorizedSkills={categorizedSkills}
+              resumeText={resumeText}
+              onRemoveKeyword={removeKeyword}
+              isAnalyzing={isAnalyzing}
+            />
 
-              {/* Qdrant Warning Banner */}
-              {qdrantWarning && (
-                <div className="md:col-span-2 rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <div className="text-sm font-medium text-yellow-500 mb-1">Limited Evidence Search</div>
-                      <div className="text-xs text-foreground/80 dark:text-white/80">{qdrantWarning}</div>
-                      <div className="text-xs text-foreground/60 dark:text-white/60 mt-2">
-                        Optimization will still work using AI analysis, but evidence-based scoring is unavailable.
-                      </div>
+            {/* Qdrant Warning Banner */}
+            {qdrantWarning && (
+              <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="text-sm font-medium text-yellow-500 mb-1">Limited Evidence Search</div>
+                    <div className="text-xs text-foreground/80 dark:text-white/80">{qdrantWarning}</div>
+                    <div className="text-xs text-foreground/60 dark:text-white/60 mt-2">
+                      Optimization will still work using AI analysis, but evidence-based scoring is unavailable.
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Evidence & Scoring (server) */}
-              <div className="md:col-span-2 grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4 lg:col-span-1">
-                  <div className="inline-flex items-center gap-2 mb-2">
-                    <Target className="h-4 w-4" />
-                    <span className="text-sm font-medium">AI score</span>
-                  </div>
-                  {isScoring ? (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">Scoring…</div>
-                  ) : score ? (
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center justify-between"><span>Overall</span><span className="text-foreground/80 dark:text-white/80">{score.overall}%</span></div>
-                      {([['skills', 'Skills'], ['responsibilities', 'Responsibilities'], ['domain', 'Domain'], ['seniority', 'Seniority']] as const).map(([k, label]) => (
-                        <div key={k}>
-                          <div className="flex items-center justify-between"><span>{label}</span><span className="text-foreground/70 dark:text-white/70">{(score.dimensions as any)[k]}%</span></div>
-                          <div className="w-full h-1.5 rounded bg-surface-muted dark:bg-white/10 overflow-hidden"><div className="h-1.5 bg-emerald-500" style={{ width: `${(score.dimensions as any)[k]}%` }}></div></div>
-                        </div>
-                      ))}
-                      {score.missingMustHaves?.length > 0 && (
-                        <div className="pt-2"><div className="text-foreground/70 dark:text-white/70 mb-1">Missing must‑haves</div>
-                          <ul className="list-disc pl-5 space-y-0.5">
-                            {score.missingMustHaves.slice(0, 6).map((m) => (<li key={m}>{m}</li>))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ) : scoreError ? (
-                    <div className="text-xs text-red-400">{scoreError}</div>
-                  ) : (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">No score yet.</div>
-                  )}
+            {/* 3. Evidence List (Existing Logic) */}
+            <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="inline-flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  <span className="text-sm font-medium">Evidence</span>
                 </div>
-                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4 lg:col-span-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="inline-flex items-center gap-2"><FileText className="h-4 w-4" /><span className="text-sm font-medium">Evidence</span></div>
-                    <span className="text-xs text-foreground/60 dark:text-white/60">Selected: {selectedEvidenceIds.size}</span>
-                  </div>
-                  {isScoring ? (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">Fetching evidence…</div>
-                  ) : evidence.length ? (
-                    <ul className="space-y-2 text-sm">
-                      {evidence.slice(0, 20).map((ev) => {
-                        const eid = (ev.metadata as any)?.evidence_id || (ev.id?.includes(":") ? ev.id.split(":")[1] : ev.id)
-                        const shown = editedEvidence[eid] || ev.text
-                        const selected = selectedEvidenceIds.has(eid)
-                        return (
-                          <li key={ev.id} className={`rounded-lg border border-border dark:border-white/10 p-3 bg-surface-subtle dark:bg-white/5 ${selected ? 'ring-1 ring-emerald-500/40' : ''}`}>
-                            <div className="flex items-start gap-3">
-                              <input
-                                type="checkbox"
-                                className="mt-1"
-                                checked={selected}
-                                onChange={() => setSelectedEvidenceIds((s) => { const n = new Set(s); if (selected) n.delete(eid); else n.add(eid); return n })}
-                              />
-                              <div className="flex-1">
-                                <div className="text-foreground/90 dark:text-white/90">{shown}</div>
-                                <div className="mt-2 flex items-center gap-2 text-xs">
-                                  <button
-                                    className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 px-2 py-1 hover:bg-surface-muted dark:hover:bg-white/10"
-                                    disabled={rephrasingId === eid}
-                                    onClick={async () => {
-                                      try {
-                                        setRephrasingId(eid)
-                                        const { text } = await rephraseBullet({ evidence_id: eid, target_keywords: keywords.slice(0, 5), style: 'concise' })
-                                        setEditedEvidence((m) => ({ ...m, [eid]: text }))
-                                      } catch (e: any) {
-                                        toast.error(e?.error || e?.message || 'Rephrase failed')
-                                      } finally {
-                                        setRephrasingId(null)
-                                      }
-                                    }}
-                                  >{rephrasingId === eid ? 'Rephrasing…' : 'Rephrase'}</button>
-                                </div>
-                              </div>
-                            </div>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  ) : (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">No evidence found. Try adjusting queries or ensure resume is indexed.</div>
-                  )}
-                  {/* Debug Info Display */}
-                  {debugInfo && (
-                    <details className="mt-3 text-xs">
-                      <summary className="cursor-pointer text-foreground/50 dark:text-white/50 hover:text-foreground/70 dark:hover:text-white/70">Debug info</summary>
-                      <div className="mt-2 space-y-1 text-foreground/60 dark:text-white/60 font-mono text-[10px]">
-                        <div>Queries: {debugInfo.totalQueries}</div>
-                        <div>Evidence: {debugInfo.evidenceCount}</div>
-                        <div>Duration: {debugInfo.searchDurationMs}ms</div>
-                        <div>Qdrant: {debugInfo.qdrantAvailable ? '✓ Available' : '✗ Unavailable'}</div>
-                      </div>
-                    </details>
-                  )}
-                </div>
+                <span className="text-xs text-foreground/60 dark:text-white/60">Selected: {selectedEvidenceIds.size}</span>
               </div>
 
-              {/* Skills breakdown */}
-              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
-                  <div className="inline-flex items-center gap-2 mb-2">
-                    <ListChecksIcon />
-                    <span className="text-sm font-medium">Required skills</span>
-                  </div>
-                  {reqSkills.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {reqSkills.map((s) => (
-                        <span key={s} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">Run Analyze with AI to extract required skills.</div>
-                  )}
-                </div>
-                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
-                  <div className="inline-flex items-center gap-2 mb-2">
-                    <ListChecksIcon />
-                    <span className="text-sm font-medium">Preferred skills</span>
-                  </div>
-                  {prefSkills.length ? (
-                    <div className="flex flex-wrap gap-2">
-                      {prefSkills.map((s) => (
-                        <span key={s} className="inline-flex items-center rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">Run Analyze with AI to extract preferred skills.</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Culture & Benefits */}
-              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
-                  <div className="inline-flex items-center gap-2 mb-2">
-                    <ListChecksIcon />
-                    <span className="text-sm font-medium">Culture</span>
-                  </div>
-                  {culture.length ? (
-                    <ul className="list-disc pl-5 text-xs text-foreground/80 dark:text-white/80 space-y-1">
-                      {culture.map((c) => (
-                        <li key={c}>{c}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">No culture details yet.</div>
-                  )}
-                </div>
-                <div className="rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
-                  <div className="inline-flex items-center gap-2 mb-2">
-                    <ListChecksIcon />
-                    <span className="text-sm font-medium">Benefits</span>
-                  </div>
-                  {benefits.length ? (
-                    <ul className="list-disc pl-5 text-xs text-foreground/80 dark:text-white/80 space-y-1">
-                      {benefits.map((b) => (
-                        <li key={b}>{b}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="text-xs text-foreground/60 dark:text-white/60">No benefits extracted yet.</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="md:col-span-2 rounded-xl border border-border dark:border-white/10 bg-card dark:bg-black/40 p-4">
-                <div className="inline-flex items-center gap-2 mb-2">
-                  <ListChecksIcon />
-                  <span className="text-sm font-medium">Key requirements</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {keywords.map((k) => {
-                    const covered = resumeText.toLowerCase().includes(k.toLowerCase())
+              {isScoring ? (
+                <div className="text-xs text-foreground/60 dark:text-white/60">Fetching evidence…</div>
+              ) : evidence.length ? (
+                <ul className="space-y-2 text-sm">
+                  {evidence.slice(0, 20).map((ev) => {
+                    const eid = (ev.metadata as any)?.evidence_id || (ev.id?.includes(":") ? ev.id.split(":")[1] : ev.id)
+                    const shown = editedEvidence[eid] || ev.text
+                    const selected = selectedEvidenceIds.has(eid)
                     return (
-                      <div key={k} className="flex items-start gap-3 rounded-lg border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-3">
-                        <div className={`h-8 w-8 rounded-md flex items-center justify-center ${covered ? "bg-emerald-500/20 text-emerald-400" : "bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 text-foreground/70 dark:text-white/70"}`}>
-                          {covered ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                      <li key={ev.id} className={`rounded-lg border border-border dark:border-white/10 p-3 bg-surface-subtle dark:bg-white/5 ${selected ? 'ring-1 ring-emerald-500/40' : ''}`}>
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={selected}
+                            onChange={() => setSelectedEvidenceIds((s) => { const n = new Set(s); if (selected) n.delete(eid); else n.add(eid); return n })}
+                          />
+                          <div className="flex-1">
+                            <div className="text-foreground/90 dark:text-white/90">{shown}</div>
+                            <div className="mt-2 flex items-center gap-2 text-xs">
+                              <button
+                                className="inline-flex items-center gap-1 rounded border border-border dark:border-white/10 px-2 py-1 hover:bg-surface-muted dark:hover:bg-white/10"
+                                disabled={rephrasingId === eid}
+                                onClick={async () => {
+                                  try {
+                                    setRephrasingId(eid)
+                                    const { text } = await rephraseBullet({ evidence_id: eid, target_keywords: keywords.slice(0, 5), style: 'concise' })
+                                    setEditedEvidence((m) => ({ ...m, [eid]: text }))
+                                  } catch (e: any) {
+                                    toast.error(e?.error || e?.message || 'Rephrase failed')
+                                  } finally {
+                                    setRephrasingId(null)
+                                  }
+                                }}
+                              >{rephrasingId === eid ? 'Rephrasing…' : 'Rephrase'}</button>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <div className="text-sm font-medium">{k.replace(/^\w/, (c) => c.toUpperCase())}</div>
-                          <div className="text-xs text-foreground/60 dark:text-white/60 mt-0.5">{covered ? "Mentioned in your resume" : "Not detected — consider adding a relevant bullet or skill"}</div>
-                        </div>
-                      </div>
+                      </li>
                     )
                   })}
-                </div>
-              </div>
+                </ul>
+              ) : (
+                <div className="text-xs text-foreground/60 dark:text-white/60">No evidence found. Try adjusting queries or ensure resume is indexed.</div>
+              )}
+
+              {/* Debug Info Display */}
+              {debugInfo && (
+                <details className="mt-3 text-xs">
+                  <summary className="cursor-pointer text-foreground/50 dark:text-white/50 hover:text-foreground/70 dark:hover:text-white/70">Debug info</summary>
+                  <div className="mt-2 space-y-1 text-foreground/60 dark:text-white/60 font-mono text-[10px]">
+                    <div>Queries: {debugInfo.totalQueries}</div>
+                    <div>Evidence: {debugInfo.evidenceCount}</div>
+                    <div>Duration: {debugInfo.searchDurationMs}ms</div>
+                    <div>Qdrant: {debugInfo.qdrantAvailable ? '✓ Available' : '✗ Unavailable'}</div>
+                  </div>
+                </details>
+              )}
             </div>
 
             <div className="mt-6 flex items-center justify-between">
@@ -1346,7 +1174,7 @@ export default function OptimizerUiOnly({
               companyName={selectedCompany}
             />
           )}
-          
+
           {/* Fallback message if no structured output */}
           {step === 4 && !structuredOutput && (
             <div className="rounded-lg border-2 border-dashed border-neutral-800 bg-neutral-900/50 p-12 text-center">
@@ -1359,65 +1187,17 @@ export default function OptimizerUiOnly({
         {/* Right column - Job Summary (hidden on Step 4) */}
         {step !== 4 && (
           <div className="space-y-8 mt-8 lg:mt-0">
-            <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Job Summary</h3>
-                {selectedJobId && (
-                  <span className="text-xs font-medium text-emerald-500">AI Analyzed</span>
-                )}
-              </div>
-              <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
-                  <Briefcase className="h-4 w-4 text-foreground/70 dark:text-white/70" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium">{selectedJobTitle || "Job title"}</div>
-                  <div className="text-xs text-foreground/60 dark:text-white/60">{selectedCompany || "Company"}{jobLocation ? ` • ${jobLocation}` : ""}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
-                  <ScaleIcon />
-                </div>
-                <div>
-                  <div className="text-sm font-medium">Seniority</div>
-                  <div className="text-xs text-foreground/60 dark:text-white/60">{jobSeniority || "Senior • IC"}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
-                  <Grid className="h-4 w-4 text-foreground/70 dark:text-white/70" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium">Category</div>
-                  <div className="text-xs text-foreground/60 dark:text-white/60">{resolvedInitialJob?.category ?? "Developer Experience • Platform"}</div>
-                </div>
-              </div>
-              <div className="pt-2">
-                <div className="text-xs text-foreground/60 dark:text-white/60 mb-1">Top skills</div>
-                <div className="flex flex-wrap gap-2">
-                  {(keywords.length ? keywords : ["Roadmap", "A/B Testing", "Analytics", "Frontend", "APIs"]).map((s) => (
-                    <span key={s} className="inline-flex items-center gap-1.5 rounded-full bg-surface-muted dark:bg-white/10 border border-border dark:border-white/10 px-2.5 py-1 text-xs">
-                      {s}
-                      {keywords.length > 0 && (
-                        <button
-                          onClick={() => removeKeyword(s)}
-                          className="inline-flex items-center justify-center w-3 h-3 rounded-full hover:bg-red-500/20 hover:text-red-400 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                          title={`Remove "${s}" keyword`}
-                          disabled={isAnalyzing}
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+            <JobDetailsCard
+              jobTitle={selectedJobTitle}
+              companyName={selectedCompany}
+              location={jobLocation}
+              seniority={jobSeniority}
+              category={resolvedInitialJob?.category}
+              culture={culture}
+              benefits={benefits}
+            />
 
-          <div className="rounded-2xl border border-dashed border-border/80 dark:border-white/20 bg-transparent p-6">
+            <div className="rounded-2xl border border-dashed border-border/80 dark:border-white/20 bg-transparent p-6">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 flex items-center justify-center">
                   <Star className="h-5 w-5 text-foreground/80 dark:text-white/80" />
@@ -1435,22 +1215,3 @@ export default function OptimizerUiOnly({
   )
 }
 
-function ListChecksIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M11 18H3" /><path d="M11 12H3" /><path d="M11 6H3" /><path d="m14 19 2 2 4-4" /><path d="m14 13 2 2 4-4" />
-    </svg>
-  )
-}
-
-function ScaleIcon() {
-  return (
-    <svg className="h-4 w-4 text-foreground/70 dark:text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 3h18" />
-      <path d="M12 3v18" />
-      <path d="M7 21h10" />
-      <path d="M5 7l-3 5h6l-3-5Z" />
-      <path d="M19 7l-3 5h6l-3-5Z" />
-    </svg>
-  )
-}
