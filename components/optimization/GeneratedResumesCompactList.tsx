@@ -23,7 +23,7 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   }
   const handleDownload = async (id: string) => {
     try {
-      const response = await fetch(`/api/resumes/download?id=${id}&format=pdf`)
+      const response = await fetch(`/api/resumes/export?resume_id=${id}&format=pdf`)
       if (!response.ok) {
         console.error('Download failed:', response.statusText)
         return

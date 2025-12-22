@@ -61,7 +61,7 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
   const download = (format: 'pdf' | 'docx') => {
     const link = document.createElement('a')
     const encodedId = encodeURIComponent(optimizedId)
-    link.href = `/api/resumes/download?id=${encodedId}&format=${format}`
+    link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}`
     link.target = '_blank'
     link.rel = 'noopener'
     document.body.appendChild(link)

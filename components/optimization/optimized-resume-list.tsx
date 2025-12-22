@@ -33,7 +33,7 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
   }
   const handleDownload = async (resumeId: string, format = "pdf") => {
     try {
-      const response = await fetch(`/api/resumes/download?id=${resumeId}&format=${format}`)
+      const response = await fetch(`/api/resumes/export?resume_id=${resumeId}&format=${format}`)
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
