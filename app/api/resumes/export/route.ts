@@ -1,17 +1,15 @@
 /**
  * Resume Export API Endpoint
- * Generates DOCX or PDF files from optimized resumes
+ * Generates DOCX or HTML files from optimized resumes
  * 
  * POST /api/resumes/export
- * Body: { resume_id: string, format: "docx" | "pdf" | "html" }
+ * Body: { resume_id: string, format: "docx" | "html" }
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getOptimizedResumeById } from "@/lib/db"
-import { generateDOCX, generateFileName } from "@/lib/export/docx-generator"
-import { generatePDF } from "@/lib/export/pdf-generator"
-import { generateResumeHTML } from "@/lib/export/html-template"
+import { generateDOCX, generateDOCXFromMarkdown, generateFileName } from "@/lib/export/docx-generator"
 import type { ResumeJSON } from "@/lib/schemas-v2"
 
 export async function POST(request: NextRequest) {
@@ -30,59 +28,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing resume_id" }, { status: 400 })
     }
 
-    if (!["docx", "pdf", "html"].includes(format)) {
+    if (!["docx", "html"].includes(format)) {
       return NextResponse.json(
-        { error: "Invalid format. Must be docx, pdf, or html" },
+        { error: "Invalid format. Must be docx or html" },
         { status: 400 }
       )
     }
 
-    // Fetch optimized resume (note: function signature is (id, user_id))
+    // Fetch optimized resume
     const resume = await getOptimizedResumeById(resume_id, userId)
     if (!resume) {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 })
     }
 
-    // Extract structured output
-    let resumeData: ResumeJSON | null = null
+    // Check for content
+    const optimizedContent = resume.optimized_content
+    if (!optimizedContent) {
+      return NextResponse.json(
+        { error: "Resume has no optimized content" },
+        { status: 400 }
+      )
+    }
 
+    // Try to extract structured output if available (for better formatting)
+    let resumeData: ResumeJSON | null = null
     if (resume.structured_output && typeof resume.structured_output === "object") {
-      // v2 format with structured output
       const structuredOutput = resume.structured_output as any
       if (structuredOutput.resume_json) {
         resumeData = structuredOutput.resume_json as ResumeJSON
       }
     }
 
-    if (!resumeData) {
-      return NextResponse.json(
-        { error: "Resume does not have structured output. Please re-optimize with v2." },
-        { status: 400 }
-      )
-    }
-
-    // Generate file name
-    const nameParts = resumeData.name.split(" ")
-    const firstName = nameParts[0] || "Resume"
-    const lastName = nameParts.slice(1).join(" ") || ""
-    const targetJobTitle = job_title || resumeData.headline || "Position"
-    const targetCompany = company || "Company"
-
-    const fileExt = format === "html" ? "txt" : format
-    const fileName = generateFileName(
-      firstName,
-      lastName,
-      targetJobTitle,
-      targetCompany,
-      fileExt as "docx" | "pdf" | "txt"
-    ).replace(/\.txt$/, format === "html" ? ".html" : ".txt")
+    // Generate file name from resume title or job details
+    const targetJobTitle = job_title || resume.title || "Resume"
+    const targetCompany = company || "Optimized"
+    const fileName = `Resume_${targetJobTitle.replace(/[^a-zA-Z0-9]/g, "_")}_${targetCompany.replace(/[^a-zA-Z0-9]/g, "_")}.${format === "html" ? "html" : "docx"}`
 
     // Generate file based on format
     if (format === "docx") {
-      const buffer = await generateDOCX(resumeData, {
-        fileName,
-        includePageNumbers: true,
-      })
+      let buffer: Buffer
+
+      if (resumeData) {
+        // Use structured data if available (better formatting)
+        buffer = await generateDOCX(resumeData, {
+          fileName,
+          includePageNumbers: true,
+        })
+      } else {
+        // Fall back to markdown-based generation
+        buffer = await generateDOCXFromMarkdown(optimizedContent, resume.title || "Resume", {
+          fileName,
+          includePageNumbers: true,
+        })
+      }
 
       return new NextResponse(new Uint8Array(buffer), {
         status: 200,
@@ -92,32 +90,9 @@ export async function POST(request: NextRequest) {
           "Content-Length": buffer.length.toString(),
         },
       })
-    } else if (format === "pdf") {
-      try {
-        const buffer = await generatePDF(resumeData)
-
-        return new NextResponse(new Uint8Array(buffer), {
-          status: 200,
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename="${fileName}"`,
-            "Content-Length": buffer.length.toString(),
-          },
-        })
-      } catch (error: any) {
-        console.error("PDF generation failed:", error)
-        
-        return NextResponse.json(
-          {
-            error: "PDF generation unavailable",
-            message: error.message || "Please use DOCX format or HTML preview",
-            fallback: "html",
-          },
-          { status: 503 }
-        )
-      }
     } else if (format === "html") {
-      const html = generateResumeHTML(resumeData)
+      // Generate simple HTML from markdown
+      const html = generateHTMLFromMarkdown(optimizedContent, resume.title || "Resume")
 
       return new NextResponse(html, {
         status: 200,
@@ -143,7 +118,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET endpoint for direct download links
- * GET /api/resumes/export?resume_id=xxx&format=docx&job_title=xxx&company=xxx
+ * GET /api/resumes/export?resume_id=xxx&format=docx
  */
 export async function GET(request: NextRequest) {
   try {
@@ -181,4 +156,60 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+/**
+ * Simple HTML generation from markdown for preview
+ */
+function generateHTMLFromMarkdown(markdown: string, title: string): string {
+  let html = markdown
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Bullet points
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/^• (.+)$/gm, '<li>$1</li>')
+    // Line breaks
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+
+  // Wrap list items
+  html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+  // Clean up multiple ul tags
+  html = html.replace(/<\/ul>\s*<ul>/g, '')
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 { font-size: 24px; text-align: center; margin-bottom: 10px; }
+    h2 { font-size: 16px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; }
+    h3 { font-size: 14px; margin-bottom: 5px; }
+    ul { padding-left: 20px; margin: 10px 0; }
+    li { margin-bottom: 5px; }
+    p { margin: 10px 0; }
+    @media print {
+      body { margin: 0; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <p>${html}</p>
+</body>
+</html>`
 }

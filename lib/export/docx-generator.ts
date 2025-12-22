@@ -505,6 +505,223 @@ export async function generateDOCX(
 }
 
 /**
+ * Generate a simple DOCX from markdown content
+ * For MVP - works without structured ResumeJSON
+ */
+export async function generateDOCXFromMarkdown(
+  markdownContent: string,
+  title: string,
+  options: DOCXOptions = {}
+): Promise<Buffer> {
+  const { fileName, includePageNumbers = false } = options
+  const sections: Paragraph[] = []
+
+  // Parse markdown into paragraphs
+  const lines = markdownContent.split("\n")
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+    
+    if (!trimmedLine) {
+      // Empty line - add spacing
+      sections.push(new Paragraph({ text: "", spacing: { after: 120 } }))
+      continue
+    }
+    
+    // H1 headers (# Header)
+    if (trimmedLine.startsWith("# ")) {
+      sections.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: trimmedLine.substring(2),
+              bold: true,
+              size: 32, // 16pt
+              font: "Arial",
+            }),
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 240 },
+        })
+      )
+      continue
+    }
+    
+    // H2 headers (## Header)
+    if (trimmedLine.startsWith("## ")) {
+      sections.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: trimmedLine.substring(3).toUpperCase(),
+              bold: true,
+              size: 24, // 12pt
+              font: "Arial",
+              underline: { type: UnderlineType.SINGLE },
+            }),
+          ],
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 240, after: 120 },
+        })
+      )
+      continue
+    }
+    
+    // H3 headers (### Header)
+    if (trimmedLine.startsWith("### ")) {
+      sections.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: trimmedLine.substring(4),
+              bold: true,
+              size: 22, // 11pt
+              font: "Arial",
+            }),
+          ],
+          spacing: { before: 180, after: 60 },
+        })
+      )
+      continue
+    }
+    
+    // Bullet points (- item or * item)
+    if (trimmedLine.startsWith("- ") || trimmedLine.startsWith("* ")) {
+      sections.push(
+        new Paragraph({
+          children: [
+            new TextRun({
+              text: trimmedLine.substring(2),
+              size: 22,
+              font: "Arial",
+            }),
+          ],
+          bullet: { level: 0 },
+          spacing: { after: 60 },
+          indent: {
+            left: convertInchesToTwip(0.25),
+            hanging: convertInchesToTwip(0.25),
+          },
+        })
+      )
+      continue
+    }
+    
+    // Bold text (**text**)
+    const boldPattern = /\*\*([^*]+)\*\*/g
+    const hasBold = boldPattern.test(trimmedLine)
+    
+    if (hasBold) {
+      const children: TextRun[] = []
+      let lastIndex = 0
+      let match
+      
+      boldPattern.lastIndex = 0 // Reset regex
+      while ((match = boldPattern.exec(trimmedLine)) !== null) {
+        // Add text before bold
+        if (match.index > lastIndex) {
+          children.push(
+            new TextRun({
+              text: trimmedLine.substring(lastIndex, match.index),
+              size: 22,
+              font: "Arial",
+            })
+          )
+        }
+        // Add bold text
+        children.push(
+          new TextRun({
+            text: match[1],
+            bold: true,
+            size: 22,
+            font: "Arial",
+          })
+        )
+        lastIndex = match.index + match[0].length
+      }
+      // Add remaining text
+      if (lastIndex < trimmedLine.length) {
+        children.push(
+          new TextRun({
+            text: trimmedLine.substring(lastIndex),
+            size: 22,
+            font: "Arial",
+          })
+        )
+      }
+      
+      sections.push(
+        new Paragraph({
+          children,
+          spacing: { after: 120 },
+        })
+      )
+      continue
+    }
+    
+    // Regular paragraph
+    sections.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: trimmedLine,
+            size: 22, // 11pt
+            font: "Arial",
+          }),
+        ],
+        spacing: { after: 120 },
+      })
+    )
+  }
+
+  // Optional footer with page numbers
+  const footers = includePageNumbers
+    ? {
+        default: new Footer({
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [
+                new TextRun({
+                  children: ["Page ", PageNumber.CURRENT, " of ", PageNumber.TOTAL_PAGES],
+                  size: 18,
+                  font: "Arial",
+                }),
+              ],
+            }),
+          ],
+        }),
+      }
+    : undefined
+
+  const doc = new Document({
+    ...(fileName && {
+      creator: "AI Resume Optimizer",
+      title: fileName.replace(/\.\w+$/, ""),
+      description: "Resume optimized by AI Resume Optimizer",
+    }),
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: convertInchesToTwip(0.5),
+              right: convertInchesToTwip(0.75),
+              bottom: convertInchesToTwip(0.5),
+              left: convertInchesToTwip(0.75),
+            },
+          },
+        },
+        ...(footers && { footers }),
+        children: sections,
+      },
+    ],
+  })
+
+  return await Packer.toBuffer(doc)
+}
+
+/**
  * Generate file name following convention: FirstName_LastName_JobTitle_Company.docx
  */
 export function generateFileName(

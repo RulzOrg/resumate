@@ -23,7 +23,7 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   }
   const handleDownload = async (id: string) => {
     try {
-      const response = await fetch(`/api/resumes/export?resume_id=${id}&format=pdf`)
+      const response = await fetch(`/api/resumes/export?resume_id=${id}&format=docx`)
       if (!response.ok) {
         console.error('Download failed:', response.statusText)
         return
@@ -32,7 +32,7 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `resume-${id}.pdf`
+      a.download = `resume-${id}.docx`
       document.body.appendChild(a)
       a.click()
       a.remove()

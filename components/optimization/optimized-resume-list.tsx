@@ -31,7 +31,7 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
     if (s < 60) return { badge: 'bg-amber-500/10 text-amber-400', icon: 'text-amber-400' }
     return { badge: 'bg-emerald-500/10 text-emerald-400', icon: 'text-emerald-400' }
   }
-  const handleDownload = async (resumeId: string, format = "pdf") => {
+  const handleDownload = async (resumeId: string, format = "docx") => {
     try {
       const response = await fetch(`/api/resumes/export?resume_id=${resumeId}&format=${format}`)
       if (response.ok) {
@@ -102,7 +102,7 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
                       View Details
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDownload(resume.id, "pdf")}>
+                  <DropdownMenuItem onClick={() => handleDownload(resume.id, "docx")}>
                     <Download className="mr-2 h-4 w-4" />
                     Download PDF
                   </DropdownMenuItem>
@@ -180,7 +180,7 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
                   View Details
                 </Link>
               </Button>
-              <Button size="sm" variant="outline" onClick={() => handleDownload(resume.id, "pdf")}>
+              <Button size="sm" variant="outline" onClick={() => handleDownload(resume.id, "docx")}>
                 <Download className="w-4 h-4 mr-2" />
                 Download
               </Button>

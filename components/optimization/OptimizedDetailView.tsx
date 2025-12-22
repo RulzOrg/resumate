@@ -58,7 +58,7 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
     } catch {}
   }
 
-  const download = (format: 'pdf' | 'docx') => {
+  const download = (format: 'docx' | 'html') => {
     const link = document.createElement('a')
     const encodedId = encodeURIComponent(optimizedId)
     link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}`
@@ -81,7 +81,7 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
             <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
               <Copy className="h-4 w-4 mr-2" /> Copy
             </Button>
-            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('pdf')}>
+            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
               <Download className="h-4 w-4 mr-2" /> PDF
             </Button>
             <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
