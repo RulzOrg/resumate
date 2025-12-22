@@ -3,6 +3,14 @@
 import { Button } from "@/components/ui/button"
 import { FileText, Download } from "lucide-react"
 import type { OptimizedResume } from "@/lib/db"
+import { useState } from "react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface GeneratedResumesCompactListProps {
   resumes: OptimizedResume[]
@@ -10,6 +18,7 @@ interface GeneratedResumesCompactListProps {
 }
 
 export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumesCompactListProps) {
+  const [layout, setLayout] = useState<string>("modern")
   const items = typeof limit === "number" ? resumes.slice(0, limit) : resumes
   const finiteScore = (score?: number | null) => (
     typeof score === 'number' && Number.isFinite(score) ? score : null
@@ -21,9 +30,9 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
     if (s < 60) return 'text-amber-400'
     return 'text-emerald-400'
   }
-  const handleDownload = async (id: string) => {
+  const handleDownload = async (id: string, format = "docx", layout = "modern") => {
     try {
-      const response = await fetch(`/api/resumes/export?resume_id=${id}&format=docx`)
+      const response = await fetch(`/api/resumes/export?resume_id=${id}&format=${format}&layout=${layout}`)
       if (!response.ok) {
         console.error('Download failed:', response.statusText)
         return
@@ -57,14 +66,24 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-4 self-start sm:self-center">
-            <div className="text-center">
+          <div className="flex items-center gap-2 self-start sm:self-center">
+            <div className="text-center mr-2">
               <p className={`font-medium ${matchClass(resume.match_score)}`}>
                 {finiteScore(resume.match_score) === null ? '—' : `${finiteScore(resume.match_score)}%`}
               </p>
               <p className="text-xs text-foreground/60 dark:text-white/60">Match</p>
             </div>
-            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id)}>
+            <Select value={layout} onValueChange={setLayout}>
+              <SelectTrigger className="w-[100px] h-8 text-[10px] bg-surface-muted dark:bg-white/10 border-border dark:border-white/10">
+                <SelectValue placeholder="Layout" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="classic" className="text-xs">Classic</SelectItem>
+                <SelectItem value="modern" className="text-xs">Modern</SelectItem>
+                <SelectItem value="compact" className="text-xs">Compact</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id, "docx", layout)}>
               <Download className="h-4 w-4" />
             </Button>
           </div>

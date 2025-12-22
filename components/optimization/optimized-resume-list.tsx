@@ -10,10 +10,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Building2, Clock, MoreHorizontal, Download, Eye, Trash2, TrendingUp } from "lucide-react"
+import { Building2, Clock, MoreHorizontal, Download, Eye, Trash2, TrendingUp, Settings2 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import Link from "next/link"
 import type { OptimizedResume } from "@/lib/db"
+import { useState } from "react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface OptimizedResumeListProps {
   optimizedResumes: (OptimizedResume & {
@@ -24,6 +32,7 @@ interface OptimizedResumeListProps {
 }
 
 export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListProps) {
+  const [layout, setLayout] = useState<string>("modern")
   const matchClasses = (score?: number | null) => {
     const s = typeof score === 'number' ? score : null
     if (s === null) return { badge: 'bg-surface-muted dark:bg-white/10 text-foreground/70 dark:text-white/70', icon: 'text-foreground/70 dark:text-white/70' }
@@ -31,9 +40,9 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
     if (s < 60) return { badge: 'bg-amber-500/10 text-amber-400', icon: 'text-amber-400' }
     return { badge: 'bg-emerald-500/10 text-emerald-400', icon: 'text-emerald-400' }
   }
-  const handleDownload = async (resumeId: string, format = "docx") => {
+  const handleDownload = async (resumeId: string, format = "docx", layout = "modern") => {
     try {
-      const response = await fetch(`/api/resumes/export?resume_id=${resumeId}&format=${format}`)
+      const response = await fetch(`/api/resumes/export?resume_id=${resumeId}&format=${format}&layout=${layout}`)
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
@@ -102,13 +111,13 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
                       View Details
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDownload(resume.id, "docx")}>
+                  <DropdownMenuItem onClick={() => handleDownload(resume.id, "docx", layout)}>
                     <Download className="mr-2 h-4 w-4" />
-                    Download PDF
+                    Download DOCX
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDownload(resume.id, "docx")}>
-                    <Download className="mr-2 h-4 w-4" />
-                    Download Word
+                  <DropdownMenuItem onClick={() => handleDownload(resume.id, "html", layout)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview (HTML)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleDownload(resume.id, "txt")}>
                     <Download className="mr-2 h-4 w-4" />
@@ -173,17 +182,29 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
               </div>
             </div>
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               <Button size="sm" className="flex-1" asChild>
                 <Link href={`/dashboard/optimized/${resume.id}`}>
                   <Eye className="w-4 h-4 mr-2" />
                   View Details
                 </Link>
               </Button>
-              <Button size="sm" variant="outline" onClick={() => handleDownload(resume.id, "docx")}>
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={layout} onValueChange={setLayout}>
+                  <SelectTrigger className="w-[110px] h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10">
+                    <SelectValue placeholder="Layout" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="classic">Classic</SelectItem>
+                    <SelectItem value="modern">Modern</SelectItem>
+                    <SelectItem value="compact">Compact</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button size="sm" variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => handleDownload(resume.id, "docx", layout)}>
+                  <Download className="w-4 h-4 mr-2" />
+                  DOCX
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
