@@ -234,8 +234,8 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="hidden md:block h-screen relative">
           <img
-            src="https://hoirqrkdgbmvpwutwuwj-all.supabase.co/storage/v1/object/public/assets/assets/54d286cc-805c-4764-8e62-adf0b4e17df5_800w.jpg"
-            alt="A professional man smiling"
+            src="/images/auth-hero.jpg"
+            alt="A professional person smiling"
             className="absolute w-full h-full object-cover top-0 right-0 bottom-0 left-0"
           />
           <div className="absolute inset-0 bg-foreground/40 dark:bg-black/40" />

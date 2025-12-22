@@ -77,18 +77,19 @@ export async function hasActiveSubscription(): Promise<boolean> {
  */
 export async function canPerformAction(action: 'resumeOptimizations' | 'jobAnalyses' | 'resumeVersions'): Promise<boolean> {
   try {
+    const { userId } = await auth()
+    if (!userId) return false
+
+    const user = await getOrCreateUser(userId)
+    if (!user) return false
+
     const subscription = await getCurrentSubscription()
     if (!subscription) return false
 
-    // For now, we'll use mock usage data
-    // In a real app, you'd query actual usage from the database
-    const mockUsage = {
-      resumeOptimizations: 2,
-      jobAnalyses: 3,
-      resumeVersions: 2
-    }
+    // Get real usage from the database
+    const actualUsage = await getAllCurrentUsage(user.id)
 
-    return canUserPerformAction(subscription.plan, mockUsage[action], action as any)
+    return canUserPerformAction(subscription.plan, actualUsage[action], action)
   } catch (error) {
     console.error('Error checking action permission:', error)
     return false

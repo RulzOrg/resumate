@@ -1,3 +1,8 @@
+export interface PricingFeature {
+  text: string
+  comingSoon?: boolean
+}
+
 export interface PricingTier {
   id: string
   name: string
@@ -6,7 +11,7 @@ export interface PricingTier {
   currency: string
   interval: 'month' | 'year'
   stripePriceId: string
-  features: string[]
+  features: (string | PricingFeature)[]
   limits: {
     resumeOptimizations: number | 'unlimited'
     jobAnalyses: number | 'unlimited'
@@ -31,8 +36,8 @@ function getPricingTiers(): PricingTier[] {
         '3 resume optimizations per month',
         '5 job analyses per month',
         'Basic ATS compatibility check',
-        'Resume health checker',
-        'Standard resume templates',
+        { text: 'Resume health checker', comingSoon: true },
+        { text: 'Standard resume templates', comingSoon: true },
         'Export to PDF/Word',
         'Community support'
       ],
@@ -55,13 +60,13 @@ function getPricingTiers(): PricingTier[] {
       features: [
         'Unlimited resume optimizations',
         'Unlimited job analysis',
-        'Advanced ATS scoring & insights',
-        'AI-powered resume health checker',
+        { text: 'Advanced ATS scoring & insights', comingSoon: true },
+        { text: 'AI-powered resume health checker', comingSoon: true },
         'Resume version management',
-        'Evidence-based bullet rewriting',
-        'Industry-specific recommendations',
+        { text: 'Evidence-based bullet rewriting', comingSoon: true },
+        { text: 'Industry-specific recommendations', comingSoon: true },
         'Keyword optimization',
-        'Cover letter generation',
+        { text: 'Cover letter generation', comingSoon: true },
         'Priority email support',
         'Export to PDF/Word/TXT'
       ],

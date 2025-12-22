@@ -95,6 +95,15 @@ export default async function DashboardPage() {
               <Link href="/pricing" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
                 Pricing
               </Link>
+              <Link href="/terms" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                Terms
+              </Link>
+              <Link href="/privacy" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                Privacy
+              </Link>
+              <Link href="/support" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                Support
+              </Link>
             </div>
           </div>
         </div>

@@ -814,20 +814,27 @@ export default function HomePage() {
       <footer className="border-t border-border dark:border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <p className="text-sm text-foreground/50 dark:text-white/50 font-sans">© 2025 ResuMate AI. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                </svg>
-              </a>
-              <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-                  <rect x="2" y="9" width="4" height="12" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
-              </a>
+            <p className="text-sm text-foreground/50 dark:text-white/50 font-sans">© {new Date().getFullYear()} ResuMate AI. All rights reserved.</p>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <Link href="/terms" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white font-sans">Terms</Link>
+                <Link href="/privacy" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white font-sans">Privacy</Link>
+                <Link href="/support" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white font-sans">Support</Link>
+              </div>
+              <div className="flex items-center gap-4">
+                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+                  </svg>
+                </a>
+                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+                    <rect x="2" y="9" width="4" height="12" />
+                    <circle cx="4" cy="4" r="2" />
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>
