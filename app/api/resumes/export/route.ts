@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getOptimizedResumeById } from "@/lib/db"
+import { getOptimizedResumeById, getOrCreateUser } from "@/lib/db"
 import { generateDOCX, generateDOCXFromMarkdown, generateFileName } from "@/lib/export/docx-generator"
 import type { ResumeJSON } from "@/lib/schemas-v2"
 
@@ -18,6 +18,11 @@ export async function POST(request: NextRequest) {
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await getOrCreateUser()
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
     // Parse request
@@ -36,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fetch optimized resume
-    const resume = await getOptimizedResumeById(resume_id, userId)
+    const resume = await getOptimizedResumeById(resume_id, user.id)
     if (!resume) {
       return NextResponse.json({ error: "Resume not found" }, { status: 404 })
     }
@@ -179,7 +184,7 @@ function generateHTMLFromMarkdown(markdown: string, title: string): string {
     .replace(/\n/g, '<br>')
 
   // Wrap list items
-  html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+  html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>')
   // Clean up multiple ul tags
   html = html.replace(/<\/ul>\s*<ul>/g, '')
 
