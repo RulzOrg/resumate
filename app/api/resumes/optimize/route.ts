@@ -1,13 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, getJobAnalysisById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage } from "@/lib/db"
+import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
 import { openai } from "@ai-sdk/openai"
 import { generateObject } from "ai"
 import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
-import { computeScoreWithAI } from "@/lib/match"
 
 const optimizationSchema = z.object({
   optimized_content: z.string().describe("The optimized resume content in markdown format"),
@@ -56,51 +55,34 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    const { resume_id, job_analysis_id } = await request.json()
+    const { resume_id, job_title, company_name, job_description } = await request.json()
 
-    if (!resume_id || !job_analysis_id) {
-      throw new AppError("Resume ID and Job Analysis ID are required", 400)
+    if (!resume_id) {
+      throw new AppError("Resume ID is required", 400)
     }
 
-    // Get the resume and job analysis
+    if (!job_title || !job_description) {
+      throw new AppError("Job title and job description are required", 400)
+    }
+
+    if (job_description.trim().length < 50) {
+      throw new AppError("Job description is too short. Please provide more details about the position.", 400)
+    }
+
+    // Get the resume
     const resume = await getResumeById(resume_id, user.id)
     if (!resume) {
       throw new AppError("Resume not found", 404)
     }
 
-    const jobAnalysis = await getJobAnalysisById(job_analysis_id, user.id)
-    if (!jobAnalysis) {
-      throw new AppError("Job analysis not found", 404)
-    }
-
     if (!resume.content_text || resume.content_text.trim().length < 50) {
       throw new AppError(
-        "Resume content is too short or missing. Please re-upload your resume or extract content first.",
+        "Resume content is too short or missing. Please re-upload your resume.",
         400,
       )
     }
 
-    // Prefer structured parsed sections from the resume when present
-    const structured = (resume as any).parsed_sections ?? null
-
-    // Safe fallbacks for job analysis arrays/fields
-    const requiredSkills = Array.isArray((jobAnalysis as any).required_skills)
-      ? (jobAnalysis as any).required_skills
-      : []
-    const preferredSkills = Array.isArray((jobAnalysis as any).preferred_skills)
-      ? (jobAnalysis as any).preferred_skills
-      : []
-    const keywords = Array.isArray((jobAnalysis as any).keywords)
-      ? (jobAnalysis as any).keywords
-      : []
-    const keyRequirements = Array.isArray((jobAnalysis as any).analysis_result?.key_requirements)
-      ? (jobAnalysis as any).analysis_result.key_requirements
-      : []
-
-    const structuredBlock = structured
-      ? `\nSTRUCTURED RESUME SECTIONS (JSON) — prefer these fields over free-text:\n${JSON.stringify(structured, null, 2)}\n`
-      : ""
-
+    // Generate optimized resume
     const optimization = await withRetry(
       async () => {
         const { object } = await generateObject({
@@ -111,26 +93,21 @@ export async function POST(request: NextRequest) {
 ORIGINAL RESUME CONTENT:
 ${resume.content_text}
 
-${structuredBlock}
+TARGET JOB:
+Job Title: ${job_title}
+Company: ${company_name || "Not specified"}
 
-JOB POSTING ANALYSIS:
-Job Title: ${jobAnalysis.job_title}
-Company: ${jobAnalysis.company_name || "Not specified"}
-Required Skills: ${requiredSkills.join(", ")}
-Preferred Skills: ${preferredSkills.join(", ")}
-Keywords: ${keywords.join(", ")}
-Experience Level: ${jobAnalysis.experience_level || "Not specified"}
-Key Requirements: ${keyRequirements.join(", ")}
+JOB DESCRIPTION:
+${job_description}
 
 OPTIMIZATION INSTRUCTIONS:
-1. If STRUCTURED RESUME SECTIONS is present, treat it as the source of truth; map and rewrite using those fields first (e.g., personal_info, experience.highlights, skills).
-2. Rewrite the resume to better match the job requirements
-3. Incorporate relevant keywords naturally throughout the content
-4. Highlight skills that match the job requirements
-5. Adjust the professional summary to align with the role
-6. Reorder or emphasize experience that's most relevant
-7. Use action verbs and quantifiable achievements
-8. Ensure ATS compatibility and keep a clean markdown layout
+1. Rewrite the resume to better match the job requirements
+2. Incorporate relevant keywords naturally throughout the content
+3. Highlight skills that match the job requirements
+4. Adjust the professional summary to align with the role
+5. Reorder or emphasize experience that's most relevant
+6. Use action verbs and quantifiable achievements
+7. Ensure ATS compatibility and keep a clean markdown layout
 
 Please provide:
 - The complete optimized resume content in markdown format
@@ -162,39 +139,33 @@ Focus on making the resume highly relevant to this specific job while maintainin
       })
     }
 
-    // Compute accurate match score using dedicated AI scoring function
-    // This replaces the inline estimation from the optimization prompt
-    let matchScore = optimization.match_score_after // Fallback to inline estimate
-    try {
-      const scoreResult = await computeScoreWithAI(
-        jobAnalysis as any,
-        [], // No vector evidence, use optimized content as resume text
-        optimization.optimized_content
-      )
-      matchScore = scoreResult.overall
-      console.log(`[optimize] AI Score computed: ${matchScore} (confidence: ${scoreResult.confidence}, method: ${scoreResult.scoringMethod})`)
-    } catch (scoreError) {
-      console.warn('[optimize] AI scoring failed, using inline estimate:', scoreError)
-      // Keep the inline estimate as fallback
-    }
-
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
-      // Use the resume's owner to satisfy FK constraints even if auth user
-      // record isn't yet provisioned in users_sync in some environments.
       user_id: resume.user_id,
       original_resume_id: resume_id,
-      job_analysis_id: job_analysis_id,
-      title: `${resume.title} - Optimized for ${jobAnalysis.job_title}`,
+      job_title,
+      company_name: company_name || null,
+      job_description,
+      title: `${resume.title} - Optimized for ${job_title}`,
       optimized_content: optimization.optimized_content,
       optimization_summary: optimization,
-      match_score: matchScore,
+      match_score: optimization.match_score_after,
     })
 
     // Increment usage tracking for this successful optimization
     await incrementUsage(user.id, 'resume_optimization', user.subscription_plan || 'free')
 
-    return NextResponse.json({ optimized_resume: optimizedResume }, { headers: getRateLimitHeaders(rateLimitResult) })
+    return NextResponse.json({ 
+      optimized_resume: optimizedResume,
+      optimization_details: {
+        changes_made: optimization.changes_made,
+        keywords_added: optimization.keywords_added,
+        skills_highlighted: optimization.skills_highlighted,
+        match_score_before: optimization.match_score_before,
+        match_score_after: optimization.match_score_after,
+        recommendations: optimization.recommendations,
+      }
+    }, { headers: getRateLimitHeaders(rateLimitResult) })
   } catch (error) {
     const errorInfo = handleApiError(error)
     return NextResponse.json({ error: errorInfo.error, code: errorInfo.code }, { status: errorInfo.statusCode })

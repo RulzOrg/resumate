@@ -217,7 +217,10 @@ export interface OptimizedResume {
   id: string
   user_id: string
   original_resume_id: string
-  job_analysis_id: string
+  job_analysis_id?: string | null
+  job_title?: string
+  company_name?: string | null
+  job_description?: string
   title: string
   optimized_content: string
   optimization_summary: {
@@ -394,39 +397,16 @@ export async function getUserById(id: string) {
   return user as User | undefined
 }
 
-export async function updateUser(id: string, data: Partial<any>) {
-  const validFields = [
-    'email', 'name'
-  ]
-
-  const updates: string[] = []
-  const values: any[] = []
-  let paramIndex = 1
-
-  for (const [key, value] of Object.entries(data)) {
-    if (validFields.includes(key) && value !== undefined) {
-      updates.push(`${key} = $${paramIndex}`)
-      values.push(value)
-      paramIndex++
-    }
-  }
-
-  if (updates.length === 0) {
-    return null
-  }
-
-  updates.push(`updated_at = NOW()`)
-  values.push(id) // For WHERE clause
-
-  const query = `
+export async function updateUser(id: string, data: Partial<{ email: string; name: string }>) {
+  const [user] = await sql`
     UPDATE users_sync
-    SET ${updates.join(', ')}
-    WHERE id = $${paramIndex} AND deleted_at IS NULL
+    SET email = COALESCE(${data.email ?? null}, email),
+        name = COALESCE(${data.name ?? null}, name),
+        updated_at = NOW()
+    WHERE id = ${id} AND deleted_at IS NULL
     RETURNING *
   `
-
-  const result = await sql.unsafe(query, values)
-  return result[0] as User | undefined
+  return user as User | undefined
 }
 
 export async function updateUserFromClerk(clerkUserId: string, data: { email?: string; name?: string }) {
@@ -1266,7 +1246,10 @@ export async function cleanupDuplicateJobAnalyses(specificUserId?: string) {
 export async function createOptimizedResume(data: {
   user_id: string
   original_resume_id: string
-  job_analysis_id: string
+  job_analysis_id?: string | null
+  job_title?: string
+  company_name?: string | null
+  job_description?: string
   title: string
   optimized_content: string
   optimization_summary: OptimizedResume["optimization_summary"]
@@ -1275,12 +1258,13 @@ export async function createOptimizedResume(data: {
   const insert = async () => {
     const [optimizedResume] = await sql`
       INSERT INTO optimized_resumes (
-        user_id, original_resume_id, job_analysis_id, title, optimized_content,
-        optimization_summary, match_score, improvements_made, keywords_added, 
-        skills_highlighted, created_at, updated_at
+        user_id, original_resume_id, job_analysis_id, job_title, company_name,
+        job_description, title, optimized_content, optimization_summary, match_score, 
+        improvements_made, keywords_added, skills_highlighted, created_at, updated_at
       )
       VALUES (
-        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id},
+        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id || null},
+        ${data.job_title || null}, ${data.company_name || null}, ${data.job_description || null},
         ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
         ${data.match_score || null}, ${data.optimization_summary.changes_made},
         ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
@@ -1305,10 +1289,12 @@ export async function createOptimizedResume(data: {
 
 export async function getUserOptimizedResumes(user_id: string) {
   const optimizedResumes = await sql`
-    SELECT opt_res.*, r.title as original_resume_title, ja.job_title, ja.company_name
+    SELECT opt_res.*, r.title as original_resume_title,
+           COALESCE(opt_res.job_title, ja.job_title) as job_title,
+           COALESCE(opt_res.company_name, ja.company_name) as company_name
     FROM optimized_resumes opt_res
     JOIN resumes r ON opt_res.original_resume_id = r.id
-    JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
+    LEFT JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
     WHERE opt_res.user_id = ${user_id}
     ORDER BY opt_res.created_at DESC
   `
@@ -1321,10 +1307,12 @@ export async function getUserOptimizedResumes(user_id: string) {
 
 export async function getOptimizedResumeById(id: string, user_id: string) {
   const [optimizedResume] = await sql`
-    SELECT opt_res.*, r.title as original_resume_title, ja.job_title, ja.company_name
+    SELECT opt_res.*, r.title as original_resume_title,
+           COALESCE(opt_res.job_title, ja.job_title) as job_title,
+           COALESCE(opt_res.company_name, ja.company_name) as company_name
     FROM optimized_resumes opt_res
     JOIN resumes r ON opt_res.original_resume_id = r.id
-    JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
+    LEFT JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
     WHERE opt_res.id = ${id} AND opt_res.user_id = ${user_id}
   `
   return optimizedResume as
@@ -1813,7 +1801,7 @@ export async function getOrCreateUsageTracking(
     RETURNING *
   `
 
-  return result[0]
+  return result[0] as UsageTracking
 }
 
 /**

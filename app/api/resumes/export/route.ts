@@ -68,22 +68,23 @@ export async function POST(request: NextRequest) {
     const targetJobTitle = job_title || resumeData.headline || "Position"
     const targetCompany = company || "Company"
 
+    const fileExt = format === "html" ? "txt" : format
     const fileName = generateFileName(
       firstName,
       lastName,
       targetJobTitle,
       targetCompany,
-      format as "docx" | "pdf" | "html"
-    )
+      fileExt as "docx" | "pdf" | "txt"
+    ).replace(/\.txt$/, format === "html" ? ".html" : ".txt")
 
     // Generate file based on format
     if (format === "docx") {
       const buffer = await generateDOCX(resumeData, {
         fileName,
-        includePageNumbers: true, // Enable page numbers for professional appearance
+        includePageNumbers: true,
       })
 
-      return new NextResponse(buffer, {
+      return new NextResponse(new Uint8Array(buffer), {
         status: 200,
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       try {
         const buffer = await generatePDF(resumeData)
 
-        return new NextResponse(buffer, {
+        return new NextResponse(new Uint8Array(buffer), {
           status: 200,
           headers: {
             "Content-Type": "application/pdf",
@@ -106,7 +107,6 @@ export async function POST(request: NextRequest) {
       } catch (error: any) {
         console.error("PDF generation failed:", error)
         
-        // Fallback: Return HTML for client-side printing
         return NextResponse.json(
           {
             error: "PDF generation unavailable",
