@@ -1,9 +1,16 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Copy, Download, SplitSquareVertical, FileText } from "lucide-react"
+import { Copy, Download, SplitSquareVertical, FileText, Settings2 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface OptimizedDetailViewProps {
   optimizedId: string
@@ -46,6 +53,7 @@ function highlightDiff(base: string, compare: string, mode: 'added' | 'removed')
 }
 
 export function OptimizedDetailView({ optimizedId, title, optimizedContent, originalContent, matchScore }: OptimizedDetailViewProps) {
+  const [layout, setLayout] = useState<string>("modern")
   const match = classifyMatch(matchScore)
   const orig = originalContent || ''
   const opt = optimizedContent || ''
@@ -61,7 +69,7 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
   const download = (format: 'docx' | 'html') => {
     const link = document.createElement('a')
     const encodedId = encodeURIComponent(optimizedId)
-    link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}`
+    link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}&layout=${layout}`
     link.target = '_blank'
     link.rel = 'noopener'
     document.body.appendChild(link)
@@ -72,19 +80,34 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
   return (
     <div className="space-y-6">
       <Card className="border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="text-lg">{title}</CardTitle>
             <div className="text-sm text-foreground/60 dark:text-white/60">Match: <span className={match.className}>{match.label}</span></div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 mr-2">
+              <span className="text-xs font-medium text-foreground/60 dark:text-white/60">Layout:</span>
+              <Select value={layout} onValueChange={setLayout}>
+                <SelectTrigger className="w-[120px] h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10">
+                  <SelectValue placeholder="Layout" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="classic">Classic</SelectItem>
+                  <SelectItem value="modern">Modern</SelectItem>
+                  <SelectItem value="compact">Compact</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
               <Copy className="h-4 w-4 mr-2" /> Copy
             </Button>
-            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
-              <Download className="h-4 w-4 mr-2" /> PDF
+            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('html')}>
+              <FileText className="h-4 w-4 mr-2" /> Preview
             </Button>
-            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
+            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
               <Download className="h-4 w-4 mr-2" /> DOCX
             </Button>
           </div>

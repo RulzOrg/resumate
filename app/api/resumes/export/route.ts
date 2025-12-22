@@ -3,13 +3,13 @@
  * Generates DOCX or HTML files from optimized resumes
  * 
  * POST /api/resumes/export
- * Body: { resume_id: string, format: "docx" | "html" }
+ * Body: { resume_id: string, format: "docx" | "html", layout?: "classic" | "modern" | "compact" }
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getOptimizedResumeById, getOrCreateUser } from "@/lib/db"
-import { generateDOCX, generateDOCXFromMarkdown, generateFileName } from "@/lib/export/docx-generator"
+import { generateDOCX, generateDOCXFromMarkdown, type ResumeLayout } from "@/lib/export/docx-generator"
 import type { ResumeJSON } from "@/lib/schemas-v2"
 
 export async function POST(request: NextRequest) {
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request
     const body = await request.json()
-    const { resume_id, format = "docx", job_title, company } = body
+    const { resume_id, format = "docx", layout = "modern", job_title, company } = body
 
     if (!resume_id) {
       return NextResponse.json({ error: "Missing resume_id" }, { status: 400 })
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Try to extract structured output if available (for better formatting)
+    // Try to extract structured output if available
     let resumeData: ResumeJSON | null = null
     if (resume.structured_output && typeof resume.structured_output === "object") {
       const structuredOutput = resume.structured_output as any
@@ -64,9 +64,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate file name from resume title or job details
-    const targetJobTitle = job_title || resume.title || "Resume"
-    const targetCompany = company || "Optimized"
+    // Generate file name
+    const targetJobTitle = job_title || resume.job_title || "Resume"
+    const targetCompany = company || resume.company_name || "Optimized"
     const fileName = `Resume_${targetJobTitle.replace(/[^a-zA-Z0-9]/g, "_")}_${targetCompany.replace(/[^a-zA-Z0-9]/g, "_")}.${format === "html" ? "html" : "docx"}`
 
     // Generate file based on format
@@ -74,16 +74,16 @@ export async function POST(request: NextRequest) {
       let buffer: Buffer
 
       if (resumeData) {
-        // Use structured data if available (better formatting)
         buffer = await generateDOCX(resumeData, {
           fileName,
           includePageNumbers: true,
+          layout: layout as ResumeLayout,
         })
       } else {
-        // Fall back to markdown-based generation
         buffer = await generateDOCXFromMarkdown(optimizedContent, resume.title || "Resume", {
           fileName,
           includePageNumbers: true,
+          layout: layout as ResumeLayout,
         })
       }
 
@@ -96,8 +96,7 @@ export async function POST(request: NextRequest) {
         },
       })
     } else if (format === "html") {
-      // Generate simple HTML from markdown
-      const html = generateHTMLFromMarkdown(optimizedContent, resume.title || "Resume")
+      const html = generateHTMLFromMarkdown(optimizedContent, resume.title || "Resume", layout as ResumeLayout)
 
       return new NextResponse(html, {
         status: 200,
@@ -112,31 +111,23 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("Export error:", error)
     return NextResponse.json(
-      {
-        error: "Failed to export resume",
-        message: error.message || "Unknown error",
-      },
+      { error: "Failed to export resume", message: error.message || "Unknown error" },
       { status: 500 }
     )
   }
 }
 
-/**
- * GET endpoint for direct download links
- * GET /api/resumes/export?resume_id=xxx&format=docx
- */
 export async function GET(request: NextRequest) {
   try {
-    // Authentication
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Parse query params
     const searchParams = request.nextUrl.searchParams
     const resume_id = searchParams.get("resume_id")
     const format = searchParams.get("format") || "docx"
+    const layout = searchParams.get("layout") || "modern"
     const job_title = searchParams.get("job_title") || undefined
     const company = searchParams.get("company") || undefined
 
@@ -144,48 +135,69 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing resume_id" }, { status: 400 })
     }
 
-    // Reuse POST logic
     const mockRequest = new Request(request.url, {
       method: "POST",
-      body: JSON.stringify({ resume_id, format, job_title, company }),
+      body: JSON.stringify({ resume_id, format, layout, job_title, company }),
     })
 
     return await POST(mockRequest as NextRequest)
   } catch (error: any) {
     console.error("Export GET error:", error)
     return NextResponse.json(
-      {
-        error: "Failed to export resume",
-        message: error.message || "Unknown error",
-      },
+      { error: "Failed to export resume", message: error.message || "Unknown error" },
       { status: 500 }
     )
   }
 }
 
 /**
- * Simple HTML generation from markdown for preview
+ * Enhanced HTML generation with layout styles
  */
-function generateHTMLFromMarkdown(markdown: string, title: string): string {
+function generateHTMLFromMarkdown(markdown: string, title: string, layout: ResumeLayout = 'modern'): string {
+  const configs = {
+    classic: {
+      font: "'Times New Roman', serif",
+      size: "11pt",
+      lineHeight: "1.4",
+      margin: "0.75in",
+      h1Size: "18pt",
+      h2Size: "13pt",
+      h2Border: "1px solid #333",
+    },
+    modern: {
+      font: "Arial, sans-serif",
+      size: "10.5pt",
+      lineHeight: "1.6",
+      margin: "0.75in",
+      h1Size: "20pt",
+      h2Size: "14pt",
+      h2Border: "2px solid #eee",
+    },
+    compact: {
+      font: "Calibri, sans-serif",
+      size: "9.5pt",
+      lineHeight: "1.3",
+      margin: "0.5in",
+      h1Size: "16pt",
+      h2Size: "11pt",
+      h2Border: "1px solid #ddd",
+    }
+  }
+
+  const config = configs[layout] || configs.modern
+
   let html = markdown
-    // Headers
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    // Bold
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Bullet points
     .replace(/^- (.+)$/gm, '<li>$1</li>')
     .replace(/^• (.+)$/gm, '<li>$1</li>')
-    // Line breaks
     .replace(/\n\n/g, '</p><p>')
     .replace(/\n/g, '<br>')
 
-  // Wrap list items
   html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>')
-  // Clean up multiple ul tags
   html = html.replace(/<\/ul>\s*<ul>/g, '')
 
   return `<!DOCTYPE html>
@@ -195,26 +207,28 @@ function generateHTMLFromMarkdown(markdown: string, title: string): string {
   <title>${title}</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 20px;
-      line-height: 1.6;
+      font-family: ${config.font};
+      max-width: 8.5in;
+      margin: 0 auto;
+      padding: ${config.margin};
+      line-height: ${config.lineHeight};
+      font-size: ${config.size};
       color: #333;
     }
-    h1 { font-size: 24px; text-align: center; margin-bottom: 10px; }
-    h2 { font-size: 16px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 20px; }
-    h3 { font-size: 14px; margin-bottom: 5px; }
-    ul { padding-left: 20px; margin: 10px 0; }
-    li { margin-bottom: 5px; }
-    p { margin: 10px 0; }
+    h1 { font-size: ${config.h1Size}; text-align: center; margin-bottom: 15px; text-transform: uppercase; }
+    h2 { font-size: ${config.h2Size}; text-transform: uppercase; border-bottom: ${config.h2Border}; padding-bottom: 3px; margin-top: 20px; margin-bottom: 10px; font-weight: bold; }
+    h3 { font-size: ${config.size}; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
+    ul { padding-left: 20px; margin: 8px 0; }
+    li { margin-bottom: 4px; }
+    p { margin: 8px 0; }
+    @page { size: letter; margin: 0; }
     @media print {
-      body { margin: 0; padding: 20px; }
+      body { margin: 0; padding: ${config.margin}; }
     }
   </style>
 </head>
 <body>
-  <p>${html}</p>
+  ${html}
 </body>
 </html>`
 }
