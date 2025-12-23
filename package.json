@@ -82,7 +82,7 @@
     "leac": "^0.7.0",
     "llama-cloud-services": "^0.3.6",
     "lucide-react": "^0.454.0",
-    "next": "^14.2.25",
+    "next": "14.2.35",
     "next-auth": "4.24.11",
     "next-themes": "^0.4.6",
     "pdf-to-img": "^5.0.0",
