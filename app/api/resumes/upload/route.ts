@@ -20,15 +20,15 @@ export async function POST(request: NextRequest) {
 
     // Validate file upload with comprehensive security checks
     const validation = await validateFileUpload(request)
-    if (!validation.valid || !validation.file) {
+    if (!validation.valid || !validation.file || !validation.formData) {
       return NextResponse.json(
         { error: validation.error || "Invalid file upload" },
         { status: 400 }
       )
     }
 
-    const formData = await request.formData()
     const file = validation.file
+    const formData = validation.formData
     const title = formData.get("title") as string
 
     if (!title) {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload file to S3 with sanitized filename
-    const key = buildS3Key({ userId: user.id, kind: "uploaded", fileName: sanitizedFilename })
+    const key = buildS3Key({ userId: user.id, kind: "master", fileName: sanitizedFilename })
     const { url: fileUrl } = await uploadBufferToS3({ 
       buffer, 
       key, 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       file_type: file.type,
       file_size: file.size,
       content_text: contentText,
-      kind: "uploaded",
+      kind: "master",
       processing_status: processingStatus,
       processing_error: processingError,
       source_metadata: { 

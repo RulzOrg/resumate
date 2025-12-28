@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Loader2, Sparkles } from "lucide-react"
+import { UploadMasterResumeDialog } from "./master-resume-dialog"
 
 interface Resume {
   id: string
@@ -88,15 +89,11 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         <p className="text-foreground/60 dark:text-white/60 mb-4">
           Upload a resume first to start optimizing
         </p>
-        <Button
-          onClick={() => {
-            // Trigger upload dialog - this would need to be implemented
-            // For now, just show a message
-          }}
-          className="bg-emerald-500 hover:bg-emerald-400 text-black"
-        >
-          Upload Resume
-        </Button>
+        <UploadMasterResumeDialog currentResumeCount={0}>
+          <Button className="bg-emerald-500 hover:bg-emerald-400 text-black">
+            Upload Resume
+          </Button>
+        </UploadMasterResumeDialog>
       </div>
     )
   }
