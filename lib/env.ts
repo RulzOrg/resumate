@@ -74,9 +74,21 @@ const envSchema = z.object({
   INNGEST_EVENT_KEY: z.string().optional(),
   INNGEST_SIGNING_KEY: z.string().optional(),
 
+  // Whitelisted emails for unlimited access
+  WHITELISTED_EMAILS: z
+    .string()
+    .optional()
+    .default("")
+    .transform((val) => val.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)),
+
   // ClamAV for virus scanning - Optional
   CLAMAV_HOST: z.string().optional(),
   CLAMAV_PORT: z.string().optional(),
+
+  // Email (Resend) - Optional but needed for support/notifications
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().optional(),
+  SUPPORT_EMAIL: z.string().email().optional().default("support@airesume.com"),
 
   // Feature flags
   ENABLE_VIRUS_SCAN: z

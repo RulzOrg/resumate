@@ -9,7 +9,7 @@ const supportSchema = z.object({
   message: z.string().min(10, "Message must be at least 10 characters").max(5000),
 })
 
-const SUPPORT_EMAIL = "iseghohi.john@gmail.com"
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "support@airesume.com"
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
     const result = await sendNotificationEmail(
       SUPPORT_EMAIL,
       `[ResuMate Support] ${subject}`,
-      htmlContent
+      htmlContent,
+      email
     )
 
     if (!result.success) {

@@ -10,6 +10,7 @@ interface Resume {
   title: string
   file_name: string
   processing_status: string
+  kind: string
 }
 
 interface QuickOptimizeFormProps {
@@ -20,13 +21,19 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  const [selectedResumeId, setSelectedResumeId] = useState(resumes[0]?.id || "")
+
+  const completedResumes = resumes.filter(
+    (r) =>
+      r.processing_status === "completed" &&
+      (r.kind === "master" || r.kind === "uploaded")
+  )
+
+  const [selectedResumeId, setSelectedResumeId] = useState(
+    completedResumes[0]?.id || ""
+  )
   const [jobTitle, setJobTitle] = useState("")
   const [companyName, setCompanyName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
-
-  const completedResumes = resumes.filter(r => r.processing_status === "completed")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

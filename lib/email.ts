@@ -106,7 +106,8 @@ export async function sendOptimizedResumeEmail({
 export async function sendNotificationEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  replyTo?: string
 ): Promise<EmailResponse> {
   const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@resumate.com';
   const fromName = 'ResuMate';
@@ -125,6 +126,7 @@ export async function sendNotificationEmail(
       to,
       subject,
       html,
+      reply_to: replyTo,
     });
 
     if (error) {

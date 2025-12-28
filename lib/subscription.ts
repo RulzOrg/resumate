@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server"
 import { getOrCreateUser, getAllCurrentUsage } from "./db"
 import { pricingTiers, getPricingTier, canUserPerformAction } from "./pricing"
+import { getEnv } from "./env"
 
 export type SubscriptionStatus = 
   | 'free' 
@@ -49,6 +50,16 @@ export async function getCurrentSubscription(): Promise<SubscriptionInfo | null>
     if (!user) {
       // Fallback when DB not ready
       return { status: 'free' as const, plan: 'free' }
+    }
+
+    // Check if user is whitelisted for unlimited access
+    const { WHITELISTED_EMAILS } = getEnv()
+    if (user.email && WHITELISTED_EMAILS.includes(user.email.toLowerCase())) {
+      return {
+        status: 'active',
+        plan: 'pro',
+        periodEnd: new Date(new Date().setFullYear(new Date().getFullYear() + 10)), // 10 years from now
+      }
     }
 
     return {

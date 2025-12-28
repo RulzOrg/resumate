@@ -1,16 +1,10 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { FileText, Download } from "lucide-react"
+import { FileText, Download, Settings2 } from "lucide-react"
 import type { OptimizedResume } from "@/lib/db"
 import { useState } from "react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { LayoutSelector } from "./layout-selector"
 
 interface GeneratedResumesCompactListProps {
   resumes: OptimizedResume[]
@@ -19,6 +13,7 @@ interface GeneratedResumesCompactListProps {
 
 export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumesCompactListProps) {
   const [layout, setLayout] = useState<string>("modern")
+  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false)
   const items = typeof limit === "number" ? resumes.slice(0, limit) : resumes
   const finiteScore = (score?: number | null) => (
     typeof score === 'number' && Number.isFinite(score) ? score : null
@@ -73,22 +68,27 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
               </p>
               <p className="text-xs text-foreground/60 dark:text-white/60">Match</p>
             </div>
-            <Select value={layout} onValueChange={setLayout}>
-              <SelectTrigger className="w-[100px] h-8 text-[10px] bg-surface-muted dark:bg-white/10 border-border dark:border-white/10">
-                <SelectValue placeholder="Layout" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="classic" className="text-xs">Classic</SelectItem>
-                <SelectItem value="modern" className="text-xs">Modern</SelectItem>
-                <SelectItem value="compact" className="text-xs">Compact</SelectItem>
-              </SelectContent>
-            </Select>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsLayoutModalOpen(true)}
+              className="h-8 text-[10px] bg-surface-muted dark:bg-white/10 border-border dark:border-white/10 px-2 flex items-center gap-1.5"
+            >
+              <Settings2 className="h-3 w-3" />
+              {layout.charAt(0).toUpperCase() + layout.slice(1)}
+            </Button>
             <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id, "docx", layout)}>
               <Download className="h-4 w-4" />
             </Button>
           </div>
         </div>
       ))}
+      <LayoutSelector 
+        open={isLayoutModalOpen} 
+        onOpenChange={setIsLayoutModalOpen} 
+        currentLayout={layout} 
+        onSelect={setLayout} 
+      />
     </div>
   )
 }

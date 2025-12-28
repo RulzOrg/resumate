@@ -15,13 +15,7 @@ import { formatDistanceToNow } from "date-fns"
 import Link from "next/link"
 import type { OptimizedResume } from "@/lib/db"
 import { useState } from "react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { LayoutSelector } from "./layout-selector"
 
 interface OptimizedResumeListProps {
   optimizedResumes: (OptimizedResume & {
@@ -33,6 +27,7 @@ interface OptimizedResumeListProps {
 
 export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListProps) {
   const [layout, setLayout] = useState<string>("modern")
+  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false)
   const matchClasses = (score?: number | null) => {
     const s = typeof score === 'number' ? score : null
     if (s === null) return { badge: 'bg-surface-muted dark:bg-white/10 text-foreground/70 dark:text-white/70', icon: 'text-foreground/70 dark:text-white/70' }
@@ -190,16 +185,15 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
                 </Link>
               </Button>
               <div className="flex items-center gap-2">
-                <Select value={layout} onValueChange={setLayout}>
-                  <SelectTrigger className="w-[110px] h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10">
-                    <SelectValue placeholder="Layout" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="classic">Classic</SelectItem>
-                    <SelectItem value="modern">Modern</SelectItem>
-                    <SelectItem value="compact">Compact</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsLayoutModalOpen(true)}
+                  className="h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10 px-3 flex items-center gap-1.5"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  {layout.charAt(0).toUpperCase() + layout.slice(1)}
+                </Button>
                 <Button size="sm" variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => handleDownload(resume.id, "docx", layout)}>
                   <Download className="w-4 h-4 mr-2" />
                   DOCX
@@ -209,6 +203,12 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
           </CardContent>
         </Card>
       ))}
+      <LayoutSelector 
+        open={isLayoutModalOpen} 
+        onOpenChange={setIsLayoutModalOpen} 
+        currentLayout={layout} 
+        onSelect={setLayout} 
+      />
     </div>
   )
 }

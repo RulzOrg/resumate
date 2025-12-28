@@ -4,13 +4,7 @@ import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Copy, Download, SplitSquareVertical, FileText, Settings2 } from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { LayoutSelector } from "./layout-selector"
 
 interface OptimizedDetailViewProps {
   optimizedId: string
@@ -54,6 +48,7 @@ function highlightDiff(base: string, compare: string, mode: 'added' | 'removed')
 
 export function OptimizedDetailView({ optimizedId, title, optimizedContent, originalContent, matchScore }: OptimizedDetailViewProps) {
   const [layout, setLayout] = useState<string>("modern")
+  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false)
   const match = classifyMatch(matchScore)
   const orig = originalContent || ''
   const opt = optimizedContent || ''
@@ -89,16 +84,15 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 mr-2">
               <span className="text-xs font-medium text-foreground/60 dark:text-white/60">Layout:</span>
-              <Select value={layout} onValueChange={setLayout}>
-                <SelectTrigger className="w-[120px] h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10">
-                  <SelectValue placeholder="Layout" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="classic">Classic</SelectItem>
-                  <SelectItem value="modern">Modern</SelectItem>
-                  <SelectItem value="compact">Compact</SelectItem>
-                </SelectContent>
-              </Select>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsLayoutModalOpen(true)}
+                className="h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10 px-3 flex items-center gap-1.5"
+              >
+                <Settings2 className="h-4 w-4" />
+                {layout.charAt(0).toUpperCase() + layout.slice(1)}
+              </Button>
             </div>
 
             <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
@@ -134,6 +128,12 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
           </div>
         </CardContent>
       </Card>
+      <LayoutSelector 
+        open={isLayoutModalOpen} 
+        onOpenChange={setIsLayoutModalOpen} 
+        currentLayout={layout} 
+        onSelect={setLayout} 
+      />
     </div>
   )
 }

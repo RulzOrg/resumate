@@ -52,7 +52,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     setOauthError(null)
   }
 
-  // If a Clerk session already exists, go to onboarding (middleware will redirect to dashboard if needed)
+  // If a Clerk session already exists, go to dashboard
   if (isSignedIn) {
     if (typeof window !== "undefined") router.replace("/dashboard")
     return null
@@ -209,7 +209,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: origin ? `${origin}/sso-callback` : "/sso-callback",
-        redirectUrlComplete: origin ? `${origin}/onboarding` : "/dashboard",
+        redirectUrlComplete: "/dashboard",
       })
     } catch (err) {
       // Log detailed error for debugging without exposing internals to users
