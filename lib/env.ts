@@ -22,6 +22,7 @@ const envSchema = z.object({
 
   // AI Services - REQUIRED
   OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
+  ANTHROPIC_API_KEY: z.string().optional(), // For Claude models (resume optimization)
 
   // Vector Database (Qdrant) - REQUIRED
   QDRANT_URL: z.string().url().min(1, "Qdrant URL is required"),

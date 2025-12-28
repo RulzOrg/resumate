@@ -2,11 +2,11 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
-import { openai } from "@ai-sdk/openai"
-import { generateObject } from "ai"
+import Anthropic from "@anthropic-ai/sdk"
 import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
+import { toJsonSchema, validateSchema } from "@/lib/jsonSchema"
 
 // Allow up to 5 minutes for generation (Pro plan limit)
 export const maxDuration = 300;
@@ -115,15 +115,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check for API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new AppError("ANTHROPIC_API_KEY is not configured", 500, "MISSING_API_KEY");
+    }
+
     // Generate optimized resume
     const optimization = await withRetry(
       async () => {
         console.log('[Optimize] Starting AI generation...');
         const startTime = Date.now();
-        const { object } = await generateObject({
-          model: openai("gpt-4o"),
-          schema: optimizationSchema,
-          prompt: `You are an expert resume optimization specialist. Optimize the following resume for the specific job posting.
+        
+        try {
+          const anthropic = new Anthropic({
+            apiKey: process.env.ANTHROPIC_API_KEY!,
+          });
+
+          const messageContent = `You are an expert resume optimization specialist. Optimize the following resume for the specific job posting.
 
 ORIGINAL RESUME CONTENT:
 ${resume.content_text}
@@ -143,28 +151,90 @@ OPTIMIZATION INSTRUCTIONS:
 5. Reorder or emphasize experience that's most relevant
 6. Use action verbs and quantifiable achievements
 7. Ensure ATS compatibility and keep a clean markdown layout
-   8. IMPORTANT: Use the following markdown structure strictly:
-   - Use '# Name' for the candidate name (top level header)
-   - After contact information, include the target job title as bold text: **${job_title}** (this is the Target Title section)
-   - Use '## Section Title' for section headers (e.g. ## Professional Summary, ## Experience, ## Education)
-   - Use '### Job Title' or '### Company' for items within sections
-9. CRITICAL: RETAIN ALL WORK EXPERIENCE ENTRIES from the original resume. Do not delete any jobs unless they are completely irrelevant (e.g. from 20 years ago and unrelated). Optimize the content of each role, but keep the history intact.
-10. REQUIRED: Always include the target job title (${job_title}) as bold text (**${job_title}**) immediately after the contact information and before the Professional Summary section.
 
-Please provide:
-- The complete optimized resume content in markdown format
-- Specific changes made
-- Keywords added or emphasized
-- Skills highlighted
-- Sections improved
-- Before/after match scores (0-100)
-- Additional recommendations
+Please provide a JSON response with the following fields:
+{
+  "optimized_content": "The complete optimized resume content in markdown format",
+  "changes_made": ["List of specific changes made"],
+  "keywords_added": ["Keywords that were added or emphasized"],
+  "skills_highlighted": ["Skills that were highlighted"],
+  "sections_improved": ["Resume sections that were improved"],
+  "match_score_before": 50,
+  "match_score_after": 75,
+  "recommendations": ["Additional recommendations for the candidate"]
+}`;
 
+          console.log('[Optimize] Prepared message, sending to Anthropic...');
+          
+          const response = await anthropic.messages.create({
+            model: 'claude-sonnet-4-5',
+            max_tokens: 4096,
+            messages: [{
+              role: 'user',
+              content: messageContent,
+            }],
+          });
 
-Focus on making the resume highly relevant to this specific job while maintaining authenticity.`,
-        })
         console.log(`[Optimize] AI generation completed in ${(Date.now() - startTime) / 1000}s`);
-        return object
+          console.log('[Optimize] Response structure:', {
+            hasContent: !!response.content,
+            contentLength: response.content?.length,
+            firstContentType: response.content?.[0]?.type,
+          });
+          
+          // Parse the response - it should be in the content[0].text
+          if (!response.content || response.content.length === 0) {
+            throw new Error('Empty response from Anthropic');
+          }
+
+          const content = response.content[0];
+          if (content.type === 'text') {
+            try {
+              // Strip markdown code blocks if present
+              let jsonText = content.text.trim();
+              if (jsonText.startsWith('```json')) {
+                jsonText = jsonText.slice(7);
+              } else if (jsonText.startsWith('```')) {
+                jsonText = jsonText.slice(3);
+              }
+              if (jsonText.endsWith('```')) {
+                jsonText = jsonText.slice(0, -3);
+              }
+              jsonText = jsonText.trim();
+              
+              const parsed = JSON.parse(jsonText);
+              // Validate against the schema to ensure type safety
+              return validateSchema(optimizationSchema, parsed);
+            } catch (parseError: any) {
+              console.error('[Optimize] JSON parse error:', parseError);
+              console.error('[Optimize] Response text:', content.text?.substring(0, 500));
+              throw new Error(`Failed to parse JSON response: ${parseError.message}`);
+            }
+          }
+          
+          console.error('[Optimize] Unexpected content type:', content.type);
+          throw new Error(`Unexpected response format from Anthropic: ${content.type}`);
+        } catch (error: any) {
+          console.error('[Optimize] Anthropic API error:', {
+            error: error.message,
+            name: error.name,
+            status: error.status,
+            cause: error.cause,
+          });
+          
+          // Re-throw with more context
+          if (error.status === 401) {
+            throw new AppError("Invalid Anthropic API key", 500, "INVALID_API_KEY");
+          }
+          if (error.status === 429) {
+            throw new AppError("Anthropic API rate limit exceeded", 429, "RATE_LIMIT");
+          }
+          if (error.message?.includes('abort') || error.name === 'AbortError') {
+            throw new AppError("Request was aborted or timed out", 408, "REQUEST_TIMEOUT");
+          }
+          
+          throw new Error(`Anthropic API error: ${error.message || String(error)}`);
+        }
       },
       3,
       2000,

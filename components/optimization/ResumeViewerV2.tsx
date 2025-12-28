@@ -1099,6 +1099,9 @@ export function ResumeViewerV2({
       updated[editingProjectIndex] = project
       updateResumeData({ projects: updated })
     }
+    setEditingProjectIndex(null)
+    setIsNewProject(false)
+    setProjectDialogOpen(false)
   }
 
   const handleSaveVolunteering = (volunteering: VolunteerItem) => {
@@ -1111,6 +1114,9 @@ export function ResumeViewerV2({
       updated[editingVolunteeringIndex] = volunteering
       updateResumeData({ volunteering: updated })
     }
+    setEditingVolunteeringIndex(null)
+    setIsNewVolunteering(false)
+    setVolunteeringDialogOpen(false)
   }
 
   const handleSavePublication = (publication: PublicationItem) => {
@@ -1123,6 +1129,9 @@ export function ResumeViewerV2({
       updated[editingPublicationIndex] = publication
       updateResumeData({ publications: updated })
     }
+    setEditingPublicationIndex(null)
+    setIsNewPublication(false)
+    setPublicationDialogOpen(false)
   }
 
   const copyText = async () => {

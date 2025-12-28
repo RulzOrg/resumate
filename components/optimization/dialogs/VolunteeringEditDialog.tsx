@@ -37,6 +37,7 @@ export function VolunteeringEditDialog({
   })
 
   useEffect(() => {
+    if (!open) return
     if (volunteering) {
       setForm(volunteering)
     } else {

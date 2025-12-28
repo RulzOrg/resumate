@@ -59,7 +59,10 @@ export function ProjectEditDialog({
       return
     }
     const cleanedBullets = form.bullets.filter((b) => b.trim() !== "")
-    onSave({ ...form, bullets: cleanedBullets })
+    const cleanedTechnologies = (form.technologies || [])
+      .map((tech) => tech.trim())
+      .filter((tech) => tech !== "")
+    onSave({ ...form, bullets: cleanedBullets, technologies: cleanedTechnologies })
     onOpenChange(false)
   }
 
@@ -152,7 +155,7 @@ export function ProjectEditDialog({
                     placeholder="React, TypeScript, Node.js..."
                     className="flex-1"
                   />
-                  {(form.technologies || []).length > 0 && (
+                  {(form.technologies || []).length > 1 && (
                     <Button
                       type="button"
                       variant="ghost"
