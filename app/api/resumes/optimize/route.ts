@@ -8,6 +8,9 @@ import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 
+// Allow up to 5 minutes for generation (Pro plan limit)
+export const maxDuration = 300;
+
 const optimizationSchema = z.object({
   optimized_content: z.string().describe("The optimized resume content in markdown format"),
   changes_made: z.array(z.string()).describe("List of specific changes made to the resume"),
@@ -49,7 +52,7 @@ export async function POST(request: NextRequest) {
     // Check subscription limits
     const canOptimize = await canPerformAction('resumeOptimizations')
     if (!canOptimize) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: "You've reached your monthly resume optimization limit. Upgrade to Pro for unlimited optimizations.",
         code: "LIMIT_EXCEEDED"
       }, { status: 403 })
@@ -79,7 +82,7 @@ export async function POST(request: NextRequest) {
     // Get the resume
     console.log('[Optimize] Looking up resume:', { resume_id, user_id: user.id })
     const resume = await getResumeById(resume_id, user.id)
-    
+
     if (!resume) {
       // Debug: Check if resume exists at all (without user filter)
       const { sql } = await import("@/lib/db")
@@ -97,12 +100,12 @@ export async function POST(request: NextRequest) {
       })
       throw new AppError("Resume not found", 404)
     }
-    
-    console.log('[Optimize] Resume found:', { 
-      id: resume.id, 
+
+    console.log('[Optimize] Resume found:', {
+      id: resume.id,
       user_id: resume.user_id,
       title: resume.title,
-      content_length: resume.content_text?.length || 0 
+      content_length: resume.content_text?.length || 0
     })
 
     if (!resume.content_text || resume.content_text.trim().length < 50) {
@@ -115,6 +118,8 @@ export async function POST(request: NextRequest) {
     // Generate optimized resume
     const optimization = await withRetry(
       async () => {
+        console.log('[Optimize] Starting AI generation...');
+        const startTime = Date.now();
         const { object } = await generateObject({
           model: openai("gpt-4o"),
           schema: optimizationSchema,
@@ -138,6 +143,13 @@ OPTIMIZATION INSTRUCTIONS:
 5. Reorder or emphasize experience that's most relevant
 6. Use action verbs and quantifiable achievements
 7. Ensure ATS compatibility and keep a clean markdown layout
+   8. IMPORTANT: Use the following markdown structure strictly:
+   - Use '# Name' for the candidate name (top level header)
+   - After contact information, include the target job title as bold text: **${job_title}** (this is the Target Title section)
+   - Use '## Section Title' for section headers (e.g. ## Professional Summary, ## Experience, ## Education)
+   - Use '### Job Title' or '### Company' for items within sections
+9. CRITICAL: RETAIN ALL WORK EXPERIENCE ENTRIES from the original resume. Do not delete any jobs unless they are completely irrelevant (e.g. from 20 years ago and unrelated). Optimize the content of each role, but keep the history intact.
+10. REQUIRED: Always include the target job title (${job_title}) as bold text (**${job_title}**) immediately after the contact information and before the Professional Summary section.
 
 Please provide:
 - The complete optimized resume content in markdown format
@@ -148,8 +160,10 @@ Please provide:
 - Before/after match scores (0-100)
 - Additional recommendations
 
+
 Focus on making the resume highly relevant to this specific job while maintaining authenticity.`,
         })
+        console.log(`[Optimize] AI generation completed in ${(Date.now() - startTime) / 1000}s`);
         return object
       },
       3,
@@ -185,7 +199,7 @@ Focus on making the resume highly relevant to this specific job while maintainin
     // Increment usage tracking for this successful optimization
     await incrementUsage(user.id, 'resume_optimization', user.subscription_plan || 'free')
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       optimized_resume: optimizedResume,
       optimization_details: {
         changes_made: optimization.changes_made,

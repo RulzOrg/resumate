@@ -5,4 +5,7 @@ export { SkillsEditDialog } from "./SkillsEditDialog"
 export { SimpleListEditDialog } from "./SimpleListEditDialog"
 export { TextEditDialog } from "./TextEditDialog"
 export { CertificationsEditDialog } from "./CertificationsEditDialog"
+export { ProjectEditDialog } from "./ProjectEditDialog"
+export { VolunteeringEditDialog } from "./VolunteeringEditDialog"
+export { PublicationEditDialog } from "./PublicationEditDialog"
 

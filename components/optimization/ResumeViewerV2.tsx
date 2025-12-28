@@ -43,6 +43,9 @@ import {
   type WorkExperienceItem,
   type EducationItem,
   type CertificationItem,
+  type ProjectItem,
+  type VolunteerItem,
+  type PublicationItem,
 } from "@/lib/resume-parser"
 import {
   ContactEditDialog,
@@ -52,6 +55,9 @@ import {
   SimpleListEditDialog,
   TextEditDialog,
   CertificationsEditDialog,
+  ProjectEditDialog,
+  VolunteeringEditDialog,
+  PublicationEditDialog,
 } from "./dialogs"
 import { cn } from "@/lib/utils"
 
@@ -301,49 +307,100 @@ function SectionContent({
 
     case "projects":
       return (
-        <div className="pl-7 pr-2 pb-2 space-y-1 min-w-0">
-          {parsed.projects.slice(0, 3).map((project, idx) => (
-            <p key={idx} className="text-sm text-muted-foreground break-words">
-              {project.name}
-            </p>
+        <div className="pl-7 pr-2 pb-2 space-y-2 min-w-0">
+          {parsed.projects.map((project, idx) => (
+            <div
+              key={idx}
+              className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
+              onClick={() => onEditItem("projects", idx)}
+            >
+              <div className="flex-1 min-w-0 pr-2">
+                <p className="font-medium break-words">{project.name}</p>
+                {project.description && (
+                  <p className="text-muted-foreground text-xs break-words line-clamp-1">
+                    {project.description}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteItem("projects", idx)
+                }}
+              >
+                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </Button>
+            </div>
           ))}
-          {parsed.projects.length > 3 && (
-            <p className="text-xs text-muted-foreground">
-              +{parsed.projects.length - 3} more
-            </p>
-          )}
         </div>
       )
 
     case "volunteering":
       return (
-        <div className="pl-7 pr-2 pb-2 space-y-1 min-w-0">
-          {parsed.volunteering.slice(0, 3).map((vol, idx) => (
-            <p key={idx} className="text-sm text-muted-foreground break-words">
-              {vol.organization}
-            </p>
+        <div className="pl-7 pr-2 pb-2 space-y-2 min-w-0">
+          {parsed.volunteering.map((vol, idx) => (
+            <div
+              key={idx}
+              className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
+              onClick={() => onEditItem("volunteering", idx)}
+            >
+              <div className="flex-1 min-w-0 pr-2">
+                <p className="font-medium break-words">{vol.organization}</p>
+                {vol.role && (
+                  <p className="text-muted-foreground text-xs break-words">
+                    {vol.role}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteItem("volunteering", idx)
+                }}
+              >
+                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </Button>
+            </div>
           ))}
-          {parsed.volunteering.length > 3 && (
-            <p className="text-xs text-muted-foreground">
-              +{parsed.volunteering.length - 3} more
-            </p>
-          )}
         </div>
       )
 
     case "publications":
       return (
-        <div className="pl-7 pr-2 pb-2 space-y-1 min-w-0">
-          {parsed.publications.slice(0, 3).map((pub, idx) => (
-            <p key={idx} className="text-sm text-muted-foreground break-words">
-              {pub.title}
-            </p>
+        <div className="pl-7 pr-2 pb-2 space-y-2 min-w-0">
+          {parsed.publications.map((pub, idx) => (
+            <div
+              key={idx}
+              className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
+              onClick={() => onEditItem("publications", idx)}
+            >
+              <div className="flex-1 min-w-0 pr-2">
+                <p className="font-medium break-words">{pub.title}</p>
+                {pub.publisher && (
+                  <p className="text-muted-foreground text-xs break-words">
+                    {pub.publisher}
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDeleteItem("publications", idx)
+                }}
+              >
+                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+              </Button>
+            </div>
           ))}
-          {parsed.publications.length > 3 && (
-            <p className="text-xs text-muted-foreground">
-              +{parsed.publications.length - 3} more
-            </p>
-          )}
         </div>
       )
 
@@ -390,46 +447,46 @@ function SectionsList({
             >
               <ChevronRight
                 className={cn(
-                  "h-4 w-4 text-muted-foreground transition-transform duration-200 flex-shrink-0",
+                  "h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0",
                   isExpanded && "rotate-90"
                 )}
               />
-              <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm font-medium truncate flex-1 min-w-0 pr-2">{section.label}</span>
               {count > 0 && (
-                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
+                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
                   {count}
                 </span>
               )}
 
               <div
-                className="flex items-center gap-0.5 flex-shrink-0 ml-auto"
+                className="flex items-center gap-0.5 shrink-0 ml-auto"
                 onClick={(e) => e.stopPropagation()}
               >
-                {section.hasEdit && (
+                {'hasEdit' in section && section.hasEdit && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 flex-shrink-0"
+                    className="h-7 w-7 shrink-0"
                     onClick={() => onEdit(section.id)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                {section.hasAdd && (
+                {'hasAdd' in section && section.hasAdd && (
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 flex-shrink-0"
+                    className="h-7 w-7 shrink-0"
                     onClick={() => onAdd(section.id)}
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </Button>
                 )}
-                {section.hasMore && (
+                {'hasMore' in section && section.hasMore && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
                         <MoreHorizontal className="h-3.5 w-3.5" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -772,10 +829,10 @@ export function ResumeViewerV2({
     }
 
     if (hasChanges) {
-      // If there are unsaved changes, update anyway but keep hasChanges flag
-      // User can review and decide whether to save or discard
-      setResumeData(initialParsed)
-      // Keep hasChanges as true so user knows to review
+      // If there are unsaved changes, don't overwrite them
+      // User should save or discard their changes first
+      console.warn('Skipping sync: unsaved changes present')
+      return
     } else {
       // No unsaved changes, safe to update directly
       setResumeData(initialParsed)
@@ -952,6 +1009,21 @@ export function ResumeViewerV2({
         setIsNewEducation(false)
         setEducationDialogOpen(true)
         break
+      case "projects":
+        setEditingProjectIndex(index)
+        setIsNewProject(false)
+        setProjectDialogOpen(true)
+        break
+      case "volunteering":
+        setEditingVolunteeringIndex(index)
+        setIsNewVolunteering(false)
+        setVolunteeringDialogOpen(true)
+        break
+      case "publications":
+        setEditingPublicationIndex(index)
+        setIsNewPublication(false)
+        setPublicationDialogOpen(true)
+        break
     }
   }
 
@@ -965,6 +1037,21 @@ export function ResumeViewerV2({
       case "education":
         updateResumeData({
           education: resumeData.education.filter((_, i) => i !== index),
+        })
+        break
+      case "projects":
+        updateResumeData({
+          projects: resumeData.projects.filter((_, i) => i !== index),
+        })
+        break
+      case "volunteering":
+        updateResumeData({
+          volunteering: resumeData.volunteering.filter((_, i) => i !== index),
+        })
+        break
+      case "publications":
+        updateResumeData({
+          publications: resumeData.publications.filter((_, i) => i !== index),
         })
         break
     }
@@ -996,6 +1083,45 @@ export function ResumeViewerV2({
       const updated = [...resumeData.education]
       updated[editingEducationIndex] = education
       updateResumeData({ education: updated })
+    }
+    setEditingEducationIndex(null)
+    setIsNewEducation(false)
+    setEducationDialogOpen(false)
+  }
+
+  const handleSaveProject = (project: ProjectItem) => {
+    if (isNewProject) {
+      updateResumeData({
+        projects: [...resumeData.projects, project],
+      })
+    } else if (editingProjectIndex !== null) {
+      const updated = [...resumeData.projects]
+      updated[editingProjectIndex] = project
+      updateResumeData({ projects: updated })
+    }
+  }
+
+  const handleSaveVolunteering = (volunteering: VolunteerItem) => {
+    if (isNewVolunteering) {
+      updateResumeData({
+        volunteering: [...resumeData.volunteering, volunteering],
+      })
+    } else if (editingVolunteeringIndex !== null) {
+      const updated = [...resumeData.volunteering]
+      updated[editingVolunteeringIndex] = volunteering
+      updateResumeData({ volunteering: updated })
+    }
+  }
+
+  const handleSavePublication = (publication: PublicationItem) => {
+    if (isNewPublication) {
+      updateResumeData({
+        publications: [...resumeData.publications, publication],
+      })
+    } else if (editingPublicationIndex !== null) {
+      const updated = [...resumeData.publications]
+      updated[editingPublicationIndex] = publication
+      updateResumeData({ publications: updated })
     }
   }
 
@@ -1211,6 +1337,60 @@ export function ResumeViewerV2({
         items={resumeData.awards}
         onSave={(awards) => updateResumeData({ awards })}
         placeholder="Award or scholarship name..."
+      />
+
+      <ProjectEditDialog
+        open={projectDialogOpen}
+        onOpenChange={(open) => {
+          setProjectDialogOpen(open)
+          if (!open) {
+            setEditingProjectIndex(null)
+            setIsNewProject(false)
+          }
+        }}
+        project={
+          editingProjectIndex !== null
+            ? resumeData.projects[editingProjectIndex]
+            : null
+        }
+        onSave={handleSaveProject}
+        isNew={isNewProject}
+      />
+
+      <VolunteeringEditDialog
+        open={volunteeringDialogOpen}
+        onOpenChange={(open) => {
+          setVolunteeringDialogOpen(open)
+          if (!open) {
+            setEditingVolunteeringIndex(null)
+            setIsNewVolunteering(false)
+          }
+        }}
+        volunteering={
+          editingVolunteeringIndex !== null
+            ? resumeData.volunteering[editingVolunteeringIndex]
+            : null
+        }
+        onSave={handleSaveVolunteering}
+        isNew={isNewVolunteering}
+      />
+
+      <PublicationEditDialog
+        open={publicationDialogOpen}
+        onOpenChange={(open) => {
+          setPublicationDialogOpen(open)
+          if (!open) {
+            setEditingPublicationIndex(null)
+            setIsNewPublication(false)
+          }
+        }}
+        publication={
+          editingPublicationIndex !== null
+            ? resumeData.publications[editingPublicationIndex]
+            : null
+        }
+        onSave={handleSavePublication}
+        isNew={isNewPublication}
       />
 
       <LayoutSelector
