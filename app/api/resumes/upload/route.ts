@@ -70,6 +70,14 @@ export async function POST(request: NextRequest) {
       : null
 
     // Create resume record with extracted content
+    console.log('[upload] Creating resume record:', {
+      user_id: user.id,
+      clerk_user_id: user.clerk_user_id,
+      title,
+      file_type: file.type,
+      content_length: contentText.length,
+    })
+    
     const resume = await createResume({
       user_id: user.id,
       title,
@@ -92,7 +100,13 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    console.log(`[upload] Resume ${resume.id} created with ${contentText.length} chars extracted`)
+    console.log(`[upload] Resume created successfully:`, {
+      resume_id: resume.id,
+      user_id: resume.user_id,
+      title: resume.title,
+      content_length: contentText.length,
+      status: processingStatus,
+    })
 
     return NextResponse.json({
       resume,

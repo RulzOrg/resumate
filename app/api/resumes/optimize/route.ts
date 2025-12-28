@@ -57,6 +57,13 @@ export async function POST(request: NextRequest) {
 
     const { resume_id, job_title, company_name, job_description } = await request.json()
 
+    console.log('[Optimize] Request received:', {
+      resume_id,
+      job_title,
+      user_id: user.id,
+      clerk_user_id: user.clerk_user_id,
+    })
+
     if (!resume_id) {
       throw new AppError("Resume ID is required", 400)
     }
@@ -70,10 +77,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the resume
+    console.log('[Optimize] Looking up resume:', { resume_id, user_id: user.id })
     const resume = await getResumeById(resume_id, user.id)
+    
     if (!resume) {
+      // Debug: Check if resume exists at all (without user filter)
+      const { sql } = await import("@/lib/db")
+      const [anyResume] = await sql`SELECT id, user_id, title, deleted_at FROM resumes WHERE id = ${resume_id}`
+      console.log('[Optimize] Resume lookup failed. Debug info:', {
+        resume_id,
+        requested_user_id: user.id,
+        found_resume: anyResume ? {
+          id: anyResume.id,
+          user_id: anyResume.user_id,
+          title: anyResume.title,
+          deleted: !!anyResume.deleted_at,
+          user_mismatch: anyResume.user_id !== user.id,
+        } : 'NOT_FOUND_AT_ALL'
+      })
       throw new AppError("Resume not found", 404)
     }
+    
+    console.log('[Optimize] Resume found:', { 
+      id: resume.id, 
+      user_id: resume.user_id,
+      title: resume.title,
+      content_length: resume.content_text?.length || 0 
+    })
 
     if (!resume.content_text || resume.content_text.trim().length < 50) {
       throw new AppError(

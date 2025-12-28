@@ -84,7 +84,9 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <CardTitle className="text-lg truncate">{resume.title}</CardTitle>
+                <CardTitle className="text-lg truncate" title={`${resume.job_title} - (${resume.original_resume_title})`}>
+                  {resume.job_title} - <span className="text-muted-foreground font-normal">({resume.original_resume_title})</span>
+                </CardTitle>
                 <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                   <div className="flex items-center">
                     <Building2 className="w-4 h-4 mr-1" />

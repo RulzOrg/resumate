@@ -44,7 +44,7 @@ export default async function OptimizedResumesPage() {
               positions.
             </p>
             <Button size="lg" asChild>
-              <Link href="/dashboard/optimize">
+              <Link href="/dashboard">
                 <Zap className="w-5 h-5 mr-2" />
                 Create Optimized Resume
               </Link>
@@ -55,7 +55,7 @@ export default async function OptimizedResumesPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold">Your Optimized Resumes</h2>
               <Button asChild>
-                <Link href="/dashboard/optimize">
+                <Link href="/dashboard">
                   <Plus className="w-4 h-4 mr-2" />
                   Create New
                 </Link>

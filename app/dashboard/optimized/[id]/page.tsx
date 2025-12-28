@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { getAuthenticatedUser } from "@/lib/auth-utils"
 import { getOptimizedResumeById, getResumeById } from "@/lib/db"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { OptimizedDetailView } from "@/components/optimization/OptimizedDetailView"
+import { ResumeViewerV2 } from "@/components/optimization/ResumeViewerV2"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -24,6 +24,15 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
       redirect("/dashboard")
     }
     
+    // Debug: Log the optimized content length and preview
+    console.log(`[Resume Detail] Loading optimized resume:`, {
+      id: optimized.id,
+      title: optimized.title,
+      contentLength: optimized.optimized_content?.length || 0,
+      contentPreview: optimized.optimized_content?.slice(0, 200) || 'EMPTY',
+      userId: user.id,
+    })
+    
     original = await getResumeById(optimized.original_resume_id, user.id)
   } catch (error) {
     console.error(`[Resume Detail] Error loading resume:`, error)
@@ -40,11 +49,10 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
             For {optimized.job_title}{optimized.company_name ? ` at ${optimized.company_name}` : ''}
           </p>
         </div>
-        <OptimizedDetailView
+        <ResumeViewerV2
           optimizedId={optimized.id}
           title={optimized.title}
           optimizedContent={optimized.optimized_content}
-          originalContent={original?.content_text || ''}
           matchScore={optimized.match_score}
         />
       </main>

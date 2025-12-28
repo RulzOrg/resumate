@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Loader2, Sparkles } from "lucide-react"
@@ -35,6 +35,18 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   const [jobTitle, setJobTitle] = useState("")
   const [companyName, setCompanyName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
+
+  // Sync selectedResumeId when resumes change (e.g., after upload)
+  useEffect(() => {
+    // Clear any stale error
+    setError(null)
+    
+    // If current selection is invalid, select first available resume
+    const currentResumeExists = completedResumes.some(r => r.id === selectedResumeId)
+    if (!currentResumeExists && completedResumes.length > 0) {
+      setSelectedResumeId(completedResumes[0].id)
+    }
+  }, [resumes]) // Intentionally using resumes as dependency to catch prop changes
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,7 +122,10 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         <label className="block text-sm font-medium mb-2">Select Resume</label>
         <select
           value={selectedResumeId}
-          onChange={(e) => setSelectedResumeId(e.target.value)}
+          onChange={(e) => {
+            setSelectedResumeId(e.target.value)
+            setError(null) // Clear error when selection changes
+          }}
           className="w-full px-3 py-2 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           disabled={isLoading}
         >
