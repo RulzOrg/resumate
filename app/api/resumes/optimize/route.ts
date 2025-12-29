@@ -2,25 +2,13 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
 import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage } from "@/lib/db"
 import { canPerformAction } from "@/lib/subscription"
-import Anthropic from "@anthropic-ai/sdk"
-import { z } from "zod"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
-import { toJsonSchema, validateSchema } from "@/lib/jsonSchema"
+import { optimizeResumeStructured } from "@/lib/structured-optimizer"
+import { formatResumeToMarkdown } from "@/lib/resume-formatter"
 
 // Allow up to 5 minutes for generation (Pro plan limit)
 export const maxDuration = 300;
-
-const optimizationSchema = z.object({
-  optimized_content: z.string().describe("The optimized resume content in markdown format"),
-  changes_made: z.array(z.string()).describe("List of specific changes made to the resume"),
-  keywords_added: z.array(z.string()).describe("Keywords that were added or emphasized"),
-  skills_highlighted: z.array(z.string()).describe("Skills that were highlighted or repositioned"),
-  sections_improved: z.array(z.string()).describe("Resume sections that were improved"),
-  match_score_before: z.number().min(0).max(100).describe("Estimated match score before optimization"),
-  match_score_after: z.number().min(0).max(100).describe("Estimated match score after optimization"),
-  recommendations: z.array(z.string()).describe("Additional recommendations for the candidate"),
-})
 
 export async function POST(request: NextRequest) {
   try {
@@ -105,7 +93,9 @@ export async function POST(request: NextRequest) {
       id: resume.id,
       user_id: resume.user_id,
       title: resume.title,
-      content_length: resume.content_text?.length || 0
+      content_length: resume.content_text?.length || 0,
+      content_preview: resume.content_text?.substring(0, 200) || 'EMPTY',
+      has_content: !!resume.content_text,
     })
 
     if (!resume.content_text || resume.content_text.trim().length < 50) {
@@ -115,125 +105,76 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check for API key
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new AppError("ANTHROPIC_API_KEY is not configured", 500, "MISSING_API_KEY");
-    }
-
     // Generate optimized resume
     const optimization = await withRetry(
       async () => {
-        console.log('[Optimize] Starting AI generation...');
-        const startTime = Date.now();
+        console.log('[Optimize] Starting structured optimization...')
+        const startTime = Date.now()
         
+        if (!process.env.ANTHROPIC_API_KEY) {
+          throw new AppError("ANTHROPIC_API_KEY is not configured", 500, "MISSING_API_KEY")
+        }
+
         try {
-          const anthropic = new Anthropic({
-            apiKey: process.env.ANTHROPIC_API_KEY!,
-          });
+          const result = await optimizeResumeStructured(
+            resume.content_text!,
+            job_title,
+            company_name || null,
+            job_description,
+            process.env.ANTHROPIC_API_KEY
+          )
 
-          const messageContent = `You are an expert resume optimization specialist. Optimize the following resume for the specific job posting.
+          console.log(`[Optimize] Structured optimization completed in ${(Date.now() - startTime) / 1000}s`)
+          console.log('[Optimize] Optimization details:', {
+            summary_was_created: result.optimizationDetails.summary_was_created,
+            target_title_was_created: result.optimizationDetails.target_title_was_created,
+            skills_preserved: result.optimizedResume.skills.length,
+            education_preserved: result.optimizedResume.education.length,
+            workExperience_preserved: result.optimizedResume.workExperience.length,
+            certifications_preserved: result.optimizedResume.certifications.length,
+          })
+          console.log('[Optimize] Optimized resume data before formatting:', {
+            education: result.optimizedResume.education.map(e => ({ institution: e.institution, degree: e.degree })),
+            skills: result.optimizedResume.skills.slice(0, 5),
+            workExperience: result.optimizedResume.workExperience.map(e => ({ company: e.company, title: e.title, bulletsCount: e.bullets.length })),
+          })
 
-ORIGINAL RESUME CONTENT:
-${resume.content_text}
-
-TARGET JOB:
-Job Title: ${job_title}
-Company: ${company_name || "Not specified"}
-
-JOB DESCRIPTION:
-${job_description}
-
-OPTIMIZATION INSTRUCTIONS:
-1. Rewrite the resume to better match the job requirements
-2. Incorporate relevant keywords naturally throughout the content
-3. Highlight skills that match the job requirements
-4. Adjust the professional summary to align with the role
-5. Reorder or emphasize experience that's most relevant
-6. Use action verbs and quantifiable achievements
-7. Ensure ATS compatibility and keep a clean markdown layout
-
-Please provide a JSON response with the following fields:
-{
-  "optimized_content": "The complete optimized resume content in markdown format",
-  "changes_made": ["List of specific changes made"],
-  "keywords_added": ["Keywords that were added or emphasized"],
-  "skills_highlighted": ["Skills that were highlighted"],
-  "sections_improved": ["Resume sections that were improved"],
-  "match_score_before": 50,
-  "match_score_after": 75,
-  "recommendations": ["Additional recommendations for the candidate"]
-}`;
-
-          console.log('[Optimize] Prepared message, sending to Anthropic...');
+          // Convert optimized structured data to markdown
+          const optimizedContent = formatResumeToMarkdown(result.optimizedResume)
           
-          const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-5',
-            max_tokens: 4096,
-            messages: [{
-              role: 'user',
-              content: messageContent,
-            }],
-          });
+          console.log('[Optimize] Generated markdown preview:', {
+            length: optimizedContent.length,
+            educationSectionExists: optimizedContent.includes('## Education'),
+            skillsSectionExists: optimizedContent.includes('## Skills'),
+            educationSectionPreview: optimizedContent.match(/## Education[\s\S]{0,300}/)?.[0],
+            skillsSectionPreview: optimizedContent.match(/## Skills[\s\S]{0,200}/)?.[0],
+          })
 
-        console.log(`[Optimize] AI generation completed in ${(Date.now() - startTime) / 1000}s`);
-          console.log('[Optimize] Response structure:', {
-            hasContent: !!response.content,
-            contentLength: response.content?.length,
-            firstContentType: response.content?.[0]?.type,
-          });
-          
-          // Parse the response - it should be in the content[0].text
-          if (!response.content || response.content.length === 0) {
-            throw new Error('Empty response from Anthropic');
+          return {
+            optimized_content: optimizedContent,
+            changes_made: result.optimizationDetails.changes_made,
+            keywords_added: result.optimizationDetails.keywords_added,
+            skills_highlighted: [], // Skills are preserved, not modified
+            sections_improved: [
+              ...(result.optimizationDetails.summary_was_created ? ["Professional Summary (created)"] : ["Professional Summary (optimized)"]),
+              "Work Experience",
+              ...(result.optimizationDetails.target_title_was_created ? ["Target Title (created)"] : ["Target Title (preserved)"]),
+            ],
+            match_score_before: result.optimizationDetails.match_score_before,
+            match_score_after: result.optimizationDetails.match_score_after,
+            recommendations: result.optimizationDetails.recommendations,
           }
-
-          const content = response.content[0];
-          if (content.type === 'text') {
-            try {
-              // Strip markdown code blocks if present
-              let jsonText = content.text.trim();
-              if (jsonText.startsWith('```json')) {
-                jsonText = jsonText.slice(7);
-              } else if (jsonText.startsWith('```')) {
-                jsonText = jsonText.slice(3);
-              }
-              if (jsonText.endsWith('```')) {
-                jsonText = jsonText.slice(0, -3);
-              }
-              jsonText = jsonText.trim();
-              
-              const parsed = JSON.parse(jsonText);
-              // Validate against the schema to ensure type safety
-              return validateSchema(optimizationSchema, parsed);
-            } catch (parseError: any) {
-              console.error('[Optimize] JSON parse error:', parseError);
-              console.error('[Optimize] Response text:', content.text?.substring(0, 500));
-              throw new Error(`Failed to parse JSON response: ${parseError.message}`);
-            }
-          }
-          
-          console.error('[Optimize] Unexpected content type:', content.type);
-          throw new Error(`Unexpected response format from Anthropic: ${content.type}`);
         } catch (error: any) {
-          console.error('[Optimize] Anthropic API error:', {
-            error: error.message,
-            name: error.name,
-            status: error.status,
-            cause: error.cause,
-          });
+          console.error('[Optimize] Structured optimization error:', error)
           
-          // Re-throw with more context
           if (error.status === 401) {
-            throw new AppError("Invalid Anthropic API key", 500, "INVALID_API_KEY");
+            throw new AppError("Invalid Anthropic API key", 500, "INVALID_API_KEY")
           }
           if (error.status === 429) {
-            throw new AppError("Anthropic API rate limit exceeded", 429, "RATE_LIMIT");
-          }
-          if (error.message?.includes('abort') || error.name === 'AbortError') {
-            throw new AppError("Request was aborted or timed out", 408, "REQUEST_TIMEOUT");
+            throw new AppError("Anthropic API rate limit exceeded", 429, "RATE_LIMIT")
           }
           
-          throw new Error(`Anthropic API error: ${error.message || String(error)}`);
+          throw new Error(`Structured optimization failed: ${error.message || String(error)}`)
         }
       },
       3,

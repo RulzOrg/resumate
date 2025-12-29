@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { getAuthenticatedUser } from "@/lib/auth-utils"
+import { getAuthenticatedUser } from "@/lib/user-data"
 import { getOptimizedResumeById, getResumeById } from "@/lib/db"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { ResumeViewerV2 } from "@/components/optimization/ResumeViewerV2"

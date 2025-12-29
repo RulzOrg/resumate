@@ -83,18 +83,54 @@ export interface ParsedResume {
  * - Company Name — Location
  */
 function isJobHeader(line: string): boolean {
-  // ### Header format
+  // Skip empty lines
+  if (!line.trim()) return false
+
+  // EXCLUSIONS: Lines that should NOT be treated as job headers
+  // These are job title lines, not company names
+  const jobTitlePatterns = /\b(Designer|Developer|Engineer|Manager|Director|Analyst|Specialist|Consultant|Lead|Senior|Junior|Principal|Staff|Chief|VP|Head|Intern|Associate|Architect|Coordinator|Administrator|Executive|Officer|President|Founder|CEO|CTO|CFO|COO|Full-time|Part-time|Contract|Remote|Freelance)\b/i
+
+  // If it contains job title keywords AND no company-like structures, it's likely a title line
+  if (jobTitlePatterns.test(line) && !line.startsWith('### ') && !line.includes('—') && !line.includes('–')) {
+    // Exception: "Title at Company" format should still be detected
+    if (!line.match(/\b(at|@)\s+[A-Z]/)) {
+      return false
+    }
+  }
+
+  // ### Header format - this is always a company header
   if (line.startsWith('### ')) return true
 
-  // **Bold text** anywhere in line (not just at end)
-  if (line.match(/^\*\*[^*]+\*\*/)) return true
+  // **Bold text** that looks like a company (not a job title)
+  if (line.match(/^\*\*[^*]+\*\*/)) {
+    const boldContent = line.match(/^\*\*([^*]+)\*\*/)?.[1] || ''
+    // Exclude if it looks like a job title
+    if (jobTitlePatterns.test(boldContent)) return false
+    return true
+  }
 
-  // Company — Location format (em dash)
-  if (line.match(/^[A-Z][^—\n]+\s*[—–-]\s*[A-Z]/)) return true
+  // Company — Location format (em dash, en dash, hyphen)
+  if (line.match(/^[A-Z][^—–\-\n]+\s*[—–-]\s*[A-Z]/)) return true
 
-  // Title line without markdown but with company indicators
-  // e.g., "Senior Designer at Tech Corp"
-  if (line.match(/^[A-Z][a-zA-Z\s]+(?:at|@|,)\s+[A-Z]/)) return true
+  // "Title at Company" format - e.g., "Senior Designer at Tech Corp"
+  if (line.match(/^[A-Z][a-zA-Z\s]+\b(at|@)\s+[A-Z]/)) return true
+
+  // Company name followed by dates (common format: "Amazon  Jan 2020 - Present")
+  if (line.match(/^[A-Z][A-Za-z\s&.,]+\s{2,}(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{1,2}\/\d{4})/)) return true
+
+  // Just a company name on its own line (capitalized, no special chars, reasonable length)
+  // But NOT if it looks like a job title
+  if (line.match(/^[A-Z][A-Za-z\s&.,]{2,50}$/) &&
+    !line.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Present|Current)/i) &&
+    !line.match(/^\d/) &&
+    !line.includes('@') &&
+    !line.includes('|') &&
+    !line.includes('•') && // Exclude lines with bullet separators like "Title • Full-time"
+    !jobTitlePatterns.test(line)) {
+    // Check if it looks like a company name (not a sentence, not too many words)
+    const wordCount = line.trim().split(/\s+/).length
+    if (wordCount <= 4) return true
+  }
 
   return false
 }
@@ -111,6 +147,13 @@ function isDateLine(line: string): boolean {
  * Extract dates from a line
  */
 function extractDates(line: string): { startDate?: string, endDate?: string } {
+  // Try numeric format first: 01/2020 - 12/2022 or 1/2020 - Present
+  const numericMatch = line.match(/(\d{1,2}\/\d{4})\s*[-–—]\s*(\d{1,2}\/\d{4}|Present|Current)/i)
+  if (numericMatch) {
+    return { startDate: numericMatch[1], endDate: numericMatch[2] }
+  }
+
+  // Standard format: Jan 2020 - Present, 2019 – 2022, etc.
   const dateMatch = line.match(/(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\.?\s*)?(\d{4})\s*[-–—]\s*(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\.?\s*)?(\d{4}|Present|Current)/i)
   if (dateMatch) {
     const startMonth = dateMatch[1] || ''
@@ -129,6 +172,14 @@ function extractDates(line: string): { startDate?: string, endDate?: string } {
  * Parse markdown resume content into structured data
  */
 export function parseResumeContent(content: string): ParsedResume {
+  console.log('[ResumeParser] Parsing content:', {
+    contentLength: content.length,
+    hasEducation: content.includes('## Education'),
+    hasSkills: content.includes('## Skills'),
+    hasWorkExperience: content.includes('## Work Experience'),
+    preview: content.substring(0, 500),
+  })
+
   const lines = content.split('\n')
   const result: ParsedResume = {
     contact: { name: '' },
@@ -201,7 +252,7 @@ export function parseResumeContent(content: string): ParsedResume {
   let contactInfoFound = false
   let nameLineIndex = -1
   const maxLinesToCheck = Math.min(30, lines.length)
-  
+
   // Find where name appears to start looking after it
   for (let i = 0; i < Math.min(10, lines.length); i++) {
     const line = lines[i].trim()
@@ -210,10 +261,10 @@ export function parseResumeContent(content: string): ParsedResume {
       break
     }
   }
-  
+
   // Start checking from after name (or from beginning if name not found)
   const startIndex = nameLineIndex >= 0 ? nameLineIndex + 1 : 0
-  
+
   for (let i = startIndex; i < maxLinesToCheck; i++) {
     const line = lines[i].trim()
     if (!line) continue
@@ -222,10 +273,10 @@ export function parseResumeContent(content: string): ParsedResume {
     if (result.targetTitle) break
 
     // Track when we've passed contact info (email, phone, location, etc.)
-    if (line.includes('@') || 
-        (line.includes('|') && (line.includes('@') || line.match(/[\+]?[\d\s\-\(\)]{10,}/))) ||
-        line.match(/[\+]?[\d\s\-\(\)]{10,}/) || 
-        (line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/) && !result.targetTitle)) {
+    if (line.includes('@') ||
+      (line.includes('|') && (line.includes('@') || line.match(/[\+]?[\d\s\-\(\)]{10,}/))) ||
+      line.match(/[\+]?[\d\s\-\(\)]{10,}/) ||
+      (line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/) && !result.targetTitle)) {
       contactInfoFound = true
       continue
     }
@@ -233,8 +284,8 @@ export function parseResumeContent(content: string): ParsedResume {
     // Skip section headers - if we hit a major section, stop looking
     if (line.match(/^#{2,3}\s+/)) {
       const sectionName = line.replace(/^#+\s*/, '').replace(/\*+/g, '').trim().toLowerCase()
-      if (sectionName.includes('summary') || sectionName.includes('experience') || sectionName.includes('education') || 
-          sectionName.includes('skill') || sectionName.includes('work') || sectionName.includes('professional')) {
+      if (sectionName.includes('summary') || sectionName.includes('experience') || sectionName.includes('education') ||
+        sectionName.includes('skill') || sectionName.includes('work') || sectionName.includes('professional')) {
         break // We've hit a major section, stop looking
       }
       // If it's a target section header, let the normal parsing handle it
@@ -250,13 +301,13 @@ export function parseResumeContent(content: string): ParsedResume {
     if (boldMatch) {
       const potentialTitle = boldMatch[1].trim()
       // Validate it looks like a job title (not too short, not too long, doesn't look like contact info or name)
-      if (potentialTitle.length >= 5 && 
-          potentialTitle.length <= 80 && 
-          !potentialTitle.includes('@') && 
-          !potentialTitle.includes('|') &&
-          potentialTitle !== result.contact.name &&
-          !potentialTitle.match(/^[\+]?[\d\s\-\(\)]{10,}$/) &&
-          !potentialTitle.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/)) {
+      if (potentialTitle.length >= 5 &&
+        potentialTitle.length <= 80 &&
+        !potentialTitle.includes('@') &&
+        !potentialTitle.includes('|') &&
+        potentialTitle !== result.contact.name &&
+        !potentialTitle.match(/^[\+]?[\d\s\-\(\)]{10,}$/) &&
+        !potentialTitle.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/)) {
         // If we've seen contact info, this is likely the target title
         // Otherwise, check if it looks like a job title
         if (contactInfoFound || potentialTitle.split(' ').length >= 2) {
@@ -266,17 +317,17 @@ export function parseResumeContent(content: string): ParsedResume {
       }
     }
     // Format: Plain text that looks like a job title (after contact, before sections)
-    else if (contactInfoFound && line && 
-             !line.startsWith('#') && 
-             !line.startsWith('-') && 
-             !line.startsWith('*') &&
-             !line.includes('@') &&
-             !line.includes('|') &&
-             line.length >= 5 && 
-             line.length <= 80 &&
-             line !== result.contact.name &&
-             !line.match(/^[\+]?[\d\s\-\(\)]{10,}$/) &&
-             !line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/)) {
+    else if (contactInfoFound && line &&
+      !line.startsWith('#') &&
+      !line.startsWith('-') &&
+      !line.startsWith('*') &&
+      !line.includes('@') &&
+      !line.includes('|') &&
+      line.length >= 5 &&
+      line.length <= 80 &&
+      line !== result.contact.name &&
+      !line.match(/^[\+]?[\d\s\-\(\)]{10,}$/) &&
+      !line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/)) {
       // Check if it looks like a job title (contains common job title words or reasonable length)
       const jobTitleIndicators = /(senior|junior|lead|principal|staff|chief|head|vp|director|manager|engineer|designer|developer|analyst|specialist|consultant|associate|intern|product|software|data|marketing|sales|operations|strategy|research|design|development)/i
       if (jobTitleIndicators.test(line) || (line.split(' ').length >= 2 && line.split(' ').length <= 8)) {
@@ -315,9 +366,11 @@ export function parseResumeContent(content: string): ParsedResume {
         if (isSafeSectionHeader) {
           // Save previous section data
           if (currentSubsection && currentSection) {
+            console.log(`[ResumeParser] Saving subsection for section '${currentSection}' before switching to '${newSection}'`)
             saveSubsection(result, currentSection, currentSubsection, buffer)
           }
 
+          console.log(`[ResumeParser] Detected section: '${newSection}' from header: '${sectionName}'`)
           currentSection = newSection
           currentSubsection = null
           buffer = []
@@ -330,10 +383,12 @@ export function parseResumeContent(content: string): ParsedResume {
     if (line.match(/^###\s+/) && ['experience', 'education', 'projects', 'volunteering'].includes(currentSection)) {
       // Save previous subsection
       if (currentSubsection) {
+        console.log(`[ResumeParser] Saving previous subsection in section '${currentSection}' before new subsection`)
         saveSubsection(result, currentSection, currentSubsection, buffer)
       }
 
       const subsectionName = line.replace(/^###\s*/, '').trim()
+      console.log(`[ResumeParser] Starting new subsection in '${currentSection}': '${subsectionName}'`)
       currentSubsection = { headerLine: line, name: subsectionName, bullets: [] }
       buffer = []
       continue
@@ -358,13 +413,24 @@ export function parseResumeContent(content: string): ParsedResume {
         break
 
       case 'experience':
-        // More flexible job header detection (for **bold** headers without ###)
-        // Only start a new job entry if we DON'T already have a subsection from ###
-        // If we have a subsection, **bold** lines are job titles that go in buffer
-        if (!line.startsWith('###') && isJobHeader(line) && !currentSubsection) {
+        // Check if this is a new job header (### Company or **Bold** format)
+        const isNewJobHeader = line.startsWith('### ') || isJobHeader(line)
+
+        // Debug: Log all lines in experience section to understand parsing
+        console.log(`[ResumeParser:experience] Line: "${line.substring(0, 80)}" | isNewJobHeader=${isNewJobHeader} | hasSubsection=${!!currentSubsection}`)
+
+        if (isNewJobHeader) {
+          // Save the previous job entry if we have one
+          if (currentSubsection) {
+            console.log(`[ResumeParser] Saving experience entry: "${currentSubsection.headerLine?.substring(0, 50)}" with ${buffer.filter(l => l.startsWith('- ') || l.startsWith('• ')).length} bullets`)
+            saveSubsection(result, currentSection, currentSubsection, buffer)
+          }
+          // Start a new job entry
+          console.log(`[ResumeParser] Starting NEW experience entry: "${line.substring(0, 50)}"`)
           currentSubsection = { headerLine: line, bullets: [] }
           buffer = []
         } else if (currentSubsection) {
+          // Add line to current job's buffer
           buffer.push(line)
         }
         break
@@ -385,6 +451,7 @@ export function parseResumeContent(content: string): ParsedResume {
         break
 
       case 'skills':
+        console.log(`[ResumeParser] Processing skills line: '${line.substring(0, 100)}'`)
         parseSkillLine(result.skills, line)
         break
 
@@ -458,24 +525,36 @@ export function parseResumeContent(content: string): ParsedResume {
     }
   }
 
+  console.log('[ResumeParser] Parsed result:', {
+    name: result.contact.name,
+    workExperienceCount: result.workExperience.length,
+    educationCount: result.education.length,
+    skillsCount: result.skills.length,
+    certificationsCount: result.certifications.length,
+    finalSection: currentSection,
+    hasUnprocessedSubsection: !!currentSubsection,
+  })
+
   return result
 }
 
 function detectSection(text: string): string {
-  const lower = text.toLowerCase()
+  const lower = text.toLowerCase().trim()
 
-  if (lower.includes('contact') || lower.includes('personal info')) return 'contact'
-  if (lower.includes('summary') || lower.includes('profile') || lower.includes('objective')) return 'summary'
-  if (lower.includes('target') || lower.includes('headline')) return 'target'
-  if (lower.includes('experience') || lower.includes('employment') || lower.includes('work history')) return 'experience'
-  if (lower.includes('education') || lower.includes('academic')) return 'education'
-  if (lower.includes('skill') || lower.includes('competenc') || lower.includes('expertise')) return 'skills'
-  if (lower.includes('interest') || lower.includes('hobbies')) return 'interests'
-  if (lower.includes('certif') || lower.includes('license')) return 'certifications'
-  if (lower.includes('award') || lower.includes('honor') || lower.includes('scholarship')) return 'awards'
-  if (lower.includes('project')) return 'projects'
-  if (lower.includes('volunteer') || lower.includes('leadership')) return 'volunteering'
-  if (lower.includes('publication') || lower.includes('paper')) return 'publications'
+  // Use regex patterns that match at start of string to prevent false positives
+  // e.g., "User Experience Designer" should NOT trigger "experience" section
+  if (/^contact|^personal\s+info/i.test(lower)) return 'contact'
+  if (/^(professional\s+)?summary|^profile$|^objective$/i.test(lower)) return 'summary'
+  if (/^target|^headline/i.test(lower)) return 'target'
+  if (/^(work\s+)?experience$|^(professional\s+)?experience$|^employment(\s+history)?$/i.test(lower)) return 'experience'
+  if (/^education$|^academic(\s+background)?$/i.test(lower)) return 'education'
+  if (/^(technical\s+)?skills?$|^competenc|^expertise$/i.test(lower)) return 'skills'
+  if (/^interests?$|^hobbies$/i.test(lower)) return 'interests'
+  if (/^certif|^licens/i.test(lower)) return 'certifications'
+  if (/^awards?|^honors?|^scholarships?$/i.test(lower)) return 'awards'
+  if (/^projects?$/i.test(lower)) return 'projects'
+  if (/^volunteer|^leadership$/i.test(lower)) return 'volunteering'
+  if (/^publications?|^papers?$/i.test(lower)) return 'publications'
 
   return ''
 }
@@ -557,7 +636,12 @@ function parseSkillLine(skills: string[], line: string) {
 }
 
 function extractInstitution(line: string): string {
-  return line.replace(/^###\s*|\*+/g, '').trim()
+  let institution = line.replace(/^###\s*|\*+/g, '').trim()
+  // Clean up excessive whitespace (tabs, multiple spaces) - be more aggressive
+  institution = institution.replace(/[\s\t]+/g, ' ').trim()
+  // Remove trailing location/country if separated by many spaces (e.g., "Akendi UK                     London")
+  institution = institution.replace(/\s{3,}.*$/, '') // Remove if 3+ spaces followed by anything
+  return institution.trim()
 }
 
 function parseEducationLine(line: string): EducationItem {
@@ -593,7 +677,35 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
   // Parse the header line first
   // Format 1: ### Company Name
   if (headerLine.startsWith('### ')) {
-    exp.company = headerLine.replace(/^###\s*/, '').trim()
+    // Extract company name, removing dates that might be on the same line
+    let companyName = headerLine.replace(/^###\s*/, '').trim()
+
+    // Remove dates if they appear on the same line (handle various formats)
+    // Try multiple patterns to catch dates separated by many spaces
+    companyName = companyName.replace(/\s*\|\s*\d{1,2}\/\d{4}.*$/i, '') // Remove "| 01/2021" pattern
+    companyName = companyName.replace(/\s{2,}.*\d{1,2}\/\d{4}.*$/i, '') // Remove "  ... 01/2021" (2+ spaces before date)
+    companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/i, '') // Remove " 01/2021" pattern  
+    companyName = companyName.replace(/\s+[A-Z][a-z]+\s+\d{4}.*$/i, '') // Remove "Jan 2021" pattern
+    companyName = companyName.replace(/\s+\d{4}.*$/i, '') // Remove " 2021" pattern
+
+    // More aggressive: if there are 5+ spaces/tabs, likely there's a date or extra info after
+    if (companyName.match(/[\s\t]{5,}/)) {
+      // Split on large whitespace and take first part
+      const parts = companyName.split(/[\s\t]{5,}/)
+      companyName = parts[0] || companyName
+      // Also try to remove any date patterns that might remain
+      companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/i, '')
+    }
+
+    // Clean up excessive whitespace (tabs, multiple spaces)
+    exp.company = companyName.replace(/[\s\t]+/g, ' ').trim()
+
+    // Final check: if company still looks like it has a date, try one more aggressive cleanup
+    if (exp.company.match(/\d{1,2}\/\d{4}/)) {
+      console.log(`[ResumeParser] ⚠️ Company name still contains date, attempting cleanup: '${exp.company}'`)
+      exp.company = exp.company.replace(/\s+.*\d{1,2}\/\d{4}.*$/i, '').replace(/[\s\t]+/g, ' ').trim()
+      console.log(`[ResumeParser] Cleaned company name: '${exp.company}'`)
+    }
   }
   // Format 2: **Bold text** possibly with more text
   else if (headerLine.match(/^\*\*([^*]+)\*\*/)) {
@@ -640,7 +752,14 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
   }
   // Format 4: Plain text company name
   else {
-    exp.company = headerLine.replace(/\*+/g, '').trim()
+    let companyName = headerLine.replace(/\*+/g, '').trim()
+    // Remove dates if they appear on the same line (handle many spaces)
+    companyName = companyName.replace(/\s*\|\s*\d{1,2}\/\d{4}.*$/i, '')
+    companyName = companyName.replace(/\s{2,}.*\d{1,2}\/\d{4}.*$/i, '') // Remove if 2+ spaces followed by date
+    companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/i, '')
+    companyName = companyName.replace(/\s+[A-Z][a-z]+\s+\d{4}.*$/i, '')
+    // Clean up excessive whitespace (tabs, multiple spaces)
+    exp.company = companyName.replace(/[\s\t]+/g, ' ').trim()
   }
 
   // Process buffer lines
@@ -685,7 +804,12 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
       // Check if it contains company info
       else if (!exp.company && cleanLine.length < 80) {
         // Could be company name if we don't have one yet
-        exp.company = cleanLine
+        // Remove dates if present
+        let companyName = cleanLine.replace(/\s*\|\s*\d{1,2}\/\d{4}.*$/, '')
+        companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/, '')
+        companyName = companyName.replace(/\s+[A-Z][a-z]+\s+\d{4}.*$/, '')
+        // Clean up excessive whitespace
+        exp.company = companyName.replace(/\s+/g, ' ').trim()
       }
     }
     // Employment type indicators
@@ -723,23 +847,86 @@ function saveSubsection(result: ParsedResume, section: string, subsection: any, 
       break
 
     case 'education':
+      // Handle both formats: { institution } and { headerLine, name } from general ### handler
+      let institution = subsection.institution ||
+        (subsection.headerLine ? extractInstitution(subsection.headerLine) : null) ||
+        subsection.name ||
+        ''
+
+      // Clean up excessive whitespace (tabs, multiple spaces) - be very aggressive
+      institution = institution.replace(/[\s\t]+/g, ' ').trim()
+      // Remove trailing location/country if separated by many spaces (e.g., "Akendi UK                     London")
+      institution = institution.replace(/\s{3,}.*$/, '') // Remove if 3+ spaces followed by anything
+      institution = institution.trim()
+
+      // Skip if this looks like a certification (starts with "Certified" or is clearly a cert name)
+      const lowerInstitution = institution.toLowerCase()
+      const isCertification = lowerInstitution.startsWith('certified') ||
+        lowerInstitution.includes('certification') ||
+        // Common certification issuer patterns (check start of string)
+        /^(AJ & Smart|IDEO U|Google|Microsoft|AWS|Salesforce|Adobe)/i.test(institution) ||
+        // Certification course names (check anywhere in string)
+        /(Design Strategy|Workshopper|Sprint Facilitator|User Experience Specialist)/i.test(institution)
+
+      if (isCertification) {
+        console.log(`[ResumeParser] ⚠️ SKIPPING education entry that looks like certification: '${institution}'`)
+        break // Don't add this as education
+      }
+
+      // Only proceed if we have a valid institution name
+      if (!institution || institution.length < 2) {
+        console.log(`[ResumeParser] ⚠️ Skipping education entry with invalid institution: '${institution}'`)
+        break
+      }
+
+      console.log(`[ResumeParser] Saving education subsection: institution='${institution}', buffer lines=${buffer.length}`, {
+        buffer: buffer.slice(0, 5), // First 5 lines of buffer
+        subsectionKeys: Object.keys(subsection),
+      })
+
       const edu: EducationItem = {
-        institution: subsection.institution,
+        institution: institution,
       }
 
       for (const line of buffer) {
-        if (line.match(/\d{4}/)) {
-          edu.graduationDate = line.match(/\d{4}/)?.[0]
+        // Clean up excessive whitespace first (handle tabs and multiple spaces)
+        const cleanedLine = line.replace(/[\s\t]+/g, ' ').trim()
+        if (!cleanedLine) continue
+
+        // Check for graduation date (year pattern)
+        if (cleanedLine.match(/\d{4}/)) {
+          const yearMatch = cleanedLine.match(/\d{4}/)
+          if (yearMatch) {
+            edu.graduationDate = cleanedLine.replace(/\*+/g, '').trim() // Keep full date, remove markdown
+          }
         }
-        if (line.toLowerCase().includes('bachelor') || line.toLowerCase().includes('master') ||
-          line.toLowerCase().includes('degree') || line.toLowerCase().includes('phd') ||
-          line.toLowerCase().includes('b.s.') || line.toLowerCase().includes('b.a.') ||
-          line.toLowerCase().includes('m.s.') || line.toLowerCase().includes('m.a.')) {
-          edu.degree = line.replace(/\*+/g, '').trim()
+        // Check for degree (bold text or contains degree keywords)
+        else if (cleanedLine.match(/^\*\*.*\*\*$/) ||
+          cleanedLine.toLowerCase().includes('bachelor') ||
+          cleanedLine.toLowerCase().includes('master') ||
+          cleanedLine.toLowerCase().includes('degree') ||
+          cleanedLine.toLowerCase().includes('phd') ||
+          cleanedLine.toLowerCase().includes('b.s.') ||
+          cleanedLine.toLowerCase().includes('b.a.') ||
+          cleanedLine.toLowerCase().includes('m.s.') ||
+          cleanedLine.toLowerCase().includes('m.a.')) {
+          edu.degree = cleanedLine.replace(/\*+/g, '').trim()
+        }
+        // Everything else is field or notes (plain text lines)
+        else {
+          // First non-degree, non-date line is field, rest are notes
+          if (!edu.field && cleanedLine) {
+            edu.field = cleanedLine
+          } else if (cleanedLine) {
+            edu.notes = (edu.notes ? edu.notes + ' ' : '') + cleanedLine
+          }
         }
       }
 
-      result.education.push(edu)
+      // Only add if we have an institution
+      if (edu.institution) {
+        result.education.push(edu)
+      }
       break
 
     case 'projects':

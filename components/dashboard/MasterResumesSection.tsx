@@ -2,9 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { FileCheck, Pencil, Trash2, UploadCloud, Check, X } from "lucide-react"
+import { FileCheck, Pencil, Trash2, UploadCloud, Check, X, Eye } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { UploadMasterResumeDialog } from "./master-resume-dialog"
+import { MasterResumePreviewDialog } from "./master-resume-preview-dialog"
 import { Resume } from "@/lib/db"
 
 interface MasterResumesSectionProps {
@@ -20,6 +21,10 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
   const [editingTitle, setEditingTitle] = useState("")
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
   const [updateError, setUpdateError] = useState<{ id: string; message: string } | null>(null)
+  
+  // Preview state
+  const [previewResume, setPreviewResume] = useState<Resume | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const masterResumes = resumes.filter(resume =>
     resume.kind === 'master' || resume.kind === 'uploaded'
@@ -111,6 +116,11 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
     }
   }
 
+  const handlePreview = (resume: Resume) => {
+    setPreviewResume(resume)
+    setIsPreviewOpen(true)
+  }
+
   return (
     <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
       <div className="flex items-center justify-between mb-4">
@@ -123,7 +133,12 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
           {masterResumes.map((resume) => (
             <div key={resume.id} className="group rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 p-3 transition-colors hover:bg-surface-muted dark:hover:bg-white/10">
               <div className="flex items-center gap-3">
-                <FileCheck className="h-5 w-5 flex-shrink-0 text-foreground/70 dark:text-white/70" />
+                <div 
+                  className="cursor-pointer transition-opacity hover:opacity-80"
+                  onClick={() => handlePreview(resume)}
+                >
+                  <FileCheck className="h-5 w-5 flex-shrink-0 text-foreground/70 dark:text-white/70" />
+                </div>
                 <div className="flex flex-1 flex-col gap-0.5 text-left">
                   {editingId === resume.id ? (
                     <div className="space-y-2">
@@ -172,7 +187,12 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                     </div>
                   ) : (
                     <>
-                      <p className="truncate text-sm font-medium text-foreground/90 dark:text-white/90">{resume.title}</p>
+                      <p 
+                        className="truncate text-sm font-medium text-foreground/90 dark:text-white/90 cursor-pointer hover:text-emerald-500 transition-colors"
+                        onClick={() => handlePreview(resume)}
+                      >
+                        {resume.title}
+                      </p>
                       <p className="text-xs text-foreground/50 dark:text-white/50">
                         {resume.processing_status === "completed"
                           ? `Last updated ${formatDistanceToNow(new Date(resume.updated_at), { addSuffix: true })}`
@@ -193,6 +213,13 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                     className={`flex items-center gap-2 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                       } sm:bg-transparent bg-black/20 rounded-md p-1 sm:p-0`}
                   >
+                    <button
+                      onClick={() => handlePreview(resume)}
+                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
+                      title="View original file"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
                     <button
                       onClick={() => handleStartEdit(resume.id, resume.title)}
                       className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
@@ -266,6 +293,12 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
           </p>
         </div>
       )}
+
+      <MasterResumePreviewDialog 
+        open={isPreviewOpen} 
+        onOpenChange={setIsPreviewOpen} 
+        resume={previewResume} 
+      />
     </div>
   )
 }

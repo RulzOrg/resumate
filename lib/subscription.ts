@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server"
-import { getOrCreateUser, getAllCurrentUsage } from "./db"
+// import { getOrCreateUser, getAllCurrentUsage } from "./db" // Removed to break circular dependency
 import { pricingTiers, getPricingTier, canUserPerformAction } from "./pricing"
 import { getEnv } from "./env"
 
@@ -46,6 +46,9 @@ export async function getCurrentSubscription(): Promise<SubscriptionInfo | null>
     const { userId } = await auth()
     if (!userId) return null
 
+    // Dynamic import to avoid circular dependency
+    const { getOrCreateUser } = await import("./db")
+    
     let user = await getOrCreateUser()
     if (!user) {
       // Fallback when DB not ready
@@ -91,6 +94,9 @@ export async function canPerformAction(action: 'resumeOptimizations' | 'jobAnaly
     const { userId } = await auth()
     if (!userId) return false
 
+    // Dynamic import to avoid circular dependency
+    const { getOrCreateUser, getAllCurrentUsage } = await import("./db")
+
     const user = await getOrCreateUser(userId)
     if (!user) return false
 
@@ -114,6 +120,9 @@ export async function getUsageLimits(): Promise<UsageLimits | null> {
   try {
     const { userId } = await auth()
     if (!userId) return null
+
+    // Dynamic import to avoid circular dependency
+    const { getOrCreateUser, getAllCurrentUsage } = await import("./db")
 
     const user = await getOrCreateUser(userId)
     if (!user) return null

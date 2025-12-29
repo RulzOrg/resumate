@@ -1,4 +1,4 @@
-import { getAuthenticatedUser } from "@/lib/auth-utils"
+import { getAuthenticatedUser } from "@/lib/user-data"
 import { getUserResumes, getUserOptimizedResumes } from "@/lib/db"
 import { getCurrentSubscription, getUsageLimits } from "@/lib/subscription"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
