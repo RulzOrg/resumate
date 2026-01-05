@@ -117,7 +117,7 @@ export function PricingCard({
   return (
     <Card
       className={`relative overflow-hidden rounded-2xl bg-surface-subtle dark:bg-white/5 backdrop-blur p-0 border ${
-        popular ? 'border-emerald-500/50 ring-1 ring-emerald-500' : '[border-color:#d1d5db] dark:border-white/10'
+        popular ? 'border-emerald-500/50 ring-1 ring-emerald-500' : '[border-color:#d1d5db] dark:border-white/20'
       } ${isCurrentPlan ? 'ring-2 ring-emerald-500' : ''}`}
     >
       {popular && (
@@ -189,7 +189,7 @@ export function PricingCard({
           {getButtonText()}
         </Button>
         {tier.id === 'pro' && (
-          <p className="text-xs text-center text-foreground/60 dark:text-white/60">7-day free trial • Cancel anytime</p>
+          <p className="text-xs text-center text-foreground/75 dark:text-white/75">7-day free trial • Cancel anytime</p>
         )}
       </CardContent>
     </Card>

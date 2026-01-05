@@ -1,0 +1,374 @@
+import { type ParsedResume } from "@/lib/resume-parser"
+import Anthropic from "@anthropic-ai/sdk"
+import { z } from "zod"
+import { createLogger } from "@/lib/debug-logger"
+
+const logger = createLogger("LLM-Resume-Extractor")
+
+// Define the schema using Zod for validation and tool definition
+// This matches the ParsedResume interface but with Zod validation
+const ContactInfoSchema = z.object({
+  name: z.string().describe("Full name of the candidate"),
+  location: z.string().nullish().describe("City, State/Country"),
+  phone: z.string().nullish().describe("Phone number"),
+  email: z.string().nullish().describe("Email address"),
+  linkedin: z.string().nullish().describe("LinkedIn profile URL"),
+  website: z.string().nullish().describe("Personal website or portfolio URL"),
+})
+
+const WorkExperienceItemSchema = z.object({
+  company: z.string().describe("Company name"),
+  title: z.string().describe("Job title"),
+  location: z.string().nullish().describe("Job location"),
+  startDate: z.string().nullish().describe("Start date (e.g., 'Jan 2020')"),
+  endDate: z.string().nullish().describe("End date (e.g., 'Present', 'Dec 2022')"),
+  employmentType: z.string().nullish().describe("Full-time, Contract, etc."),
+  bullets: z.array(z.string()).describe("List of work responsibilities and achievements"),
+})
+
+const EducationItemSchema = z.object({
+  institution: z.string().describe("University or School name"),
+  degree: z.string().nullish().describe("Degree name (e.g., BS Computer Science)"),
+  field: z.string().nullish().describe("Field of study"),
+  graduationDate: z.string().nullish().describe("Graduation date/year"),
+  notes: z.string().nullish().describe("GPA, Honors, etc."),
+})
+
+const CertificationItemSchema = z.object({
+  name: z.string().describe("Name of certification"),
+  issuer: z.string().nullish().describe("Issuing organization"),
+  date: z.string().nullish().describe("Date obtained"),
+})
+
+const ProjectItemSchema = z.object({
+  name: z.string().describe("Project name"),
+  description: z.string().nullish().describe("Project description"),
+  technologies: z.array(z.string()).optional().describe("Technologies used"),
+  bullets: z.array(z.string()).describe("Details about the project"),
+})
+
+const VolunteerItemSchema = z.object({
+  organization: z.string().describe("Organization name"),
+  role: z.string().nullish().describe("Role title"),
+  dates: z.string().nullish().describe("Dates of service"),
+  description: z.string().nullish().describe("Description of volunteer work"),
+})
+
+const PublicationItemSchema = z.object({
+  title: z.string().describe("Publication title"),
+  publisher: z.string().nullish().describe("Publisher or conference name"),
+  date: z.string().nullish().describe("Publication date"),
+  description: z.string().nullish().describe("Description"),
+})
+
+const ParsedResumeSchema = z.object({
+  contact: ContactInfoSchema,
+  targetTitle: z.string().nullish().describe("Target job title or headline from resume"),
+  summary: z.string().nullish().describe("Professional summary"),
+  workExperience: z.array(WorkExperienceItemSchema),
+  education: z.array(EducationItemSchema),
+  skills: z.array(z.string()).describe("List of skills"),
+  interests: z.array(z.string()).optional().default([]),
+  certifications: z.preprocess(
+    (val) => {
+      if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'string') {
+        return val.map(name => ({ name }));
+      }
+      return val;
+    },
+    z.array(CertificationItemSchema).optional().default([])
+  ),
+  awards: z.array(z.string()).optional().default([]),
+  projects: z.array(ProjectItemSchema).optional().default([]),
+  volunteering: z.array(VolunteerItemSchema).optional().default([]),
+  publications: z.array(PublicationItemSchema).optional().default([]),
+})
+
+export type StructuredResume = z.infer<typeof ParsedResumeSchema>
+
+export type ExtractionResult = {
+  success: boolean
+  resume?: ParsedResume
+  error?: {
+    code: 'NOT_A_RESUME' | 'INCOMPLETE' | 'EXTRACTION_FAILED' | 'INVALID_INPUT'
+    documentType?: string
+    message: string
+  }
+  metadata?: {
+    truncated?: boolean
+    originalLength?: number
+    truncatedLength?: number
+  }
+}
+
+/**
+ * Extract structured resume data from raw text using Anthropic LLM
+ * Handles diverse formats, layouts, and languages
+ */
+export async function extractResumeWithLLM(
+  rawText: string,
+  apiKey?: string
+): Promise<ExtractionResult> {
+  const key = apiKey || process.env.ANTHROPIC_API_KEY
+  if (!key) {
+    throw new Error("ANTHROPIC_API_KEY is required for resume extraction")
+  }
+
+  // Basic pre-validation
+  if (!rawText || rawText.trim().length < 50) {
+    return {
+      success: false,
+      error: {
+        code: 'INVALID_INPUT',
+        message: 'Input text is too short to be a resume',
+      },
+    }
+  }
+
+  // Check for placeholder/template content
+  const placeholderPatterns = [
+    /\[your (name|email|phone)\]/i,
+    /lorem ipsum/i,
+    /\[company name\]/i,
+    /xxx-xxx-xxxx/i,
+    /example@email\.com/i,
+  ]
+
+  if (placeholderPatterns.some(p => p.test(rawText))) {
+    return {
+      success: false,
+      error: {
+        code: 'NOT_A_RESUME',
+        documentType: 'template',
+        message: 'This appears to be a resume template with placeholder text. Please upload a real resume.',
+      }
+    }
+  }
+
+  const extractionStartTime = Date.now()
+
+  try {
+    const client = new Anthropic({ apiKey: key })
+
+    // Check for truncation before processing
+    const MAX_LENGTH = 30000
+    const originalLength = rawText.length
+    const wasTruncated = originalLength > MAX_LENGTH
+    const truncatedText = wasTruncated ? rawText.substring(0, MAX_LENGTH) : rawText
+
+    if (wasTruncated) {
+      logger.warn(
+        `Resume text truncated: original length ${originalLength} characters, truncated to ${MAX_LENGTH} characters`
+      )
+    }
+
+    logger.log(`Starting LLM extraction: length=${originalLength}, truncated=${wasTruncated}`)
+
+    const toolName = "extract_resume_data"
+    const truncationNotice = wasTruncated
+      ? `\n\nNOTE: This document was truncated from ${originalLength} to ${MAX_LENGTH} characters due to length limits. Some content may be missing.`
+      : ""
+
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 4096,
+      tools: [
+        {
+          name: toolName,
+          description: "Extract structured data from a resume document. If the document is NOT a resume (e.g. cover letter, job description), return error in the metadata field.",
+          input_schema: {
+            type: "object",
+            properties: {
+              is_resume: {
+                type: "boolean",
+                description: "True if this document is a resume/CV, false if it is something else (cover letter, etc)"
+              },
+              document_type: {
+                type: "string",
+                description: "If not a resume, what type of document is it? (cover_letter, job_description, other)"
+              },
+              data: {
+                // We'll trust the LLM to follow the structure based on extensive description
+                // Use a simplified description to save tokens, the detailed work is done by the system prompt + robust parsing
+                type: "object",
+                description: "The structured resume data matching the schema defined in system prompt",
+              }
+            },
+            required: ["is_resume"]
+          }
+        }
+      ],
+      tool_choice: { type: "tool", name: toolName },
+      system: `You are an expert resume parser. Your task is to extract structured data from the provided text into a JSON object.
+      
+      CONTEXT:
+      The text comes from a parsed file (PDF/DOCX) which may have scrambled layout, non-standard section names, or be in a foreign language.
+      
+      RULES:
+      1. CRITICAL: Determine if this is actually a resume. 
+         - A resume MUST have: Name, Contact Info, Work Experience (or Education for fresh grads).
+         - If it's a cover letter, job description, or homework assignment, set is_resume=false.
+         
+      2. Structure Preservation:
+         - Extract content EXACTLY as written. Do not summarize or rewrite.
+         - Maintain the original language of the resume.
+         - All bullet points must be preserved verbatim.
+         
+      3. Ambiguity Handling:
+         - If a section is missing, do not invent it.
+         - If dates are ambiguous, make a best guess or leave as original string.
+         - Detect "Work Experience" even if labeled "Career History", "Professional Background", "Berufserfahrung", etc.
+         
+      4. Schema:
+         Extract the data into a JSON object with these fields:
+         - contact (name, email, phone, location, linkedin, website)
+         - targetTitle (if mentioned as a headline)
+         - summary
+         - workExperience (array of company, title, location, startDate, endDate, bullets, employmentType)
+         - education (array of institution, degree, field, graduationDate, notes)
+         - skills (array of strings)
+         - interests, certifications, awards, projects, volunteering, publications (arrays)
+         
+      5. Special Cases:
+         - Mixed content (Resume + Cover Letter): Extract ONLY the resume part.
+         - Academic CV: Extract the top 20 most relevant publications if list is huge.
+      `,
+      messages: [
+        { role: "user", content: `Extract data from this document:${truncationNotice}\n\n${truncatedText}` }
+      ]
+    })
+
+    // Parse tool execution
+    const content = response.content.find(c => c.type === 'tool_use')
+    if (!content || content.type !== 'tool_use') {
+      throw new Error("Model did not call the extraction tool")
+    }
+
+    const result = content.input as any
+
+    if (!result.is_resume) {
+      return {
+        success: false,
+        error: {
+          code: 'NOT_A_RESUME',
+          documentType: result.document_type || 'unknown',
+          message: `This document appears to be a ${result.document_type || 'non-resume document'}. Please upload a resume.`,
+        }
+      }
+    }
+
+    // validate the data structure using Zod
+    // The LLM output might be inside 'data' property or flat, depending on how it interpreted schema
+    // We try to locate the data
+    const resumeData = result.data || result;
+
+    // Attempt to validate - allow partial failures by defaults in schema
+    const validation = ParsedResumeSchema.safeParse(resumeData)
+
+    if (!validation.success) {
+      console.error("[LLM Extraction] Schema validation failed:", validation.error)
+      // If validation fails, we might still want to return what we have if it's "good enough"
+      // But for now, let's treat it as a failure or try to fix common issues
+      return {
+        success: false,
+        error: {
+          code: 'EXTRACTION_FAILED',
+          message: 'Failed to extract valid resume structure',
+        }
+      }
+    }
+
+    // Logic checks for "Incomplete" resume
+    const data = validation.data
+    const hasWork = data.workExperience.length > 0
+    const hasEdu = data.education.length > 0
+    const hasSkills = data.skills.length > 0
+
+    if (!hasWork && !hasEdu && !hasSkills) {
+      const extractionDuration = Date.now() - extractionStartTime
+      logger.warn(`Extraction failed: incomplete resume (no work/education/skills)`, {
+        duration: `${extractionDuration}ms`,
+        hasWork,
+        hasEdu,
+        hasSkills,
+      })
+      return {
+        success: false,
+        error: {
+          code: 'INCOMPLETE',
+          message: 'Resume seems to be empty or missing key sections (Work, Education, Skills).',
+        }
+      }
+    }
+
+    const extractionDuration = Date.now() - extractionStartTime
+    logger.log(`Extraction successful`, {
+      duration: `${extractionDuration}ms`,
+      workExperienceCount: data.workExperience.length,
+      educationCount: data.education.length,
+      skillsCount: data.skills.length,
+      wasTruncated,
+    })
+
+    return {
+      success: true,
+      resume: data as ParsedResume,
+      metadata: wasTruncated
+        ? {
+          truncated: true,
+          originalLength,
+          truncatedLength: MAX_LENGTH,
+        }
+        : undefined,
+    }
+
+  } catch (error: any) {
+    const extractionDuration = Date.now() - extractionStartTime
+    logger.error(`Extraction failed with exception`, {
+      duration: `${extractionDuration}ms`,
+      error: error.message || String(error),
+      errorType: error.constructor?.name || 'Unknown',
+      status: error.status,
+    })
+    console.error("[LLM Extraction] Error:", error)
+
+    // Handle specific API errors
+    if (error.status === 404) {
+      return {
+        success: false,
+        error: {
+          code: 'EXTRACTION_FAILED',
+          message: 'Model not found. Please check API configuration.',
+        }
+      }
+    }
+
+    if (error.status === 401) {
+      return {
+        success: false,
+        error: {
+          code: 'EXTRACTION_FAILED',
+          message: 'Invalid API key. Please check your Anthropic API configuration.',
+        }
+      }
+    }
+
+    if (error.status === 429) {
+      return {
+        success: false,
+        error: {
+          code: 'EXTRACTION_FAILED',
+          message: 'API rate limit exceeded. Please try again later.',
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: {
+        code: 'EXTRACTION_FAILED',
+        message: error.message || 'Unknown error during extraction',
+      }
+    }
+  }
+}

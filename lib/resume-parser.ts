@@ -144,16 +144,20 @@ function isDateLine(line: string): boolean {
 }
 
 /**
- * Extract dates from a line
+ * Extract dates from a line - preserve original format
  */
-function extractDates(line: string): { startDate?: string, endDate?: string } {
+function extractDates(line: string): { startDate?: string, endDate?: string, originalText?: string } {
   // Try numeric format first: 01/2020 - 12/2022 or 1/2020 - Present
   const numericMatch = line.match(/(\d{1,2}\/\d{4})\s*[-–—]\s*(\d{1,2}\/\d{4}|Present|Current)/i)
   if (numericMatch) {
-    return { startDate: numericMatch[1], endDate: numericMatch[2] }
+    return { 
+      startDate: numericMatch[1], 
+      endDate: numericMatch[2],
+      originalText: numericMatch[0]
+    }
   }
 
-  // Standard format: Jan 2020 - Present, 2019 – 2022, etc.
+  // Standard format: Jan 2020 - Present, 2019 – 2022, Jan 2020 - Dec 2022, etc.
   const dateMatch = line.match(/(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\.?\s*)?(\d{4})\s*[-–—]\s*(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\.?\s*)?(\d{4}|Present|Current)/i)
   if (dateMatch) {
     const startMonth = dateMatch[1] || ''
@@ -162,9 +166,21 @@ function extractDates(line: string): { startDate?: string, endDate?: string } {
     const endYear = dateMatch[4]
     return {
       startDate: startMonth ? `${startMonth} ${startYear}` : startYear,
-      endDate: endYear === 'Present' || endYear === 'Current' ? 'Present' : (endMonth ? `${endMonth} ${endYear}` : endYear)
+      endDate: endYear === 'Present' || endYear === 'Current' ? 'Present' : (endMonth ? `${endMonth} ${endYear}` : endYear),
+      originalText: dateMatch[0]
     }
   }
+  
+  // Try year-only format: 2020 - 2022 or 2020 - Present
+  const yearOnlyMatch = line.match(/(\d{4})\s*[-–—]\s*(\d{4}|Present|Current)/i)
+  if (yearOnlyMatch) {
+    return {
+      startDate: yearOnlyMatch[1],
+      endDate: yearOnlyMatch[2],
+      originalText: yearOnlyMatch[0]
+    }
+  }
+  
   return {}
 }
 
@@ -762,67 +778,202 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
     exp.company = companyName.replace(/[\s\t]+/g, ' ').trim()
   }
 
-  // Process buffer lines
+  // Process buffer lines - check ALL lines for dates first, then parse other fields
+  console.log(`[ResumeParser:parseExp] Processing ${buffer.length} buffer lines for entry: ${exp.company || '(no company yet)'}`)
+  
   for (const line of buffer) {
-    // Bullet points
+    // Skip empty lines
+    if (!line.trim()) continue
+    
+    // Debug: Log each line being processed
+    console.log(`[ResumeParser:parseExp] Processing buffer line: "${line.substring(0, 80)}"`)
+
+    // Priority 1: Bullet points - extract immediately and continue
     if (line.startsWith('- ') || line.startsWith('* ') || line.startsWith('• ')) {
       exp.bullets.push(line.replace(/^[-*•]\s*/, '').trim())
+      continue
     }
-    // Title | Date format
-    else if (line.includes('|')) {
-      const parts = line.split('|')
-      if (!exp.title && parts[0]) {
-        exp.title = parts[0].trim().replace(/\*+/g, '')
+
+    // Priority 2: Check EVERY line for dates FIRST (most important)
+    const dates = extractDates(line)
+    if (dates.startDate || dates.endDate) {
+      if (dates.startDate && !exp.startDate) {
+        exp.startDate = dates.startDate
+        console.log(`[ResumeParser:parseExp] ✅ Extracted startDate: "${dates.startDate}"`)
       }
-      if (parts[1]) {
-        const dates = extractDates(parts[1])
-        if (dates.startDate) exp.startDate = dates.startDate
-        if (dates.endDate) exp.endDate = dates.endDate
+      if (dates.endDate && !exp.endDate) {
+        exp.endDate = dates.endDate
+        console.log(`[ResumeParser:parseExp] ✅ Extracted endDate: "${dates.endDate}"`)
+      }
+      
+      // If this line is primarily a date, extract title from before the date if present
+      if (isDateLine(line)) {
+        const titlePart = line.replace(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{1,2}\/\d{4}|\d{4})\s*[-–—].*$/i, '').trim()
+        if (titlePart && !exp.title) {
+          exp.title = titlePart.replace(/\*+/g, '').replace(/[|,]$/, '').trim()
+          console.log(`[ResumeParser:parseExp] ✅ Extracted title from date line: "${exp.title}"`)
+        }
+        continue // Skip further processing for date-only lines
       }
     }
-    // Line that's primarily a date
-    else if (isDateLine(line)) {
-      const dates = extractDates(line)
-      if (dates.startDate) exp.startDate = dates.startDate
-      if (dates.endDate) exp.endDate = dates.endDate
-      // Check if there's a title before the date
-      const titlePart = line.replace(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4})\s*[-–—].*$/i, '').trim()
-      if (titlePart && !exp.title) {
-        exp.title = titlePart.replace(/\*+/g, '').replace(/[|,]$/, '').trim()
-      }
-    }
-    // Title line (italic or plain text with job indicators)
-    else if (line.match(/^\*[^*]+\*$/) || (line && !exp.title && !line.startsWith('#'))) {
-      const cleanLine = line.replace(/\*+/g, '').trim()
-      // Check if this looks like a job title
-      if (cleanLine.match(/^(Senior|Lead|Junior|Principal|Staff|Chief|Head|VP|Director|Manager|Engineer|Designer|Developer|Analyst|Specialist|Consultant|Associate|Intern)/i) ||
-        cleanLine.match(/(Engineer|Designer|Developer|Manager|Director|Analyst|Specialist|Consultant|Lead)/i)) {
-        if (!exp.title) {
-          exp.title = cleanLine
+
+    // Priority 3: Title | Date | EmploymentType format (pipe-separated)
+    if (line.includes('|')) {
+      const parts = line.split('|').map(p => p.trim())
+      console.log(`[ResumeParser:parseExp] Processing pipe-separated line with ${parts.length} parts`)
+      
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i]
+        
+        // Extract title from bold or plain text (usually first part)
+        if (i === 0 && !exp.title) {
+          const titleMatch = part.match(/^\*\*(.+?)\*\*$/) || part.match(/^([A-Z][a-zA-Z\s]+(?:Designer|Developer|Manager|Engineer|Analyst|Lead|Director|Specialist).*)$/i)
+          if (titleMatch) {
+            exp.title = titleMatch[1].trim()
+            console.log(`[ResumeParser:parseExp] ✅ Extracted title from pipe part ${i}: "${exp.title}"`)
+          }
+        }
+        
+        // Check ALL parts for dates (not just part[1])
+        const partDates = extractDates(part)
+        if (partDates.startDate && !exp.startDate) {
+          exp.startDate = partDates.startDate
+          console.log(`[ResumeParser:parseExp] ✅ Extracted startDate from pipe part ${i}: "${exp.startDate}"`)
+        }
+        if (partDates.endDate && !exp.endDate) {
+          exp.endDate = partDates.endDate
+          console.log(`[ResumeParser:parseExp] ✅ Extracted endDate from pipe part ${i}: "${exp.endDate}"`)
+        }
+        
+        // Extract employment type from any part
+        if (part.match(/Full-time|Part-time|Contract|Freelance|Internship/i)) {
+          const empMatch = part.match(/(Full-time|Part-time|Contract|Freelance|Internship)/i)
+          if (empMatch) {
+            exp.employmentType = empMatch[1]
+            console.log(`[ResumeParser:parseExp] ✅ Extracted employmentType from pipe part ${i}: "${exp.employmentType}"`)
+          }
         }
       }
-      // Check if it contains company info
-      else if (!exp.company && cleanLine.length < 80) {
-        // Could be company name if we don't have one yet
-        // Remove dates if present
-        let companyName = cleanLine.replace(/\s*\|\s*\d{1,2}\/\d{4}.*$/, '')
-        companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/, '')
-        companyName = companyName.replace(/\s+[A-Z][a-z]+\s+\d{4}.*$/, '')
-        // Clean up excessive whitespace
-        exp.company = companyName.replace(/\s+/g, ' ').trim()
-      }
+      continue
     }
-    // Employment type indicators
-    else if (line.includes('Full-time') || line.includes('Part-time') || line.includes('Contract') || line.includes('Remote')) {
+
+    // Priority 4: Line with bullet separator (•) - common format: "Title • Full-time Location" or "Title • Date Range"
+    if (line.includes('•') && !line.startsWith('•')) {
+      const parts = line.split('•').map(p => p.trim())
+      console.log(`[ResumeParser:parseExp] Processing bullet-separated line with ${parts.length} parts`)
+      
+      // First part is usually title
+      if (parts[0] && !exp.title) {
+        exp.title = parts[0].replace(/\*+/g, '').trim()
+        console.log(`[ResumeParser:parseExp] ✅ Extracted title from bullet part 0: "${exp.title}"`)
+      }
+      
+      // Check all parts for dates, employment type, location
+      for (let i = 1; i < parts.length; i++) {
+        const part = parts[i]
+        
+        // Check for dates in this part
+        const partDates = extractDates(part)
+        if (partDates.startDate && !exp.startDate) {
+          exp.startDate = partDates.startDate
+          console.log(`[ResumeParser:parseExp] ✅ Extracted startDate from bullet part ${i}: "${exp.startDate}"`)
+        }
+        if (partDates.endDate && !exp.endDate) {
+          exp.endDate = partDates.endDate
+          console.log(`[ResumeParser:parseExp] ✅ Extracted endDate from bullet part ${i}: "${exp.endDate}"`)
+        }
+        
+        // Extract employment type
+        if (part.match(/Full-time|Part-time|Contract|Freelance|Internship/i)) {
+          const empMatch = part.match(/(Full-time|Part-time|Contract|Freelance|Internship)/i)
+          if (empMatch) {
+            exp.employmentType = empMatch[1]
+            console.log(`[ResumeParser:parseExp] ✅ Extracted employmentType from bullet part ${i}: "${exp.employmentType}"`)
+            // Rest might be location
+            const remaining = part.replace(/Full-time|Part-time|Contract|Freelance|Internship/i, '').trim()
+            if (remaining && !exp.location) {
+              exp.location = remaining
+              console.log(`[ResumeParser:parseExp] ✅ Extracted location from bullet part ${i}: "${exp.location}"`)
+            }
+          }
+        } else if (!exp.location && part.length > 2 && part.length < 50 && !isDateLine(part)) {
+          // Might be location if not a date
+          exp.location = part
+          console.log(`[ResumeParser:parseExp] ✅ Extracted location from bullet part ${i}: "${exp.location}"`)
+        }
+      }
+      continue
+    }
+
+    // Priority 5: Title line (bold, italic, or plain text with job indicators)
+    const cleanLine = line.replace(/\*+/g, '').trim()
+    if (cleanLine.match(/^(Senior|Lead|Junior|Principal|Staff|Chief|Head|VP|Director|Manager|Engineer|Designer|Developer|Analyst|Specialist|Consultant|Associate|Intern)/i) ||
+      cleanLine.match(/(Engineer|Designer|Developer|Manager|Director|Analyst|Specialist|Consultant|Lead)\s*$/i)) {
+      if (!exp.title) {
+        // Extract title, removing any trailing dates
+        exp.title = cleanLine.replace(/\s*[-–—]\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4}|Present|Current).*$/i, '').trim()
+        console.log(`[ResumeParser:parseExp] ✅ Extracted title: "${exp.title}"`)
+      }
+      continue
+    }
+
+    // Priority 6: Employment type indicators (can be standalone or with dates)
+    if (line.includes('Full-time') || line.includes('Part-time') || line.includes('Contract') || line.includes('Freelance') || line.includes('Remote')) {
       if (line.includes('Full-time')) exp.employmentType = 'Full-time'
       else if (line.includes('Part-time')) exp.employmentType = 'Part-time'
       else if (line.includes('Contract')) exp.employmentType = 'Contract'
+      else if (line.includes('Freelance')) exp.employmentType = 'Freelance'
 
       if (line.includes('Remote')) {
         exp.location = exp.location ? `${exp.location}, Remote` : 'Remote'
       }
+      
+      // Also try to extract dates from this line if present
+      const empDates = extractDates(line)
+      if (empDates.startDate && !exp.startDate) {
+        exp.startDate = empDates.startDate
+        console.log(`[ResumeParser:parseExp] ✅ Extracted startDate from employment line: "${exp.startDate}"`)
+      }
+      if (empDates.endDate && !exp.endDate) {
+        exp.endDate = empDates.endDate
+        console.log(`[ResumeParser:parseExp] ✅ Extracted endDate from employment line: "${exp.endDate}"`)
+      }
+      continue
+    }
+
+    // Priority 7: Location line (if it's a standalone location and not a date)
+    if (line && !exp.location && !isDateLine(line) && 
+        line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/) &&
+        !line.includes('|') && !line.match(/^\*\*/)) {
+      exp.location = line.trim()
+      console.log(`[ResumeParser:parseExp] ✅ Extracted location: "${exp.location}"`)
+      continue
+    }
+    
+    // Last resort: If we haven't matched anything yet, check if it might be a date line
+    if (isDateLine(line) && !exp.startDate && !exp.endDate) {
+      const fallbackDates = extractDates(line)
+      if (fallbackDates.startDate) {
+        exp.startDate = fallbackDates.startDate
+        console.log(`[ResumeParser:parseExp] ✅ Extracted startDate (fallback): "${exp.startDate}"`)
+      }
+      if (fallbackDates.endDate) {
+        exp.endDate = fallbackDates.endDate
+        console.log(`[ResumeParser:parseExp] ✅ Extracted endDate (fallback): "${exp.endDate}"`)
+      }
     }
   }
+  
+  // Log final parsed result
+  console.log(`[ResumeParser:parseExp] Final parsed entry:`, {
+    company: exp.company || '(empty)',
+    title: exp.title || '(empty)',
+    startDate: exp.startDate || '(empty)',
+    endDate: exp.endDate || '(empty)',
+    location: exp.location || '(empty)',
+    employmentType: exp.employmentType || '(empty)',
+    bulletsCount: exp.bullets.length,
+  })
 
   // If we got title as company and vice versa, try to fix it
   if (exp.company && !exp.title) {

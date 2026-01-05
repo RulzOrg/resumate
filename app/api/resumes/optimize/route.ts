@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage } from "@/lib/db"
+import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage, getCachedStructure, saveParsedStructure } from "@/lib/db"
+import { extractResumeWithLLM } from "@/lib/llm-resume-extractor"
 import { canPerformAction } from "@/lib/subscription"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
@@ -110,28 +111,107 @@ export async function POST(request: NextRequest) {
       async () => {
         console.log('[Optimize] Starting structured optimization...')
         const startTime = Date.now()
-        
+
         if (!process.env.ANTHROPIC_API_KEY) {
           throw new AppError("ANTHROPIC_API_KEY is not configured", 500, "MISSING_API_KEY")
         }
 
         try {
+          // Check for cached structure or extract new one
+          const extractionStartTime = Date.now()
+          let resumeStructure = await getCachedStructure(resume.id)
+          let cacheHit = false
+
+          if (!resumeStructure) {
+            console.log('[Optimize] Cache miss: extracting structure via LLM...')
+            const extractionResult = await extractResumeWithLLM(resume.content_text!, process.env.ANTHROPIC_API_KEY)
+
+            if (!extractionResult.success) {
+              // Map extraction error codes to user-friendly messages
+              const errorCode = extractionResult.error?.code || 'EXTRACTION_FAILED'
+              let errorMessage: string
+              let statusCode = 400
+
+              switch (errorCode) {
+                case 'NOT_A_RESUME':
+                  errorMessage = "This doesn't appear to be a resume. Please upload a resume file."
+                  break
+                case 'INCOMPLETE':
+                  errorMessage = "Resume is missing key sections. Please ensure your resume includes work experience, education, or skills."
+                  break
+                case 'EXTRACTION_FAILED':
+                  errorMessage = "Failed to parse resume. Please try uploading a different format (DOCX recommended)."
+                  statusCode = 500
+                  break
+                case 'INVALID_INPUT':
+                  errorMessage = "Resume content is too short or invalid."
+                  break
+                default:
+                  errorMessage = extractionResult.error?.message || "Failed to extract resume structure. Please try uploading a different format."
+                  statusCode = 500
+              }
+
+              console.error('[Optimize] LLM extraction failed:', {
+                errorCode,
+                errorMessage: extractionResult.error?.message,
+                documentType: extractionResult.error?.documentType,
+              })
+
+              throw new AppError(errorMessage, statusCode, errorCode)
+            }
+
+            if (!extractionResult.resume) {
+              throw new AppError("Failed to extract resume structure. Please try uploading a different format.", 500, "EXTRACTION_FAILED")
+            }
+
+            resumeStructure = extractionResult.resume
+            const extractionDuration = Date.now() - extractionStartTime
+            console.log('[Optimize] Extraction successful:', {
+              duration: `${extractionDuration}ms`,
+              workExperienceCount: resumeStructure.workExperience.length,
+              educationCount: resumeStructure.education.length,
+              skillsCount: resumeStructure.skills.length,
+              wasTruncated: extractionResult.metadata?.truncated,
+            })
+
+            // Cache the structure (non-blocking)
+            saveParsedStructure(resume.id, resumeStructure).catch(err =>
+              console.error('[Optimize] Failed to cache structure:', err)
+            )
+          } else {
+            cacheHit = true
+            const cacheCheckDuration = Date.now() - extractionStartTime
+            console.log('[Optimize] Cache hit: using stored resume structure', {
+              duration: `${cacheCheckDuration}ms`,
+              workExperienceCount: resumeStructure.workExperience.length,
+              educationCount: resumeStructure.education.length,
+              skillsCount: resumeStructure.skills.length,
+            })
+          }
+
+          // Optimize with structured data (mandatory - no fallback to string parsing)
           const result = await optimizeResumeStructured(
-            resume.content_text!,
+            resumeStructure,
             job_title,
             company_name || null,
             job_description,
             process.env.ANTHROPIC_API_KEY
           )
 
-          console.log(`[Optimize] Structured optimization completed in ${(Date.now() - startTime) / 1000}s`)
-          console.log('[Optimize] Optimization details:', {
+          const optimizationDuration = Date.now() - startTime
+          const totalDuration = Date.now() - startTime
+          console.log('[Optimize] Structured optimization completed:', {
+            totalDuration: `${totalDuration}ms`,
+            optimizationDuration: `${optimizationDuration}ms`,
+            cacheHit,
             summary_was_created: result.optimizationDetails.summary_was_created,
             target_title_was_created: result.optimizationDetails.target_title_was_created,
             skills_preserved: result.optimizedResume.skills.length,
             education_preserved: result.optimizedResume.education.length,
             workExperience_preserved: result.optimizedResume.workExperience.length,
             certifications_preserved: result.optimizedResume.certifications.length,
+            match_score_before: result.optimizationDetails.match_score_before,
+            match_score_after: result.optimizationDetails.match_score_after,
           })
           console.log('[Optimize] Optimized resume data before formatting:', {
             education: result.optimizedResume.education.map(e => ({ institution: e.institution, degree: e.degree })),
@@ -141,7 +221,7 @@ export async function POST(request: NextRequest) {
 
           // Convert optimized structured data to markdown
           const optimizedContent = formatResumeToMarkdown(result.optimizedResume)
-          
+
           console.log('[Optimize] Generated markdown preview:', {
             length: optimizedContent.length,
             educationSectionExists: optimizedContent.includes('## Education'),
@@ -166,14 +246,14 @@ export async function POST(request: NextRequest) {
           }
         } catch (error: any) {
           console.error('[Optimize] Structured optimization error:', error)
-          
+
           if (error.status === 401) {
             throw new AppError("Invalid Anthropic API key", 500, "INVALID_API_KEY")
           }
           if (error.status === 429) {
             throw new AppError("Anthropic API rate limit exceeded", 429, "RATE_LIMIT")
           }
-          
+
           throw new Error(`Structured optimization failed: ${error.message || String(error)}`)
         }
       },

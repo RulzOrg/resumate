@@ -53,12 +53,12 @@
   --secondary: rgba(255, 255, 255, 0.1);
   --secondary-foreground: #ffffff;
   --muted: rgba(255, 255, 255, 0.05);
-  --muted-foreground: rgba(255, 255, 255, 0.7);
+  --muted-foreground: rgba(255, 255, 255, 0.75);
   --accent: #10b981;
-  --accent-foreground: #000000;
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.2);
   --input: rgba(255, 255, 255, 0.05);
   --ring: #10b981;
   --chart-1: #10b981;
@@ -72,7 +72,7 @@
   --sidebar-primary-foreground: #000000;
   --sidebar-accent: rgba(255, 255, 255, 0.1);
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-border: rgba(255, 255, 255, 0.2);
   --sidebar-ring: #10b981;
 }
 
@@ -145,6 +145,19 @@
   /* Light mode borders for surface-subtle elements to improve contrast */
   :root:not(.dark) .bg-surface-subtle {
     border-color: #747580 !important;
+  }
+
+  /* Dark mode border utilities for consistent visibility */
+  .dark .border-visible {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  .dark .border-subtle {
+    border-color: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  .dark .border-strong {
+    border-color: rgba(255, 255, 255, 0.3) !important;
   }
 }
 

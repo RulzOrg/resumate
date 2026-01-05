@@ -43,14 +43,14 @@ export default async function DashboardPage() {
             {/* Main Content */}
             <div className="lg:col-span-2 space-y-8">
               {/* Quick Optimize Section */}
-              <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
+              <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
                 <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Quick Optimize</h2>
                 <QuickOptimizeForm resumes={resumes} />
               </div>
 
               {/* Optimized Resumes */}
               {optimizedResumes.length > 0 && (
-                <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
+                <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
                   <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Optimized Resumes</h2>
                   <GeneratedResumesCompactList resumes={optimizedResumes.slice(0, 5)} limit={5} />
                   {optimizedResumes.length > 5 && (
@@ -84,24 +84,24 @@ export default async function DashboardPage() {
         </div>
       </main>
 
-      <footer className="border-t border-border dark:border-white/10 mt-16">
+      <footer className="border-t border-border dark:border-white/20 mt-16">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-foreground/50 dark:text-white/50">© {new Date().getFullYear()} ResuMate AI</p>
             <div className="flex items-center gap-4">
-              <Link href="/dashboard/settings" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+              <Link href="/dashboard/settings" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white">
                 Settings
               </Link>
-              <Link href="/pricing" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+              <Link href="/pricing" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white">
                 Pricing
               </Link>
-              <Link href="/terms" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+              <Link href="/terms" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white">
                 Terms
               </Link>
-              <Link href="/privacy" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+              <Link href="/privacy" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white">
                 Privacy
               </Link>
-              <Link href="/support" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+              <Link href="/support" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white">
                 Support
               </Link>
             </div>

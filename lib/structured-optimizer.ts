@@ -40,48 +40,56 @@ export interface StructuredOptimizationResult {
  * OPTIMIZES: Professional Summary, Work Experience bullets, Target Title
  */
 export async function optimizeResumeStructured(
-  masterResumeContent: string,
+  resumeInput: string | ParsedResume,
   jobTitle: string,
   companyName: string | null,
   jobDescription: string,
   apiKey: string
 ): Promise<StructuredOptimizationResult> {
-  // Step 1: Extract actual text content (handle JSON-encoded content)
-  let actualContent = masterResumeContent?.trim() || ''
+  let parsed: ParsedResume;
 
-  // Check if content is JSON-encoded (starts with {)
-  if (actualContent.startsWith('{')) {
-    try {
-      const jsonContent = JSON.parse(actualContent)
-      // Try multiple possible field names for the resume text
-      const extractedText = jsonContent.text || jsonContent.content || jsonContent.resume || jsonContent.data
-      if (extractedText && typeof extractedText === 'string') {
-        actualContent = extractedText
-        console.log('[StructuredOptimizer] Extracted text from JSON-encoded content')
+  // Step 1: Parse or use provided structure
+  if (typeof resumeInput === 'string') {
+    // Legacy behavior for string input
+    let actualContent = resumeInput?.trim() || ''
+
+    // Check if content is JSON-encoded (starts with {)
+    if (actualContent.startsWith('{')) {
+      try {
+        const jsonContent = JSON.parse(actualContent)
+        // Try multiple possible field names for the resume text
+        const extractedText = jsonContent.text || jsonContent.content || jsonContent.resume || jsonContent.data
+        if (extractedText && typeof extractedText === 'string') {
+          actualContent = extractedText
+          console.log('[StructuredOptimizer] Extracted text from JSON-encoded content')
+        }
+      } catch (e) {
+        // If JSON parsing fails, content might not be JSON - continue with original
+        console.warn('[StructuredOptimizer] Content starts with { but is not valid JSON, using as-is')
       }
-    } catch (e) {
-      // If JSON parsing fails, content might not be JSON - continue with original
-      console.warn('[StructuredOptimizer] Content starts with { but is not valid JSON, using as-is')
     }
-  }
 
-  // Validate we have usable resume content
-  if (!actualContent || actualContent.length < 100) {
-    throw new Error('Invalid resume content: content is too short (minimum 100 characters required)')
-  }
-  if (actualContent.trim().startsWith('{')) {
-    throw new Error('Invalid resume content: content appears to be JSON data, not resume text')
-  }
+    // Validate we have usable resume content
+    if (!actualContent || actualContent.length < 100) {
+      throw new Error('Invalid resume content: content is too short (minimum 100 characters required)')
+    }
+    if (actualContent.trim().startsWith('{')) {
+      throw new Error('Invalid resume content: content appears to be JSON data, not resume text')
+    }
 
-  console.log('[StructuredOptimizer] Received content:', {
-    contentLength: actualContent.length,
-    contentPreview: actualContent.substring(0, 500),
-    contentType: typeof actualContent,
-    wasJsonEncoded: masterResumeContent !== actualContent,
-  })
+    console.log('[StructuredOptimizer] Received string content:', {
+      contentLength: actualContent.length,
+      contentPreview: actualContent.substring(0, 500),
+      contentType: typeof actualContent,
+    })
 
-  // Step 2: Parse master resume into structured data
-  const parsed = parseResumeContent(actualContent)
+    // Step 2: Parse master resume into structured data (using legacy regex parser for string input)
+    parsed = parseResumeContent(actualContent)
+  } else {
+    // Use provided structured data directly
+    console.log('[StructuredOptimizer] Using provided structured resume data')
+    parsed = resumeInput
+  }
 
   // Step 2.1: Validate parsed data has minimum required content
   if (parsed.workExperience.length === 0) {
@@ -372,16 +380,31 @@ NOT:
     // Use optimized or newly created summary
     summary: optimization.optimized_summary,
 
-    // Reconstruct work experience with PRESERVED company/title, optimized bullets
-    workExperience: parsed.workExperience.map((exp, idx) => ({
-      company: exp.company, // PRESERVED
-      title: exp.title,    // PRESERVED
-      location: exp.location, // Can be optimized if needed
-      startDate: exp.startDate,
-      endDate: exp.endDate,
-      employmentType: exp.employmentType,
-      bullets: optimization.optimized_experiences[idx].optimized_bullets, // OPTIMIZED
-    })),
+    // Reconstruct work experience with PRESERVED company/title/dates, optimized bullets
+    workExperience: parsed.workExperience.map((exp, idx) => {
+      const optimized = {
+        company: exp.company, // PRESERVED EXACTLY
+        title: exp.title,    // PRESERVED EXACTLY
+        location: exp.location, // PRESERVED EXACTLY
+        startDate: exp.startDate, // PRESERVED EXACTLY
+        endDate: exp.endDate, // PRESERVED EXACTLY
+        employmentType: exp.employmentType, // PRESERVED EXACTLY
+        bullets: optimization.optimized_experiences[idx].optimized_bullets, // OPTIMIZED ONLY
+      }
+
+      // Log to verify preservation
+      console.log(`[StructuredOptimizer] Preserving entry ${idx}:`, {
+        company: optimized.company || '(empty)',
+        title: optimized.title || '(empty)',
+        dates: `${optimized.startDate || 'N/A'} - ${optimized.endDate || 'N/A'}`,
+        location: optimized.location || 'N/A',
+        employmentType: optimized.employmentType || 'N/A',
+        bulletsCount: optimized.bullets.length,
+        originalBulletsCount: exp.bullets.length,
+      })
+
+      return optimized
+    }),
 
     // PRESERVE all other sections EXACTLY (if they exist, otherwise empty arrays)
     education: [...parsed.education],
