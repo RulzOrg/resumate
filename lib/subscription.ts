@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server"
-import { getOrCreateUser, getAllCurrentUsage } from "./db"
+// import { getOrCreateUser, getAllCurrentUsage } from "./db" // Removed to break circular dependency
 import { pricingTiers, getPricingTier, canUserPerformAction } from "./pricing"
+import { getEnv } from "./env"
 
 export type SubscriptionStatus = 
   | 'free' 
@@ -45,10 +46,23 @@ export async function getCurrentSubscription(): Promise<SubscriptionInfo | null>
     const { userId } = await auth()
     if (!userId) return null
 
+    // Dynamic import to avoid circular dependency
+    const { getOrCreateUser } = await import("./db")
+    
     let user = await getOrCreateUser()
     if (!user) {
       // Fallback when DB not ready
       return { status: 'free' as const, plan: 'free' }
+    }
+
+    // Check if user is whitelisted for unlimited access
+    const { WHITELISTED_EMAILS } = getEnv()
+    if (user.email && WHITELISTED_EMAILS.includes(user.email.toLowerCase())) {
+      return {
+        status: 'active',
+        plan: 'pro',
+        periodEnd: new Date(new Date().setFullYear(new Date().getFullYear() + 10)), // 10 years from now
+      }
     }
 
     return {
@@ -77,18 +91,22 @@ export async function hasActiveSubscription(): Promise<boolean> {
  */
 export async function canPerformAction(action: 'resumeOptimizations' | 'jobAnalyses' | 'resumeVersions'): Promise<boolean> {
   try {
+    const { userId } = await auth()
+    if (!userId) return false
+
+    // Dynamic import to avoid circular dependency
+    const { getOrCreateUser, getAllCurrentUsage } = await import("./db")
+
+    const user = await getOrCreateUser(userId)
+    if (!user) return false
+
     const subscription = await getCurrentSubscription()
     if (!subscription) return false
 
-    // For now, we'll use mock usage data
-    // In a real app, you'd query actual usage from the database
-    const mockUsage = {
-      resumeOptimizations: 2,
-      jobAnalyses: 3,
-      resumeVersions: 2
-    }
+    // Get real usage from the database
+    const actualUsage = await getAllCurrentUsage(user.id)
 
-    return canUserPerformAction(subscription.plan, mockUsage[action], action as any)
+    return canUserPerformAction(subscription.plan, actualUsage[action], action)
   } catch (error) {
     console.error('Error checking action permission:', error)
     return false
@@ -102,6 +120,9 @@ export async function getUsageLimits(): Promise<UsageLimits | null> {
   try {
     const { userId } = await auth()
     if (!userId) return null
+
+    // Dynamic import to avoid circular dependency
+    const { getOrCreateUser, getAllCurrentUsage } = await import("./db")
 
     const user = await getOrCreateUser(userId)
     if (!user) return null

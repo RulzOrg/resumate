@@ -3,8 +3,8 @@ export const clerkConfig = {
   // Sign in/up pages
   signInUrl: "/auth/login",
   signUpUrl: "/auth/signup",
-  afterSignInUrl: "/onboarding",
-  afterSignUpUrl: "/onboarding",
+  afterSignInUrl: "/dashboard",
+  afterSignUpUrl: "/dashboard",
 
   // Protected routes
   publicRoutes: [
@@ -19,7 +19,7 @@ export const clerkConfig = {
   ],
 
   // Routes that should redirect to sign-in if not authenticated
-  protectedRoutes: ["/dashboard", "/onboarding", "/api/resumes", "/api/jobs", "/api/job-targets"],
+  protectedRoutes: ["/dashboard", "/api/resumes"],
 }
 
 // Helper function to check if a route is protected

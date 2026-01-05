@@ -156,22 +156,34 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                   <div className="text-center text-sm text-foreground/90 dark:text-white/90">Unlimited</div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
-                  <div className="text-sm text-foreground/80 dark:text-white/80">Resume Health Checker</div>
+                  <div className="text-sm text-foreground/80 dark:text-white/80 flex items-center gap-2 flex-wrap">
+                    Resume Health Checker
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                  </div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 dark:text-white/80">ATS Compatibility Check</div>
                   <div className="text-center text-sm text-foreground/90 dark:text-white/90">Basic</div>
-                  <div className="text-center text-sm text-foreground/90 dark:text-white/90">Advanced</div>
+                  <div className="text-center text-sm text-foreground/90 dark:text-white/90 flex items-center justify-center gap-2 flex-wrap">
+                    Advanced
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                  </div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
-                  <div className="text-sm text-foreground/80 dark:text-white/80">Cover Letter Generation</div>
+                  <div className="text-sm text-foreground/80 dark:text-white/80 flex items-center gap-2 flex-wrap">
+                    Cover Letter Generation
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                  </div>
                   <div className="text-center"><Minus className="h-5 w-5 text-foreground/40 dark:text-white/40 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
-                  <div className="text-sm text-foreground/80 dark:text-white/80">Evidence-Based Rewriting</div>
+                  <div className="text-sm text-foreground/80 dark:text-white/80 flex items-center gap-2 flex-wrap">
+                    Evidence-Based Rewriting
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                  </div>
                   <div className="text-center"><Minus className="h-5 w-5 text-foreground/40 dark:text-white/40 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
@@ -287,19 +299,26 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <p className="text-sm text-foreground/50 dark:text-white/50">© {new Date().getFullYear()} ResuMate AI. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
-                </svg>
-              </a>
-              <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                  <rect x="2" y="9" width="4" height="12"></rect>
-                  <circle cx="4" cy="4" r="2"></circle>
-                </svg>
-              </a>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <Link href="/terms" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">Terms</Link>
+                <Link href="/privacy" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">Privacy</Link>
+                <Link href="/support" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">Support</Link>
+              </div>
+              <div className="flex items-center gap-4">
+                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
+                  </svg>
+                </a>
+                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                    <rect x="2" y="9" width="4" height="12"></rect>
+                    <circle cx="4" cy="4" r="2"></circle>
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>

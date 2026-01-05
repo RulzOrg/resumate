@@ -52,9 +52,9 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     setOauthError(null)
   }
 
-  // If a Clerk session already exists, go to onboarding (middleware will redirect to dashboard if needed)
+  // If a Clerk session already exists, go to dashboard
   if (isSignedIn) {
-    if (typeof window !== "undefined") router.replace("/onboarding")
+    if (typeof window !== "undefined") router.replace("/dashboard")
     return null
   }
 
@@ -87,7 +87,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       if (result.status === "complete" && result.createdSessionId) {
         await setSignInActive({ session: result.createdSessionId })
-        router.push("/onboarding")
+        router.push("/dashboard")
         return
       }
 
@@ -101,7 +101,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signIn.create failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/onboarding")
+        router.replace("/dashboard")
         return
       }
       setSignInError(msg)
@@ -134,7 +134,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       if (result.status === "complete" && result.createdSessionId) {
         await setSignUpActive({ session: result.createdSessionId })
-        router.push("/onboarding")
+        router.push("/dashboard")
         return
       }
 
@@ -144,7 +144,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signUp.create failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/onboarding")
+        router.replace("/dashboard")
         return
       }
       setSignUpError(msg)
@@ -164,7 +164,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
 
       if (result.status === "complete" && result.createdSessionId) {
         await setSignUpActive({ session: result.createdSessionId })
-        router.push("/onboarding")
+        router.push("/dashboard")
         return
       }
 
@@ -173,7 +173,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signUp.attemptEmailAddressVerification failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/onboarding")
+        router.replace("/dashboard")
         return
       }
       setVerificationError(msg)
@@ -189,7 +189,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       console.error("[Clerk] signUp.prepareEmailAddressVerification failed", error)
       const msg = extractClerkError(error)
       if (/session already exists/i.test(msg)) {
-        router.replace("/onboarding")
+        router.replace("/dashboard")
         return
       }
       setVerificationError(msg)
@@ -209,7 +209,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: origin ? `${origin}/sso-callback` : "/sso-callback",
-        redirectUrlComplete: origin ? `${origin}/onboarding` : "/onboarding",
+        redirectUrlComplete: "/dashboard",
       })
     } catch (err) {
       // Log detailed error for debugging without exposing internals to users
@@ -234,8 +234,8 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="hidden md:block h-screen relative">
           <img
-            src="https://hoirqrkdgbmvpwutwuwj-all.supabase.co/storage/v1/object/public/assets/assets/54d286cc-805c-4764-8e62-adf0b4e17df5_800w.jpg"
-            alt="A professional man smiling"
+            src="/images/auth-hero.jpg"
+            alt="A professional person smiling"
             className="absolute w-full h-full object-cover top-0 right-0 bottom-0 left-0"
           />
           <div className="absolute inset-0 bg-foreground/40 dark:bg-black/40" />

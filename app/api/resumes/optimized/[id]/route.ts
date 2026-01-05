@@ -1,220 +1,91 @@
-/**
- * Optimized Resume Update API Endpoint
- * Handles saving v2 structured resume edits
- * 
- * PATCH /api/resumes/optimized/[id]
- * Body: { structured_output, qa_metrics?, export_formats?, optimized_content?, match_score? }
- */
-
-import { NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { updateOptimizedResumeV2, getUserByClerkId } from "@/lib/db"
-import type { SystemPromptV1Output } from "@/lib/schemas-v2"
-import { SystemPromptV1OutputSchema } from "@/lib/schemas-v2"
+import { getOptimizedResumeById, updateOptimizedResume, getOrCreateUser } from "@/lib/db"
+import { handleApiError, AppError } from "@/lib/error-handler"
+import type { ParsedResume } from "@/lib/resume-parser"
+import { formatResumeToMarkdown } from "@/lib/resume-formatter"
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const user = await getOrCreateUser()
+    if (!user) {
+      throw new AppError("User not found", 404)
+    }
+
+    const { id } = await params
+    const optimized = await getOptimizedResumeById(id, user.id)
+
+    if (!optimized) {
+      throw new AppError("Optimized resume not found", 404)
+    }
+
+    return NextResponse.json({ optimized_resume: optimized })
+  } catch (error) {
+    const errorInfo = handleApiError(error)
+    return NextResponse.json(
+      { error: errorInfo.error, code: errorInfo.code },
+      { status: errorInfo.statusCode }
+    )
+  }
+}
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Authentication
-    const { userId: clerkUserId } = await auth()
-    if (!clerkUserId) {
+    const { userId } = await auth()
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get database user ID from Clerk ID
-    const user = await getUserByClerkId(clerkUserId)
+    const user = await getOrCreateUser()
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      throw new AppError("User not found", 404)
     }
-    const userId = user.id
-    console.log('[API PATCH] User ID conversion:', { clerkId: clerkUserId, dbId: userId })
 
     const { id } = await params
-    if (!id) {
-      return NextResponse.json({ error: "Missing resume ID" }, { status: 400 })
-    }
-
-    // Parse request body
     const body = await request.json()
-    const {
-      structured_output,
-      qa_metrics,
-      export_formats,
-      optimized_content,
-      match_score,
-    } = body
 
-    // Validate: at least one field must be provided
-    if (
-      structured_output === undefined &&
-      qa_metrics === undefined &&
-      export_formats === undefined &&
-      optimized_content === undefined &&
-      match_score === undefined
-    ) {
-      return NextResponse.json(
-        { error: "No update fields provided" },
-        { status: 400 }
-      )
+    // Get existing resume to verify ownership
+    const existing = await getOptimizedResumeById(id, user.id)
+    if (!existing) {
+      throw new AppError("Optimized resume not found", 404)
     }
 
-    // Validate structured_output if provided
-    if (structured_output !== undefined && structured_output !== null) {
-      const validation = SystemPromptV1OutputSchema.safeParse(structured_output)
-      
-      if (!validation.success) {
-        return NextResponse.json(
-          {
-            error: "Invalid structured_output",
-            message: "The structured_output does not match the expected schema",
-            validation_errors: validation.error.errors,
-          },
-          { status: 400 }
-        )
-      }
+    // Convert parsed resume data to markdown
+    let optimizedContent = existing.optimized_content
+    if (body.resumeData) {
+      optimizedContent = formatResumeToMarkdown(body.resumeData as ParsedResume)
     }
 
-    // Update resume
-    console.log('[API PATCH] Saving resume:', id, 'for database user:', userId)
-    
-    const updated = await updateOptimizedResumeV2(id, userId, {
-      structured_output,
-      qa_metrics,
-      export_formats,
-      optimized_content,
-      match_score,
+    // Update the resume
+    const updated = await updateOptimizedResume(id, user.id, {
+      optimized_content: optimizedContent,
+      match_score: body.match_score,
     })
 
     if (!updated) {
-      console.error('[API PATCH] Resume not found or permission denied:', id)
-      return NextResponse.json(
-        { error: "Resume not found or you don't have permission to update it" },
-        { status: 404 }
-      )
-    }
-
-    console.log('[API PATCH] Save successful:', id)
-
-    return NextResponse.json({
-      success: true,
-      resume: updated,
-      message: "Resume updated successfully",
-    })
-  } catch (error: any) {
-    console.error("Resume update error:", error)
-    return NextResponse.json(
-      {
-        error: "Failed to update resume",
-        message: error.message || "Unknown error",
-      },
-      { status: 500 }
-    )
-  }
-}
-
-/**
- * GET /api/resumes/optimized/[id]
- * Fetch a specific optimized resume
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    // Authentication
-    const { userId: clerkUserId } = await auth()
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Get database user ID from Clerk ID
-    const user = await getUserByClerkId(clerkUserId)
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-    const userId = user.id
-
-    const { id } = await params
-    if (!id) {
-      return NextResponse.json({ error: "Missing resume ID" }, { status: 400 })
-    }
-
-    // Fetch resume (using the existing function)
-    const { getOptimizedResumeById } = await import("@/lib/db")
-    const resume = await getOptimizedResumeById(id, userId)
-
-    if (!resume) {
-      return NextResponse.json({ error: "Resume not found" }, { status: 404 })
+      throw new AppError("Failed to update resume", 500)
     }
 
     return NextResponse.json({
       success: true,
-      resume,
+      optimized_resume: updated,
     })
-  } catch (error: any) {
-    console.error("Resume fetch error:", error)
+  } catch (error) {
+    const errorInfo = handleApiError(error)
     return NextResponse.json(
-      {
-        error: "Failed to fetch resume",
-        message: error.message || "Unknown error",
-      },
-      { status: 500 }
-    )
-  }
-}
-
-/**
- * DELETE /api/resumes/optimized/[id]
- * Delete an optimized resume
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    // Authentication
-    const { userId: clerkUserId } = await auth()
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Get database user ID from Clerk ID
-    const user = await getUserByClerkId(clerkUserId)
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-    const userId = user.id
-
-    const { id } = await params
-    if (!id) {
-      return NextResponse.json({ error: "Missing resume ID" }, { status: 400 })
-    }
-
-    // Delete resume
-    const { deleteOptimizedResume } = await import("@/lib/db")
-    const deleted = await deleteOptimizedResume(id, userId)
-
-    if (!deleted) {
-      return NextResponse.json(
-        { error: "Resume not found or you don't have permission to delete it" },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Resume deleted successfully",
-    })
-  } catch (error: any) {
-    console.error("Resume delete error:", error)
-    return NextResponse.json(
-      {
-        error: "Failed to delete resume",
-        message: error.message || "Unknown error",
-      },
-      { status: 500 }
+      { error: errorInfo.error, code: errorInfo.code },
+      { status: errorInfo.statusCode }
     )
   }
 }

@@ -58,11 +58,11 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
 
     // Check file extension (more reliable than MIME type)
     const fileName = selectedFile.name.toLowerCase()
-    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
+    const allowedExtensions = ['.pdf', '.doc', '.docx']
     const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
     
     if (!hasValidExtension) {
-      setError("Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported.")
+      setError("Only PDF and Word (.doc, .docx) files are allowed.")
       return
     }
 
@@ -71,7 +71,6 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain",
     ]
 
     if (!allowedTypes.includes(selectedFile.type)) {
@@ -117,7 +116,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
       const controller = new AbortController()
       uploadAbortRef.current = controller
 
-      const response = await fetch("/api/resumes/master/upload", {
+      const response = await fetch("/api/resumes/upload", {
         method: "POST",
         body: formData,
         signal: controller.signal,
@@ -257,7 +256,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
                     ref={fileInputRef}
                     id="master-resume-file"
                     type="file"
-                    accept=".pdf,.doc,.docx,.txt"
+                    accept=".pdf,.doc,.docx"
                     className="hidden"
                     onChange={(event) => {
                       const selectedFile = event.target.files?.[0]

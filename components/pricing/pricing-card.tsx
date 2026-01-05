@@ -7,7 +7,7 @@ import { Check, Sparkles } from "lucide-react"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { PricingTier, formatPrice } from "@/lib/pricing"
+import { PricingTier, PricingFeature, formatPrice } from "@/lib/pricing"
 
 interface PricingCardProps {
   tier: PricingTier
@@ -117,7 +117,7 @@ export function PricingCard({
   return (
     <Card
       className={`relative overflow-hidden rounded-2xl bg-surface-subtle dark:bg-white/5 backdrop-blur p-0 border ${
-        popular ? 'border-emerald-500/50 ring-1 ring-emerald-500' : '[border-color:#d1d5db] dark:border-white/10'
+        popular ? 'border-emerald-500/50 ring-1 ring-emerald-500' : '[border-color:#d1d5db] dark:border-white/20'
       } ${isCurrentPlan ? 'ring-2 ring-emerald-500' : ''}`}
     >
       {popular && (
@@ -157,12 +157,23 @@ export function PricingCard({
 
       <CardContent className="space-y-6 p-8 pt-4">
         <ul className="space-y-4">
-          {tier.features.map((feature, index) => (
-            <li key={index} className="flex items-start gap-3">
-              <Check className="h-5 w-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-              <span className="text-sm text-foreground/90 dark:text-white/90">{feature}</span>
-            </li>
-          ))}
+          {tier.features.map((feature, index) => {
+            const featureText = typeof feature === 'string' ? feature : feature.text
+            const isComingSoon = typeof feature === 'object' && feature.comingSoon
+            return (
+              <li key={index} className="flex items-start gap-3">
+                <Check className="h-5 w-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-foreground/90 dark:text-white/90 flex items-center gap-2 flex-wrap">
+                  {featureText}
+                  {isComingSoon && (
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">
+                      Coming Soon
+                    </span>
+                  )}
+                </span>
+              </li>
+            )
+          })}
         </ul>
 
         <Button
@@ -178,7 +189,7 @@ export function PricingCard({
           {getButtonText()}
         </Button>
         {tier.id === 'pro' && (
-          <p className="text-xs text-center text-foreground/60 dark:text-white/60">7-day free trial • Cancel anytime</p>
+          <p className="text-xs text-center text-foreground/75 dark:text-white/75">7-day free trial • Cancel anytime</p>
         )}
       </CardContent>
     </Card>

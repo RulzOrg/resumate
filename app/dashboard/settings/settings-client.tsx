@@ -5,19 +5,17 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Loader2, CreditCard, User, Bell, Shield, Zap } from "lucide-react"
+import { Loader2, CreditCard, User, Shield, Zap } from "lucide-react"
 
 interface SettingsClientProps {
   user: {
     id: string
     name: string
     email: string
-    newsletterSubscribed: boolean
   }
   subscription: any
   usageLimits: any
@@ -26,7 +24,6 @@ interface SettingsClientProps {
 export function SettingsClient({ user, subscription, usageLimits }: SettingsClientProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [newsletterEnabled, setNewsletterEnabled] = useState(user.newsletterSubscribed)
 
   const handleManageSubscription = async () => {
     setLoading(true)
@@ -51,32 +48,6 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       toast.error(error.message || "Failed to open billing portal")
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleNewsletterToggle = async (enabled: boolean) => {
-    setNewsletterEnabled(enabled)
-
-    try {
-      const response = await fetch("/api/user/newsletter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscribed: enabled }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to update newsletter preference")
-      }
-
-      toast.success(enabled
-        ? "You've been subscribed to our newsletter!"
-        : "You've been unsubscribed from our newsletter."
-      )
-    } catch (error) {
-      console.error("Newsletter update error:", error)
-      toast.error("Failed to update newsletter preference")
-      // Revert the toggle on error
-      setNewsletterEnabled(!enabled)
     }
   }
 
@@ -106,7 +77,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
 
   return (
     <Tabs defaultValue="account" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-2">
         <TabsTrigger value="account">
           <User className="w-4 h-4 mr-2" />
           Account
@@ -114,10 +85,6 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
         <TabsTrigger value="subscription">
           <CreditCard className="w-4 h-4 mr-2" />
           Subscription
-        </TabsTrigger>
-        <TabsTrigger value="preferences">
-          <Bell className="w-4 h-4 mr-2" />
-          Preferences
         </TabsTrigger>
       </TabsList>
 
@@ -230,32 +197,6 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
                     className="h-2"
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Job Analyses</span>
-                    <span className="font-medium">
-                      {usageLimits.jobAnalyses.used} / {usageLimits.jobAnalyses.limit}
-                    </span>
-                  </div>
-                  <Progress
-                    value={(usageLimits.jobAnalyses.used / usageLimits.jobAnalyses.limit) * 100}
-                    className="h-2"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Resume Versions</span>
-                    <span className="font-medium">
-                      {usageLimits.resumeVersions.used} / {usageLimits.resumeVersions.limit}
-                    </span>
-                  </div>
-                  <Progress
-                    value={(usageLimits.resumeVersions.used / usageLimits.resumeVersions.limit) * 100}
-                    className="h-2"
-                  />
-                </div>
               </>
             ) : (
               <p className="text-muted-foreground">Loading usage data...</p>
@@ -270,7 +211,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
                       Need more?
                     </p>
                     <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Upgrade to Pro for unlimited optimizations and advanced features.
+                      Upgrade to Pro for unlimited optimizations.
                     </p>
                     <Button
                       size="sm"
@@ -284,119 +225,6 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="preferences" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Email Notifications</CardTitle>
-            <CardDescription>
-              Manage your email preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="newsletter">Newsletter</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive tips, updates, and special offers
-                </p>
-              </div>
-              <Switch
-                id="newsletter"
-                checked={newsletterEnabled}
-                onCheckedChange={handleNewsletterToggle}
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="product-updates">Product Updates</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified about new features and improvements
-                </p>
-              </div>
-              <Switch
-                id="product-updates"
-                defaultChecked
-                disabled
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="usage-alerts">Usage Alerts</Label>
-                <p className="text-sm text-muted-foreground">
-                  Alert when approaching plan limits
-                </p>
-              </div>
-              <Switch
-                id="usage-alerts"
-                defaultChecked
-                disabled
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Application Preferences</CardTitle>
-            <CardDescription>
-              Customize your experience
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="auto-save">Auto-save</Label>
-                <p className="text-sm text-muted-foreground">
-                  Automatically save your work
-                </p>
-              </div>
-              <Switch
-                id="auto-save"
-                defaultChecked
-                disabled
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="ai-suggestions">AI Suggestions</Label>
-                <p className="text-sm text-muted-foreground">
-                  Show AI-powered suggestions while editing
-                </p>
-              </div>
-              <Switch
-                id="ai-suggestions"
-                defaultChecked
-                disabled
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="text-red-600">
-            <CardTitle>Danger Zone</CardTitle>
-            <CardDescription>
-              Irreversible actions for your account
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="destructive"
-              className="w-full"
-              disabled
-            >
-              Delete Account
-            </Button>
-            <p className="text-sm text-muted-foreground mt-2">
-              Once you delete your account, there is no going back. Please be certain.
-            </p>
           </CardContent>
         </Card>
       </TabsContent>

@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Copy, Download, SplitSquareVertical, FileText } from "lucide-react"
+import { Copy, Download, SplitSquareVertical, FileText, Settings2 } from "lucide-react"
+import { LayoutSelector } from "./layout-selector"
 
 interface OptimizedDetailViewProps {
   optimizedId: string
@@ -46,6 +47,8 @@ function highlightDiff(base: string, compare: string, mode: 'added' | 'removed')
 }
 
 export function OptimizedDetailView({ optimizedId, title, optimizedContent, originalContent, matchScore }: OptimizedDetailViewProps) {
+  const [layout, setLayout] = useState<string>("modern")
+  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false)
   const match = classifyMatch(matchScore)
   const orig = originalContent || ''
   const opt = optimizedContent || ''
@@ -58,10 +61,10 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
     } catch {}
   }
 
-  const download = (format: 'pdf' | 'docx') => {
+  const download = (format: 'docx' | 'html') => {
     const link = document.createElement('a')
     const encodedId = encodeURIComponent(optimizedId)
-    link.href = `/api/resumes/download?id=${encodedId}&format=${format}`
+    link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}&layout=${layout}`
     link.target = '_blank'
     link.rel = 'noopener'
     document.body.appendChild(link)
@@ -72,19 +75,33 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
   return (
     <div className="space-y-6">
       <Card className="border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="text-lg">{title}</CardTitle>
             <div className="text-sm text-foreground/60 dark:text-white/60">Match: <span className={match.className}>{match.label}</span></div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2 mr-2">
+              <span className="text-xs font-medium text-foreground/60 dark:text-white/60">Layout:</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsLayoutModalOpen(true)}
+                className="h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10 px-3 flex items-center gap-1.5"
+              >
+                <Settings2 className="h-4 w-4" />
+                {layout.charAt(0).toUpperCase() + layout.slice(1)}
+              </Button>
+            </div>
+
+            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
               <Copy className="h-4 w-4 mr-2" /> Copy
             </Button>
-            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('pdf')}>
-              <Download className="h-4 w-4 mr-2" /> PDF
+            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('html')}>
+              <FileText className="h-4 w-4 mr-2" /> Preview
             </Button>
-            <Button variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
+            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
               <Download className="h-4 w-4 mr-2" /> DOCX
             </Button>
           </div>
@@ -111,6 +128,12 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
           </div>
         </CardContent>
       </Card>
+      <LayoutSelector 
+        open={isLayoutModalOpen} 
+        onOpenChange={setIsLayoutModalOpen} 
+        currentLayout={layout} 
+        onSelect={setLayout} 
+      />
     </div>
   )
 }

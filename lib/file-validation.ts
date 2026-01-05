@@ -245,6 +245,7 @@ export async function validateFileUpload(request: NextRequest): Promise<{
   valid: boolean
   error?: string
   file?: File
+  formData?: FormData
   validationResult?: FileValidationResult
 }> {
   try {
@@ -272,6 +273,7 @@ export async function validateFileUpload(request: NextRequest): Promise<{
     return {
       valid: true,
       file: fileBlob,
+      formData,
       validationResult: validation
     }
   } catch (error: any) {

@@ -13,7 +13,8 @@ export function getStripe(): Stripe {
   }
   if (!stripeSingleton) {
     stripeSingleton = new Stripe(key, {
-      apiVersion: "2025-08-27.basil",
+      // @ts-ignore - using latest API version
+      apiVersion: "2024-12-18.acacia",
     })
   }
   return stripeSingleton

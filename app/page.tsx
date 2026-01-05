@@ -110,20 +110,20 @@ export default function HomePage() {
               <span className="text-base font-medium tracking-tighter font-sans">ResuMate AI</span>
             </Link>
 
-            <div className="hidden gap-1 md:flex bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/10 border rounded-full p-1 backdrop-blur items-center">
+            <div className="hidden gap-1 md:flex bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-full p-1 backdrop-blur items-center">
               <a
                 href="#how-it-works"
-                className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground font-sans"
+                className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans"
               >
                 How It Works
               </a>
-              <a href="#features" className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground font-sans">
+              <a href="#features" className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans">
                 Features
               </a>
-              <a href="#pricing" className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground font-sans">
+              <a href="#pricing" className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans">
                 Pricing
               </a>
-              <a href="#faq" className="px-4 py-2 text-sm font-medium text-foreground/80 hover:text-foreground font-sans">
+              <a href="#faq" className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans">
                 FAQ
               </a>
             </div>
@@ -175,7 +175,7 @@ export default function HomePage() {
                 </div>
                 <button
                   onClick={toggleMobileMenu}
-                  className="relative w-10 h-10 flex items-center justify-center rounded-lg border border-border/80 dark:border-white/10 hover:bg-surface-subtle dark:hover:bg-white/5 transition-colors"
+                  className="relative w-10 h-10 flex items-center justify-center rounded-lg border border-border/80 dark:border-white/20 hover:bg-surface-subtle dark:hover:bg-white/5 transition-colors"
                 >
                   <div className="relative">
                     <span className={`absolute block w-6 h-0.5 bg-white transition-all duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-0' : '-translate-y-1.5'}`}
@@ -194,7 +194,7 @@ export default function HomePage() {
                   <a
                     href="#how-it-works"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/10 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors">
                       <Upload className="h-5 w-5 text-emerald-400" />
@@ -208,7 +208,7 @@ export default function HomePage() {
                   <a
                     href="#features"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/10 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
                       <Target className="h-5 w-5 text-blue-400" />
@@ -222,7 +222,7 @@ export default function HomePage() {
                   <a
                     href="#pricing"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/10 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
                       <Star className="h-5 w-5 text-purple-400" />
@@ -236,7 +236,7 @@ export default function HomePage() {
                   <a
                     href="#faq"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/10 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-500/10 group-hover:bg-amber-500/20 transition-colors">
                       <Check className="h-5 w-5 text-amber-400" />
@@ -249,7 +249,7 @@ export default function HomePage() {
                 </div>
 
                 {/* CTA Section */}
-                <div className="mt-8 pt-8 border-t border-border dark:border-white/10">
+                <div className="mt-8 pt-8 border-t border-border dark:border-white/20">
                   <div className="space-y-4">
                     <div className="text-center px-4 py-2 bg-emerald-500/10 rounded-lg">
                       <div className="text-sm text-emerald-400 font-medium font-sans">Start Free Today</div>
@@ -271,7 +271,7 @@ export default function HomePage() {
                     <Link
                       href="/auth/login"
                       onClick={toggleMobileMenu}
-                      className="block text-center px-6 py-3 text-base font-medium text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white transition-colors font-sans"
+                      className="block text-center px-6 py-3 text-base font-medium text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white transition-colors font-sans"
                     >
                       Already have an account? Sign In
                     </Link>
@@ -358,7 +358,7 @@ export default function HomePage() {
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-6 py-3 text-base font-medium text-foreground/90 dark:text-white/90 backdrop-blur hover:bg-surface-muted dark:hover:bg-white/10 font-sans"
+                className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/20 bg-surface-subtle dark:bg-white/5 px-6 py-3 text-base font-medium text-foreground/90 dark:text-white/90 backdrop-blur hover:bg-surface-muted dark:hover:bg-white/10 font-sans"
               >
                 Learn More
               </a>
@@ -568,7 +568,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/10 border rounded-2xl backdrop-blur-xl">
+              <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
               <p className="text-base text-foreground/80 dark:text-white/80 font-sans">
                 "I was applying for months with no luck. After using ResuMate AI, I got three interview requests in the
                 first week. The AI's ability to match my skills to the job description was a game-changer."
@@ -585,7 +585,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/10 border rounded-2xl backdrop-blur-xl">
+              <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
               <p className="text-base text-foreground/80 dark:text-white/80 font-sans">
                 "As a creative, it's hard to quantify my impact. This tool helped me rephrase my experience with
                 powerful action verbs and metrics. I finally got past the ATS and landed my dream role at a top agency."
@@ -602,7 +602,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/10 border rounded-2xl backdrop-blur-xl">
+              <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
               <p className="text-base text-foreground/80 dark:text-white/80 font-sans">
                 "The time savings alone are worth it. Instead of spending hours tweaking my resume for each application,
                 I can generate a perfectly tailored version in seconds. My interview rate has skyrocketed."
@@ -814,20 +814,27 @@ export default function HomePage() {
       <footer className="border-t border-border dark:border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <p className="text-sm text-foreground/50 dark:text-white/50 font-sans">© 2025 ResuMate AI. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                </svg>
-              </a>
-              <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
-                  <rect x="2" y="9" width="4" height="12" />
-                  <circle cx="4" cy="4" r="2" />
-                </svg>
-              </a>
+            <p className="text-sm text-foreground/50 dark:text-white/50 font-sans">© {new Date().getFullYear()} ResuMate AI. All rights reserved.</p>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4">
+                <Link href="/terms" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Terms</Link>
+                <Link href="/privacy" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Privacy</Link>
+                <Link href="/support" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Support</Link>
+              </div>
+              <div className="flex items-center gap-4">
+                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+                  </svg>
+                </a>
+                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
+                    <rect x="2" y="9" width="4" height="12" />
+                    <circle cx="4" cy="4" r="2" />
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>

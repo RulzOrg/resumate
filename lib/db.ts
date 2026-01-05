@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless"
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 import { normalizeSalaryRange, normalizeJobField, type SalaryRangeInput } from "./normalizers"
 import type { SystemPromptV1Output, QASection } from "./schemas-v2"
+import type { ParsedResume } from "@/lib/resume-parser"
 
 const databaseUrl = process.env.DATABASE_URL
 const isDbConfigured = Boolean(databaseUrl)
@@ -11,20 +12,20 @@ type SqlClient = <T = Record<string, any>>(strings: TemplateStringsArray, ...val
 const sql: SqlClient = databaseUrl
   ? (neon(databaseUrl) as unknown as SqlClient)
   : (async () => {
-      throw new Error("DATABASE_URL is not configured. Set it to enable database features.")
-    }) as unknown as SqlClient
+    throw new Error("DATABASE_URL is not configured. Set it to enable database features.")
+  }) as unknown as SqlClient
 
 export { sql }
 
 // Monitoring and debugging utilities
 export async function logConstraintViolation(
-  operation: string, 
-  error: any, 
+  operation: string,
+  error: any,
   context: Record<string, any>
 ) {
-  const violationType = error.code === "23503" ? "foreign_key" : 
-                       error.code === "23505" ? "unique_constraint" : "unknown"
-  
+  const violationType = error.code === "23503" ? "foreign_key" :
+    error.code === "23505" ? "unique_constraint" : "unknown"
+
   console.error(`[DB_CONSTRAINT_VIOLATION] ${violationType.toUpperCase()}:`, {
     timestamp: new Date().toISOString(),
     operation,
@@ -44,10 +45,10 @@ export async function checkDatabaseHealth() {
     const results = await Promise.all([
       // Check if we can connect to database
       sql`SELECT 1 as health_check`,
-      
+
       // Check users_sync table structure
       sql`SELECT COUNT(*) as user_count FROM users_sync WHERE deleted_at IS NULL`,
-      
+
       // Check for orphaned records (shouldn't happen with foreign keys)
       sql`
         SELECT COUNT(*) as orphaned_job_analyses
@@ -58,7 +59,7 @@ export async function checkDatabaseHealth() {
     ])
 
     const [healthCheck, userCount, orphanedCount] = results
-    
+
     console.log('[DB_HEALTH_CHECK] Database health status:', {
       timestamp: new Date().toISOString(),
       connection: healthCheck[0]?.health_check === 1 ? 'healthy' : 'unhealthy',
@@ -217,7 +218,10 @@ export interface OptimizedResume {
   id: string
   user_id: string
   original_resume_id: string
-  job_analysis_id: string
+  job_analysis_id?: string | null
+  job_title?: string
+  company_name?: string | null
+  job_description?: string
   title: string
   optimized_content: string
   optimization_summary: {
@@ -394,39 +398,16 @@ export async function getUserById(id: string) {
   return user as User | undefined
 }
 
-export async function updateUser(id: string, data: Partial<any>) {
-  const validFields = [
-    'email', 'name'
-  ]
-
-  const updates: string[] = []
-  const values: any[] = []
-  let paramIndex = 1
-
-  for (const [key, value] of Object.entries(data)) {
-    if (validFields.includes(key) && value !== undefined) {
-      updates.push(`${key} = $${paramIndex}`)
-      values.push(value)
-      paramIndex++
-    }
-  }
-
-  if (updates.length === 0) {
-    return null
-  }
-
-  updates.push(`updated_at = NOW()`)
-  values.push(id) // For WHERE clause
-
-  const query = `
+export async function updateUser(id: string, data: Partial<{ email: string; name: string }>) {
+  const [user] = await sql`
     UPDATE users_sync
-    SET ${updates.join(', ')}
-    WHERE id = $${paramIndex} AND deleted_at IS NULL
+    SET email = COALESCE(${data.email ?? null}, email),
+        name = COALESCE(${data.name ?? null}, name),
+        updated_at = NOW()
+    WHERE id = ${id} AND deleted_at IS NULL
     RETURNING *
   `
-
-  const result = await sql.unsafe(query, values)
-  return result[0] as User | undefined
+  return user as User | undefined
 }
 
 export async function updateUserFromClerk(clerkUserId: string, data: { email?: string; name?: string }) {
@@ -545,21 +526,21 @@ export async function createResumeVersion(data: {
 }): Promise<ResumeVersionSnapshot> {
   // Ensure user exists in users_sync to satisfy FK constraint
   let userRow = await getUserById(data.user_id)
-  
+
   if (!userRow) {
     // User not found in database - verify current Clerk user owns this user_id before creating
     const currentClerkUser = await currentUser()
-    
+
     if (!currentClerkUser) {
       throw new Error(
         `[createResumeVersion] User ${data.user_id} not found in users_sync and no authenticated Clerk user available. ` +
         `Call ensureUserExists() or getOrCreateUser() first to establish proper user record.`
       )
     }
-    
+
     // Check if current Clerk user has an existing users_sync record
     const clerkUserRow = await getUserByClerkId(currentClerkUser.id)
-    
+
     if (clerkUserRow) {
       // Clerk user exists in database - verify it matches the requested user_id
       if (clerkUserRow.id !== data.user_id) {
@@ -801,7 +782,7 @@ export async function updateResumeAnalysis(
 
   if (data.parsed_sections !== undefined) {
     const parsedSections = data.parsed_sections ? JSON.stringify(data.parsed_sections) : null
-    ;[resume] = await sql`
+      ;[resume] = await sql`
       UPDATE resumes SET parsed_sections = ${parsedSections}, updated_at = NOW()
       WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
       RETURNING *
@@ -826,7 +807,7 @@ export async function updateResumeAnalysis(
 
   if (data.extracted_at !== undefined) {
     const extractedAt = data.extracted_at ? new Date(data.extracted_at) : null
-    ;[resume] = await sql`
+      ;[resume] = await sql`
       UPDATE resumes SET extracted_at = ${extractedAt}, updated_at = NOW()
       WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
       RETURNING *
@@ -835,7 +816,7 @@ export async function updateResumeAnalysis(
 
   if (data.source_metadata !== undefined) {
     const sourceMetadata = data.source_metadata ? JSON.stringify(data.source_metadata) : null
-    ;[resume] = await sql`
+      ;[resume] = await sql`
       UPDATE resumes SET source_metadata = ${sourceMetadata}, updated_at = NOW()
       WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
       RETURNING *
@@ -993,11 +974,11 @@ export async function createJobAnalysisWithVerification(data: {
   try {
     // Step 1: Verify user exists in database with retry logic
     let user = await getUserById(data.user_id)
-    
+
     // If user not found, try to ensure they exist via ensureUserSyncRecord
     if (!user) {
       console.warn('User not found on first lookup, attempting to ensure user sync:', { user_id: data.user_id })
-      
+
       try {
         // Try to get user by their original ID to find clerk_user_id
         const userRecord = await sql`SELECT * FROM users_sync WHERE id = ${data.user_id} LIMIT 1`
@@ -1008,10 +989,10 @@ export async function createJobAnalysisWithVerification(data: {
           await ensureUserSyncRecord({
             id: data.user_id,
           })
-          
+
           // Wait a moment for the transaction to commit
           await new Promise(resolve => setTimeout(resolve, 100))
-          
+
           // Try one more time
           user = await getUserById(data.user_id)
         }
@@ -1019,16 +1000,16 @@ export async function createJobAnalysisWithVerification(data: {
         console.error('Failed to sync user record:', { error: syncError.message, user_id: data.user_id })
       }
     }
-    
+
     if (!user) {
       console.error('User not found for job analysis creation after retries:', { user_id: data.user_id })
       throw new Error(`User not found with ID: ${data.user_id}. Cannot create job analysis.`)
     }
 
-    console.log('User verification successful:', { 
-      user_id: user.id, 
-      email: user.email, 
-      clerk_user_id: user.clerk_user_id 
+    console.log('User verification successful:', {
+      user_id: user.id,
+      email: user.email,
+      clerk_user_id: user.clerk_user_id
     })
 
     // Step 2: Validate analysis_result structure
@@ -1098,10 +1079,10 @@ export async function createJobAnalysisWithVerification(data: {
 
     const isNewRecord = analysis.id === id
 
-    console.log(isNewRecord ? 'Job analysis created successfully:' : 'Job analysis upserted (duplicate resolved):', { 
-      analysis_id: analysis.id, 
+    console.log(isNewRecord ? 'Job analysis created successfully:' : 'Job analysis upserted (duplicate resolved):', {
+      analysis_id: analysis.id,
       user_id: analysis.user_id,
-      job_title: analysis.job_title 
+      job_title: analysis.job_title
     })
 
     return analysis as JobAnalysis
@@ -1122,7 +1103,7 @@ export async function createJobAnalysisWithVerification(data: {
         company_name: data.company_name,
         operation_step: 'job_analysis_insertion'
       })
-      
+
       if (error.code === "23503") {
         throw new Error(`Cannot create job analysis: User with ID ${data.user_id} does not exist in the database. Please ensure the user is properly created first.`)
       }
@@ -1170,7 +1151,7 @@ export async function getExistingJobAnalysis(user_id: string, job_title: string,
     throw new Error('job_title must be a non-empty string')
   }
   const normalizedCompany = normalizeJobField(company_name)
-  
+
   const [analysis] = await sql`
     SELECT * FROM job_analysis 
     WHERE user_id = ${user_id}
@@ -1266,7 +1247,10 @@ export async function cleanupDuplicateJobAnalyses(specificUserId?: string) {
 export async function createOptimizedResume(data: {
   user_id: string
   original_resume_id: string
-  job_analysis_id: string
+  job_analysis_id?: string | null
+  job_title?: string
+  company_name?: string | null
+  job_description?: string
   title: string
   optimized_content: string
   optimization_summary: OptimizedResume["optimization_summary"]
@@ -1275,12 +1259,13 @@ export async function createOptimizedResume(data: {
   const insert = async () => {
     const [optimizedResume] = await sql`
       INSERT INTO optimized_resumes (
-        user_id, original_resume_id, job_analysis_id, title, optimized_content,
-        optimization_summary, match_score, improvements_made, keywords_added, 
-        skills_highlighted, created_at, updated_at
+        user_id, original_resume_id, job_analysis_id, job_title, company_name,
+        job_description, title, optimized_content, optimization_summary, match_score, 
+        improvements_made, keywords_added, skills_highlighted, created_at, updated_at
       )
       VALUES (
-        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id},
+        ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id || null},
+        ${data.job_title || null}, ${data.company_name || null}, ${data.job_description || null},
         ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
         ${data.match_score || null}, ${data.optimization_summary.changes_made},
         ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
@@ -1305,10 +1290,12 @@ export async function createOptimizedResume(data: {
 
 export async function getUserOptimizedResumes(user_id: string) {
   const optimizedResumes = await sql`
-    SELECT opt_res.*, r.title as original_resume_title, ja.job_title, ja.company_name
+    SELECT opt_res.*, r.title as original_resume_title,
+           COALESCE(opt_res.job_title, ja.job_title) as job_title,
+           COALESCE(opt_res.company_name, ja.company_name) as company_name
     FROM optimized_resumes opt_res
     JOIN resumes r ON opt_res.original_resume_id = r.id
-    JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
+    LEFT JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
     WHERE opt_res.user_id = ${user_id}
     ORDER BY opt_res.created_at DESC
   `
@@ -1321,18 +1308,20 @@ export async function getUserOptimizedResumes(user_id: string) {
 
 export async function getOptimizedResumeById(id: string, user_id: string) {
   const [optimizedResume] = await sql`
-    SELECT opt_res.*, r.title as original_resume_title, ja.job_title, ja.company_name
+    SELECT opt_res.*, r.title as original_resume_title,
+           COALESCE(opt_res.job_title, ja.job_title) as job_title,
+           COALESCE(opt_res.company_name, ja.company_name) as company_name
     FROM optimized_resumes opt_res
     JOIN resumes r ON opt_res.original_resume_id = r.id
-    JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
+    LEFT JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
     WHERE opt_res.id = ${id} AND opt_res.user_id = ${user_id}
   `
   return optimizedResume as
     | (OptimizedResumeV2 & {
-        original_resume_title: string
-        job_title: string
-        company_name?: string
-      })
+      original_resume_title: string
+      job_title: string
+      company_name?: string
+    })
     | undefined
 }
 
@@ -1389,10 +1378,10 @@ export async function updateOptimizedResumeV2(
 ) {
   console.log('[DB] Updating resume:', id)
   console.log('[DB] Fields being updated:', Object.keys(data).filter(k => (data as any)[k] !== undefined))
-  
+
   // Prepare JSON values outside SQL query for better type safety
-  const structuredOutputJson = data.structured_output !== undefined 
-    ? JSON.stringify(data.structured_output) 
+  const structuredOutputJson = data.structured_output !== undefined
+    ? JSON.stringify(data.structured_output)
     : null
   const qaMetricsJson = data.qa_metrics !== undefined
     ? JSON.stringify(data.qa_metrics)
@@ -1400,7 +1389,7 @@ export async function updateOptimizedResumeV2(
   const exportFormatsJson = data.export_formats !== undefined
     ? JSON.stringify(data.export_formats)
     : null
-  
+
   if (structuredOutputJson) {
     console.log('[DB] Structured output size:', structuredOutputJson.length, 'bytes')
   }
@@ -1417,9 +1406,9 @@ export async function updateOptimizedResumeV2(
     WHERE id = ${id} AND user_id = ${user_id}
     RETURNING *
   `
-  
+
   console.log('[DB] Update result:', optimizedResume ? 'Success ✓' : 'Failed - No rows updated')
-  
+
   return optimizedResume as OptimizedResumeV2 | undefined
 }
 
@@ -1583,7 +1572,7 @@ export async function logClerkWebhookEvent(data: {
 export async function ensureUserExists(userId: string): Promise<User | null> {
   // First, try to get the user from database
   let dbUser = await getUserByClerkId(userId)
-  
+
   // Check if user exists and is not soft-deleted
   if (dbUser) {
     console.log('User found in database:', { id: dbUser.id, clerk_user_id: dbUser.clerk_user_id })
@@ -1629,7 +1618,7 @@ export async function ensureUserExists(userId: string): Promise<User | null> {
           name,
           attempt: retryCount + 1
         })
-        
+
         console.log("User creation race condition detected, fetching existing user")
         const existingUser = await getUserByClerkId(userId)
         if (existingUser) {
@@ -1678,7 +1667,7 @@ export async function getOrCreateUser(passedUserId?: string) {
       code: error.code,
       clerk_user_id: userId
     })
-    
+
     // Additional fallback for foreign key constraint violations
     if (error.code === "23503") {
       console.log("Foreign key constraint error detected, attempting one more user creation")
@@ -1694,7 +1683,7 @@ export async function getOrCreateUser(passedUserId?: string) {
         })
       }
     }
-    
+
     throw error
   }
 }
@@ -1813,7 +1802,7 @@ export async function getOrCreateUsageTracking(
     RETURNING *
   `
 
-  return result[0]
+  return result[0] as UsageTracking
 }
 
 /**
@@ -1958,4 +1947,61 @@ export async function hasExceededUsageLimit(
 ): Promise<boolean> {
   const currentUsage = await getCurrentUsage(userId, featureType)
   return currentUsage >= limit
+}
+
+// Caching functions for LLM extraction
+export async function getCachedStructure(resumeId: string): Promise<ParsedResume | null> {
+  try {
+    const [resume] = await sql`
+      SELECT parsed_structure FROM resumes
+      WHERE id = ${resumeId}
+    `
+    return (resume?.parsed_structure as unknown as ParsedResume) || null
+  } catch (error: any) {
+    // Handle case where column doesn't exist yet (migration not applied or connection pool cache)
+    if (error.message?.includes('parsed_structure') && error.message?.includes('does not exist')) {
+      console.warn('[getCachedStructure] parsed_structure column not found - migration may not be applied or server needs restart')
+      return null
+    }
+    throw error
+  }
+}
+
+export async function saveParsedStructure(resumeId: string, structure: ParsedResume): Promise<void> {
+  try {
+    await sql`
+      UPDATE resumes
+      SET parsed_structure = ${JSON.stringify(structure)},
+          parsed_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${resumeId}
+    `
+  } catch (error: any) {
+    // Handle case where column doesn't exist yet (migration not applied or connection pool cache)
+    if (error.message?.includes('parsed_structure') && error.message?.includes('does not exist')) {
+      console.warn('[saveParsedStructure] parsed_structure column not found - migration may not be applied or server needs restart')
+      // Silently fail - caching is non-critical
+      return
+    }
+    throw error
+  }
+}
+
+export async function clearParsedStructure(resumeId: string): Promise<void> {
+  try {
+    await sql`
+      UPDATE resumes
+      SET parsed_structure = NULL,
+          parsed_at = NULL,
+          updated_at = NOW()
+      WHERE id = ${resumeId}
+    `
+    console.log(`[clearParsedStructure] Cleared cache for resume: ${resumeId}`)
+  } catch (error: any) {
+    if (error.message?.includes('parsed_structure') && error.message?.includes('does not exist')) {
+      console.warn('[clearParsedStructure] parsed_structure column not found - ignoring')
+      return
+    }
+    throw error
+  }
 }

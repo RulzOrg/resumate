@@ -66,6 +66,7 @@ Add these to your `.env` file:
 # Resend Email Service
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 RESEND_FROM_EMAIL=noreply@yourdomain.com
+SUPPORT_EMAIL=support@yourdomain.com
 
 # Beehiiv Newsletter
 BEEHIIV_API_KEY=your_beehiiv_api_key
