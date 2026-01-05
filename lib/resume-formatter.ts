@@ -49,10 +49,13 @@ export function formatResumeToMarkdown(data: ParsedResume): string {
     lines.push("")
 
     for (const exp of data.workExperience) {
-      // Format: ### Company Name (header that parser recognizes)
-      lines.push(`### ${exp.company}`)
+      // Format: ### Company Name · Location (inline to prevent location being treated as header)
+      const companyHeader = exp.location 
+        ? `### ${exp.company} · ${exp.location}`
+        : `### ${exp.company}`
+      lines.push(companyHeader)
 
-      // Format: **Title** | Date Range | EmploymentType (in buffer, parser extracts from pipe-separated line)
+      // Format: **Title** | Date Range | EmploymentType
       const detailParts: string[] = []
       if (exp.title) {
         detailParts.push(`**${exp.title}**`)
@@ -74,11 +77,6 @@ export function formatResumeToMarkdown(data: ParsedResume): string {
       // Write the detail line if we have any details
       if (detailParts.length > 0) {
         lines.push(detailParts.join(" | "))
-      }
-
-      // Add location on separate line if exists (parser extracts this from buffer)
-      if (exp.location) {
-        lines.push(exp.location)
       }
 
       lines.push("")

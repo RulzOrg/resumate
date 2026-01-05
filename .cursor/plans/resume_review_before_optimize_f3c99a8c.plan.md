@@ -145,8 +145,3 @@ Modify the optimize form to use the new two-step flow.**Files to modify:**
 Ensure robust error handling and test the complete flow.**Files to modify:**
 
 - All files from previous phases (error handling improvements)
-- Add loading states and error messages for extraction step
-
-**Key tasks:**
-
-- Handle extraction failures gracefully

@@ -1986,3 +1986,22 @@ export async function saveParsedStructure(resumeId: string, structure: ParsedRes
     throw error
   }
 }
+
+export async function clearParsedStructure(resumeId: string): Promise<void> {
+  try {
+    await sql`
+      UPDATE resumes
+      SET parsed_structure = NULL,
+          parsed_at = NULL,
+          updated_at = NOW()
+      WHERE id = ${resumeId}
+    `
+    console.log(`[clearParsedStructure] Cleared cache for resume: ${resumeId}`)
+  } catch (error: any) {
+    if (error.message?.includes('parsed_structure') && error.message?.includes('does not exist')) {
+      console.warn('[clearParsedStructure] parsed_structure column not found - ignoring')
+      return
+    }
+    throw error
+  }
+}

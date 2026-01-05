@@ -160,10 +160,14 @@ export async function POST(request: NextRequest) {
         wasTruncated: extractionResult.metadata?.truncated,
       })
 
-      // Cache the structure for future use (non-blocking)
-      saveParsedStructure(resume.id, resumeStructure).catch((err) =>
+      // Cache the structure for future use (blocking to ensure optimize can use it)
+      try {
+        await saveParsedStructure(resume.id, resumeStructure)
+        console.log("[ExtractReview] Successfully cached structure for resume:", resume.id)
+      } catch (err) {
         console.error("[ExtractReview] Failed to cache structure:", err)
-      )
+        // Don't fail the request if caching fails
+      }
     }
 
     // Return only work_experience and summary for user review

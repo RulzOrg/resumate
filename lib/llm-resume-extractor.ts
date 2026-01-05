@@ -224,7 +224,30 @@ export async function extractResumeWithLLM(
          - contact (name, email, phone, location, linkedin, website)
          - targetTitle (if mentioned as a headline)
          - summary
-         - workExperience (array of company, title, location, startDate, endDate, bullets, employmentType)
+         - workExperience (array of objects, each containing):
+           * company: Company/organization name (REQUIRED)
+           * title: Job title/position held (REQUIRED - e.g., "Senior Product Designer", "Software Engineer")
+           * location: Geographic location of the job (OPTIONAL - e.g., "Amsterdam", "Nigeria", "Remote")
+           * startDate, endDate: Employment dates
+           * bullets: Array of achievements/responsibilities (REQUIRED - must have at least one bullet)
+           * employmentType: Full-time, Contract, etc.
+           
+           CRITICAL RULES FOR WORK EXPERIENCE:
+           - Each work experience entry MUST have bullets (achievements/responsibilities). If there are no bullets, it's not a valid job entry.
+           - Do NOT create separate work experience entries for locations that appear on their own line in the resume.
+           - If you see a pattern like: "Company Name", "Job Title", "City Name", then City Name goes in the location field of that same entry, NOT as a separate entry.
+           - Geographic locations (cities, states, countries) should ONLY go in the location field, NEVER in company or title fields.
+           - Do NOT confuse location (city/country) with job title or company name.
+           
+           Examples of CORRECT parsing:
+           - Company: "Booking.com", Title: "Senior UX Designer", Location: "Amsterdam", Bullets: [list of achievements]
+           - Company: "Etisalat Telecoms", Title: "Senior UX Designer", Location: "Nigeria", Bullets: [list of achievements]
+           
+           Examples of INCORRECT parsing (DO NOT DO THIS):
+           - Company: "Amsterdam", Title: "", Bullets: [] ❌
+           - Company: "Nigeria", Title: "Senior Designer", Bullets: [] ❌
+           - Company: "", Title: "Lagos", Bullets: [] ❌
+           
          - education (array of institution, degree, field, graduationDate, notes)
          - skills (array of strings)
          - interests, certifications, awards, projects, volunteering, publications (arrays)
@@ -232,6 +255,7 @@ export async function extractResumeWithLLM(
       5. Special Cases:
          - Mixed content (Resume + Cover Letter): Extract ONLY the resume part.
          - Academic CV: Extract the top 20 most relevant publications if list is huge.
+         - If a work experience entry has the location on a separate line or in a different position, still parse it correctly as the location field, not as a separate job entry.
       `,
       messages: [
         { role: "user", content: `Extract data from this document:${truncationNotice}\n\n${truncatedText}` }
@@ -300,6 +324,57 @@ export async function extractResumeWithLLM(
         }
       }
     }
+
+    // Post-processing: Fix common extraction mistakes
+    // Remove work experience entries that look like they're just locations or have no content
+    const locationKeywords = ['nigeria', 'amsterdam', 'london', 'uk', 'usa', 'remote', 'united states', 'united kingdom', 'india', 'canada', 'australia', 'berlin', 'paris', 'tokyo', 'singapore', 'dubai', 'new york', 'san francisco', 'seattle', 'lagos', 'nairobi']
+    
+    data.workExperience = data.workExperience.filter((exp) => {
+      const titleLower = (exp.title || '').toLowerCase().trim()
+      const companyLower = (exp.company || '').toLowerCase().trim()
+      const hasBullets = exp.bullets && exp.bullets.length > 0
+      
+      // RULE 1: Remove entries with NO bullets (most important - if there are no bullets, it's not a real job entry)
+      if (!hasBullets) {
+        logger.warn(`Removing work experience entry with no bullets: Company="${exp.company}", Title="${exp.title}"`)
+        return false
+      }
+      
+      // RULE 2: Check if title is just a location keyword
+      const isTitleJustLocation = locationKeywords.some(keyword => {
+        // Check exact match or if the entire title is just the location
+        return titleLower === keyword || 
+               titleLower === keyword + ', ' || 
+               titleLower === keyword + '.'
+      })
+      
+      if (isTitleJustLocation) {
+        logger.warn(`Removing work experience entry where title is a location: "${exp.title}"`)
+        return false
+      }
+      
+      // RULE 3: Check if company is just a location keyword
+      const isCompanyJustLocation = locationKeywords.some(keyword => {
+        return companyLower === keyword || 
+               companyLower === keyword + ', ' || 
+               companyLower === keyword + '.'
+      })
+      
+      if (isCompanyJustLocation) {
+        logger.warn(`Removing work experience entry where company is a location: "${exp.company}"`)
+        return false
+      }
+      
+      // RULE 4: If both title AND company are very short (< 4 chars) and look suspicious, remove
+      if (titleLower.length < 4 && companyLower.length < 4) {
+        logger.warn(`Removing work experience entry with suspiciously short title and company: "${exp.company}" / "${exp.title}"`)
+        return false
+      }
+      
+      return true
+    })
+    
+    logger.log(`Post-processing complete: ${data.workExperience.length} work experience entries remaining`)
 
     const extractionDuration = Date.now() - extractionStartTime
     logger.log(`Extraction successful`, {

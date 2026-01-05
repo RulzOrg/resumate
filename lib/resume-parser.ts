@@ -691,36 +691,48 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
   }
 
   // Parse the header line first
-  // Format 1: ### Company Name
+  // Format 1: ### Company Name OR ### Company Name · Location
   if (headerLine.startsWith('### ')) {
     // Extract company name, removing dates that might be on the same line
     let companyName = headerLine.replace(/^###\s*/, '').trim()
 
-    // Remove dates if they appear on the same line (handle various formats)
-    // Try multiple patterns to catch dates separated by many spaces
-    companyName = companyName.replace(/\s*\|\s*\d{1,2}\/\d{4}.*$/i, '') // Remove "| 01/2021" pattern
-    companyName = companyName.replace(/\s{2,}.*\d{1,2}\/\d{4}.*$/i, '') // Remove "  ... 01/2021" (2+ spaces before date)
-    companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/i, '') // Remove " 01/2021" pattern  
-    companyName = companyName.replace(/\s+[A-Z][a-z]+\s+\d{4}.*$/i, '') // Remove "Jan 2021" pattern
-    companyName = companyName.replace(/\s+\d{4}.*$/i, '') // Remove " 2021" pattern
+    // Check for "Company · Location" format (middle dot separator)
+    if (companyName.includes(' · ')) {
+      const [companyPart, locationPart] = companyName.split(' · ').map(s => s.trim())
+      exp.company = companyPart
+      if (locationPart) {
+        exp.location = locationPart
+      }
+      console.log(`[ResumeParser] Parsed company+location from header: company="${exp.company}", location="${exp.location}"`)
+    } else {
+      // No location separator, continue with original parsing
 
-    // More aggressive: if there are 5+ spaces/tabs, likely there's a date or extra info after
-    if (companyName.match(/[\s\t]{5,}/)) {
-      // Split on large whitespace and take first part
-      const parts = companyName.split(/[\s\t]{5,}/)
-      companyName = parts[0] || companyName
-      // Also try to remove any date patterns that might remain
-      companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/i, '')
-    }
+      // Remove dates if they appear on the same line (handle various formats)
+      // Try multiple patterns to catch dates separated by many spaces
+      companyName = companyName.replace(/\s*\|\s*\d{1,2}\/\d{4}.*$/i, '') // Remove "| 01/2021" pattern
+      companyName = companyName.replace(/\s{2,}.*\d{1,2}\/\d{4}.*$/i, '') // Remove "  ... 01/2021" (2+ spaces before date)
+      companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/i, '') // Remove " 01/2021" pattern  
+      companyName = companyName.replace(/\s+[A-Z][a-z]+\s+\d{4}.*$/i, '') // Remove "Jan 2021" pattern
+      companyName = companyName.replace(/\s+\d{4}.*$/i, '') // Remove " 2021" pattern
 
-    // Clean up excessive whitespace (tabs, multiple spaces)
-    exp.company = companyName.replace(/[\s\t]+/g, ' ').trim()
+      // More aggressive: if there are 5+ spaces/tabs, likely there's a date or extra info after
+      if (companyName.match(/[\s\t]{5,}/)) {
+        // Split on large whitespace and take first part
+        const parts = companyName.split(/[\s\t]{5,}/)
+        companyName = parts[0] || companyName
+        // Also try to remove any date patterns that might remain
+        companyName = companyName.replace(/\s+\d{1,2}\/\d{4}.*$/i, '')
+      }
 
-    // Final check: if company still looks like it has a date, try one more aggressive cleanup
-    if (exp.company.match(/\d{1,2}\/\d{4}/)) {
-      console.log(`[ResumeParser] ⚠️ Company name still contains date, attempting cleanup: '${exp.company}'`)
-      exp.company = exp.company.replace(/\s+.*\d{1,2}\/\d{4}.*$/i, '').replace(/[\s\t]+/g, ' ').trim()
-      console.log(`[ResumeParser] Cleaned company name: '${exp.company}'`)
+      // Clean up excessive whitespace (tabs, multiple spaces)
+      exp.company = companyName.replace(/[\s\t]+/g, ' ').trim()
+
+      // Final check: if company still looks like it has a date, try one more aggressive cleanup
+      if (exp.company.match(/\d{1,2}\/\d{4}/)) {
+        console.log(`[ResumeParser] ⚠️ Company name still contains date, attempting cleanup: '${exp.company}'`)
+        exp.company = exp.company.replace(/\s+.*\d{1,2}\/\d{4}.*$/i, '').replace(/[\s\t]+/g, ' ').trim()
+        console.log(`[ResumeParser] Cleaned company name: '${exp.company}'`)
+      }
     }
   }
   // Format 2: **Bold text** possibly with more text

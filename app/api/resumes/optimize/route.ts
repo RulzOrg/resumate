@@ -137,44 +137,79 @@ export async function POST(request: NextRequest) {
             const extractionResult = await extractResumeWithLLM(resume.content_text!, process.env.ANTHROPIC_API_KEY)
 
             if (!extractionResult.success) {
-              // Map extraction error codes to user-friendly messages
-              const errorCode = extractionResult.error?.code || 'EXTRACTION_FAILED'
-              let errorMessage: string
-              let statusCode = 400
+              // If we have confirmed content from the review dialog, use it with a minimal structure
+              // Otherwise, fail with an error
+              if (work_experience && work_experience.length > 0) {
+                console.warn('[Optimize] Extraction failed but we have confirmed content from review dialog. Creating minimal structure.')
+                resumeStructure = {
+                  contact: { name: '' },
+                  workExperience: work_experience,
+                  summary: confirmed_summary || '',
+                  education: [],
+                  skills: [],
+                  interests: [],
+                  certifications: [],
+                  awards: [],
+                  projects: [],
+                  volunteering: [],
+                  publications: [],
+                }
+              } else {
+                // Map extraction error codes to user-friendly messages
+                const errorCode = extractionResult.error?.code || 'EXTRACTION_FAILED'
+                let errorMessage: string
+                let statusCode = 400
 
-              switch (errorCode) {
-                case 'NOT_A_RESUME':
-                  errorMessage = "This doesn't appear to be a resume. Please upload a resume file."
-                  break
-                case 'INCOMPLETE':
-                  errorMessage = "Resume is missing key sections. Please ensure your resume includes work experience, education, or skills."
-                  break
-                case 'EXTRACTION_FAILED':
-                  errorMessage = "Failed to parse resume. Please try uploading a different format (DOCX recommended)."
-                  statusCode = 500
-                  break
-                case 'INVALID_INPUT':
-                  errorMessage = "Resume content is too short or invalid."
-                  break
-                default:
-                  errorMessage = extractionResult.error?.message || "Failed to extract resume structure. Please try uploading a different format."
-                  statusCode = 500
+                switch (errorCode) {
+                  case 'NOT_A_RESUME':
+                    errorMessage = "This doesn't appear to be a resume. Please upload a resume file."
+                    break
+                  case 'INCOMPLETE':
+                    errorMessage = "Resume is missing key sections. Please ensure your resume includes work experience, education, or skills."
+                    break
+                  case 'EXTRACTION_FAILED':
+                    errorMessage = "Failed to parse resume. Please try uploading a different format (DOCX recommended)."
+                    statusCode = 500
+                    break
+                  case 'INVALID_INPUT':
+                    errorMessage = "Resume content is too short or invalid."
+                    break
+                  default:
+                    errorMessage = extractionResult.error?.message || "Failed to extract resume structure. Please try uploading a different format."
+                    statusCode = 500
+                }
+
+                console.error('[Optimize] LLM extraction failed:', {
+                  errorCode,
+                  errorMessage: extractionResult.error?.message,
+                  documentType: extractionResult.error?.documentType,
+                })
+
+                throw new AppError(errorMessage, statusCode, errorCode)
               }
-
-              console.error('[Optimize] LLM extraction failed:', {
-                errorCode,
-                errorMessage: extractionResult.error?.message,
-                documentType: extractionResult.error?.documentType,
-              })
-
-              throw new AppError(errorMessage, statusCode, errorCode)
+            } else if (!extractionResult.resume) {
+              // Same fallback: use confirmed content if available
+              if (work_experience && work_experience.length > 0) {
+                console.warn('[Optimize] Extraction returned no structure but we have confirmed content. Creating minimal structure.')
+                resumeStructure = {
+                  contact: { name: '' },
+                  workExperience: work_experience,
+                  summary: confirmed_summary || '',
+                  education: [],
+                  skills: [],
+                  interests: [],
+                  certifications: [],
+                  awards: [],
+                  projects: [],
+                  volunteering: [],
+                  publications: [],
+                }
+              } else {
+                throw new AppError("Failed to extract resume structure. Please try uploading a different format.", 500, "EXTRACTION_FAILED")
+              }
+            } else {
+              resumeStructure = extractionResult.resume
             }
-
-            if (!extractionResult.resume) {
-              throw new AppError("Failed to extract resume structure. Please try uploading a different format.", 500, "EXTRACTION_FAILED")
-            }
-
-            resumeStructure = extractionResult.resume
             const extractionDuration = Date.now() - extractionStartTime
             console.log('[Optimize] Extraction successful:', {
               duration: `${extractionDuration}ms`,
