@@ -47,13 +47,23 @@ export async function POST(request: NextRequest) {
       }, { status: 403 })
     }
 
-    const { resume_id, job_title, company_name, job_description } = await request.json()
+    const { 
+      resume_id, 
+      job_title, 
+      company_name, 
+      job_description,
+      // Optional: pre-confirmed content from review step
+      work_experience,
+      summary: confirmed_summary
+    } = await request.json()
 
     console.log('[Optimize] Request received:', {
       resume_id,
       job_title,
       user_id: user.id,
       clerk_user_id: user.clerk_user_id,
+      has_confirmed_content: !!(work_experience || confirmed_summary),
+      work_experience_count: work_experience?.length,
     })
 
     if (!resume_id) {
@@ -186,6 +196,31 @@ export async function POST(request: NextRequest) {
               workExperienceCount: resumeStructure.workExperience.length,
               educationCount: resumeStructure.education.length,
               skillsCount: resumeStructure.skills.length,
+            })
+          }
+
+          // Merge confirmed content if provided (from review step)
+          // This preserves contact, education, skills, etc. while using user-confirmed work experience and summary
+          if (work_experience || confirmed_summary) {
+            console.log('[Optimize] Merging confirmed content with cached structure:', {
+              has_work_experience: !!work_experience,
+              work_experience_count: work_experience?.length,
+              has_summary: !!confirmed_summary,
+            })
+            
+            resumeStructure = {
+              ...resumeStructure,
+              // Override work experience if provided
+              ...(work_experience && { workExperience: work_experience }),
+              // Override summary if provided
+              ...(confirmed_summary !== undefined && { summary: confirmed_summary }),
+            }
+            
+            console.log('[Optimize] Merged structure:', {
+              workExperienceCount: resumeStructure.workExperience.length,
+              educationCount: resumeStructure.education.length,
+              skillsCount: resumeStructure.skills.length,
+              hasSummary: !!resumeStructure.summary,
             })
           }
 

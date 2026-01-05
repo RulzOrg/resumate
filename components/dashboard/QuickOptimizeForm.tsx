@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-import { Loader2, Sparkles } from "lucide-react"
+import { Loader2, Sparkles, FileSearch } from "lucide-react"
 import { UploadMasterResumeDialog } from "./master-resume-dialog"
+import { ReviewContentDialog, type ReviewContent } from "@/components/optimization/ReviewContentDialog"
+import type { WorkExperienceItem } from "@/lib/resume-parser"
 
 interface Resume {
   id: string
@@ -21,7 +23,13 @@ interface QuickOptimizeFormProps {
 export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [isOptimizing, setIsOptimizing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Review dialog state (Phase 4)
+  const [extractedContent, setExtractedContent] = useState<ReviewContent | null>(null)
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
 
   const completedResumes = resumes.filter(
     (r) =>
@@ -48,6 +56,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
     }
   }, [resumes]) // Intentionally using resumes as dependency to catch prop changes
 
+  // Phase 4: Modified handleSubmit to call extract-review API first
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -67,7 +76,70 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       return
     }
 
+    setIsExtracting(true)
     setIsLoading(true)
+    console.log("[QuickOptimizeForm] Starting extraction...")
+
+    try {
+      // Step 1: Extract resume content for review
+      const extractResponse = await fetch("/api/resumes/extract-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resume_id: selectedResumeId }),
+      })
+
+      const extractData = await extractResponse.json()
+
+      if (!extractResponse.ok) {
+        // Phase 5: Handle specific extraction errors
+        const errorCode = extractData.code
+        let errorMessage = extractData.error || "Failed to extract resume content"
+        
+        switch (errorCode) {
+          case "NOT_A_RESUME":
+            errorMessage = "This doesn't appear to be a resume. Please upload a valid resume file."
+            break
+          case "INCOMPLETE":
+            errorMessage = "Your resume is missing key sections. Please ensure it includes work experience."
+            break
+          case "EXTRACTION_FAILED":
+            errorMessage = "We couldn't parse your resume. Try uploading a DOCX format for better results."
+            break
+        }
+        throw new Error(errorMessage)
+      }
+
+      const workExperience: WorkExperienceItem[] = extractData.work_experience || []
+      const summary: string | undefined = extractData.summary || undefined
+
+      // Phase 5: Handle empty work experience
+      if (workExperience.length === 0) {
+        setError("No work experience found in your resume. Please add work experience before optimizing.")
+        setIsLoading(false)
+        setIsExtracting(false)
+        return
+      }
+
+      // Store extracted content and open review dialog
+      console.log("[QuickOptimizeForm] Extraction successful, opening dialog...", {
+        workExperienceCount: workExperience.length,
+        hasSummary: !!summary,
+      })
+      setExtractedContent({ workExperience, summary })
+      setReviewDialogOpen(true)
+      setIsExtracting(false)
+      setIsLoading(false)
+    } catch (err: any) {
+      setError(err.message || "Failed to extract resume content")
+      setIsLoading(false)
+      setIsExtracting(false)
+    }
+  }
+
+  // Phase 4: Handle confirm from review dialog - call optimize with confirmed data
+  const handleReviewConfirm = async (confirmedContent: ReviewContent) => {
+    setIsOptimizing(true)
+    setError(null)
 
     try {
       const response = await fetch("/api/resumes/optimize", {
@@ -78,6 +150,9 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
           job_title: jobTitle.trim(),
           company_name: companyName.trim() || null,
           job_description: jobDescription.trim(),
+          // Pass confirmed content from review dialog
+          work_experience: confirmedContent.workExperience,
+          summary: confirmedContent.summary,
         }),
       })
 
@@ -87,11 +162,20 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         throw new Error(data.error || "Failed to optimize resume")
       }
 
-      // Redirect to the optimized resume
+      // Close dialog and redirect to the optimized resume
+      setReviewDialogOpen(false)
       router.push(`/dashboard/optimized/${data.optimized_resume.id}`)
     } catch (err: any) {
-      setError(err.message || "Something went wrong")
-      setIsLoading(false)
+      setError(err.message || "Something went wrong during optimization")
+      setIsOptimizing(false)
+    }
+  }
+
+  // Handle dialog close - reset optimizing state if closed
+  const handleDialogOpenChange = (open: boolean) => {
+    setReviewDialogOpen(open)
+    if (!open) {
+      setIsOptimizing(false)
     }
   }
 
@@ -182,10 +266,15 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         disabled={isLoading || !selectedResumeId || !jobTitle.trim() || jobDescription.length < 50}
         className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-medium py-3"
       >
-        {isLoading ? (
+        {isExtracting ? (
+          <>
+            <FileSearch className="w-4 h-4 mr-2 animate-pulse" />
+            Analyzing resume...
+          </>
+        ) : isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Optimizing... (this may take 30-60 seconds)
+            Processing...
           </>
         ) : (
           <>
@@ -194,6 +283,15 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
           </>
         )}
       </Button>
+
+      {/* Phase 4: Review Content Dialog */}
+      <ReviewContentDialog
+        open={reviewDialogOpen}
+        onOpenChange={handleDialogOpenChange}
+        content={extractedContent}
+        onConfirm={handleReviewConfirm}
+        isLoading={isOptimizing}
+      />
     </form>
   )
 }
