@@ -296,5 +296,3 @@ gantt
     P3.2_Update_Dependencies       :p32, after p31, 1d
     P3.3_Final_Testing             :p33, after p32, 2d
 ```
-
----

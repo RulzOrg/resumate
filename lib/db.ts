@@ -2000,7 +2000,25 @@ export async function getCachedStructure(resumeId: string): Promise<ParsedResume
       SELECT parsed_structure FROM resumes
       WHERE id = ${resumeId}
     `
-    return (resume?.parsed_structure as unknown as ParsedResume) || null
+    const cached = resume?.parsed_structure as unknown as ParsedResume | null
+    if (!cached) return null
+
+    // Normalize the cached structure - ensure all required arrays exist
+    // This handles legacy cached structures that may be missing newer fields
+    return {
+      contact: cached.contact || { name: '' },
+      targetTitle: cached.targetTitle,
+      summary: cached.summary,
+      workExperience: cached.workExperience || [],
+      education: cached.education || [],
+      skills: cached.skills || [],
+      interests: cached.interests || [],
+      certifications: cached.certifications || [],
+      awards: cached.awards || [],
+      projects: cached.projects || [],
+      volunteering: cached.volunteering || [],
+      publications: cached.publications || [],
+    }
   } catch (error: any) {
     // Handle case where column doesn't exist yet (migration not applied or connection pool cache)
     if (error.message?.includes('parsed_structure') && error.message?.includes('does not exist')) {

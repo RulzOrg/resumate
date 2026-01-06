@@ -91,6 +91,22 @@ export async function optimizeResumeStructured(
     parsed = resumeInput
   }
 
+  // Normalize parsed data - ensure all required arrays exist
+  parsed = {
+    contact: parsed.contact || { name: '' },
+    targetTitle: parsed.targetTitle,
+    summary: parsed.summary,
+    workExperience: parsed.workExperience || [],
+    education: parsed.education || [],
+    skills: parsed.skills || [],
+    interests: parsed.interests || [],
+    certifications: parsed.certifications || [],
+    awards: parsed.awards || [],
+    projects: parsed.projects || [],
+    volunteering: parsed.volunteering || [],
+    publications: parsed.publications || [],
+  }
+
   // Step 2.1: Validate parsed data has minimum required content
   if (parsed.workExperience.length === 0) {
     throw new Error('No work experience found in resume. Please ensure your resume includes work experience section.')
