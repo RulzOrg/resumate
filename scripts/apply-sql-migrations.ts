@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless"
+import postgres from "postgres"
 import fs from "fs"
 import path from "path"
 
@@ -9,7 +9,7 @@ async function main() {
     process.exit(1)
   }
 
-  const sql = neon(databaseUrl) as any
+  const sql = postgres(databaseUrl, { ssl: "require" })
 
   const root = process.cwd()
   const migrationsDir = path.join(root, "prisma", "migrations")
@@ -44,13 +44,7 @@ async function main() {
           .join("\n")
           .trim()
         if (!cleaned) continue
-        if (typeof sql.unsafe === "function") {
-          await sql.unsafe(cleaned)
-        } else if (typeof sql.query === "function") {
-          await sql.query(cleaned)
-        } else {
-          throw new Error("Neon client does not support unsafe/query execution APIs")
-        }
+        await sql.unsafe(cleaned)
       }
 
       console.log(`✅ Applied: ${file}\n`)
@@ -62,16 +56,14 @@ async function main() {
 
   console.log("🔎 Verifying schema...")
 
-  const inspector = neon(databaseUrl) as any
-
-  const dbInfo = await inspector`SELECT current_database() AS db, current_schema() AS schema`
-  const searchPathRows = await inspector`SHOW search_path`
+  const dbInfo = await sql`SELECT current_database() AS db, current_schema() AS schema`
+  const searchPathRows = await sql`SHOW search_path`
   const searchPath = (searchPathRows?.[0]?.search_path as string) || ""
 
-  const regclass = await inspector`SELECT to_regclass('public.resume_versions') AS reg`
+  const regclass = await sql`SELECT to_regclass('public.resume_versions') AS reg`
   const reg = regclass?.[0]?.reg
 
-  const resumeVersionsRows = await inspector`
+  const resumeVersionsRows = await sql`
     SELECT EXISTS (
       SELECT 1 FROM information_schema.tables 
       WHERE table_schema = 'public' AND table_name = 'resume_versions'
@@ -79,7 +71,7 @@ async function main() {
   `
   const resumeVersionsExists = Boolean(resumeVersionsRows?.[0]?.exists)
 
-  const optimizedCols = await inspector`
+  const optimizedCols = await sql`
     SELECT column_name
     FROM information_schema.columns
     WHERE table_schema = 'public'
@@ -100,10 +92,12 @@ async function main() {
 
   if (!resumeVersionsExists || optimizedCols.length < 3) {
     console.error("❌ Verification failed. Check logs above.")
+    await sql.end()
     process.exit(1)
   }
 
   console.log("\n🎉 All migrations applied and verified.")
+  await sql.end()
 }
 
 main().catch((e) => {

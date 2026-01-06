@@ -16,9 +16,14 @@ const envSchema = z.object({
   CLERK_SECRET_KEY: z.string().min(1, "Clerk secret key is required"),
   CLERK_WEBHOOK_SECRET: z.string().optional(),
 
-  // Database - REQUIRED
+  // Database (Supabase) - REQUIRED
   DATABASE_URL: z.string().min(1, "Database URL is required"),
-  NEON_API_KEY: z.string().optional(), // For migrations
+  SUPABASE_URL: z.string().url().min(1, "Supabase URL is required"),
+  SUPABASE_DATABASE_URL: z.string().optional(), // Direct PostgreSQL connection string
+  SUPABASE_ANON_KEY: z.string().min(1, "Supabase anon key is required"),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "Supabase service role key is required"),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().optional(),
 
   // AI Services - REQUIRED
   OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
@@ -31,13 +36,6 @@ const envSchema = z.object({
 
   // LlamaCloud (for document parsing) - REQUIRED
   LLAMACLOUD_API_KEY: z.string().min(1, "LlamaCloud API key is required"),
-
-  // Storage (Cloudflare R2) - REQUIRED
-  R2_ACCOUNT_ID: z.string().min(1, "R2 Account ID is required"),
-  R2_ACCESS_KEY_ID: z.string().min(1, "R2 Access Key ID is required"),
-  R2_SECRET_ACCESS_KEY: z.string().min(1, "R2 Secret Access Key is required"),
-  R2_BUCKET_NAME: z.string().min(1, "R2 Bucket name is required"),
-  R2_PUBLIC_BASE_URL: z.string().url().min(1, "R2 Public Base URL is required"),
 
   // Payment Processing - At least one required
   // Stripe
@@ -224,7 +222,7 @@ export function getConfig() {
     urls: {
       app: environment.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
       qdrant: environment.QDRANT_URL,
-      r2Public: environment.R2_PUBLIC_BASE_URL,
+      supabase: environment.SUPABASE_URL,
     },
   }
 }
@@ -245,8 +243,8 @@ export function logEnvironmentStatus() {
   console.log("    - Newsletter (Beehiiv):", config.features.beehiiv ? "✅" : "❌")
   console.log("    - Background Jobs (Inngest):", config.features.inngest ? "✅" : "❌")
   console.log("  🔗 Integrations:")
-  console.log("    - Database:", environment.DATABASE_URL ? "✅ Connected" : "❌ Missing")
+  console.log("    - Database (Supabase):", environment.SUPABASE_URL ? "✅ Connected" : "❌ Missing")
+  console.log("    - Storage (Supabase):", environment.SUPABASE_URL ? "✅ Connected" : "❌ Missing")
   console.log("    - OpenAI:", environment.OPENAI_API_KEY ? "✅ Configured" : "❌ Missing")
   console.log("    - Qdrant:", environment.QDRANT_URL ? "✅ Connected" : "❌ Missing")
-  console.log("    - Storage (R2):", environment.R2_BUCKET_NAME ? "✅ Configured" : "❌ Missing")
 }

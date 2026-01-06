@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless"
+import postgres from "postgres"
 import fs from "fs"
 import path from "path"
 
@@ -9,7 +9,7 @@ async function main() {
     process.exit(1)
   }
 
-  const sql = neon(databaseUrl) as any
+  const sql = postgres(databaseUrl, { ssl: "require" })
 
   console.log("🚀 Creating usage_tracking table...\n")
 
@@ -38,6 +38,7 @@ async function main() {
         console.log(`  - ${col.column_name} (${col.data_type})`)
       })
 
+      await sql.end()
       return
     }
 
@@ -80,9 +81,11 @@ async function main() {
     })
 
     console.log("\n🎉 Usage tracking table setup complete!")
+    await sql.end()
 
   } catch (err: any) {
     console.error("❌ Migration failed:", err?.message || err)
+    await sql.end()
     process.exit(1)
   }
 }

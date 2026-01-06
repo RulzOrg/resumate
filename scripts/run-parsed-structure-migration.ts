@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless"
+import postgres from "postgres"
 import fs from "fs"
 import path from "path"
 
@@ -29,7 +29,7 @@ async function main() {
     process.exit(1)
   }
 
-  const sql = neon(databaseUrl) as any
+  const sql = postgres(databaseUrl, { ssl: "require" })
 
   console.log("🚀 Running parsed_structure column migration...\n")
 
@@ -48,6 +48,7 @@ async function main() {
     
     if (!tableExists[0]?.exists) {
       console.error("❌ Table 'resumes' does not exist in the database!")
+      await sql.end()
       process.exit(1)
     }
     
@@ -57,6 +58,7 @@ async function main() {
     try {
       const testQuery = await sql`SELECT parsed_structure, parsed_at FROM resumes LIMIT 0`
       console.log("✓ Columns already exist (query succeeded)\n")
+      await sql.end()
       return
     } catch (e: any) {
       if (e.message.includes('column') && e.message.includes('does not exist')) {
@@ -93,6 +95,7 @@ async function main() {
       if (indexes.length > 0) {
         console.log("\n✅ Index already exists: idx_resumes_parsed_at")
         console.log("\n🎉 Migration already applied!")
+        await sql.end()
         return
       }
     }
@@ -173,9 +176,11 @@ async function main() {
     }
 
     console.log("\n🎉 Migration complete!")
+    await sql.end()
 
   } catch (err: any) {
     console.error("❌ Migration failed:", err?.message || err)
+    await sql.end()
     process.exit(1)
   }
 }
@@ -184,4 +189,3 @@ main().catch((e) => {
   console.error("Unexpected error:", e)
   process.exit(1)
 })
-
