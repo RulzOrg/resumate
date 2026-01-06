@@ -6,7 +6,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["public", "neon_auth"]
+  schemas  = ["public"]
 }
 
 model UserSync {
@@ -30,7 +30,7 @@ model UserSync {
 
   @@index([clerkUserId])
   @@map("users_sync")
-  @@schema("neon_auth")
+  @@schema("public")
 }
 
 model Resume {
@@ -46,6 +46,8 @@ model Resume {
   processingStatus String    @default("pending") @map("processing_status") @db.VarChar(32)
   processingError  String?   @map("processing_error")
   parsedSections   Json?     @map("parsed_sections")
+  parsedStructure  Json?     @map("parsed_structure")
+  parsedAt         DateTime? @map("parsed_at")
   extractedAt      DateTime? @map("extracted_at")
   sourceMetadata   Json?     @map("source_metadata")
   isPrimary        Boolean   @default(false) @map("is_primary")

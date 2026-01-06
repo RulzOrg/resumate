@@ -1,32 +1,17 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3"
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
+/**
+ * Storage utilities
+ * All storage operations now use Supabase Storage
+ * This file maintains backwards compatibility for existing imports
+ */
+
 import { Socket } from "net"
+import * as supabaseStorage from "./supabase-storage"
 
-// Support Cloudflare R2 (preferred) and fallback to AWS S3 if R2 is not configured
-const r2AccountId = process.env.R2_ACCOUNT_ID
-const bucketName = process.env.R2_BUCKET_NAME || process.env.S3_BUCKET_NAME
-const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL || process.env.S3_PUBLIC_BASE_URL // optional CDN/public base URL override
+export { STORAGE_BUCKETS } from "./supabase-storage"
 
-const isR2 = Boolean(r2AccountId)
-const region = isR2 ? (process.env.R2_REGION || "auto") : (process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION)
-
-if (!bucketName) {
-  console.warn("Object storage bucket not configured. Set R2_BUCKET_NAME (or S3_BUCKET_NAME).")
-}
-
-export const s3 = new S3Client({
-  region,
-  endpoint: isR2 ? `https://${r2AccountId}.r2.cloudflarestorage.com` : undefined,
-  forcePathStyle: isR2 ? true : undefined,
-  credentials: isR2
-    ? (process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
-        ? { accessKeyId: process.env.R2_ACCESS_KEY_ID!, secretAccessKey: process.env.R2_SECRET_ACCESS_KEY! }
-        : undefined)
-    : (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
-        ? { accessKeyId: process.env.AWS_ACCESS_KEY_ID!, secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY! }
-        : undefined),
-})
-
+/**
+ * Upload buffer to storage
+ */
 export async function uploadBufferToS3(params: {
   buffer: Buffer
   key: string
@@ -34,39 +19,40 @@ export async function uploadBufferToS3(params: {
   cacheControl?: string
   acl?: "private" | "public-read"
 }): Promise<{ url: string; key: string }> {
-  if (!bucketName) throw new Error("Bucket name not set (R2_BUCKET_NAME or S3_BUCKET_NAME)")
-  await s3.send(new PutObjectCommand({
-    Bucket: bucketName,
-    Key: params.key,
-    Body: params.buffer,
-    ContentType: params.contentType,
-    CacheControl: params.cacheControl ?? "public, max-age=31536000, immutable",
-    ACL: params.acl ?? "public-read",
-  }))
-
-  const url = publicBaseUrl
-    ? `${publicBaseUrl.replace(/\/$/, "")}/${encodeURIComponent(params.key)}`
-    : (isR2
-        // For R2 without a public base URL, default to account endpoint with path-style bucket
-        ? `https://${r2AccountId}.r2.cloudflarestorage.com/${encodeURIComponent(bucketName)}/${encodeURIComponent(params.key)}`
-        // For AWS S3 default public URL pattern
-        : `https://${bucketName}.s3.${region}.amazonaws.com/${encodeURIComponent(params.key)}`)
-
+  // Determine bucket from key (exports/ prefix or default to exports)
+  const bucket = params.key.startsWith("resumes/") 
+    ? supabaseStorage.STORAGE_BUCKETS.RESUMES 
+    : supabaseStorage.STORAGE_BUCKETS.EXPORTS
+  const supabaseKey = params.key.replace(/^(resumes|exports)\//, "")
+  
+  await supabaseStorage.uploadFile(bucket, params.buffer, supabaseKey, params.contentType)
+  
+  // Get signed URL for private buckets
+  const url = await supabaseStorage.getSignedUrl(bucket, supabaseKey, 3600)
   return { url, key: params.key }
 }
 
+/**
+ * Get signed download URL
+ */
 export async function getSignedDownloadUrl(key: string, expiresInSeconds = 300): Promise<string> {
-  if (!bucketName) throw new Error("Bucket name not set (R2_BUCKET_NAME or S3_BUCKET_NAME)")
-  const command = new GetObjectCommand({ Bucket: bucketName, Key: key })
-  return await getSignedUrl(s3, command, { expiresIn: expiresInSeconds })
+  const bucket = key.startsWith("resumes/") 
+    ? supabaseStorage.STORAGE_BUCKETS.RESUMES 
+    : supabaseStorage.STORAGE_BUCKETS.EXPORTS
+  const supabaseKey = key.replace(/^(resumes|exports)\//, "")
+  
+  return supabaseStorage.getSignedUrl(bucket, supabaseKey, expiresInSeconds)
 }
 
+/**
+ * Build storage key
+ */
 export function buildS3Key(parts: { userId: string; kind: string; fileName: string }): string {
-  const sanitized = parts.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")
-  const ts = Date.now()
-  return `uploads/${parts.userId}/${parts.kind}/${ts}-${sanitized}`
+  return supabaseStorage.buildStorageKey(parts)
 }
 
+// ============== Virus Scanning (ClamAV) ==============
+// This functionality is independent of storage backend
 
 const clamavHost = process.env.CLAMAV_HOST
 const clamavPort = Number(process.env.CLAMAV_PORT || "3310")

@@ -11,8 +11,8 @@ async function checkSchema() {
   }
 
   try {
-    const { neon } = await import("@neondatabase/serverless")
-    const sql = neon(databaseUrl)
+    const postgres = (await import("postgres")).default
+    const sql = postgres(databaseUrl, { ssl: "require" })
 
     console.log("🔍 Checking resumes table schema...")
 
@@ -57,6 +57,8 @@ async function checkSchema() {
         console.log(`   ✓ ${idx.indexname} (LlamaParse index)`)
       }
     })
+
+    await sql.end()
   } catch (error: any) {
     console.error("❌ Error:", error.message)
     process.exit(1)

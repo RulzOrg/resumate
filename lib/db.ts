@@ -1,19 +1,15 @@
-import { neon } from "@neondatabase/serverless"
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 import { normalizeSalaryRange, normalizeJobField, type SalaryRangeInput } from "./normalizers"
 import type { SystemPromptV1Output, QASection } from "./schemas-v2"
 import type { ParsedResume } from "@/lib/resume-parser"
-
-const databaseUrl = process.env.DATABASE_URL
-const isDbConfigured = Boolean(databaseUrl)
+import { createSupabaseSQL } from "./supabase-db"
 
 type SqlClient = <T = Record<string, any>>(strings: TemplateStringsArray, ...values: any[]) => Promise<T[]>
 
-const sql: SqlClient = databaseUrl
-  ? (neon(databaseUrl) as unknown as SqlClient)
-  : (async () => {
-    throw new Error("DATABASE_URL is not configured. Set it to enable database features.")
-  }) as unknown as SqlClient
+/**
+ * SQL client using Supabase PostgreSQL
+ */
+const sql: SqlClient = createSupabaseSQL()
 
 export { sql }
 
@@ -363,7 +359,35 @@ export async function migrateUserOwnedRecords(legacyUserId: string, newUserId: s
 }
 
 // User functions
+export async function getUserByEmail(email: string) {
+  const [user] = await sql`
+    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
+           subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+    FROM users_sync
+    WHERE email = ${email} AND deleted_at IS NULL
+  `
+  return user as User | undefined
+}
+
 export async function createUserFromClerk(clerkUserId: string, email: string, name: string) {
+  // First, check if a user with this email already exists (different auth method, same email)
+  const existingUserByEmail = await getUserByEmail(email)
+
+  if (existingUserByEmail) {
+    // User exists with this email - update their clerk_user_id to link accounts
+    const [user] = await sql`
+      UPDATE users_sync
+      SET clerk_user_id = ${clerkUserId},
+          name = ${name},
+          deleted_at = NULL,
+          updated_at = NOW()
+      WHERE email = ${email}
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+    `
+    return user as User
+  }
+
+  // No existing user with this email, proceed with upsert on clerk_user_id
   const [user] = await sql`
     INSERT INTO users_sync (clerk_user_id, email, name, subscription_status, subscription_plan, onboarding_completed_at, created_at, updated_at)
     VALUES (${clerkUserId}, ${email}, ${name}, 'free', 'free', NULL, NOW(), NOW())
@@ -649,10 +673,14 @@ export async function getResumeById(id: string, user_id: string) {
 }
 
 export async function updateResume(id: string, user_id: string, data: Partial<Resume>) {
+  // Convert undefined to null to avoid UNDEFINED_VALUE error from SQL library
+  const title = data.title ?? null
+  const is_primary = data.is_primary ?? null
+
   const [resume] = await sql`
-    UPDATE resumes 
-    SET title = COALESCE(${data.title}, title),
-        is_primary = COALESCE(${data.is_primary}, is_primary),
+    UPDATE resumes
+    SET title = COALESCE(${title}, title),
+        is_primary = COALESCE(${is_primary}, is_primary),
         updated_at = NOW()
     WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
     RETURNING *
@@ -1620,10 +1648,26 @@ export async function ensureUserExists(userId: string): Promise<User | null> {
         })
 
         console.log("User creation race condition detected, fetching existing user")
+        // Try to find by clerk_user_id first
         const existingUser = await getUserByClerkId(userId)
         if (existingUser) {
-          console.log('Found existing user after race condition:', { id: existingUser.id })
+          console.log('Found existing user by clerk_user_id after race condition:', { id: existingUser.id })
           return existingUser
+        }
+        // If not found by clerk_user_id, try by email (handles email constraint violations)
+        const existingUserByEmail = await getUserByEmail(email)
+        if (existingUserByEmail) {
+          console.log('Found existing user by email after race condition:', { id: existingUserByEmail.id })
+          // Update the clerk_user_id to link this auth method to the existing account
+          const [updatedUser] = await sql`
+            UPDATE users_sync
+            SET clerk_user_id = ${userId},
+                deleted_at = NULL,
+                updated_at = NOW()
+            WHERE id = ${existingUserByEmail.id}
+            RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+          `
+          return updatedUser as User
         }
       }
 

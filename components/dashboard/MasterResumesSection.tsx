@@ -139,7 +139,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                 >
                   <FileCheck className="h-5 w-5 flex-shrink-0 text-foreground/70 dark:text-white/70" />
                 </div>
-                <div className="flex flex-1 flex-col gap-0.5 text-left">
+                <div className="flex flex-1 flex-col gap-0.5 text-left min-w-0">
                   {editingId === resume.id ? (
                     <div className="space-y-2">
                       <input
@@ -210,7 +210,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                 </div>
                 {editingId !== resume.id && (
                   <div
-                    className={`flex items-center gap-2 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                    className={`flex items-center gap-2 flex-shrink-0 transition-opacity ${confirmingDeleteId === resume.id ? "opacity-0" : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                       } sm:bg-transparent bg-black/20 rounded-md p-1 sm:p-0`}
                   >
                     <button
