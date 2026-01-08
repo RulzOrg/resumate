@@ -2053,14 +2053,16 @@ export async function getCachedStructure(resumeId: string): Promise<ParsedResume
     const hasContactName = normalized.contact?.name && normalized.contact.name.trim().length > 0
     const hasWorkExperience = normalized.workExperience && normalized.workExperience.length > 0
 
-    if (!hasContactName || !hasWorkExperience) {
-      console.log('[getCachedStructure] Invalid cache - missing essential data, forcing re-extraction:', {
+    if (!hasContactName) {
+      console.log('[getCachedStructure] Invalid cache - missing contact name, forcing re-extraction:', {
         resumeId,
-        hasContactName,
-        hasWorkExperience,
         contactName: normalized.contact?.name?.substring(0, 20) || '(empty)',
       })
       return null
+    }
+
+    if (!hasWorkExperience) {
+      console.warn('[getCachedStructure] Warning: cached resume has no work experience:', { resumeId })
     }
 
     return normalized
@@ -2078,7 +2080,7 @@ export async function saveParsedStructure(resumeId: string, structure: ParsedRes
   try {
     await sql`
       UPDATE resumes
-      SET parsed_structure = ${JSON.stringify(structure)},
+      SET parsed_structure = ${structure},
           parsed_at = NOW(),
           updated_at = NOW()
       WHERE id = ${resumeId}
