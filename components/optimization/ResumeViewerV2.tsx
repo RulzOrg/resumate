@@ -26,6 +26,7 @@ import {
   Trash2,
   Save,
   Loader2,
+  Check,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -73,6 +74,166 @@ function stripMarkdown(text: string): string {
     .replace(/^#+\s*/gm, '')           // Remove headers
     .replace(/^[-*+]\s+/gm, '')        // Remove list markers
     .trim()
+}
+
+/**
+ * Format resume as plain text suitable for Word documents
+ */
+function formatResumeForWord(parsed: ParsedResume): string {
+  const lines: string[] = []
+
+  // Header
+  if (parsed.contact.name) {
+    lines.push(parsed.contact.name.toUpperCase())
+    lines.push('')
+  }
+
+  // Contact info
+  const contactInfo = formatContactString(parsed.contact)
+  if (contactInfo) {
+    lines.push(contactInfo)
+    lines.push('')
+  }
+
+  // Target Title
+  if (parsed.targetTitle) {
+    lines.push(parsed.targetTitle)
+    lines.push('')
+  }
+
+  // Professional Summary
+  if (parsed.summary) {
+    lines.push('PROFESSIONAL SUMMARY')
+    lines.push('─'.repeat(50))
+    lines.push(stripMarkdown(parsed.summary))
+    lines.push('')
+  }
+
+  // Work Experience
+  if (parsed.workExperience.length > 0) {
+    lines.push('WORK EXPERIENCE')
+    lines.push('─'.repeat(50))
+    parsed.workExperience.forEach((exp) => {
+      const titleLine = exp.company || exp.title || 'Position'
+      const subtitleParts: string[] = []
+      if (exp.title && exp.company) subtitleParts.push(exp.title)
+      if (exp.startDate && exp.endDate) subtitleParts.push(`${exp.startDate} - ${exp.endDate}`)
+      if (exp.location) subtitleParts.push(exp.location)
+      
+      lines.push(titleLine)
+      if (subtitleParts.length > 0) {
+        lines.push(subtitleParts.join(' • '))
+      }
+      
+      if (exp.bullets.length > 0) {
+        exp.bullets.forEach((bullet) => {
+          lines.push(`  • ${stripMarkdown(bullet)}`)
+        })
+      }
+      lines.push('')
+    })
+  }
+
+  // Education
+  if (parsed.education.length > 0) {
+    lines.push('EDUCATION')
+    lines.push('─'.repeat(50))
+    parsed.education.forEach((edu) => {
+      const eduParts: string[] = []
+      if (edu.institution) eduParts.push(edu.institution)
+      if (edu.degree) eduParts.push(edu.degree)
+      if (edu.graduationDate) eduParts.push(edu.graduationDate)
+      lines.push(eduParts.join(' • '))
+    })
+    lines.push('')
+  }
+
+  // Skills
+  if (parsed.skills.length > 0) {
+    lines.push('SKILLS')
+    lines.push('─'.repeat(50))
+    lines.push(parsed.skills.map(s => stripMarkdown(s)).join(' • '))
+    lines.push('')
+  }
+
+  // Certifications
+  if (parsed.certifications.length > 0) {
+    lines.push('CERTIFICATIONS')
+    lines.push('─'.repeat(50))
+    parsed.certifications.forEach((cert) => {
+      const certLine = stripMarkdown(cert.name)
+      if (cert.issuer) {
+        lines.push(`${certLine} — ${stripMarkdown(cert.issuer)}`)
+      } else {
+        lines.push(certLine)
+      }
+    })
+    lines.push('')
+  }
+
+  // Projects
+  if (parsed.projects.length > 0) {
+    lines.push('PROJECTS')
+    lines.push('─'.repeat(50))
+    parsed.projects.forEach((project) => {
+      lines.push(stripMarkdown(project.name))
+      if (project.description) {
+        lines.push(`  ${stripMarkdown(project.description)}`)
+      }
+      if (project.bullets.length > 0) {
+        project.bullets.forEach((bullet) => {
+          lines.push(`  • ${stripMarkdown(bullet)}`)
+        })
+      }
+      lines.push('')
+    })
+  }
+
+  // Awards
+  if (parsed.awards.length > 0) {
+    lines.push('AWARDS & SCHOLARSHIPS')
+    lines.push('─'.repeat(50))
+    parsed.awards.forEach((award) => {
+      lines.push(`  • ${stripMarkdown(award)}`)
+    })
+    lines.push('')
+  }
+
+  // Volunteering
+  if (parsed.volunteering.length > 0) {
+    lines.push('VOLUNTEERING & LEADERSHIP')
+    lines.push('─'.repeat(50))
+    parsed.volunteering.forEach((vol) => {
+      lines.push(vol.organization)
+      if (vol.role) lines.push(`  ${vol.role}`)
+      if (vol.dates) lines.push(`  ${vol.dates}`)
+      lines.push('')
+    })
+  }
+
+  // Publications
+  if (parsed.publications.length > 0) {
+    lines.push('PUBLICATIONS')
+    lines.push('─'.repeat(50))
+    parsed.publications.forEach((pub) => {
+      const pubLine = stripMarkdown(pub.title)
+      if (pub.publisher) {
+        lines.push(`${pubLine} — ${stripMarkdown(pub.publisher)}`)
+      } else {
+        lines.push(pubLine)
+      }
+    })
+    lines.push('')
+  }
+
+  // Interests
+  if (parsed.interests.length > 0) {
+    lines.push('INTERESTS')
+    lines.push('─'.repeat(50))
+    lines.push(parsed.interests.map(i => stripMarkdown(i)).join(' • '))
+  }
+
+  return lines.join('\n')
 }
 
 interface ResumeViewerV2Props {
@@ -797,6 +958,7 @@ export function ResumeViewerV2({
   ])
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const [copySuccess, setCopySuccess] = useState(false)
 
   // Parse initial content
   const initialParsed = useMemo(() => {
@@ -1133,8 +1295,24 @@ export function ResumeViewerV2({
 
   const copyText = async () => {
     try {
-      await navigator.clipboard.writeText(optimizedContent)
-    } catch {}
+      // Format resume data as plain text for Word
+      const formattedText = formatResumeForWord(resumeData)
+      await navigator.clipboard.writeText(formattedText)
+      
+      // Show success feedback
+      setCopySuccess(true)
+      setTimeout(() => setCopySuccess(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy:', err)
+      // Fallback: try copying raw content
+      try {
+        await navigator.clipboard.writeText(optimizedContent)
+        setCopySuccess(true)
+        setTimeout(() => setCopySuccess(false), 2000)
+      } catch (fallbackErr) {
+        console.error('Fallback copy also failed:', fallbackErr)
+      }
+    }
   }
 
   const download = (format: "docx" | "html") => {
@@ -1195,8 +1373,21 @@ export function ResumeViewerV2({
               </Button>
             )}
 
-            <Button variant="outline" size="sm" onClick={copyText}>
-              <Copy className="h-4 w-4 mr-2" /> Copy
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={copyText}
+              className={copySuccess ? "bg-emerald-500/10 border-emerald-500/20" : ""}
+            >
+              {copySuccess ? (
+                <>
+                  <Check className="h-4 w-4 mr-2 text-emerald-500" /> Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" /> Copy
+                </>
+              )}
             </Button>
             <Button variant="outline" size="sm" onClick={() => download("html")}>
               <FileText className="h-4 w-4 mr-2" /> Preview
