@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { AlertCircle, FileText, Loader2 } from "lucide-react"
 import { WorkExperienceEditor } from "./WorkExperienceEditor"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
 import type { WorkExperienceItem } from "@/lib/resume-parser"
 
 export interface ReviewContent {
@@ -42,6 +43,43 @@ export function ReviewContentDialog({
   })
   const [validationError, setValidationError] = useState<string | null>(null)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0)
+  const [optimizationStepIndex, setOptimizationStepIndex] = useState(0)
+
+  // Optimization steps for the overlay
+  const optimizationSteps: ProcessingStep[] = [
+    { label: "Analyzing job requirements", status: optimizationStepIndex > 0 ? "completed" : optimizationStepIndex === 0 && isLoading ? "active" : "pending" },
+    { label: "Optimizing content", status: optimizationStepIndex > 1 ? "completed" : optimizationStepIndex === 1 ? "active" : "pending" },
+    { label: "Calculating match score", status: optimizationStepIndex > 2 ? "completed" : optimizationStepIndex === 2 ? "active" : "pending" },
+    { label: "Finalizing resume", status: optimizationStepIndex > 3 ? "completed" : optimizationStepIndex === 3 ? "active" : "pending" },
+  ]
+
+  // Simulate step progression when isLoading changes
+  useEffect(() => {
+    if (!isLoading) {
+      setOptimizationStepIndex(0)
+      return
+    }
+
+    // Simulate step progression
+    const stepDurations = [1500, 2500, 2000, 1500] // Time for each step
+    let currentStep = 0
+    
+    const advanceStep = () => {
+      if (currentStep < 4) {
+        setOptimizationStepIndex(currentStep)
+        currentStep++
+        if (currentStep < 4) {
+          setTimeout(advanceStep, stepDurations[currentStep - 1])
+        }
+      }
+    }
+
+    advanceStep()
+
+    return () => {
+      currentStep = 4 // Stop the progression
+    }
+  }, [isLoading])
 
   // Initialize form when content changes
   useEffect(() => {
@@ -163,7 +201,17 @@ export function ReviewContentDialog({
   )
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      {/* Optimization Processing Overlay */}
+      <ProcessingOverlay
+        isOpen={isLoading}
+        title="Optimizing your resume"
+        subtitle="This may take a moment..."
+        steps={optimizationSteps}
+        currentStepIndex={optimizationStepIndex}
+      />
+
+      <Dialog open={open} onOpenChange={isLoading ? undefined : onOpenChange}>
       <DialogContent 
         className="sm:max-w-[800px] w-[95vw] h-[90vh] max-h-[850px] flex flex-col p-0 bg-zinc-950 border-zinc-800 shadow-2xl overflow-hidden rounded-xl" 
         overlayClassName="bg-black/80 backdrop-blur-sm"
@@ -269,5 +317,6 @@ export function ReviewContentDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    </>
   )
 }
