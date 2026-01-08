@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { GeistMono } from "geist/font/mono"
 import { Space_Grotesk } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import Script from "next/script"
 
 import { ClerkProvider } from "@clerk/nextjs"
 import { clerkConfig } from "@/lib/clerk-config"
@@ -156,6 +157,18 @@ export default function RootLayout({
             {children}
           </ClerkProvider>
           <Analytics />
+          <Script
+            src="https://www.googletagmanager.com/gtag/js?id=G-4FGR9B5JK4"
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-4FGR9B5JK4');
+            `}
+          </Script>
         </ThemeProvider>
       </body>
     </html>
