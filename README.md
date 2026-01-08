@@ -47,6 +47,7 @@ Optional but used in various features:
   - Production: Use Qdrant Cloud (https://cloud.qdrant.io) or self-hosted instance
 - **QDRANT_COLLECTION**: Collection name (defaults to `resume_bullets`)
 - **OPENAI_API_KEY**: Required for AI features (embeddings and job analysis)
+- **BEEHIIV_API_KEY**, **BEEHIIV_PUBLICATION_ID**, **BEEHIIV_ENABLED**: Newsletter integration (requires write access to subscribers)
 
 Example `.env.local` (placeholders):
 ```bash
@@ -72,6 +73,11 @@ AWS_SECRET_ACCESS_KEY=
 AWS_REGION=
 S3_BUCKET_NAME=
 S3_PUBLIC_BASE_URL=
+
+# Beehiiv Newsletter (optional)
+BEEHIIV_API_KEY=
+BEEHIIV_PUBLICATION_ID=pub_xxxxxxxx
+BEEHIIV_ENABLED=false
 ```
 
 3) Run the database migrations (Neon recommended)
@@ -98,6 +104,8 @@ Visit `http://localhost:3000`.
 - **npm run start**: run production build
 - **npm run lint**: lint with ESLint / TypeScript
 - **npm run docker:qdrant**: start local Qdrant via Docker Compose
+- **npm run test-beehiiv**: test Beehiiv API integration
+- **npm run test-clerk-webhook**: test Clerk webhook with Beehiiv
 
 Database scripts (under `scripts/`):
 - `setup-database.py`: idempotent setup for tables/indexes/webhook-log
@@ -175,6 +183,12 @@ If you see a "frozen lockfile" error related to pnpm, ensure there is no `pnpm-l
   - Solution: Ensure `QDRANT_URL` and `QDRANT_API_KEY` are set in production
   - Check health: Visit `/api/health/qdrant` to verify connection
   - For local dev, run `npm run docker:qdrant` to start Qdrant
+
+- **Beehiiv newsletter integration**
+  - Test connection: `npm run test-beehiiv`
+  - Set `BEEHIIV_ENABLED=true` to activate
+  - Requires `BEEHIIV_API_KEY` and `BEEHIIV_PUBLICATION_ID`
+  - See `docs/beehiiv-integration.md` for full setup guide
 
 ---
 
