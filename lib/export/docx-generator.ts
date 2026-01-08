@@ -32,7 +32,8 @@ const LAYOUT_CONFIG = {
     h1Size: 32,   // 16pt
     h2Size: 24,   // 12pt
     h3Size: 22,   // 11pt
-    spacing: 120,
+    spacing: 60,  // Reduced from 120
+    sectionSpacing: 120, // Space between major sections
     margin: 0.75,
   },
   modern: {
@@ -41,7 +42,8 @@ const LAYOUT_CONFIG = {
     h1Size: 28,   // 14pt
     h2Size: 22,   // 11pt
     h3Size: 20,   // 10pt
-    spacing: 160,
+    spacing: 80,  // Reduced from 160
+    sectionSpacing: 160, // Space between major sections
     margin: 0.75,
   },
   compact: {
@@ -50,7 +52,8 @@ const LAYOUT_CONFIG = {
     h1Size: 24,   // 12pt
     h2Size: 20,   // 10pt
     h3Size: 18,   // 9pt
-    spacing: 80,
+    spacing: 40,  // Reduced from 80
+    sectionSpacing: 80,
     margin: 0.5,
   }
 };
@@ -115,7 +118,7 @@ export async function generateDOCX(
         }),
       ],
       alignment: AlignmentType.CENTER,
-      spacing: { after: config.spacing * 2 },
+      spacing: { after: config.sectionSpacing },
     })
   )
   
@@ -131,7 +134,7 @@ export async function generateDOCX(
           }),
         ],
         alignment: AlignmentType.CENTER,
-        spacing: { after: config.spacing * 2 },
+        spacing: { after: config.sectionSpacing },
       })
     )
   }
@@ -150,7 +153,7 @@ export async function generateDOCX(
           }),
         ],
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: config.spacing * 2, after: config.spacing },
+        spacing: { before: config.sectionSpacing, after: config.spacing },
       })
     )
 
@@ -163,7 +166,7 @@ export async function generateDOCX(
             font: config.font,
           }),
         ],
-        spacing: { after: config.spacing * 2 },
+        spacing: { after: config.sectionSpacing },
         alignment: AlignmentType.JUSTIFIED,
       })
     )
@@ -184,7 +187,7 @@ export async function generateDOCX(
           }),
         ],
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: config.spacing * 2, after: config.spacing },
+        spacing: { before: config.sectionSpacing, after: config.spacing },
       })
     )
 
@@ -218,7 +221,7 @@ export async function generateDOCX(
           }),
         ],
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: config.spacing * 2, after: config.spacing },
+        spacing: { before: config.sectionSpacing, after: config.spacing },
       })
     )
 
@@ -233,7 +236,7 @@ export async function generateDOCX(
               font: config.font,
             }),
           ],
-          spacing: { before: index > 0 ? config.spacing * 2 : config.spacing, after: config.spacing / 2 },
+          spacing: { before: index > 0 ? config.sectionSpacing : config.spacing, after: config.spacing / 4 },
         })
       )
 
@@ -243,7 +246,7 @@ export async function generateDOCX(
             new TextRun({ text: exp.title, italics: true, size: config.baseSize, font: config.font }),
             new TextRun({ text: ` | ${exp.start_date} – ${exp.end_date}`, size: config.baseSize, font: config.font }),
           ],
-          spacing: { after: config.spacing },
+          spacing: { after: config.spacing / 2 },
         })
       )
 
@@ -252,7 +255,7 @@ export async function generateDOCX(
           new Paragraph({
             children: [new TextRun({ text: bullet, size: config.baseSize, font: config.font })],
             bullet: { level: 0 },
-            spacing: { after: config.spacing / 2 },
+            spacing: { after: config.spacing / 4 },
             indent: { left: convertInchesToTwip(0.25), hanging: convertInchesToTwip(0.25) },
           })
         )
@@ -274,7 +277,7 @@ export async function generateDOCX(
           }),
         ],
         heading: HeadingLevel.HEADING_2,
-        spacing: { before: config.spacing * 2, after: config.spacing },
+        spacing: { before: config.sectionSpacing, after: config.spacing },
       })
     )
 
@@ -370,7 +373,7 @@ export async function generateDOCXFromMarkdown(
     const trimmedLine = line.trim()
     
     if (!trimmedLine) {
-      sections.push(new Paragraph({ text: "", spacing: { after: config.spacing } }))
+      sections.push(new Paragraph({ text: "", spacing: { after: config.spacing / 2 } }))
       continue
     }
     
@@ -386,7 +389,7 @@ export async function generateDOCXFromMarkdown(
             }),
           ],
           alignment: AlignmentType.CENTER,
-          spacing: { after: config.spacing * 2 },
+          spacing: { after: config.sectionSpacing },
         })
       )
       continue
@@ -405,7 +408,7 @@ export async function generateDOCXFromMarkdown(
           }),
         ],
         heading: HeadingLevel.HEADING_2,
-          spacing: { before: config.spacing * 2, after: config.spacing },
+          spacing: { before: config.sectionSpacing, after: config.spacing },
       })
     )
       continue
@@ -422,7 +425,7 @@ export async function generateDOCXFromMarkdown(
               font: config.font,
             }),
           ],
-          spacing: { before: config.spacing * 1.5, after: config.spacing / 2 },
+          spacing: { before: config.spacing, after: config.spacing / 2 },
         })
       )
       continue
@@ -439,7 +442,7 @@ export async function generateDOCXFromMarkdown(
             }),
           ],
           bullet: { level: 0 },
-          spacing: { after: config.spacing / 2 },
+          spacing: { after: config.spacing / 4 },
           indent: {
             left: convertInchesToTwip(0.25),
             hanging: convertInchesToTwip(0.25),
@@ -491,7 +494,7 @@ export async function generateDOCXFromMarkdown(
       sections.push(
         new Paragraph({
           children,
-          spacing: { after: config.spacing },
+          spacing: { after: config.spacing / 2 },
         })
       )
       continue
@@ -506,7 +509,7 @@ export async function generateDOCXFromMarkdown(
             font: config.font,
           }),
         ],
-        spacing: { after: config.spacing },
+        spacing: { after: config.spacing / 2 },
       })
     )
   }
