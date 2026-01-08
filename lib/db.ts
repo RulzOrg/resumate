@@ -2134,13 +2134,34 @@ export async function clearParsedStructure(resumeId: string): Promise<void> {
 // ==================== POLAR SUBSCRIPTION FUNCTIONS ====================
 
 /**
+ * Normalize email address by removing the +alias part
+ * e.g., "hello+new@example.com" -> "hello@example.com"
+ */
+export function normalizeEmail(email: string): string {
+  const [localPart, domain] = email.toLowerCase().split('@')
+  if (!domain) return email.toLowerCase()
+
+  // Remove everything after + in the local part
+  const normalizedLocal = localPart.split('+')[0]
+  return `${normalizedLocal}@${domain}`
+}
+
+/**
  * Get pending Polar subscription by customer email (unlinked, active)
+ * Also checks for email alias matches (e.g., hello+new@domain.com matches hello@domain.com)
  */
 export async function getPendingSubscriptionByEmail(email: string): Promise<PendingPolarSubscription | null> {
+  const normalizedEmail = normalizeEmail(email)
+
+  // First try exact match, then try normalized match on both sides
   const [subscription] = await sql`
     SELECT *
     FROM pending_polar_subscriptions
-    WHERE customer_email = ${email}
+    WHERE (
+      customer_email = ${email}
+      OR customer_email = ${normalizedEmail}
+      OR LOWER(SPLIT_PART(SPLIT_PART(customer_email, '@', 1), '+', 1) || '@' || SPLIT_PART(customer_email, '@', 2)) = ${normalizedEmail}
+    )
       AND linked_user_id IS NULL
       AND status = 'active'
     ORDER BY created_at DESC
