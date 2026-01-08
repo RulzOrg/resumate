@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Upload, Loader2, CheckCircle, X } from "lucide-react"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
 
 interface UploadMasterResumeDialogProps {
   children: React.ReactNode
@@ -33,15 +34,25 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [processingStepIndex, setProcessingStepIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadAbortRef = useRef<AbortController | null>(null)
   const progressTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Processing steps for the overlay
+  const uploadSteps: ProcessingStep[] = [
+    { label: "Uploading file", status: processingStepIndex > 0 ? "completed" : processingStepIndex === 0 && isUploading ? "active" : "pending" },
+    { label: "Processing document", status: processingStepIndex > 1 ? "completed" : processingStepIndex === 1 ? "active" : "pending" },
+    { label: "Extracting content", status: processingStepIndex > 2 ? "completed" : processingStepIndex === 2 ? "active" : "pending" },
+    { label: "Finishing up", status: processingStepIndex > 3 ? "completed" : processingStepIndex === 3 ? "active" : "pending" },
+  ]
 
   const resetState = () => {
     setFile(null)
     setTitle("")
     setIsUploading(false)
     setProgress(0)
+    setProcessingStepIndex(0)
     setError(null)
     setSuccess(false)
     if (fileInputRef.current) {
@@ -99,10 +110,28 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
     setError(null)
     setSuccess(false)
     setProgress(10)
+    setProcessingStepIndex(0)
     
-    // Start progress timer
+    // Start progress timer with step updates
+    let stepCounter = 0
     progressTimerRef.current = setInterval(() => {
-      setProgress((prev) => (prev >= 80 ? prev : prev + 10))
+      setProgress((prev) => {
+        const newProgress = prev >= 80 ? prev : prev + 10
+        // Update steps based on progress
+        if (newProgress >= 25 && stepCounter < 1) {
+          stepCounter = 1
+          setProcessingStepIndex(1)
+        }
+        if (newProgress >= 50 && stepCounter < 2) {
+          stepCounter = 2
+          setProcessingStepIndex(2)
+        }
+        if (newProgress >= 75 && stepCounter < 3) {
+          stepCounter = 3
+          setProcessingStepIndex(3)
+        }
+        return newProgress
+      })
     }, 150)
 
     try {
@@ -132,6 +161,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
         progressTimerRef.current = null
       }
       setProgress(100)
+      setProcessingStepIndex(4)
       setSuccess(true)
       
       // Auto-close dialog after 2 seconds
@@ -145,6 +175,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
         progressTimerRef.current = null
       }
       setProgress(0)
+      setProcessingStepIndex(0)
       // Handle abort distinctly
       const isAbort =
         (uploadError as any)?.name === "AbortError" ||
@@ -163,21 +194,32 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (isOpening && nextOpen) return // Prevent rapid opening
-        setOpen(nextOpen)
-        if (nextOpen) {
-          setIsOpening(true)
-          setTimeout(() => setIsOpening(false), 500) // Debounce for 500ms
-        } else {
-          resetState()
-        }
-      }}
-    >
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+    <>
+      {/* Processing Overlay */}
+      <ProcessingOverlay
+        isOpen={isUploading}
+        title="Processing your resume"
+        steps={uploadSteps}
+        currentStepIndex={processingStepIndex}
+        progress={progress}
+      />
+
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (isUploading) return // Prevent closing during upload
+          if (isOpening && nextOpen) return // Prevent rapid opening
+          setOpen(nextOpen)
+          if (nextOpen) {
+            setIsOpening(true)
+            setTimeout(() => setIsOpening(false), 500) // Debounce for 500ms
+          } else {
+            resetState()
+          }
+        }}
+      >
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Upload Master Resume</DialogTitle>
           <DialogDescription>
@@ -355,5 +397,6 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
         )}
       </DialogContent>
     </Dialog>
+    </>
   )
 }

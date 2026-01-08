@@ -20,6 +20,7 @@ import { Progress } from "@/components/ui/progress"
 import { Upload, FileText, X, CheckCircle } from "lucide-react"
 import { uploadResume } from "@/lib/upload-handler"
 import { ReviewFallbackUI } from "@/components/resume/review-fallback-ui"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
 
 interface UploadResumeDialogProps {
   children: React.ReactNode
@@ -72,8 +73,17 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   const [uploadedResumeId, setUploadedResumeId] = useState<string | null>(null)
   const [step, setStep] = useState<"upload" | "analysis" | "fallback">("upload")
   const [rawParagraphs, setRawParagraphs] = useState<string[]>([])
+  const [processingStepIndex, setProcessingStepIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  // Processing steps for the overlay
+  const uploadSteps: ProcessingStep[] = [
+    { label: "Uploading file", status: processingStepIndex > 0 ? "completed" : processingStepIndex === 0 && isUploading ? "active" : "pending" },
+    { label: "Processing document", status: processingStepIndex > 1 ? "completed" : processingStepIndex === 1 ? "active" : "pending" },
+    { label: "Extracting content", status: processingStepIndex > 2 ? "completed" : processingStepIndex === 2 ? "active" : "pending" },
+    { label: "Finishing up", status: processingStepIndex > 3 ? "completed" : processingStepIndex === 3 ? "active" : "pending" },
+  ]
 
   const handleFileSelect = (selectedFile: File) => {
     // Check file size first (10MB limit)
@@ -129,6 +139,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
 
     setIsUploading(true)
     setUploadProgress(0)
+    setProcessingStepIndex(0)
     setError("")
     setStep("upload")
 
@@ -136,13 +147,21 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
       // Use the new hardened upload pipeline
       const result = await uploadResume(file, (progress) => {
         setUploadProgress(progress)
+        // Update processing steps based on progress
+        if (progress >= 25 && processingStepIndex < 1) setProcessingStepIndex(1)
+        if (progress >= 50 && processingStepIndex < 2) setProcessingStepIndex(2)
+        if (progress >= 75 && processingStepIndex < 3) setProcessingStepIndex(3)
       })
 
       if (!result.success) {
         setError(result.error || "Upload failed")
         setIsUploading(false)
+        setProcessingStepIndex(0)
         return
       }
+
+      // Complete all steps
+      setProcessingStepIndex(4)
 
       // Store resume ID
       setUploadedResumeId(result.resumeId!)
@@ -182,6 +201,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     setTitle("")
     setError("")
     setUploadProgress(0)
+    setProcessingStepIndex(0)
     setUploadedResumeId(null)
     setRawParagraphs([])
     setStep("upload")
@@ -191,21 +211,32 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(newOpen) => {
-        if (isOpening && newOpen) return // Prevent rapid opening
-        setOpen(newOpen)
-        if (newOpen) {
-          setIsOpening(true)
-          setTimeout(() => setIsOpening(false), 500) // Debounce for 500ms
-        } else {
-          resetForm()
-        }
-      }}
-    >
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+    <>
+      {/* Processing Overlay */}
+      <ProcessingOverlay
+        isOpen={isUploading}
+        title="Processing your resume"
+        steps={uploadSteps}
+        currentStepIndex={processingStepIndex}
+        progress={uploadProgress}
+      />
+
+      <Dialog
+        open={open}
+        onOpenChange={(newOpen) => {
+          if (isUploading) return // Prevent closing during upload
+          if (isOpening && newOpen) return // Prevent rapid opening
+          setOpen(newOpen)
+          if (newOpen) {
+            setIsOpening(true)
+            setTimeout(() => setIsOpening(false), 500) // Debounce for 500ms
+          } else {
+            resetForm()
+          }
+        }}
+      >
+        <DialogTrigger asChild>{children}</DialogTrigger>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {step === "upload" && "Upload Resume"}
@@ -326,5 +357,6 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
+    </>
   )
 }

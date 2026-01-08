@@ -215,12 +215,12 @@ function generateHTMLFromMarkdown(markdown: string, title: string, layout: Resum
       font-size: ${config.size};
       color: #333;
     }
-    h1 { font-size: ${config.h1Size}; text-align: center; margin-bottom: 15px; text-transform: uppercase; }
-    h2 { font-size: ${config.h2Size}; text-transform: uppercase; border-bottom: ${config.h2Border}; padding-bottom: 3px; margin-top: 20px; margin-bottom: 10px; font-weight: bold; }
-    h3 { font-size: ${config.size}; margin-top: 15px; margin-bottom: 5px; font-weight: bold; }
-    ul { padding-left: 20px; margin: 8px 0; }
-    li { margin-bottom: 4px; }
-    p { margin: 8px 0; }
+    h1 { font-size: ${config.h1Size}; text-align: center; margin-bottom: 12px; text-transform: uppercase; }
+    h2 { font-size: ${config.h2Size}; text-transform: uppercase; border-bottom: ${config.h2Border}; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; font-weight: bold; }
+    h3 { font-size: ${config.size}; margin-top: 12px; margin-bottom: 4px; font-weight: bold; }
+    ul { padding-left: 20px; margin: 4px 0; }
+    li { margin-bottom: 2px; }
+    p { margin: 4px 0; }
     @page { size: letter; margin: 0; }
     @media print {
       body { margin: 0; padding: ${config.margin}; }

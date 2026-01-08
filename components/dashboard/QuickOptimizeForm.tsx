@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, Sparkles, FileSearch } from "lucide-react"
 import { UploadMasterResumeDialog } from "./master-resume-dialog"
 import { ReviewContentDialog, type ReviewContent } from "@/components/optimization/ReviewContentDialog"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
 import type { WorkExperienceItem } from "@/lib/resume-parser"
 
 interface Resume {
@@ -30,6 +31,14 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   // Review dialog state (Phase 4)
   const [extractedContent, setExtractedContent] = useState<ReviewContent | null>(null)
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false)
+  const [extractionStepIndex, setExtractionStepIndex] = useState(0)
+
+  // Extraction steps for the overlay
+  const extractionSteps: ProcessingStep[] = [
+    { label: "Reading your resume", status: extractionStepIndex > 0 ? "completed" : extractionStepIndex === 0 && isExtracting ? "active" : "pending" },
+    { label: "Extracting work experience", status: extractionStepIndex > 1 ? "completed" : extractionStepIndex === 1 ? "active" : "pending" },
+    { label: "Preparing review", status: extractionStepIndex > 2 ? "completed" : extractionStepIndex === 2 ? "active" : "pending" },
+  ]
 
   const completedResumes = resumes.filter(
     (r) =>
@@ -78,15 +87,22 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
 
     setIsExtracting(true)
     setIsLoading(true)
+    setExtractionStepIndex(0)
     console.log("[QuickOptimizeForm] Starting extraction...")
 
     try {
+      // Simulate step progression for better UX
+      setExtractionStepIndex(0)
+      
       // Step 1: Extract resume content for review
       const extractResponse = await fetch("/api/resumes/extract-review", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resume_id: selectedResumeId }),
       })
+
+      // Move to next step while processing
+      setExtractionStepIndex(1)
 
       const extractData = await extractResponse.json()
 
@@ -109,6 +125,9 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         throw new Error(errorMessage)
       }
 
+      // Move to final step
+      setExtractionStepIndex(2)
+
       const workExperience: WorkExperienceItem[] = extractData.work_experience || []
       const summary: string | undefined = extractData.summary || undefined
 
@@ -117,8 +136,15 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         setError("No work experience found in your resume. Please add work experience before optimizing.")
         setIsLoading(false)
         setIsExtracting(false)
+        setExtractionStepIndex(0)
         return
       }
+
+      // Complete all steps
+      setExtractionStepIndex(3)
+
+      // Small delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 300))
 
       // Store extracted content and open review dialog
       console.log("[QuickOptimizeForm] Extraction successful, opening dialog...", {
@@ -129,10 +155,12 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       setReviewDialogOpen(true)
       setIsExtracting(false)
       setIsLoading(false)
+      setExtractionStepIndex(0)
     } catch (err: any) {
       setError(err.message || "Failed to extract resume content")
       setIsLoading(false)
       setIsExtracting(false)
+      setExtractionStepIndex(0)
     }
   }
 
@@ -195,8 +223,17 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
+    <>
+      {/* Extraction Processing Overlay */}
+      <ProcessingOverlay
+        isOpen={isExtracting}
+        title="Analyzing your resume"
+        steps={extractionSteps}
+        currentStepIndex={extractionStepIndex}
+      />
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
         <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
           {error}
         </div>
@@ -285,14 +322,15 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       </Button>
 
       {/* Phase 4: Review Content Dialog */}
-      <ReviewContentDialog
-        open={reviewDialogOpen}
-        onOpenChange={handleDialogOpenChange}
-        content={extractedContent}
-        onConfirm={handleReviewConfirm}
-        isLoading={isOptimizing}
-      />
-    </form>
+        <ReviewContentDialog
+          open={reviewDialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          content={extractedContent}
+          onConfirm={handleReviewConfirm}
+          isLoading={isOptimizing}
+        />
+      </form>
+    </>
   )
 }
 
