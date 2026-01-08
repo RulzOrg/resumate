@@ -17,6 +17,7 @@ async function main() {
   const files = [
     "add_resume_versions_table.sql",
     "add_v2_structured_output.sql",
+    "add_polar_fields.sql",
   ]
 
   console.log("🚀 Applying SQL migrations...\n")
