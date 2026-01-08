@@ -19,6 +19,7 @@ model UserSync {
   subscriptionPeriodEnd  DateTime? @map("subscription_period_end")
   stripeCustomerId       String?   @unique @map("stripe_customer_id")
   stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  beehiivSubscriberId    String?   @map("beehiiv_subscriber_id")
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
   deletedAt              DateTime? @map("deleted_at")

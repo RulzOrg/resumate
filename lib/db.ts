@@ -96,6 +96,7 @@ export interface User {
   subscription_period_end?: string
   stripe_customer_id?: string
   stripe_subscription_id?: string
+  beehiiv_subscriber_id?: string | null
   onboarding_completed_at?: string | null
   created_at: string
   updated_at: string
@@ -404,7 +405,8 @@ export async function createUserFromClerk(clerkUserId: string, email: string, na
 export async function getUserByClerkId(clerkUserId: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan, 
-           subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+           subscription_period_end, stripe_customer_id, stripe_subscription_id, 
+           beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
   `
@@ -415,7 +417,7 @@ export async function getUserById(id: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
            subscription_period_end, stripe_customer_id, stripe_subscription_id,
-           onboarding_completed_at, created_at, updated_at
+           beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE id = ${id} AND deleted_at IS NULL
   `
@@ -1594,6 +1596,32 @@ export async function logClerkWebhookEvent(data: {
     RETURNING *
   `
   return event as ClerkWebhookEvent
+}
+
+// Beehiiv subscriber tracking
+export async function updateBeehiivSubscriberId(
+  clerkUserId: string,
+  beehiivSubscriberId: string | null
+): Promise<User | undefined> {
+  const [user] = await sql`
+    UPDATE users_sync
+    SET beehiiv_subscriber_id = ${beehiivSubscriberId},
+        updated_at = NOW()
+    WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
+              subscription_period_end, stripe_customer_id, stripe_subscription_id,
+              beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
+  `
+  return user as User | undefined
+}
+
+export async function getBeehiivSubscriberId(clerkUserId: string): Promise<string | null> {
+  const [user] = await sql`
+    SELECT beehiiv_subscriber_id
+    FROM users_sync
+    WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+  `
+  return user?.beehiiv_subscriber_id || null
 }
 
 // Enhanced user verification function

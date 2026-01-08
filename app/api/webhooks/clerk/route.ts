@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { sql, createUserFromClerk, updateUserFromClerk, deleteUserByClerkId } from "@/lib/db"
+import { sql, createUserFromClerk, updateUserFromClerk, deleteUserByClerkId, getUserByClerkId, updateBeehiivSubscriberId } from "@/lib/db"
+import { subscribeUser, getSubscriberByEmail, unsubscribeUser, isBeehiivEnabled, safeBeehiivOperation } from "@/lib/beehiiv"
+import { createLogger } from "@/lib/debug-logger"
+
+const logger = createLogger("ClerkWebhook")
 
 // Minimal verification via Clerk's recommended header secret (Svix). If not set, skip verify in dev.
 export async function POST(req: NextRequest) {
@@ -32,12 +36,82 @@ export async function POST(req: NextRequest) {
       const name = data.full_name || [data.first_name, data.last_name].filter(Boolean).join(" ") || "User"
 
       await createUserFromClerk(clerkId, email, name)
-      console.log('[CLERK_WEBHOOK] User created:', { clerk_user_id: clerkId, email })
+      logger.log('User created:', { clerk_user_id: clerkId, email })
+
+      // Automatically subscribe all users to Beehiiv newsletter (graceful - never fails webhook)
+      if (email) {
+        const result = await safeBeehiivOperation(
+          () => subscribeUser({
+            email,
+            firstName: data.first_name || undefined,
+            lastName: data.last_name || undefined,
+            utmSource: 'useresumate',
+            utmMedium: 'platform',
+            utmCampaign: 'user_signup',
+          }),
+          'user_created_subscription'
+        )
+        if (result.success) {
+          logger.log('Beehiiv subscription created:', { email, subscriberId: result.data.id })
+          // Store the subscriber ID for faster unsubscribe operations (fire and forget)
+          updateBeehiivSubscriberId(clerkId, result.data.id).catch((err) => {
+            logger.error('Failed to store Beehiiv subscriber ID:', err)
+          })
+        }
+        // Failures are already logged by safeBeehiivOperation - no need to duplicate
+      }
     } else if (type === "user.updated") {
       const clerkId = data.id as string
-      const email = data.email_addresses?.[0]?.email_address || data.primary_email_address?.email_address
+      const newEmail = data.email_addresses?.[0]?.email_address || data.primary_email_address?.email_address
       const name = data.full_name || [data.first_name, data.last_name].filter(Boolean).join(" ")
-      await updateUserFromClerk(clerkId, { email, name })
+
+      // Get existing user to check for email changes
+      const existingUser = await getUserByClerkId(clerkId)
+      const oldEmail = existingUser?.email
+
+      // Update user in our DB
+      await updateUserFromClerk(clerkId, { email: newEmail, name })
+      logger.log('User updated:', { clerk_user_id: clerkId, email: newEmail })
+
+      // Handle Beehiiv email update if email changed (graceful - never fails webhook)
+      if (oldEmail && newEmail && oldEmail !== newEmail && isBeehiivEnabled()) {
+        // Check if old email was subscribed to Beehiiv
+        const existingSubscriber = await safeBeehiivOperation(
+          () => getSubscriberByEmail(oldEmail),
+          'email_update_lookup'
+        )
+
+        if (existingSubscriber.success) {
+          // Unsubscribe old email (fire and forget - we're re-subscribing anyway)
+          safeBeehiivOperation(() => unsubscribeUser(oldEmail), 'email_update_unsubscribe')
+
+          // Subscribe new email
+          const result = await safeBeehiivOperation(
+            () => subscribeUser({
+              email: newEmail,
+              firstName: data.first_name || undefined,
+              lastName: data.last_name || undefined,
+              utmSource: 'useresumate',
+              utmMedium: 'platform',
+              utmCampaign: 'email_update',
+            }),
+            'email_update_subscribe'
+          )
+
+          if (result.success) {
+            logger.log('Beehiiv email updated:', { oldEmail, newEmail, subscriberId: result.data.id })
+            // Update the stored subscriber ID
+            updateBeehiivSubscriberId(clerkId, result.data.id).catch((err) => {
+              logger.error('Failed to update Beehiiv subscriber ID:', err)
+            })
+          } else {
+            // Clear the old subscriber ID since we failed to re-subscribe
+            updateBeehiivSubscriberId(clerkId, null).catch((err) => {
+              logger.error('Failed to clear Beehiiv subscriber ID:', err)
+            })
+          }
+        }
+      }
     } else if (type === "user.deleted") {
       const clerkId = data.id as string
       await deleteUserByClerkId(clerkId)
