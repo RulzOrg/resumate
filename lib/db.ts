@@ -2033,7 +2033,7 @@ export async function getCachedStructure(resumeId: string): Promise<ParsedResume
 
     // Normalize the cached structure - ensure all required arrays exist
     // This handles legacy cached structures that may be missing newer fields
-    return {
+    const normalized = {
       contact: cached.contact || { name: '' },
       targetTitle: cached.targetTitle,
       summary: cached.summary,
@@ -2047,6 +2047,25 @@ export async function getCachedStructure(resumeId: string): Promise<ParsedResume
       volunteering: cached.volunteering || [],
       publications: cached.publications || [],
     }
+
+    // Validate that essential fields exist - if not, return null to force re-extraction
+    // This handles legacy/incomplete caches that are missing contact info or other important data
+    const hasContactName = normalized.contact?.name && normalized.contact.name.trim().length > 0
+    const hasWorkExperience = normalized.workExperience && normalized.workExperience.length > 0
+
+    if (!hasContactName) {
+      console.log('[getCachedStructure] Invalid cache - missing contact name, forcing re-extraction:', {
+        resumeId,
+        contactName: normalized.contact?.name?.substring(0, 20) || '(empty)',
+      })
+      return null
+    }
+
+    if (!hasWorkExperience) {
+      console.warn('[getCachedStructure] Warning: cached resume has no work experience:', { resumeId })
+    }
+
+    return normalized
   } catch (error: any) {
     // Handle case where column doesn't exist yet (migration not applied or connection pool cache)
     if (error.message?.includes('parsed_structure') && error.message?.includes('does not exist')) {
@@ -2061,7 +2080,7 @@ export async function saveParsedStructure(resumeId: string, structure: ParsedRes
   try {
     await sql`
       UPDATE resumes
-      SET parsed_structure = ${JSON.stringify(structure)},
+      SET parsed_structure = ${structure},
           parsed_at = NOW(),
           updated_at = NOW()
       WHERE id = ${resumeId}

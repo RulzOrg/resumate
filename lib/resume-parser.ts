@@ -228,8 +228,9 @@ export function parseResumeContent(content: string): ParsedResume {
     // Skip placeholder text
     if (trimmed.includes('[Email') || trimmed.includes('[Phone') || trimmed.includes('[LinkedIn')) continue
 
-    // Format 1: # Name or ## Name or ### Name (markdown heading)
-    if (trimmed.match(/^#{1,3}\s+/)) {
+    // Format 1: # Name or ## Name (markdown heading)
+    // IMPORTANT: Do NOT use ### headers as names - those are typically work experience company names
+    if (trimmed.match(/^#{1,2}\s+/) && !trimmed.match(/^#{3,}/)) {
       const name = trimmed.replace(/^#+\s*/, '').replace(/\*+/g, '').trim()
       if (name && name.length < 60) {
         result.contact.name = name

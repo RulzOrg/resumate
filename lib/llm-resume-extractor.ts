@@ -248,7 +248,22 @@ export async function extractResumeWithLLM(
            - Company: "Nigeria", Title: "Senior Designer", Bullets: [] ❌
            - Company: "", Title: "Lagos", Bullets: [] ❌
            
-         - education (array of institution, degree, field, graduationDate, notes)
+         - education (array of objects, each containing):
+           * institution: School/University name (REQUIRED - extract EXACTLY as written)
+           * degree: Degree name (OPTIONAL - only if explicitly stated, e.g., "B.Sc.", "HND", "MBA")
+           * field: Field of study (OPTIONAL - only if explicitly stated)
+           * graduationDate: Graduation date/year (OPTIONAL - only if explicitly stated)
+           * notes: GPA, honors, etc. (OPTIONAL - only if explicitly stated)
+           
+           CRITICAL RULES FOR EDUCATION:
+           - Extract ONLY what is explicitly written in the document
+           - DO NOT invent, guess, or hallucinate any details (dates, GPA, location, honors)
+           - If a field is not clearly present in the document, leave it as null/empty
+           - DO NOT add fictional dates like "03/2025 - 09/2025"
+           - DO NOT add fictional GPAs like "GPA: 4.0" unless explicitly stated
+           - DO NOT add fictional locations or notes
+           - If only the institution name is present, only extract the institution name
+           
          - skills (array of strings)
          - interests, certifications, awards, projects, volunteering, publications (arrays)
          
