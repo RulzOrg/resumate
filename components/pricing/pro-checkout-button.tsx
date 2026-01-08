@@ -62,7 +62,7 @@ export function ProCheckoutButton({ className }: ProCheckoutButtonProps) {
         }
 
         // Only allow redirects to trusted Polar checkout domains
-        const trustedDomains = ["checkout.polar.sh", "sandbox.checkout.polar.sh"]
+        const trustedDomains = ["checkout.polar.sh", "sandbox.checkout.polar.sh", "polar.sh", "sandbox.polar.sh"]
         if (!trustedDomains.includes(checkoutUrl.hostname)) {
           console.error("Untrusted checkout domain:", checkoutUrl.hostname)
           throw new Error(`Untrusted checkout domain: ${checkoutUrl.hostname}`)
