@@ -14,10 +14,17 @@ function CheckoutSuccessContent() {
   const sessionToken = searchParams.get("customer_session_token")
   const [countdown, setCountdown] = useState(3)
 
-  // For authenticated users: Auto-redirect to dashboard after countdown
+  // Handle redirects after auth state loads
   useEffect(() => {
     if (!isLoaded) return
 
+    // Unauthenticated users: Auto-redirect to sign up
+    if (!isSignedIn) {
+      router.push("/auth/signup")
+      return
+    }
+
+    // Authenticated users: Auto-redirect to dashboard after countdown
     if (isSignedIn) {
       const timer = setInterval(() => {
         setCountdown((prev) => {
