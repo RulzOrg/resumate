@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     // Create Polar checkout session with user email pre-filled
     const checkout = await polar.checkouts.custom.create({
       productPriceId: priceId,
-      successUrl: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      successUrl: `${baseUrl}/checkout/success`,
       customerEmail: clerkUser.emailAddresses[0]?.emailAddress || dbUser.email,
       customerName: clerkUser.fullName || dbUser.name || undefined,
       metadata: {

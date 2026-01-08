@@ -11,7 +11,7 @@ function CheckoutSuccessContent() {
   const { isSignedIn, isLoaded } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const sessionId = searchParams.get("session_id")
+  const sessionToken = searchParams.get("customer_session_token")
   const [countdown, setCountdown] = useState(3)
 
   // For authenticated users: Auto-redirect to dashboard after countdown
@@ -111,11 +111,11 @@ function CheckoutSuccessContent() {
             </>
           )}
 
-          {/* Session ID for debugging */}
-          {sessionId && (
+          {/* Session Token for debugging */}
+          {sessionToken && (
             <div className="pt-4 border-t border-border/50 dark:border-white/10">
               <p className="text-xs text-foreground/50 dark:text-white/50">
-                Session ID: {sessionId.slice(0, 20)}...
+                Session: {sessionToken.slice(0, 20)}...
               </p>
             </div>
           )}
