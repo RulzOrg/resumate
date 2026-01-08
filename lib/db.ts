@@ -1364,24 +1364,19 @@ export async function updateOptimizedResume(
     match_score?: number
   }
 ) {
+  // Convert undefined to null for SQL compatibility
+  const optimizedContent = data.optimized_content ?? null
+  const optimizationSummary = data.optimization_summary !== undefined 
+    ? JSON.stringify(data.optimization_summary) 
+    : null
+  const matchScore = data.match_score ?? null
+
   const [optimizedResume] = await sql`
     UPDATE optimized_resumes
     SET 
-      optimized_content = CASE 
-        WHEN ${data.optimized_content === undefined}::boolean 
-        THEN optimized_content 
-        ELSE ${data.optimized_content} 
-      END,
-      optimization_summary = CASE 
-        WHEN ${data.optimization_summary === undefined}::boolean 
-        THEN optimization_summary 
-        ELSE ${JSON.stringify(data.optimization_summary)}::jsonb 
-      END,
-      match_score = CASE 
-        WHEN ${data.match_score === undefined}::boolean 
-        THEN match_score 
-        ELSE ${data.match_score} 
-      END,
+      optimized_content = COALESCE(${optimizedContent}, optimized_content),
+      optimization_summary = COALESCE(${optimizationSummary}::jsonb, optimization_summary),
+      match_score = COALESCE(${matchScore}, match_score),
       updated_at = NOW()
     WHERE id = ${id} AND user_id = ${user_id}
     RETURNING *

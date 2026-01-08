@@ -8,7 +8,6 @@ import {
   Copy,
   Download,
   FileText,
-  Settings2,
   Plus,
   MoreHorizontal,
   Pencil,
@@ -34,7 +33,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LayoutSelector } from "./layout-selector"
 import {
   parseResumeContent,
   formatContactString,
@@ -790,8 +788,7 @@ export function ResumeViewerV2({
   optimizedContent,
   matchScore,
 }: ResumeViewerV2Props) {
-  const [layout, setLayout] = useState<string>("modern")
-  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false)
+  const layout = "modern" // TODO: Add layout selector in V2
   const [expandedSections, setExpandedSections] = useState<string[]>([
     "contact",
     "experience",
@@ -1198,21 +1195,6 @@ export function ResumeViewerV2({
               </Button>
             )}
 
-            <div className="flex items-center gap-2 mr-2">
-              <span className="text-xs font-medium text-muted-foreground">
-                Layout:
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsLayoutModalOpen(true)}
-                className="h-9 text-xs px-3 flex items-center gap-1.5"
-              >
-                <Settings2 className="h-4 w-4" />
-                {layout.charAt(0).toUpperCase() + layout.slice(1)}
-              </Button>
-            </div>
-
             <Button variant="outline" size="sm" onClick={copyText}>
               <Copy className="h-4 w-4 mr-2" /> Copy
             </Button>
@@ -1400,13 +1382,6 @@ export function ResumeViewerV2({
         }
         onSave={handleSavePublication}
         isNew={isNewPublication}
-      />
-
-      <LayoutSelector
-        open={isLayoutModalOpen}
-        onOpenChange={setIsLayoutModalOpen}
-        currentLayout={layout}
-        onSelect={setLayout}
       />
     </div>
   )
