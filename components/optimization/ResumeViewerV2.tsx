@@ -77,163 +77,278 @@ function stripMarkdown(text: string): string {
 }
 
 /**
- * Format resume as plain text suitable for Word documents
+ * Escape HTML entities
  */
-function formatResumeForWord(parsed: ParsedResume): string {
-  const lines: string[] = []
+function escapeHtml(text: string): string {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
+/**
+ * Convert markdown to HTML (preserves bold, italic, etc.)
+ */
+function markdownToHtml(text: string): string {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') // Bold **text**
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>') // Italic *text*
+    .replace(/__([^_]+)__/g, '<strong>$1</strong>') // Bold __text__
+    .replace(/_([^_]+)_/g, '<em>$1</em>') // Italic _text_
+    .replace(/`([^`]+)`/g, '<code>$1</code>') // Code `text`
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>') // Links [text](url)
+}
+
+/**
+ * Format resume as HTML suitable for Word documents (preserves formatting)
+ */
+function formatResumeForWord(parsed: ParsedResume): { html: string; text: string } {
+  const htmlParts: string[] = []
+  const textParts: string[] = []
+  
+  // Add basic styling for Word compatibility
+  htmlParts.push('<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.5;">')
 
   // Header
   if (parsed.contact.name) {
-    lines.push(parsed.contact.name.toUpperCase())
-    lines.push('')
+    const name = escapeHtml(parsed.contact.name.toUpperCase())
+    htmlParts.push(`<h1 style="font-size: 18pt; font-weight: bold; margin-bottom: 6pt; margin-top: 0;">${name}</h1>`)
+    textParts.push(parsed.contact.name.toUpperCase())
+    textParts.push('')
   }
 
   // Contact info
   const contactInfo = formatContactString(parsed.contact)
   if (contactInfo) {
-    lines.push(contactInfo)
-    lines.push('')
+    htmlParts.push(`<p style="margin-top: 0; margin-bottom: 12pt; font-size: 10pt;">${escapeHtml(contactInfo)}</p>`)
+    textParts.push(contactInfo)
+    textParts.push('')
   }
 
   // Target Title
   if (parsed.targetTitle) {
-    lines.push(parsed.targetTitle)
-    lines.push('')
+    htmlParts.push(`<p style="font-size: 12pt; font-weight: bold; margin-bottom: 12pt; margin-top: 0;">${escapeHtml(parsed.targetTitle)}</p>`)
+    textParts.push(parsed.targetTitle)
+    textParts.push('')
   }
 
   // Professional Summary
   if (parsed.summary) {
-    lines.push('PROFESSIONAL SUMMARY')
-    lines.push('─'.repeat(50))
-    lines.push(stripMarkdown(parsed.summary))
-    lines.push('')
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">PROFESSIONAL SUMMARY</h2>')
+    htmlParts.push(`<p style="margin-top: 0; margin-bottom: 12pt;">${markdownToHtml(escapeHtml(stripMarkdown(parsed.summary)))}</p>`)
+    textParts.push('PROFESSIONAL SUMMARY')
+    textParts.push('─'.repeat(50))
+    textParts.push(stripMarkdown(parsed.summary))
+    textParts.push('')
   }
 
   // Work Experience
   if (parsed.workExperience.length > 0) {
-    lines.push('WORK EXPERIENCE')
-    lines.push('─'.repeat(50))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">WORK EXPERIENCE</h2>')
+    textParts.push('WORK EXPERIENCE')
+    textParts.push('─'.repeat(50))
+    
     parsed.workExperience.forEach((exp) => {
-      const titleLine = exp.company || exp.title || 'Position'
+      const company = escapeHtml(exp.company || exp.title || 'Position')
       const subtitleParts: string[] = []
       if (exp.title && exp.company) subtitleParts.push(exp.title)
       if (exp.startDate && exp.endDate) subtitleParts.push(`${exp.startDate} - ${exp.endDate}`)
       if (exp.location) subtitleParts.push(exp.location)
       
-      lines.push(titleLine)
+      htmlParts.push(`<p style="margin-top: 6pt; margin-bottom: 2pt;"><strong style="font-size: 11pt;">${company}</strong></p>`)
       if (subtitleParts.length > 0) {
-        lines.push(subtitleParts.join(' • '))
+        htmlParts.push(`<p style="margin-top: 0; margin-bottom: 4pt; font-size: 10pt;">${escapeHtml(subtitleParts.join(' • '))}</p>`)
       }
       
       if (exp.bullets.length > 0) {
+        htmlParts.push('<ul style="margin-top: 4pt; margin-bottom: 12pt; padding-left: 20pt;">')
         exp.bullets.forEach((bullet) => {
-          lines.push(`  • ${stripMarkdown(bullet)}`)
+          const bulletText = markdownToHtml(escapeHtml(stripMarkdown(bullet)))
+          htmlParts.push(`<li style="margin-bottom: 2pt; font-size: 10pt;">${bulletText}</li>`)
+        })
+        htmlParts.push('</ul>')
+      } else {
+        htmlParts.push('<p style="margin-bottom: 12pt;"></p>')
+      }
+      
+      textParts.push(company)
+      if (subtitleParts.length > 0) {
+        textParts.push(subtitleParts.join(' • '))
+      }
+      if (exp.bullets.length > 0) {
+        exp.bullets.forEach((bullet) => {
+          textParts.push(`  • ${stripMarkdown(bullet)}`)
         })
       }
-      lines.push('')
+      textParts.push('')
     })
   }
 
   // Education
   if (parsed.education.length > 0) {
-    lines.push('EDUCATION')
-    lines.push('─'.repeat(50))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">EDUCATION</h2>')
+    textParts.push('EDUCATION')
+    textParts.push('─'.repeat(50))
+    
     parsed.education.forEach((edu) => {
       const eduParts: string[] = []
       if (edu.institution) eduParts.push(edu.institution)
       if (edu.degree) eduParts.push(edu.degree)
       if (edu.graduationDate) eduParts.push(edu.graduationDate)
-      lines.push(eduParts.join(' • '))
+      const eduText = escapeHtml(eduParts.join(' • '))
+      htmlParts.push(`<p style="margin-top: 0; margin-bottom: 4pt;"><strong>${escapeHtml(edu.institution || '')}</strong>${edu.degree ? ` - ${escapeHtml(edu.degree)}` : ''}${edu.graduationDate ? ` - ${escapeHtml(edu.graduationDate)}` : ''}</p>`)
+      textParts.push(eduParts.join(' • '))
     })
-    lines.push('')
+    htmlParts.push('<p style="margin-bottom: 12pt;"></p>')
+    textParts.push('')
   }
 
   // Skills
   if (parsed.skills.length > 0) {
-    lines.push('SKILLS')
-    lines.push('─'.repeat(50))
-    lines.push(parsed.skills.map(s => stripMarkdown(s)).join(' • '))
-    lines.push('')
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">SKILLS</h2>')
+    const skillsText = parsed.skills.map(s => escapeHtml(stripMarkdown(s))).join(' • ')
+    htmlParts.push(`<p style="margin-top: 0; margin-bottom: 12pt;">${skillsText}</p>`)
+    textParts.push('SKILLS')
+    textParts.push('─'.repeat(50))
+    textParts.push(parsed.skills.map(s => stripMarkdown(s)).join(' • '))
+    textParts.push('')
   }
 
   // Certifications
   if (parsed.certifications.length > 0) {
-    lines.push('CERTIFICATIONS')
-    lines.push('─'.repeat(50))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">CERTIFICATIONS</h2>')
+    parsed.certifications.forEach((cert) => {
+      const certName = escapeHtml(stripMarkdown(cert.name))
+      if (cert.issuer) {
+        htmlParts.push(`<p style="margin-top: 0; margin-bottom: 4pt;">${certName} — ${escapeHtml(stripMarkdown(cert.issuer))}</p>`)
+      } else {
+        htmlParts.push(`<p style="margin-top: 0; margin-bottom: 4pt;">${certName}</p>`)
+      }
+    })
+    htmlParts.push('<p style="margin-bottom: 12pt;"></p>')
+    textParts.push('CERTIFICATIONS')
+    textParts.push('─'.repeat(50))
     parsed.certifications.forEach((cert) => {
       const certLine = stripMarkdown(cert.name)
       if (cert.issuer) {
-        lines.push(`${certLine} — ${stripMarkdown(cert.issuer)}`)
+        textParts.push(`${certLine} — ${stripMarkdown(cert.issuer)}`)
       } else {
-        lines.push(certLine)
+        textParts.push(certLine)
       }
     })
-    lines.push('')
+    textParts.push('')
   }
 
   // Projects
   if (parsed.projects.length > 0) {
-    lines.push('PROJECTS')
-    lines.push('─'.repeat(50))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">PROJECTS</h2>')
     parsed.projects.forEach((project) => {
-      lines.push(stripMarkdown(project.name))
+      htmlParts.push(`<p style="margin-top: 0; margin-bottom: 2pt;"><strong>${escapeHtml(stripMarkdown(project.name))}</strong></p>`)
       if (project.description) {
-        lines.push(`  ${stripMarkdown(project.description)}`)
+        htmlParts.push(`<p style="margin-top: 0; margin-bottom: 4pt; font-size: 10pt;">${escapeHtml(stripMarkdown(project.description))}</p>`)
+      }
+      if (project.bullets.length > 0) {
+        htmlParts.push('<ul style="margin-top: 4pt; margin-bottom: 12pt; padding-left: 20pt;">')
+        project.bullets.forEach((bullet) => {
+          const bulletText = markdownToHtml(escapeHtml(stripMarkdown(bullet)))
+          htmlParts.push(`<li style="margin-bottom: 2pt; font-size: 10pt;">${bulletText}</li>`)
+        })
+        htmlParts.push('</ul>')
+      } else {
+        htmlParts.push('<p style="margin-bottom: 12pt;"></p>')
+      }
+    })
+    textParts.push('PROJECTS')
+    textParts.push('─'.repeat(50))
+    parsed.projects.forEach((project) => {
+      textParts.push(stripMarkdown(project.name))
+      if (project.description) {
+        textParts.push(`  ${stripMarkdown(project.description)}`)
       }
       if (project.bullets.length > 0) {
         project.bullets.forEach((bullet) => {
-          lines.push(`  • ${stripMarkdown(bullet)}`)
+          textParts.push(`  • ${stripMarkdown(bullet)}`)
         })
       }
-      lines.push('')
+      textParts.push('')
     })
   }
 
   // Awards
   if (parsed.awards.length > 0) {
-    lines.push('AWARDS & SCHOLARSHIPS')
-    lines.push('─'.repeat(50))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">AWARDS & SCHOLARSHIPS</h2>')
+    htmlParts.push('<ul style="margin-top: 0; margin-bottom: 12pt; padding-left: 20pt;">')
     parsed.awards.forEach((award) => {
-      lines.push(`  • ${stripMarkdown(award)}`)
+      htmlParts.push(`<li style="margin-bottom: 2pt;">${escapeHtml(stripMarkdown(award))}</li>`)
     })
-    lines.push('')
+    htmlParts.push('</ul>')
+    textParts.push('AWARDS & SCHOLARSHIPS')
+    textParts.push('─'.repeat(50))
+    parsed.awards.forEach((award) => {
+      textParts.push(`  • ${stripMarkdown(award)}`)
+    })
+    textParts.push('')
   }
 
   // Volunteering
   if (parsed.volunteering.length > 0) {
-    lines.push('VOLUNTEERING & LEADERSHIP')
-    lines.push('─'.repeat(50))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">VOLUNTEERING & LEADERSHIP</h2>')
     parsed.volunteering.forEach((vol) => {
-      lines.push(vol.organization)
-      if (vol.role) lines.push(`  ${vol.role}`)
-      if (vol.dates) lines.push(`  ${vol.dates}`)
-      lines.push('')
+      htmlParts.push(`<p style="margin-top: 0; margin-bottom: 2pt;"><strong>${escapeHtml(vol.organization)}</strong></p>`)
+      if (vol.role) htmlParts.push(`<p style="margin-top: 0; margin-bottom: 2pt; font-size: 10pt;">${escapeHtml(vol.role)}</p>`)
+      if (vol.dates) htmlParts.push(`<p style="margin-top: 0; margin-bottom: 8pt; font-size: 10pt;">${escapeHtml(vol.dates)}</p>`)
+    })
+    htmlParts.push('<p style="margin-bottom: 12pt;"></p>')
+    textParts.push('VOLUNTEERING & LEADERSHIP')
+    textParts.push('─'.repeat(50))
+    parsed.volunteering.forEach((vol) => {
+      textParts.push(vol.organization)
+      if (vol.role) textParts.push(`  ${vol.role}`)
+      if (vol.dates) textParts.push(`  ${vol.dates}`)
+      textParts.push('')
     })
   }
 
   // Publications
   if (parsed.publications.length > 0) {
-    lines.push('PUBLICATIONS')
-    lines.push('─'.repeat(50))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">PUBLICATIONS</h2>')
+    parsed.publications.forEach((pub) => {
+      const pubTitle = escapeHtml(stripMarkdown(pub.title))
+      if (pub.publisher) {
+        htmlParts.push(`<p style="margin-top: 0; margin-bottom: 4pt;">${pubTitle} — ${escapeHtml(stripMarkdown(pub.publisher))}</p>`)
+      } else {
+        htmlParts.push(`<p style="margin-top: 0; margin-bottom: 4pt;">${pubTitle}</p>`)
+      }
+    })
+    htmlParts.push('<p style="margin-bottom: 12pt;"></p>')
+    textParts.push('PUBLICATIONS')
+    textParts.push('─'.repeat(50))
     parsed.publications.forEach((pub) => {
       const pubLine = stripMarkdown(pub.title)
       if (pub.publisher) {
-        lines.push(`${pubLine} — ${stripMarkdown(pub.publisher)}`)
+        textParts.push(`${pubLine} — ${stripMarkdown(pub.publisher)}`)
       } else {
-        lines.push(pubLine)
+        textParts.push(pubLine)
       }
     })
-    lines.push('')
+    textParts.push('')
   }
 
   // Interests
   if (parsed.interests.length > 0) {
-    lines.push('INTERESTS')
-    lines.push('─'.repeat(50))
-    lines.push(parsed.interests.map(i => stripMarkdown(i)).join(' • '))
+    htmlParts.push('<h2 style="font-size: 12pt; font-weight: bold; text-transform: uppercase; margin-top: 12pt; margin-bottom: 6pt; border-bottom: 1px solid #000; padding-bottom: 2pt;">INTERESTS</h2>')
+    const interestsText = parsed.interests.map(i => escapeHtml(stripMarkdown(i))).join(' • ')
+    htmlParts.push(`<p style="margin-top: 0; margin-bottom: 12pt;">${interestsText}</p>`)
+    textParts.push('INTERESTS')
+    textParts.push('─'.repeat(50))
+    textParts.push(parsed.interests.map(i => stripMarkdown(i)).join(' • '))
   }
 
-  return lines.join('\n')
+  htmlParts.push('</div>')
+
+  return {
+    html: htmlParts.join(''),
+    text: textParts.join('\n')
+  }
 }
 
 interface ResumeViewerV2Props {
@@ -1295,22 +1410,38 @@ export function ResumeViewerV2({
 
   const copyText = async () => {
     try {
-      // Format resume data as plain text for Word
-      const formattedText = formatResumeForWord(resumeData)
-      await navigator.clipboard.writeText(formattedText)
+      // Format resume data as HTML for Word (preserves formatting)
+      const { html, text } = formatResumeForWord(resumeData)
+      
+      // Use Clipboard API with HTML format for Word compatibility
+      const clipboardItem = new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([text], { type: 'text/plain' })
+      })
+      
+      await navigator.clipboard.write([clipboardItem])
       
       // Show success feedback
       setCopySuccess(true)
       setTimeout(() => setCopySuccess(false), 2000)
     } catch (err) {
-      console.error('Failed to copy:', err)
-      // Fallback: try copying raw content
+      console.error('Failed to copy HTML:', err)
+      // Fallback: try copying plain text
       try {
-        await navigator.clipboard.writeText(optimizedContent)
+        const { text } = formatResumeForWord(resumeData)
+        await navigator.clipboard.writeText(text)
         setCopySuccess(true)
         setTimeout(() => setCopySuccess(false), 2000)
       } catch (fallbackErr) {
         console.error('Fallback copy also failed:', fallbackErr)
+        // Last resort: try raw content
+        try {
+          await navigator.clipboard.writeText(optimizedContent)
+          setCopySuccess(true)
+          setTimeout(() => setCopySuccess(false), 2000)
+        } catch (lastErr) {
+          console.error('All copy methods failed:', lastErr)
+        }
       }
     }
   }
