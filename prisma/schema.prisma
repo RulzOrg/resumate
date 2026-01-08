@@ -19,6 +19,8 @@ model UserSync {
   subscriptionPeriodEnd  DateTime? @map("subscription_period_end")
   stripeCustomerId       String?   @unique @map("stripe_customer_id")
   stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
+  polarCustomerId        String?   @unique @map("polar_customer_id")
+  polarSubscriptionId    String?   @unique @map("polar_subscription_id")
   beehiivSubscriberId    String?   @map("beehiiv_subscriber_id")
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @updatedAt @map("updated_at")
@@ -183,5 +185,31 @@ model LeadMagnetSubmission {
   @@index([createdAt])
   @@index([ipAddress])
   @@map("lead_magnet_submissions")
+  @@schema("public")
+}
+
+model PendingPolarSubscription {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  polarSubscriptionId  String    @unique @map("polar_subscription_id")
+  polarCustomerId      String    @map("polar_customer_id")
+  polarCheckoutId      String?   @map("polar_checkout_id")
+  customerEmail        String    @map("customer_email")
+  customerName         String?   @map("customer_name")
+  planType             String    @default("pro") @map("plan_type") @db.VarChar(50)
+  status               String    @db.VarChar(50)
+  amount               Int
+  currency             String    @default("USD") @db.VarChar(3)
+  recurringInterval    String?   @map("recurring_interval") @db.VarChar(20)
+  currentPeriodStart   DateTime? @map("current_period_start")
+  currentPeriodEnd     DateTime? @map("current_period_end")
+  linkedUserId         String?   @map("linked_user_id")
+  linkedAt             DateTime? @map("linked_at")
+  rawWebhookData       Json?     @map("raw_webhook_data")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  @@index([customerEmail])
+  @@index([linkedUserId])
+  @@map("pending_polar_subscriptions")
   @@schema("public")
 }

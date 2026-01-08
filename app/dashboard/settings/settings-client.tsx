@@ -35,7 +35,13 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
   const handleManageSubscription = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/billing/portal", {
+      const isFreeUser = subscription?.plan === "free" || !subscription?.plan
+
+      // Free users: Create checkout to upgrade
+      // Pro users: Open billing portal to manage/cancel
+      const endpoint = isFreeUser ? "/api/billing/create-checkout" : "/api/billing/portal"
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

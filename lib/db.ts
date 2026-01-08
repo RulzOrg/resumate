@@ -96,8 +96,31 @@ export interface User {
   subscription_period_end?: string
   stripe_customer_id?: string
   stripe_subscription_id?: string
+  polar_customer_id?: string | null
+  polar_subscription_id?: string | null
   beehiiv_subscriber_id?: string | null
   onboarding_completed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PendingPolarSubscription {
+  id: string
+  polar_subscription_id: string
+  polar_customer_id: string
+  polar_checkout_id?: string | null
+  customer_email: string
+  customer_name?: string | null
+  plan_type: string
+  status: string
+  amount: number
+  currency: string
+  recurring_interval?: string | null
+  current_period_start?: string | null
+  current_period_end?: string | null
+  linked_user_id?: string | null
+  linked_at?: string | null
+  raw_webhook_data?: Record<string, any> | null
   created_at: string
   updated_at: string
 }
@@ -2108,4 +2131,260 @@ export async function clearParsedStructure(resumeId: string): Promise<void> {
     }
     throw error
   }
+}
+
+// ==================== POLAR SUBSCRIPTION FUNCTIONS ====================
+
+/**
+ * Get pending Polar subscription by customer email (unlinked, active)
+ */
+export async function getPendingSubscriptionByEmail(email: string): Promise<PendingPolarSubscription | null> {
+  const [subscription] = await sql`
+    SELECT *
+    FROM pending_polar_subscriptions
+    WHERE customer_email = ${email}
+      AND linked_user_id IS NULL
+      AND status = 'active'
+    ORDER BY created_at DESC
+    LIMIT 1
+  `
+  return subscription as PendingPolarSubscription | null
+}
+
+/**
+ * Create a pending Polar subscription record from webhook data
+ */
+export async function createPendingPolarSubscription(data: {
+  polar_subscription_id: string
+  polar_customer_id: string
+  polar_checkout_id?: string | null
+  customer_email: string
+  customer_name?: string | null
+  plan_type?: string
+  status: string
+  amount: number
+  currency?: string
+  recurring_interval?: string | null
+  current_period_start?: Date | string | null
+  current_period_end?: Date | string | null
+  raw_webhook_data?: Record<string, any> | null
+}): Promise<PendingPolarSubscription> {
+  const periodStart = data.current_period_start ? new Date(data.current_period_start) : null
+  const periodEnd = data.current_period_end ? new Date(data.current_period_end) : null
+
+  const [subscription] = await sql`
+    INSERT INTO pending_polar_subscriptions (
+      polar_subscription_id,
+      polar_customer_id,
+      polar_checkout_id,
+      customer_email,
+      customer_name,
+      plan_type,
+      status,
+      amount,
+      currency,
+      recurring_interval,
+      current_period_start,
+      current_period_end,
+      raw_webhook_data,
+      created_at,
+      updated_at
+    ) VALUES (
+      ${data.polar_subscription_id},
+      ${data.polar_customer_id},
+      ${data.polar_checkout_id || null},
+      ${data.customer_email},
+      ${data.customer_name || null},
+      ${data.plan_type || 'pro'},
+      ${data.status},
+      ${data.amount},
+      ${data.currency || 'USD'},
+      ${data.recurring_interval || null},
+      ${periodStart},
+      ${periodEnd},
+      ${data.raw_webhook_data ? JSON.stringify(data.raw_webhook_data) : null},
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (polar_subscription_id) DO UPDATE SET
+      status = EXCLUDED.status,
+      current_period_start = EXCLUDED.current_period_start,
+      current_period_end = EXCLUDED.current_period_end,
+      raw_webhook_data = EXCLUDED.raw_webhook_data,
+      updated_at = NOW()
+    RETURNING *
+  `
+
+  return subscription as PendingPolarSubscription
+}
+
+/**
+ * Link a pending Polar subscription to a user
+ */
+export async function linkPendingSubscription(
+  userId: string,
+  pendingSub: PendingPolarSubscription
+): Promise<User | null> {
+  // Update the user's subscription data
+  const [updatedUser] = await sql`
+    UPDATE users_sync
+    SET subscription_status = 'active',
+        subscription_plan = ${pendingSub.plan_type},
+        subscription_period_end = ${pendingSub.current_period_end},
+        polar_customer_id = ${pendingSub.polar_customer_id},
+        polar_subscription_id = ${pendingSub.polar_subscription_id},
+        updated_at = NOW()
+    WHERE id = ${userId} AND deleted_at IS NULL
+    RETURNING *
+  `
+
+  if (!updatedUser) {
+    console.error('[linkPendingSubscription] Failed to update user:', { userId })
+    return null
+  }
+
+  // Mark the pending subscription as linked
+  await sql`
+    UPDATE pending_polar_subscriptions
+    SET linked_user_id = ${userId},
+        linked_at = NOW(),
+        updated_at = NOW()
+    WHERE id = ${pendingSub.id}
+  `
+
+  console.log('[linkPendingSubscription] Successfully linked subscription:', {
+    userId,
+    polarSubscriptionId: pendingSub.polar_subscription_id,
+    plan: pendingSub.plan_type
+  })
+
+  return updatedUser as User
+}
+
+/**
+ * Update user subscription with Polar data (for existing users)
+ */
+export async function updateUserPolarSubscription(
+  clerkUserId: string,
+  data: {
+    subscription_status?: string
+    subscription_plan?: string
+    subscription_period_end?: string | Date | null
+    polar_customer_id?: string | null
+    polar_subscription_id?: string | null
+  }
+): Promise<User | null> {
+  const periodEnd = data.subscription_period_end
+    ? (typeof data.subscription_period_end === 'string'
+      ? data.subscription_period_end
+      : data.subscription_period_end.toISOString())
+    : null
+
+  let [user] = await sql`
+    SELECT * FROM users_sync
+    WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+  `
+
+  if (!user) {
+    return null
+  }
+
+  if (data.subscription_status !== undefined) {
+    [user] = await sql`
+      UPDATE users_sync
+      SET subscription_status = ${data.subscription_status}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.subscription_plan !== undefined) {
+    [user] = await sql`
+      UPDATE users_sync
+      SET subscription_plan = ${data.subscription_plan}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.subscription_period_end !== undefined) {
+    [user] = await sql`
+      UPDATE users_sync
+      SET subscription_period_end = ${periodEnd}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.polar_customer_id !== undefined) {
+    [user] = await sql`
+      UPDATE users_sync
+      SET polar_customer_id = ${data.polar_customer_id}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  if (data.polar_subscription_id !== undefined) {
+    [user] = await sql`
+      UPDATE users_sync
+      SET polar_subscription_id = ${data.polar_subscription_id}, updated_at = NOW()
+      WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
+      RETURNING *
+    `
+  }
+
+  return user as User
+}
+
+/**
+ * Update user subscription by email (for users who paid before creating account)
+ */
+export async function updateUserSubscriptionByEmail(
+  email: string,
+  data: {
+    subscription_status?: string
+    subscription_plan?: string
+    subscription_period_end?: string | Date | null
+    polar_customer_id?: string | null
+    polar_subscription_id?: string | null
+  }
+): Promise<User | null> {
+  const periodEnd = data.subscription_period_end
+    ? (typeof data.subscription_period_end === 'string'
+      ? data.subscription_period_end
+      : data.subscription_period_end.toISOString())
+    : null
+
+  const [user] = await sql`
+    UPDATE users_sync
+    SET subscription_status = COALESCE(${data.subscription_status ?? null}, subscription_status),
+        subscription_plan = COALESCE(${data.subscription_plan ?? null}, subscription_plan),
+        subscription_period_end = COALESCE(${periodEnd}, subscription_period_end),
+        polar_customer_id = COALESCE(${data.polar_customer_id ?? null}, polar_customer_id),
+        polar_subscription_id = COALESCE(${data.polar_subscription_id ?? null}, polar_subscription_id),
+        updated_at = NOW()
+    WHERE email = ${email} AND deleted_at IS NULL
+    RETURNING *
+  `
+
+  return user as User | null
+}
+
+/**
+ * Update pending subscription status (for cancellations, etc.)
+ */
+export async function updatePendingSubscriptionStatus(
+  polarSubscriptionId: string,
+  status: string
+): Promise<PendingPolarSubscription | null> {
+  const [subscription] = await sql`
+    UPDATE pending_polar_subscriptions
+    SET status = ${status},
+        updated_at = NOW()
+    WHERE polar_subscription_id = ${polarSubscriptionId}
+    RETURNING *
+  `
+
+  return subscription as PendingPolarSubscription | null
 }
