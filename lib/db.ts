@@ -1136,6 +1136,16 @@ export async function createJobAnalysisWithVerification(data: {
       job_title: analysis.job_title
     })
 
+    // Only increment usage for new records, not updates
+    if (isNewRecord) {
+      try {
+        await incrementUsage(user.id, 'job_analysis', user.subscription_plan || 'free')
+      } catch (usageError) {
+        // Log but don't fail - usage tracking is non-critical
+        console.error('[createJobAnalysis] Failed to increment usage:', usageError)
+      }
+    }
+
     return analysis as JobAnalysis
   } catch (error: any) {
     console.error('Failed to create job analysis with verification:', {
