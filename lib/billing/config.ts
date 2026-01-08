@@ -1,14 +1,9 @@
-export type BillingProvider = 'stripe' | 'polar'
+export type BillingProvider = 'polar'
 
 export function getBillingProvider(): BillingProvider {
-  const p = process.env.BILLING_PROVIDER?.toLowerCase()
-  return p === 'polar' ? 'polar' : 'stripe'
+  return 'polar'
 }
 
 export function isPolarSelected(): boolean {
-  return getBillingProvider() === 'polar'
-}
-
-export function isStripeSelected(): boolean {
-  return getBillingProvider() === 'stripe'
+  return true
 }

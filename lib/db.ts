@@ -2,7 +2,7 @@ import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 import { normalizeSalaryRange, normalizeJobField, type SalaryRangeInput } from "./normalizers"
 import type { SystemPromptV1Output, QASection } from "./schemas-v2"
 import type { ParsedResume } from "@/lib/resume-parser"
-import { createSupabaseSQL } from "./supabase-db"
+import { createSupabaseSQL, withTransaction } from "./supabase-db"
 
 type SqlClient = <T = Record<string, any>>(strings: TemplateStringsArray, ...values: any[]) => Promise<T[]>
 
@@ -94,8 +94,6 @@ export interface User {
   subscription_status: string
   subscription_plan: string
   subscription_period_end?: string
-  stripe_customer_id?: string
-  stripe_subscription_id?: string
   polar_customer_id?: string | null
   polar_subscription_id?: string | null
   beehiiv_subscriber_id?: string | null
@@ -386,7 +384,7 @@ export async function migrateUserOwnedRecords(legacyUserId: string, newUserId: s
 export async function getUserByEmail(email: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
-           subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+           subscription_period_end, onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE email = ${email} AND deleted_at IS NULL
   `
@@ -406,7 +404,7 @@ export async function createUserFromClerk(clerkUserId: string, email: string, na
           deleted_at = NULL,
           updated_at = NOW()
       WHERE email = ${email}
-      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+      RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, onboarding_completed_at, created_at, updated_at
     `
     return user as User
   }
@@ -420,7 +418,7 @@ export async function createUserFromClerk(clerkUserId: string, email: string, na
           name = EXCLUDED.name,
           deleted_at = NULL,
           updated_at = NOW()
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, onboarding_completed_at, created_at, updated_at
   `
   return user as User
 }
@@ -428,7 +426,7 @@ export async function createUserFromClerk(clerkUserId: string, email: string, na
 export async function getUserByClerkId(clerkUserId: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan, 
-           subscription_period_end, stripe_customer_id, stripe_subscription_id, 
+           subscription_period_end, polar_customer_id, polar_subscription_id,
            beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
@@ -439,7 +437,7 @@ export async function getUserByClerkId(clerkUserId: string) {
 export async function getUserById(id: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
-           subscription_period_end, stripe_customer_id, stripe_subscription_id,
+           subscription_period_end, polar_customer_id, polar_subscription_id,
            beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
     FROM users_sync
     WHERE id = ${id} AND deleted_at IS NULL
@@ -487,7 +485,7 @@ export async function markUserOnboardingComplete(userId: string) {
     SET onboarding_completed_at = NOW(),
         updated_at = NOW()
     WHERE id = ${userId} AND deleted_at IS NULL
-    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+    RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, onboarding_completed_at, created_at, updated_at
   `
   return user as User | undefined
 }
@@ -1521,15 +1519,15 @@ export async function updateUserSubscription(
     subscription_status?: string
     subscription_plan?: string
     subscription_period_end?: string | null
-    stripe_customer_id?: string | null
-    stripe_subscription_id?: string | null
+    polar_customer_id?: string | null
+    polar_subscription_id?: string | null
   },
 ) {
   // If no data to update, return current user
   if (Object.keys(data).length === 0) {
     const [current] = await sql`
       SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
-             subscription_period_end, stripe_customer_id, stripe_subscription_id
+             subscription_period_end, polar_customer_id, polar_subscription_id
       FROM users_sync
       WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
     `
@@ -1539,7 +1537,7 @@ export async function updateUserSubscription(
   // Use individual UPDATE statements so that explicit nulls are written as NULL
   let [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
-           subscription_period_end, stripe_customer_id, stripe_subscription_id
+           subscription_period_end, polar_customer_id, polar_subscription_id
     FROM users_sync
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
   `
@@ -1554,7 +1552,7 @@ export async function updateUserSubscription(
       SET subscription_status = ${data.subscription_status}, updated_at = NOW()
       WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
       RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
-                subscription_period_end, stripe_customer_id, stripe_subscription_id
+                subscription_period_end, polar_customer_id, polar_subscription_id
     `
   }
 
@@ -1564,7 +1562,7 @@ export async function updateUserSubscription(
       SET subscription_plan = ${data.subscription_plan}, updated_at = NOW()
       WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
       RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
-                subscription_period_end, stripe_customer_id, stripe_subscription_id
+                subscription_period_end, polar_customer_id, polar_subscription_id
     `
   }
 
@@ -1574,27 +1572,27 @@ export async function updateUserSubscription(
       SET subscription_period_end = ${data.subscription_period_end}, updated_at = NOW()
       WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
       RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
-                subscription_period_end, stripe_customer_id, stripe_subscription_id
+                subscription_period_end, polar_customer_id, polar_subscription_id
     `
   }
 
-  if (data.stripe_customer_id !== undefined) {
+  if (data.polar_customer_id !== undefined) {
     ;[user] = await sql`
       UPDATE users_sync
-      SET stripe_customer_id = ${data.stripe_customer_id}, updated_at = NOW()
+      SET polar_customer_id = ${data.polar_customer_id}, updated_at = NOW()
       WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
       RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
-                subscription_period_end, stripe_customer_id, stripe_subscription_id
+                subscription_period_end, polar_customer_id, polar_subscription_id
     `
   }
 
-  if (data.stripe_subscription_id !== undefined) {
+  if (data.polar_subscription_id !== undefined) {
     ;[user] = await sql`
       UPDATE users_sync
-      SET stripe_subscription_id = ${data.stripe_subscription_id}, updated_at = NOW()
+      SET polar_subscription_id = ${data.polar_subscription_id}, updated_at = NOW()
       WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
       RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
-                subscription_period_end, stripe_customer_id, stripe_subscription_id
+                subscription_period_end, polar_customer_id, polar_subscription_id
     `
   }
 
@@ -1627,7 +1625,7 @@ export async function updateBeehiivSubscriberId(
         updated_at = NOW()
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
     RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan,
-              subscription_period_end, stripe_customer_id, stripe_subscription_id,
+              subscription_period_end, polar_customer_id, polar_subscription_id,
               beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
   `
   return user as User | undefined
@@ -1711,7 +1709,7 @@ export async function ensureUserExists(userId: string): Promise<User | null> {
                 deleted_at = NULL,
                 updated_at = NOW()
             WHERE id = ${existingUserByEmail.id}
-            RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, stripe_customer_id, stripe_subscription_id, onboarding_completed_at, created_at, updated_at
+            RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, subscription_period_end, onboarding_completed_at, created_at, updated_at
           `
           return updatedUser as User
         }
@@ -2151,8 +2149,56 @@ export async function getPendingSubscriptionByEmail(email: string): Promise<Pend
   return subscription as PendingPolarSubscription | null
 }
 
+// Supported plan types for Polar subscriptions
+const SUPPORTED_PLAN_TYPES = ['free', 'pro', 'enterprise'] as const
+type SupportedPlanType = typeof SUPPORTED_PLAN_TYPES[number]
+
+// Common ISO 4217 currency codes we support
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'] as const
+type SupportedCurrency = typeof SUPPORTED_CURRENCIES[number]
+
+/**
+ * Extract plan type from Polar webhook data
+ */
+function extractPlanTypeFromWebhook(webhookData: Record<string, any> | null | undefined): string | null {
+  if (!webhookData) return null
+
+  // Try common Polar webhook paths for plan information
+  const planType = webhookData.product?.name?.toLowerCase() ||
+    webhookData.plan?.name?.toLowerCase() ||
+    webhookData.subscription?.product?.name?.toLowerCase() ||
+    webhookData.data?.product?.name?.toLowerCase() ||
+    webhookData.data?.subscription?.product?.name?.toLowerCase()
+
+  if (!planType) return null
+
+  // Normalize plan names to our supported types
+  if (planType.includes('pro') || planType.includes('premium')) return 'pro'
+  if (planType.includes('enterprise') || planType.includes('business')) return 'enterprise'
+  if (planType.includes('free') || planType.includes('starter')) return 'free'
+
+  return planType
+}
+
+/**
+ * Extract currency from Polar webhook data
+ */
+function extractCurrencyFromWebhook(webhookData: Record<string, any> | null | undefined): string | null {
+  if (!webhookData) return null
+
+  // Try common Polar webhook paths for currency
+  return webhookData.currency ||
+    webhookData.price?.currency ||
+    webhookData.subscription?.price?.currency ||
+    webhookData.data?.currency ||
+    webhookData.data?.subscription?.price?.currency ||
+    null
+}
+
 /**
  * Create a pending Polar subscription record from webhook data
+ *
+ * @throws Error if plan_type or currency cannot be determined and are not provided
  */
 export async function createPendingPolarSubscription(data: {
   polar_subscription_id: string
@@ -2160,10 +2206,10 @@ export async function createPendingPolarSubscription(data: {
   polar_checkout_id?: string | null
   customer_email: string
   customer_name?: string | null
-  plan_type?: string
+  plan_type?: string | null
   status: string
   amount: number
-  currency?: string
+  currency?: string | null
   recurring_interval?: string | null
   current_period_start?: Date | string | null
   current_period_end?: Date | string | null
@@ -2171,6 +2217,58 @@ export async function createPendingPolarSubscription(data: {
 }): Promise<PendingPolarSubscription> {
   const periodStart = data.current_period_start ? new Date(data.current_period_start) : null
   const periodEnd = data.current_period_end ? new Date(data.current_period_end) : null
+
+  // Resolve plan_type: use provided value, extract from webhook, or throw error
+  let resolvedPlanType = data.plan_type
+  if (!resolvedPlanType) {
+    resolvedPlanType = extractPlanTypeFromWebhook(data.raw_webhook_data)
+  }
+
+  if (!resolvedPlanType) {
+    throw new Error(
+      `[createPendingPolarSubscription] plan_type is required but was not provided and could not be extracted from webhook data. ` +
+      `polar_subscription_id: ${data.polar_subscription_id}, customer_email: ${data.customer_email}`
+    )
+  }
+
+  // Validate plan_type is supported (warn but don't block for unknown types)
+  if (!SUPPORTED_PLAN_TYPES.includes(resolvedPlanType as SupportedPlanType)) {
+    console.warn(
+      `[createPendingPolarSubscription] Unknown plan_type '${resolvedPlanType}' - not in supported list: ${SUPPORTED_PLAN_TYPES.join(', ')}. ` +
+      `Proceeding anyway. polar_subscription_id: ${data.polar_subscription_id}`
+    )
+  }
+
+  // Resolve currency: use provided value, extract from webhook, or throw error
+  let resolvedCurrency = data.currency
+  if (!resolvedCurrency) {
+    resolvedCurrency = extractCurrencyFromWebhook(data.raw_webhook_data)
+  }
+
+  if (!resolvedCurrency) {
+    throw new Error(
+      `[createPendingPolarSubscription] currency is required but was not provided and could not be extracted from webhook data. ` +
+      `polar_subscription_id: ${data.polar_subscription_id}, customer_email: ${data.customer_email}`
+    )
+  }
+
+  // Normalize currency to uppercase
+  resolvedCurrency = resolvedCurrency.toUpperCase()
+
+  // Validate currency is supported (warn but don't block for unknown currencies)
+  if (!SUPPORTED_CURRENCIES.includes(resolvedCurrency as SupportedCurrency)) {
+    console.warn(
+      `[createPendingPolarSubscription] Unknown currency '${resolvedCurrency}' - not in supported list: ${SUPPORTED_CURRENCIES.join(', ')}. ` +
+      `Proceeding anyway. polar_subscription_id: ${data.polar_subscription_id}`
+    )
+  }
+
+  console.log('[createPendingPolarSubscription] Creating subscription with validated values:', {
+    polar_subscription_id: data.polar_subscription_id,
+    customer_email: data.customer_email,
+    plan_type: resolvedPlanType,
+    currency: resolvedCurrency
+  })
 
   const [subscription] = await sql`
     INSERT INTO pending_polar_subscriptions (
@@ -2195,10 +2293,10 @@ export async function createPendingPolarSubscription(data: {
       ${data.polar_checkout_id || null},
       ${data.customer_email},
       ${data.customer_name || null},
-      ${data.plan_type || 'pro'},
+      ${resolvedPlanType},
       ${data.status},
       ${data.amount},
-      ${data.currency || 'USD'},
+      ${resolvedCurrency},
       ${data.recurring_interval || null},
       ${periodStart},
       ${periodEnd},
@@ -2208,6 +2306,8 @@ export async function createPendingPolarSubscription(data: {
     )
     ON CONFLICT (polar_subscription_id) DO UPDATE SET
       status = EXCLUDED.status,
+      plan_type = EXCLUDED.plan_type,
+      currency = EXCLUDED.currency,
       current_period_start = EXCLUDED.current_period_start,
       current_period_end = EXCLUDED.current_period_end,
       raw_webhook_data = EXCLUDED.raw_webhook_data,
@@ -2220,45 +2320,128 @@ export async function createPendingPolarSubscription(data: {
 
 /**
  * Link a pending Polar subscription to a user
+ * Uses a transaction to ensure both updates succeed or both fail
  */
 export async function linkPendingSubscription(
   userId: string,
   pendingSub: PendingPolarSubscription
 ): Promise<User | null> {
-  // Update the user's subscription data
-  const [updatedUser] = await sql`
-    UPDATE users_sync
-    SET subscription_status = 'active',
-        subscription_plan = ${pendingSub.plan_type},
-        subscription_period_end = ${pendingSub.current_period_end},
-        polar_customer_id = ${pendingSub.polar_customer_id},
-        polar_subscription_id = ${pendingSub.polar_subscription_id},
-        updated_at = NOW()
-    WHERE id = ${userId} AND deleted_at IS NULL
-    RETURNING *
-  `
+  try {
+    const updatedUser = await withTransaction(async (tx) => {
+      // Update the user's subscription data
+      const [user] = await tx`
+        UPDATE users_sync
+        SET subscription_status = 'active',
+            subscription_plan = ${pendingSub.plan_type},
+            subscription_period_end = ${pendingSub.current_period_end},
+            polar_customer_id = ${pendingSub.polar_customer_id},
+            polar_subscription_id = ${pendingSub.polar_subscription_id},
+            updated_at = NOW()
+        WHERE id = ${userId} AND deleted_at IS NULL
+        RETURNING *
+      `
 
-  if (!updatedUser) {
-    console.error('[linkPendingSubscription] Failed to update user:', { userId })
+      if (!user) {
+        throw new Error(`Failed to update user: ${userId}`)
+      }
+
+      // Mark the pending subscription as linked
+      await tx`
+        UPDATE pending_polar_subscriptions
+        SET linked_user_id = ${userId},
+            linked_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${pendingSub.id}
+      `
+
+      return user
+    })
+
+    console.log('[linkPendingSubscription] Successfully linked subscription:', {
+      userId,
+      polarSubscriptionId: pendingSub.polar_subscription_id,
+      plan: pendingSub.plan_type
+    })
+
+    return updatedUser as unknown as User
+  } catch (error) {
+    console.error('[linkPendingSubscription] Transaction failed:', {
+      userId,
+      pendingSubId: pendingSub.id,
+      error: error instanceof Error ? error.message : error
+    })
     return null
   }
+}
 
-  // Mark the pending subscription as linked
-  await sql`
-    UPDATE pending_polar_subscriptions
-    SET linked_user_id = ${userId},
-        linked_at = NOW(),
-        updated_at = NOW()
-    WHERE id = ${pendingSub.id}
-  `
+/**
+ * Link a pending Polar subscription to a user by email
+ * Uses a transaction to ensure both updates succeed or both fail
+ * This is useful for webhook scenarios where we have email but need to find the user
+ */
+export async function linkPendingSubscriptionByEmail(
+  email: string,
+  pendingSub: PendingPolarSubscription
+): Promise<User | null> {
+  try {
+    const updatedUser = await withTransaction(async (tx) => {
+      // First, find the user by email
+      const [user] = await tx`
+        SELECT id FROM users_sync
+        WHERE email = ${email} AND deleted_at IS NULL
+        LIMIT 1
+      `
 
-  console.log('[linkPendingSubscription] Successfully linked subscription:', {
-    userId,
-    polarSubscriptionId: pendingSub.polar_subscription_id,
-    plan: pendingSub.plan_type
-  })
+      if (!user) {
+        throw new Error(`User not found with email: ${email}`)
+      }
 
-  return updatedUser as User
+      const userId = user.id
+
+      // Update the user's subscription data
+      const [updatedUser] = await tx`
+        UPDATE users_sync
+        SET subscription_status = 'active',
+            subscription_plan = ${pendingSub.plan_type},
+            subscription_period_end = ${pendingSub.current_period_end},
+            polar_customer_id = ${pendingSub.polar_customer_id},
+            polar_subscription_id = ${pendingSub.polar_subscription_id},
+            updated_at = NOW()
+        WHERE id = ${userId} AND deleted_at IS NULL
+        RETURNING *
+      `
+
+      if (!updatedUser) {
+        throw new Error(`Failed to update user: ${userId}`)
+      }
+
+      // Mark the pending subscription as linked
+      await tx`
+        UPDATE pending_polar_subscriptions
+        SET linked_user_id = ${userId},
+            linked_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${pendingSub.id}
+      `
+
+      return updatedUser
+    })
+
+    console.log('[linkPendingSubscriptionByEmail] Successfully linked subscription:', {
+      email,
+      polarSubscriptionId: pendingSub.polar_subscription_id,
+      plan: pendingSub.plan_type
+    })
+
+    return updatedUser as unknown as User
+  } catch (error) {
+    console.error('[linkPendingSubscriptionByEmail] Transaction failed:', {
+      email,
+      pendingSubId: pendingSub.id,
+      error: error instanceof Error ? error.message : error
+    })
+    return null
+  }
 }
 
 /**

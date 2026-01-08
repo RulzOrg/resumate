@@ -245,7 +245,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
               },
               {
                 q: "What payment methods do you accept?",
-                a: "We accept all major credit cards, including Visa, Mastercard, and American Express. All payments are processed securely through Stripe.",
+                a: "We accept all major credit cards, including Visa, Mastercard, and American Express. All payments are processed securely through Polar.",
               },
             ].map((item, idx) => (
               <details key={idx} className="group relative overflow-hidden rounded-xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5">

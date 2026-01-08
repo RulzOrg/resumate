@@ -80,13 +80,15 @@ export function PricingCard({
         }
       } else {
         // Not logged in: Use direct Polar checkout URL (payment-first flow)
-        const checkoutUrl = process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_MONTHLY
+        const checkoutUrl = billingCycle === "annual"
+          ? process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_ANNUAL
+          : process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_MONTHLY
 
         if (checkoutUrl) {
           window.location.href = checkoutUrl
         } else {
           // Fallback: redirect to signup if no checkout URL configured
-          console.warn("NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_MONTHLY not configured")
+          console.warn(`NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_${billingCycle === "annual" ? "ANNUAL" : "MONTHLY"} not configured`)
           router.push("/auth/signup")
         }
       }

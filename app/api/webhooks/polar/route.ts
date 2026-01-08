@@ -9,13 +9,24 @@ import {
 
 const webhookSecret = process.env.POLAR_WEBHOOK_SECRET || ""
 
+/**
+ * Redact email for logging - shows only domain to avoid storing PII
+ * e.g., "user@example.com" -> "***@example.com"
+ */
+function redactEmail(email: string | undefined | null): string {
+  if (!email) return "N/A"
+  const [local, domain] = email.split("@")
+  if (!domain) return "***"
+  return `***@${domain}`
+}
+
 export async function POST(request: NextRequest) {
   console.log("[Polar Webhook] Received webhook")
 
   try {
     if (!webhookSecret) {
-      console.warn("[Polar Webhook] Webhook secret not configured; skipping processing")
-      return NextResponse.json({ received: true, skipped: true })
+      console.error("[Polar Webhook] Webhook secret not configured - POLAR_WEBHOOK_SECRET is missing or empty")
+      return NextResponse.json({ error: "Webhook secret not configured" }, { status: 500 })
     }
 
     const body = await request.text()
@@ -94,7 +105,7 @@ async function handleSubscriptionActive(data: any) {
 
   console.log("[Polar Webhook] Subscription active:", {
     subscriptionId,
-    customerEmail,
+    customerEmail: redactEmail(customerEmail),
     status,
   })
 
@@ -138,7 +149,7 @@ async function handleSubscriptionActive(data: any) {
       raw_webhook_data: data,
     })
 
-    console.log("[Polar Webhook] Created pending subscription for:", customerEmail)
+    console.log("[Polar Webhook] Created pending subscription for:", redactEmail(customerEmail))
   }
 }
 
@@ -154,7 +165,7 @@ async function handleSubscriptionUpdated(data: any) {
 
   console.log("[Polar Webhook] Subscription updated:", {
     subscriptionId,
-    customerEmail,
+    customerEmail: redactEmail(customerEmail),
     status,
   })
 
@@ -191,7 +202,7 @@ async function handleSubscriptionCanceled(data: any) {
 
   console.log("[Polar Webhook] Subscription canceled:", {
     subscriptionId,
-    customerEmail,
+    customerEmail: redactEmail(customerEmail),
   })
 
   if (!customerEmail) {
@@ -222,7 +233,7 @@ async function handleSubscriptionRevoked(data: any) {
 
   console.log("[Polar Webhook] Subscription revoked:", {
     subscriptionId,
-    customerEmail,
+    customerEmail: redactEmail(customerEmail),
   })
 
   if (!customerEmail) {

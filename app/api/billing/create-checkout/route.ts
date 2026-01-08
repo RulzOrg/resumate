@@ -3,9 +3,20 @@ import { auth, currentUser } from "@clerk/nextjs/server"
 import { Polar } from "@polar-sh/sdk"
 import { getUserByClerkId } from "@/lib/db"
 
+// Validate required environment variables at module initialization
+const polarApiKey = process.env.POLAR_API_KEY
+if (!polarApiKey) {
+  throw new Error(
+    "POLAR_API_KEY environment variable is required but not set. Please configure it in your environment variables."
+  )
+}
+
+const polarServer =
+  process.env.POLAR_SERVER === "production" ? "production" : "sandbox"
+
 const polar = new Polar({
-  accessToken: process.env.POLAR_API_KEY!,
-  server: process.env.POLAR_SERVER === "production" ? "production" : "sandbox",
+  accessToken: polarApiKey,
+  server: polarServer,
 })
 
 export async function POST(request: NextRequest) {
@@ -72,7 +83,6 @@ export async function POST(request: NextRequest) {
     console.log("[Billing] Created checkout session:", {
       checkoutId: checkout.id,
       userId,
-      email: clerkUser.emailAddresses[0]?.emailAddress,
     })
 
     return NextResponse.json({
@@ -86,10 +96,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      {
-        error: "Failed to create checkout session",
-        message: error?.message || "Unknown error",
-      },
+      { error: "Failed to create checkout session" },
       { status: 500 }
     )
   }

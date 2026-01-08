@@ -78,7 +78,6 @@
     "resend": "^6.4.0",
     "sharp": "^0.34.4",
     "sonner": "latest",
-    "stripe": "latest",
     "svix": "^1.76.1",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",

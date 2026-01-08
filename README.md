@@ -1,12 +1,12 @@
 ## ResuMate AI
 
-AI-powered resume optimization and job description analysis built with Next.js 14 App Router, TypeScript, Tailwind, Clerk, Neon/Postgres, and Stripe.
+AI-powered resume optimization and job description analysis built with Next.js 14 App Router, TypeScript, Tailwind, Clerk, Neon/Postgres, and Polar.
 
 ### Features
 - **AI job analysis**: extract key requirements and score alignment
 - **Resume optimization**: generate tailored versions and track versions
 - **Auth**: Clerk (email/password + social providers)
-- **Billing**: Stripe checkout and portal
+- **Billing**: Polar checkout and portal
 - **Storage**: Cloudflare R2 or AWS S3 for resume files
 - **Serverless-first**: API routes under `app/api/*`
 
@@ -15,7 +15,7 @@ AI-powered resume optimization and job description analysis built with Next.js 1
 - **TypeScript**, **Tailwind CSS 4**
 - **Clerk** for auth
 - **Neon/Postgres** for data (`@neondatabase/serverless`)
-- **Stripe** for payments
+- **Polar** for payments
 - **R2 / S3** for file storage
 
 ---
@@ -39,7 +39,7 @@ Minimum required to boot locally:
 
 Optional but used in various features:
 - **CLERK_WEBHOOK_SECRET**: For Clerk webhooks
-- **STRIPE_SECRET_KEY**, **STRIPE_WEBHOOK_SECRET**
+- **POLAR_API_KEY**, **POLAR_WEBHOOK_SECRET**, **POLAR_PRICE_PRO_MONTHLY**
 - **R2_ACCOUNT_ID**, **R2_ACCESS_KEY_ID**, **R2_SECRET_ACCESS_KEY**, **R2_BUCKET_NAME**, **R2_REGION**, **R2_PUBLIC_BASE_URL**
 - or **AWS_ACCESS_KEY_ID**, **AWS_SECRET_ACCESS_KEY**, **AWS_REGION**, **S3_BUCKET_NAME**, **S3_PUBLIC_BASE_URL**
 - **QDRANT_URL**, **QDRANT_API_KEY**: Vector search for AI scoring (required for Step 2 job review feature)
@@ -57,9 +57,10 @@ CLERK_WEBHOOK_SECRET=whsec_xxx
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 DATABASE_URL=postgres://user:password@localhost:5432/resumate
 
-# Stripe (optional to start)
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
+# Polar (required for billing)
+POLAR_API_KEY=polar_xxx
+POLAR_WEBHOOK_SECRET=whsec_xxx
+POLAR_PRICE_PRO_MONTHLY=price_xxx
 
 # Storage (pick R2 or S3)
 R2_ACCOUNT_ID=
@@ -171,9 +172,9 @@ If you see a "frozen lockfile" error related to pnpm, ensure there is no `pnpm-l
   - Verify `DATABASE_URL` is correct and reachable
   - Run `python3 scripts/setup-database.py` to create necessary tables
 
-- **Stripe webhook errors in dev**
-  - Set `STRIPE_WEBHOOK_SECRET`
-  - Use the Stripe CLI to forward events to `/api/webhooks/stripe`
+- **Polar webhook errors in dev**
+  - Set `POLAR_WEBHOOK_SECRET`
+  - Configure webhook endpoint in Polar dashboard to point to `/api/webhooks/polar`
 
 - **Storage upload errors**
   - Make sure R2 or S3 credentials and bucket names are set; only one provider needs to be configured

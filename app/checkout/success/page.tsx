@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -13,6 +13,7 @@ function CheckoutSuccessContent() {
   const searchParams = useSearchParams()
   const sessionToken = searchParams.get("customer_session_token")
   const [countdown, setCountdown] = useState(3)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Handle redirects after auth state loads
   useEffect(() => {
@@ -26,10 +27,13 @@ function CheckoutSuccessContent() {
 
     // Authenticated users: Auto-redirect to dashboard after countdown
     if (isSignedIn) {
-      const timer = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
-            clearInterval(timer)
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current)
+              intervalRef.current = null
+            }
             router.push("/dashboard")
             return 0
           }
@@ -37,7 +41,12 @@ function CheckoutSuccessContent() {
         })
       }, 1000)
 
-      return () => clearInterval(timer)
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+      }
     }
   }, [isSignedIn, isLoaded, router])
 
@@ -78,7 +87,13 @@ function CheckoutSuccessContent() {
                 <Loader2 className="h-5 w-5 animate-spin text-emerald-500 mx-auto" />
               </div>
               <Button
-                onClick={() => router.push("/dashboard")}
+                onClick={() => {
+                  if (intervalRef.current) {
+                    clearInterval(intervalRef.current)
+                    intervalRef.current = null
+                  }
+                  router.push("/dashboard")
+                }}
                 className="w-full bg-emerald-500 text-black hover:bg-emerald-400"
               >
                 Go to Dashboard Now

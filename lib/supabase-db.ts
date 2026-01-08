@@ -155,3 +155,22 @@ export function resetSupabaseConnection(): void {
     supabaseSql = null
   }
 }
+
+/**
+ * Transaction SQL client type - supports template literal queries
+ */
+export type TransactionSql = <T = Record<string, unknown>>(
+  strings: TemplateStringsArray,
+  ...values: unknown[]
+) => Promise<T[]>
+
+/**
+ * Execute multiple queries within a transaction
+ * All queries succeed together or rollback on any failure
+ */
+export async function withTransaction<T>(
+  callback: (sql: TransactionSql) => Promise<T>
+): Promise<T> {
+  const client = getSupabasePostgres()
+  return client.begin((tx) => callback(tx as unknown as TransactionSql))
+}

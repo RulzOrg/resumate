@@ -10,7 +10,6 @@ export interface PricingTier {
   price: number
   currency: string
   interval: 'month' | 'year'
-  stripePriceId: string
   features: (string | PricingFeature)[]
   limits: {
     resumeOptimizations: number | 'unlimited'
@@ -31,7 +30,6 @@ function getPricingTiers(): PricingTier[] {
       price: 0,
       currency: 'USD',
       interval: 'month',
-      stripePriceId: '', // No Stripe price needed for free tier
       features: [
         '3 resume optimizations / month',
         'Basic job analysis',
@@ -55,7 +53,6 @@ function getPricingTiers(): PricingTier[] {
       price: 19,
       currency: 'USD',
       interval: 'month',
-      stripePriceId: process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_1234567890',
       features: [
         'Unlimited resume optimizations',
         'Advanced job analysis',
@@ -97,15 +94,8 @@ export function getPricingTier(tierId: string): PricingTier | undefined {
   return getPricingTiers().find(tier => tier.id === tierId)
 }
 
-export function getPricingTierByStripePrice(stripePriceId: string): PricingTier | undefined {
-  return getPricingTiers().find(tier => tier.stripePriceId === stripePriceId)
-}
-
-// Provider-agnostic resolver for price IDs
-export function getPriceIdForProvider(tierId: string, provider: 'stripe' | 'polar'): string | undefined {
-  if (provider === 'stripe') {
-    return getPricingTier(tierId)?.stripePriceId
-  }
+// Polar price ID resolver
+export function getPolarPriceId(tierId: string): string | undefined {
   // Polar IDs come from env; we only support Pro tiers for now
   if (tierId === 'pro') return process.env.POLAR_PRICE_PRO_MONTHLY
   if (tierId === 'pro-annual') return process.env.POLAR_PRICE_PRO_YEARLY

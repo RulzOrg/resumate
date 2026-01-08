@@ -37,16 +37,8 @@ const envSchema = z.object({
   // LlamaCloud (for document parsing) - REQUIRED
   LLAMACLOUD_API_KEY: z.string().min(1, "LlamaCloud API key is required"),
 
-  // Payment Processing - At least one required
-  // Stripe
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
-  STRIPE_PRICE_PRO_YEARLY: z.string().optional(),
-  STRIPE_PRICE_ENTERPRISE_MONTHLY: z.string().optional(),
-  STRIPE_PRICE_ENTERPRISE_YEARLY: z.string().optional(),
-
-  // Polar (alternative to Stripe)
+  // Payment Processing - Polar required
+  // Polar
   POLAR_API_KEY: z.string().optional(),
   POLAR_WEBHOOK_SECRET: z.string().optional(),
   POLAR_SERVER: z.enum(["production", "sandbox"]).optional(),
@@ -105,13 +97,11 @@ const envSchema = z.object({
 // Add custom validation rules
 const refinedEnvSchema = envSchema.refine(
   (env) => {
-    // Must have at least one payment provider configured
-    const hasStripe = env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET
-    const hasPolar = env.POLAR_API_KEY
-    return hasStripe || hasPolar
+    // Must have Polar configured
+    return !!env.POLAR_API_KEY
   },
   {
-    message: "At least one payment provider (Stripe or Polar) must be configured",
+    message: "POLAR_API_KEY is required for payment processing",
   }
 ).refine(
   (env) => {
@@ -213,9 +203,8 @@ export function getConfig() {
 
     // Payment providers
     payments: {
-      hasStripe: Boolean(environment.STRIPE_SECRET_KEY),
       hasPolar: Boolean(environment.POLAR_API_KEY),
-      preferredProvider: environment.POLAR_API_KEY ? "polar" : "stripe",
+      provider: "polar",
     },
 
     // URLs

@@ -17,8 +17,6 @@ model UserSync {
   subscriptionStatus     String    @default("free") @map("subscription_status")
   subscriptionPlan       String    @default("free") @map("subscription_plan")
   subscriptionPeriodEnd  DateTime? @map("subscription_period_end")
-  stripeCustomerId       String?   @unique @map("stripe_customer_id")
-  stripeSubscriptionId   String?   @unique @map("stripe_subscription_id")
   polarCustomerId        String?   @unique @map("polar_customer_id")
   polarSubscriptionId    String?   @unique @map("polar_subscription_id")
   beehiivSubscriberId    String?   @map("beehiiv_subscriber_id")
@@ -26,10 +24,11 @@ model UserSync {
   updatedAt              DateTime  @updatedAt @map("updated_at")
   deletedAt              DateTime? @map("deleted_at")
 
-  resumes         Resume[]
-  resumeVersions  ResumeVersion[]
-  jobAnalyses     JobAnalysis[]
-  jobApplications JobApplication[]
+  resumes                   Resume[]
+  resumeVersions            ResumeVersion[]
+  jobAnalyses               JobAnalysis[]
+  jobApplications           JobApplication[]
+  pendingPolarSubscriptions PendingPolarSubscription[]
 
   @@index([clerkUserId])
   @@map("users_sync")
@@ -208,8 +207,12 @@ model PendingPolarSubscription {
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
+  linkedUser UserSync? @relation(fields: [linkedUserId], references: [id], onDelete: SetNull)
+
   @@index([customerEmail])
   @@index([linkedUserId])
+  @@index([polarCustomerId])
+  @@index([status])
   @@map("pending_polar_subscriptions")
   @@schema("public")
 }
