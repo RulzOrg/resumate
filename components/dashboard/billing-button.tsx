@@ -18,7 +18,7 @@ export function BillingButton({ subscriptionStatus, subscriptionPlan }: BillingB
         // Redirect to pricing page
         window.location.href = "/pricing"
       } else {
-        // Open Stripe customer portal
+        // Open Polar customer portal
         const response = await fetch("/api/billing/portal", {
           method: "POST",
         })
@@ -31,7 +31,7 @@ export function BillingButton({ subscriptionStatus, subscriptionPlan }: BillingB
         } else {
           const { error } = await response.json()
           // For development: show alert with error, in production: handle more gracefully
-          alert(`Billing portal not available: ${error}\n\nThis is expected in development with test data. In production, this would open the Stripe customer portal.`)
+          alert(`Billing portal not available: ${error}\n\nThis is expected in development with test data. In production, this would open the Polar customer portal.`)
         }
       }
     } catch (error) {

@@ -16,8 +16,8 @@ export interface SubscriptionInfo {
   plan: string
   periodEnd?: Date
   cancelAtPeriodEnd?: boolean
-  stripeCustomerId?: string
-  stripeSubscriptionId?: string
+  polarCustomerId?: string
+  polarSubscriptionId?: string
 }
 
 export interface UsageLimits {
@@ -69,8 +69,8 @@ export async function getCurrentSubscription(): Promise<SubscriptionInfo | null>
       status: (user.subscription_status as SubscriptionStatus) || 'free',
       plan: user.subscription_plan || 'free',
       periodEnd: user.subscription_period_end ? new Date(user.subscription_period_end) : undefined,
-      stripeCustomerId: user.stripe_customer_id || undefined,
-      stripeSubscriptionId: user.stripe_subscription_id || undefined,
+      polarCustomerId: user.polar_customer_id || undefined,
+      polarSubscriptionId: user.polar_subscription_id || undefined,
     }
   } catch (error) {
     console.error('Error getting current subscription:', error)

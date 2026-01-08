@@ -2,6 +2,8 @@ import { getCurrentSubscription } from "@/lib/subscription"
 import { getAllPricingTiers, getAllAnnualPricingTiers } from "@/lib/pricing"
 import { PricingClient } from "./pricing-client"
 
+export const dynamic = 'force-dynamic'
+
 export default async function PricingPage() {
   const subscription = await getCurrentSubscription()
   

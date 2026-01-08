@@ -17,13 +17,7 @@ interface PricingClientProps {
 }
 
 export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }: PricingClientProps) {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'annual'>("monthly")
-
-  const currentTiers = useMemo(() => (
-    billingCycle === 'annual' ? [pricingTiers[0], ...annualPricingTiers] : pricingTiers
-  ), [billingCycle, pricingTiers, annualPricingTiers])
-
-  const toggleTransform = billingCycle === 'monthly' ? 'translateX(0%)' : 'translateX(100%)'
+  const currentTiers = useMemo(() => pricingTiers, [pricingTiers])
 
   return (
     <div className="antialiased text-foreground bg-background font-sans">
@@ -82,32 +76,6 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
             </p>
           </div>
 
-          {/* Toggle */}
-          <div className="flex flex-col items-center gap-3 mt-10">
-            <div className="relative flex items-center p-1 bg-surface-subtle dark:bg-white/5 border border-border dark:border-white/10 rounded-full">
-              <button
-                onClick={() => setBillingCycle('monthly')}
-                className={`px-6 py-2 text-sm font-medium rounded-full z-10 transition-colors duration-300 ${billingCycle === 'monthly' ? 'text-foreground dark:text-white' : 'text-foreground/60 dark:text-white/60'}`}
-              >
-                Monthly
-              </button>
-              <button
-                onClick={() => setBillingCycle('annual')}
-                className={`px-6 py-2 text-sm font-medium rounded-full z-10 transition-colors duration-300 ${billingCycle === 'annual' ? 'text-foreground dark:text-white' : 'text-foreground/60 dark:text-white/60'}`}
-              >
-                Yearly
-              </button>
-              <div
-                className="absolute h-10 w-1/2 bg-surface-muted dark:bg-white/10 rounded-full transition-transform duration-300 ease-in-out"
-                style={{ transform: toggleTransform }}
-              ></div>
-            </div>
-            {billingCycle === 'annual' && (
-              <span className="text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full px-3 py-1">
-                Save 17% with annual billing
-              </span>
-            )}
-          </div>
 
           {/* Pricing Grid */}
           <div className="relative max-w-6xl mx-auto mt-12">
@@ -116,7 +84,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                 <PricingCard
                   key={tier.id}
                   tier={tier}
-                  billingCycle={billingCycle}
+                  billingCycle="monthly"
                   currentPlan={currentPlan}
                   popular={tier.popular}
                 />
@@ -135,7 +103,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
           </div>
 
           <div className="mt-12 overflow-x-auto">
-            <div className="min-w-full max-w-3xl mx-auto">
+            <div className="min-w-full max-w-4xl mx-auto">
               {/* Header */}
               <div className="grid grid-cols-3 gap-6 pb-4 border-b border-border dark:border-white/10">
                 <div className="text-base font-medium text-foreground/90 dark:text-white/90">Features</div>
@@ -151,29 +119,26 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                   <div className="text-center text-sm text-foreground/90 dark:text-white/90">Unlimited</div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
-                  <div className="text-sm text-foreground/80 dark:text-white/80">Job Analyses</div>
-                  <div className="text-center text-sm text-foreground/90 dark:text-white/90">5/month</div>
-                  <div className="text-center text-sm text-foreground/90 dark:text-white/90">Unlimited</div>
-                </div>
-                <div className="grid grid-cols-3 gap-6 py-5 items-center">
-                  <div className="text-sm text-foreground/80 dark:text-white/80 flex items-center gap-2 flex-wrap">
-                    Resume Health Checker
-                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
-                  </div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
-                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                  <div className="text-sm text-foreground/80 dark:text-white/80">Job Analysis</div>
+                  <div className="text-center text-sm text-foreground/90 dark:text-white/90">Basic</div>
+                  <div className="text-center text-sm text-foreground/90 dark:text-white/90">Advanced</div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 dark:text-white/80">ATS Compatibility Check</div>
-                  <div className="text-center text-sm text-foreground/90 dark:text-white/90">Basic</div>
-                  <div className="text-center text-sm text-foreground/90 dark:text-white/90 flex items-center justify-center gap-2 flex-wrap">
-                    Advanced
-                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
-                  </div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 dark:text-white/80 flex items-center gap-2 flex-wrap">
-                    Cover Letter Generation
+                    Standard Templates
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                  </div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-foreground/80 dark:text-white/80 flex items-center gap-2 flex-wrap">
+                    AI Cover Letter Generator
                     <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
                   </div>
                   <div className="text-center"><Minus className="h-5 w-5 text-foreground/40 dark:text-white/40 mx-auto" /></div>
@@ -181,7 +146,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 dark:text-white/80 flex items-center gap-2 flex-wrap">
-                    Evidence-Based Rewriting
+                    Premium Templates
                     <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
                   </div>
                   <div className="text-center"><Minus className="h-5 w-5 text-foreground/40 dark:text-white/40 mx-auto" /></div>
@@ -195,6 +160,11 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 dark:text-white/80">Keyword Optimization</div>
                   <div className="text-center"><Minus className="h-5 w-5 text-foreground/40 dark:text-white/40 mx-auto" /></div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-6 py-5 items-center">
+                  <div className="text-sm text-foreground/80 dark:text-white/80">Export to PDF/Word</div>
+                  <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-emerald-400 mx-auto" /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
@@ -275,7 +245,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
               },
               {
                 q: "What payment methods do you accept?",
-                a: "We accept all major credit cards, including Visa, Mastercard, and American Express. All payments are processed securely through Stripe.",
+                a: "We accept all major credit cards, including Visa, Mastercard, and American Express. All payments are processed securely through Polar.",
               },
             ].map((item, idx) => (
               <details key={idx} className="group relative overflow-hidden rounded-xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5">

@@ -10,7 +10,6 @@ export interface PricingTier {
   price: number
   currency: string
   interval: 'month' | 'year'
-  stripePriceId: string
   features: (string | PricingFeature)[]
   limits: {
     resumeOptimizations: number | 'unlimited'
@@ -27,17 +26,15 @@ function getPricingTiers(): PricingTier[] {
     {
       id: 'free',
       name: 'Free',
-      description: 'Perfect for getting started with AI resume optimization',
+      description: 'Perfect for getting started with AI resume optimization.',
       price: 0,
       currency: 'USD',
       interval: 'month',
-      stripePriceId: '', // No Stripe price needed for free tier
       features: [
-        '3 resume optimizations per month',
-        '5 job analyses per month',
-        'Basic ATS compatibility check',
-        { text: 'Resume health checker', comingSoon: true },
-        { text: 'Standard resume templates', comingSoon: true },
+        '3 resume optimizations / month',
+        'Basic job analysis',
+        'ATS compatibility check',
+        { text: 'Standard templates', comingSoon: true },
         'Export to PDF/Word',
         'Community support'
       ],
@@ -52,52 +49,20 @@ function getPricingTiers(): PricingTier[] {
     {
       id: 'pro',
       name: 'Pro',
-      description: 'For serious job seekers who want the best results',
+      description: 'Ideal for active job seekers and career changers.',
       price: 19,
       currency: 'USD',
       interval: 'month',
-      stripePriceId: process.env.STRIPE_PRICE_PRO_MONTHLY || 'price_1234567890',
       features: [
         'Unlimited resume optimizations',
-        'Unlimited job analysis',
-        { text: 'Advanced ATS scoring & insights', comingSoon: true },
-        { text: 'AI-powered resume health checker', comingSoon: true },
+        'Advanced job analysis',
+        'ATS compatibility check',
+        { text: 'AI cover letter generator', comingSoon: true },
+        { text: 'Premium templates', comingSoon: true },
         'Resume version management',
-        { text: 'Evidence-based bullet rewriting', comingSoon: true },
-        { text: 'Industry-specific recommendations', comingSoon: true },
         'Keyword optimization',
-        { text: 'Cover letter generation', comingSoon: true },
         'Priority email support',
         'Export to PDF/Word/TXT'
-      ],
-      limits: {
-        resumeOptimizations: 'unlimited',
-        jobAnalyses: 'unlimited',
-        resumeVersions: 'unlimited',
-        supportLevel: 'priority'
-      },
-      popular: true
-    }
-  ]
-}
-
-// Function to get annual pricing tiers with runtime environment variables
-function getAnnualPricingTiers(): PricingTier[] {
-  return [
-    {
-      id: 'pro-annual',
-      name: 'Pro',
-      description: 'For serious job seekers who want the best results',
-      price: 190, // 2 months free (12 * 19 - 38)
-      currency: 'USD',
-      interval: 'year',
-      stripePriceId: process.env.STRIPE_PRICE_PRO_YEARLY || 'price_1234567891',
-      features: [
-        'Everything in Pro Monthly',
-        'Save 17% with annual billing',
-        '2 months free',
-        'Annual career strategy consultation',
-        'Priority feature requests'
       ],
       limits: {
         resumeOptimizations: 'unlimited',
@@ -115,28 +80,22 @@ export function getAllPricingTiers() {
   return getPricingTiers()
 }
 
-export function getAllAnnualPricingTiers() {
-  return getAnnualPricingTiers()
+// Annual pricing tiers - returns empty array as we only offer monthly pricing now
+export function getAllAnnualPricingTiers(): PricingTier[] {
+  return []
 }
 
 // Keep backward compatibility
 export const pricingTiers = getAllPricingTiers()
-export const annualPricingTiers = getAllAnnualPricingTiers()
+export const annualPricingTiers: PricingTier[] = [] // Deprecated - we only offer monthly pricing now
 
 // Helper functions
 export function getPricingTier(tierId: string): PricingTier | undefined {
-  return [...getPricingTiers(), ...getAnnualPricingTiers()].find(tier => tier.id === tierId)
+  return getPricingTiers().find(tier => tier.id === tierId)
 }
 
-export function getPricingTierByStripePrice(stripePriceId: string): PricingTier | undefined {
-  return [...getPricingTiers(), ...getAnnualPricingTiers()].find(tier => tier.stripePriceId === stripePriceId)
-}
-
-// Provider-agnostic resolver for price IDs
-export function getPriceIdForProvider(tierId: string, provider: 'stripe' | 'polar'): string | undefined {
-  if (provider === 'stripe') {
-    return getPricingTier(tierId)?.stripePriceId
-  }
+// Polar price ID resolver
+export function getPolarPriceId(tierId: string): string | undefined {
   // Polar IDs come from env; we only support Pro tiers for now
   if (tierId === 'pro') return process.env.POLAR_PRICE_PRO_MONTHLY
   if (tierId === 'pro-annual') return process.env.POLAR_PRICE_PRO_YEARLY

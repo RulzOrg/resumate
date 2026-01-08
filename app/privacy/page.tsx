@@ -55,7 +55,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 mt-4 space-y-2 text-foreground/80">
               <li><strong>Account Information:</strong> Name, email address, and password (managed by Clerk)</li>
               <li><strong>Profile Information:</strong> Professional title, industry, and preferences</li>
-              <li><strong>Payment Information:</strong> Billing details processed securely through Stripe</li>
+              <li><strong>Payment Information:</strong> Billing details processed securely through Polar</li>
             </ul>
 
             <h3 className="text-xl font-medium mt-6 mb-3">2.2 Resume Content</h3>
@@ -145,11 +145,11 @@ export default function PrivacyPage() {
               </div>
               
               <div className="p-4 bg-surface-subtle dark:bg-white/5 rounded-lg">
-                <h4 className="font-medium">Stripe (Payments)</h4>
+                <h4 className="font-medium">Polar (Payments)</h4>
                 <p className="text-sm text-foreground/70 mt-1">
                   Processes subscription payments securely. We never store your full credit card details.
-                  <a href="https://stripe.com/privacy" className="text-emerald-500 ml-1" target="_blank" rel="noopener noreferrer">
-                    Stripe Privacy Policy
+                  <a href="https://polar.sh/privacy" className="text-emerald-500 ml-1" target="_blank" rel="noopener noreferrer">
+                    Polar Privacy Policy
                   </a>
                 </p>
               </div>

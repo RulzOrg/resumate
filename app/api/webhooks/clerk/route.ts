@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { sql, createUserFromClerk, updateUserFromClerk, deleteUserByClerkId, getUserByClerkId, updateBeehiivSubscriberId } from "@/lib/db"
+import { sql, createUserFromClerk, updateUserFromClerk, deleteUserByClerkId, getUserByClerkId, updateBeehiivSubscriberId, getPendingSubscriptionByEmail, linkPendingSubscription } from "@/lib/db"
 import { subscribeUser, getSubscriberByEmail, unsubscribeUser, isBeehiivEnabled, safeBeehiivOperation } from "@/lib/beehiiv"
 import { createLogger } from "@/lib/debug-logger"
 
@@ -59,6 +59,25 @@ export async function POST(req: NextRequest) {
           })
         }
         // Failures are already logged by safeBeehiivOperation - no need to duplicate
+      }
+
+      // Check for pending Polar subscription (payment-first flow)
+      // If user paid before creating account, link their subscription now
+      if (email) {
+        try {
+          const pendingSub = await getPendingSubscriptionByEmail(email)
+          if (pendingSub) {
+            await linkPendingSubscription(clerkId, pendingSub)
+            logger.log('Linked pending Polar subscription:', {
+              clerk_user_id: clerkId,
+              email,
+              polar_subscription_id: pendingSub.polar_subscription_id
+            })
+          }
+        } catch (err) {
+          // Don't fail the webhook if linking fails - user can still use the app
+          logger.error('Failed to link pending subscription:', err)
+        }
       }
     } else if (type === "user.updated") {
       const clerkId = data.id as string

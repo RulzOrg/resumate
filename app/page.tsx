@@ -5,6 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { RefreshCw, Upload, Target, Download, Check, Star, Plus, Menu } from "lucide-react"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { ProCheckoutButton } from "@/components/pricing/pro-checkout-button"
 
 // Structured data for SEO
 const structuredData = {
@@ -636,7 +637,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="relative max-w-5xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="relative max-w-4xl mx-auto mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Free */}
             <article className="relative overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-8">
               <div className="flex-1">
@@ -647,10 +648,11 @@ export default function HomePage() {
                 </div>
               </div>
               <ul className="mt-8 space-y-4 text-sm">
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">3 resume optimizations / mo</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">3 resume optimizations / month</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Basic job analysis</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">ATS compatibility check</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Standard templates</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Export to PDF/Word</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Community support</span></li>
               </ul>
               <Link href="/auth/signup" className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 text-sm font-medium hover:bg-surface-strong dark:hover:bg-white/20 transition font-sans">Get Started</Link>
             </article>
@@ -669,31 +671,15 @@ export default function HomePage() {
               <ul className="mt-8 space-y-4 text-sm">
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Unlimited resume optimizations</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Advanced job analysis</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">AI cover letter generator</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Premium templates</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">ATS compatibility check</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans flex items-center gap-2">AI cover letter generator <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">Coming Soon</span></span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans flex items-center gap-2">Premium templates <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">Coming Soon</span></span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Resume version management</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Keyword optimization</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Priority email support</span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Export to PDF/Word/TXT</span></li>
               </ul>
-              <Link href="/auth/signup" className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-400 transition font-sans">Choose Pro</Link>
-            </article>
-
-            {/* Enterprise */}
-            <article className="relative overflow-hidden rounded-2xl border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-8">
-              <div className="flex-1">
-                <h3 className="text-xl text-foreground dark:text-white font-medium tracking-tight font-sans">Enterprise</h3>
-                <p className="mt-4 text-sm text-foreground/70 dark:text-white/70 font-sans">For professionals and teams who need the best.</p>
-                <div className="mt-6 flex items-end gap-2">
-                  <p className="text-4xl sm:text-5xl text-foreground dark:text-white tracking-tight font-space-grotesk font-semibold">$49</p>
-                  <span className="text-foreground/70 dark:text-white/70 text-sm mb-2 font-sans">/ month</span>
-                </div>
-              </div>
-              <ul className="mt-8 space-y-4 text-sm">
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Everything in Pro</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Team collaboration</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">API access</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Advanced analytics</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Dedicated account manager</span></li>
-              </ul>
-              <a href="mailto:sales@resumeai.com?subject=Enterprise Plan Inquiry" className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 text-sm font-medium hover:bg-surface-strong dark:hover:bg-white/20 transition font-sans">Contact Sales</a>
+              <ProCheckoutButton className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-400 transition font-sans disabled:opacity-50 disabled:cursor-not-allowed" />
             </article>
           </div>
         </div>

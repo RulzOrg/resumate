@@ -28,38 +28,22 @@ export function PricingCard({
 
   const isCurrentPlan = currentPlan === tier.id
   const isFreeTier = tier.id === 'free'
-  const isEnterprise = tier.id === 'enterprise' || tier.id === 'enterprise-annual'
 
-  // Calculate display price based on billing cycle
-  // For annual plans: tier.price is the annual total, display as monthly equivalent
-  const displayPrice = billingCycle === 'annual' && !isFreeTier ? tier.price / 12 : tier.price
-
-  // Calculate savings: Compare annual price to monthly price × 12
-  // Monthly Pro: $19/month = $228/year
-  // Annual Pro: $190/year (saves $38 = 17%)
-  const monthlyEquivalent = tier.id.includes('annual') ? 19 : tier.price // Base monthly price
-  const annualPrice = tier.id.includes('annual') ? tier.price : tier.price * 12
-  const annualIfMonthly = monthlyEquivalent * 12
-  const annualSavings = billingCycle === 'annual' && !isFreeTier && tier.id.includes('annual')
-    ? Math.round(((annualIfMonthly - annualPrice) / annualIfMonthly) * 100)
-    : 0
+  // Display price is simply the tier price for monthly billing
+  const displayPrice = tier.price
 
   const handleSubscribe = async () => {
-    if (!isSignedIn) {
-      router.push("/auth/signup")
-      return
-    }
-
+    // Free tier: Always go to signup (Clerk handles new vs existing users)
     if (isFreeTier) {
-      router.push("/dashboard")
+      if (!isSignedIn) {
+        router.push("/auth/signup")
+      } else {
+        router.push("/dashboard")
+      }
       return
     }
 
-    if (isEnterprise) {
-      window.open("mailto:sales@resumeai.com?subject=Enterprise Plan Inquiry", "_blank")
-      return
-    }
-
+    // Already on current plan: Go to dashboard
     if (isCurrentPlan) {
       router.push("/dashboard")
       return
@@ -68,29 +52,45 @@ export function PricingCard({
     setIsLoading(true)
 
     try {
-      const response = await fetch("/api/billing/create-checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          planId: tier.id,
-          userId: user?.id,
-        }),
-      })
+      if (isSignedIn) {
+        // Logged in users: Use API to create checkout with email pre-filled
+        const response = await fetch("/api/billing/create-checkout", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            planId: tier.id,
+            userId: user?.id,
+          }),
+        })
 
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session')
-      }
+        if (!response.ok) {
+          throw new Error('Failed to create checkout session')
+        }
 
-      const { url, error } = await response.json()
+        const { url, error } = await response.json()
 
-      if (error) {
-        throw new Error(error)
-      }
+        if (error) {
+          throw new Error(error)
+        }
 
-      if (url) {
-        window.location.href = url
+        if (url) {
+          window.location.href = url
+        }
+      } else {
+        // Not logged in: Use direct Polar checkout URL (payment-first flow)
+        const checkoutUrl = billingCycle === "annual"
+          ? process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_ANNUAL
+          : process.env.NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_MONTHLY
+
+        if (checkoutUrl) {
+          window.location.href = checkoutUrl
+        } else {
+          // Fallback: redirect to signup if no checkout URL configured
+          console.warn(`NEXT_PUBLIC_POLAR_CHECKOUT_URL_PRO_${billingCycle === "annual" ? "ANNUAL" : "MONTHLY"} not configured`)
+          router.push("/auth/signup")
+        }
       }
     } catch (error) {
       console.error("Error creating checkout session:", error)
@@ -103,9 +103,8 @@ export function PricingCard({
   const getButtonText = () => {
     if (isLoading) return "Loading..."
     if (isCurrentPlan) return "Current Plan"
-    if (isFreeTier) return "Get Started Free"
-    if (isEnterprise) return "Contact Sales"
-    return `Start ${tier.name} Plan`
+    if (isFreeTier) return "Get Started"
+    return "Choose Pro"
   }
 
   const getButtonVariant = () => {
@@ -141,15 +140,10 @@ export function PricingCard({
           </span>
           {!isFreeTier && (
             <span className="text-sm text-foreground/70 dark:text-white/70">
-              /{billingCycle === 'annual' ? 'month' : tier.interval}
+              / month
             </span>
           )}
         </div>
-        {billingCycle === 'annual' && !isFreeTier && annualSavings > 0 && (
-          <Badge variant="secondary" className="mt-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            Save {annualSavings}%
-          </Badge>
-        )}
         <CardDescription className="text-sm mt-3 text-foreground/70 dark:text-white/70">
           {tier.description}
         </CardDescription>

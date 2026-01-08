@@ -32,10 +32,18 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
   const [newsletterLoading, setNewsletterLoading] = useState(true)
   const [newsletterActionLoading, setNewsletterActionLoading] = useState(false)
 
+  // Helper function to determine if user is on free plan
+  const isFreeUser = subscription?.plan === "free" || !subscription?.plan
+
   const handleManageSubscription = async () => {
     setLoading(true)
     try {
-      const response = await fetch("/api/billing/portal", {
+
+      // Free users: Create checkout to upgrade
+      // Pro users: Open billing portal to manage/cancel
+      const endpoint = isFreeUser ? "/api/billing/create-checkout" : "/api/billing/portal"
+
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -229,7 +237,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
                 className="bg-emerald-500 hover:bg-emerald-600 text-white"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {subscription?.plan === "free" ? "Upgrade Plan" : "Manage Subscription"}
+                {isFreeUser ? "Upgrade Plan" : "Manage Subscription"}
               </Button>
             </div>
 
