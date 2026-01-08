@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useAuth } from "@clerk/nextjs"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Check, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const { isSignedIn, isLoaded } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -133,5 +133,19 @@ export default function CheckoutSuccessPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        </div>
+      }
+    >
+      <CheckoutSuccessContent />
+    </Suspense>
   )
 }

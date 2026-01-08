@@ -83,6 +83,11 @@ export function getAllPricingTiers() {
   return getPricingTiers()
 }
 
+// Annual pricing tiers - returns empty array as we only offer monthly pricing now
+export function getAllAnnualPricingTiers(): PricingTier[] {
+  return []
+}
+
 // Keep backward compatibility
 export const pricingTiers = getAllPricingTiers()
 export const annualPricingTiers: PricingTier[] = [] // Deprecated - we only offer monthly pricing now
