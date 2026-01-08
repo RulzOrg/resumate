@@ -25,7 +25,7 @@ interface SettingsClientProps {
 export function SettingsClient({ user, subscription, usageLimits }: SettingsClientProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  
+
   // Newsletter subscription state
   const [newsletterEnabled, setNewsletterEnabled] = useState(false)
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false)
@@ -61,15 +61,15 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-500"
+        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
       case "trialing":
-        return "bg-blue-500"
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
       case "past_due":
-        return "bg-yellow-500"
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
       case "canceled":
-        return "bg-red-500"
+        return "bg-red-500/20 text-red-400 border-red-500/30"
       default:
-        return "bg-gray-500"
+        return "bg-white/10 text-white/70 border-white/20"
     }
   }
 
@@ -88,7 +88,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       try {
         const response = await fetch("/api/beehiiv/status")
         const data = await response.json()
-        
+
         setNewsletterEnabled(data.enabled)
         setNewsletterSubscribed(data.subscribed)
       } catch (error) {
@@ -104,7 +104,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
   // Handle newsletter subscription toggle
   const handleNewsletterToggle = async (checked: boolean) => {
     setNewsletterActionLoading(true)
-    
+
     try {
       const endpoint = checked ? "/api/beehiiv/subscribe" : "/api/beehiiv/unsubscribe"
       const response = await fetch(endpoint, {
@@ -117,8 +117,8 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       if (data.success) {
         setNewsletterSubscribed(checked)
         toast.success(
-          checked 
-            ? "Successfully subscribed to newsletter" 
+          checked
+            ? "Successfully subscribed to newsletter"
             : "Successfully unsubscribed from newsletter"
         )
       } else {
@@ -133,90 +133,100 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
   }
 
   return (
-    <Tabs defaultValue="account" className="space-y-4">
-      <TabsList className="grid w-full grid-cols-3">
-        <TabsTrigger value="account">
+    <Tabs defaultValue="account" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-3 h-12 bg-white/5 dark:bg-white/10 border border-border dark:border-white/20 rounded-xl p-1.5 gap-1">
+        <TabsTrigger
+          value="account"
+          className="rounded-lg h-full data-[state=active]:bg-emerald-500/20 dark:data-[state=active]:bg-emerald-500/25 data-[state=active]:text-emerald-500 dark:data-[state=active]:text-emerald-400 text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white/80 transition-colors font-medium"
+        >
           <User className="w-4 h-4 mr-2" />
           Account
         </TabsTrigger>
-        <TabsTrigger value="subscription">
+        <TabsTrigger
+          value="subscription"
+          className="rounded-lg h-full data-[state=active]:bg-emerald-500/20 dark:data-[state=active]:bg-emerald-500/25 data-[state=active]:text-emerald-500 dark:data-[state=active]:text-emerald-400 text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white/80 transition-colors font-medium"
+        >
           <CreditCard className="w-4 h-4 mr-2" />
           Subscription
         </TabsTrigger>
-        <TabsTrigger value="preferences">
+        <TabsTrigger
+          value="preferences"
+          className="rounded-lg h-full data-[state=active]:bg-emerald-500/20 dark:data-[state=active]:bg-emerald-500/25 data-[state=active]:text-emerald-500 dark:data-[state=active]:text-emerald-400 text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white/80 transition-colors font-medium"
+        >
           <Bell className="w-4 h-4 mr-2" />
           Preferences
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="account" className="space-y-4">
-        <Card>
+      <TabsContent value="account" className="space-y-6">
+        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle>Account Information</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground dark:text-white">Account Information</CardTitle>
+            <CardDescription className="text-foreground/60 dark:text-white/60">
               Your account details and profile information
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-sm text-muted-foreground">Name</Label>
-              <p className="text-lg font-medium">{user.name}</p>
+              <Label className="text-sm text-foreground/60 dark:text-white/60">Name</Label>
+              <p className="text-lg font-medium text-foreground dark:text-white">{user.name}</p>
             </div>
             <div>
-              <Label className="text-sm text-muted-foreground">Email</Label>
-              <p className="text-lg font-medium">{user.email}</p>
+              <Label className="text-sm text-foreground/60 dark:text-white/60">Email</Label>
+              <p className="text-lg font-medium text-foreground dark:text-white">{user.email}</p>
             </div>
             <div>
-              <Label className="text-sm text-muted-foreground">User ID</Label>
-              <p className="text-sm font-mono text-muted-foreground">{user.id}</p>
+              <Label className="text-sm text-foreground/60 dark:text-white/60">User ID</Label>
+              <p className="text-sm font-mono text-foreground/50 dark:text-white/50">{user.id}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle>Security</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground dark:text-white">Security</CardTitle>
+            <CardDescription className="text-foreground/60 dark:text-white/60">
               Manage your security settings
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full dark:bg-white/5 dark:border-white/20 dark:hover:bg-white/10 dark:text-white"
               onClick={() => window.location.href = "/user-profile"}
             >
               <Shield className="w-4 h-4 mr-2" />
               Manage Security Settings
             </Button>
-            <p className="text-sm text-muted-foreground mt-2">
+            <p className="text-sm text-foreground/60 dark:text-white/60 mt-3">
               Update your password, enable two-factor authentication, and manage sessions
             </p>
           </CardContent>
         </Card>
       </TabsContent>
 
-      <TabsContent value="subscription" className="space-y-4">
-        <Card>
+      <TabsContent value="subscription" className="space-y-6">
+        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle>Current Plan</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground dark:text-white">Current Plan</CardTitle>
+            <CardDescription className="text-foreground/60 dark:text-white/60">
               Your subscription details and usage
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold capitalize">
+              <div className="space-y-2">
+                <p className="text-2xl font-bold capitalize text-foreground dark:text-white">
                   {subscription?.plan || "Free"}
                 </p>
-                <Badge className={getStatusColor(subscription?.status || "free")}>
+                <Badge className={`${getStatusColor(subscription?.status || "free")} border`}>
                   {subscription?.status || "Free"}
                 </Badge>
               </div>
               <Button
                 onClick={handleManageSubscription}
                 disabled={loading}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {subscription?.plan === "free" ? "Upgrade Plan" : "Manage Subscription"}
@@ -224,11 +234,11 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
             </div>
 
             {subscription?.periodEnd && (
-              <div>
-                <Label className="text-sm text-muted-foreground">
+              <div className="pt-2">
+                <Label className="text-sm text-foreground/60 dark:text-white/60">
                   {subscription.status === "canceled" ? "Access ends" : "Next billing date"}
                 </Label>
-                <p className="text-lg font-medium">
+                <p className="text-lg font-medium text-foreground dark:text-white">
                   {formatDate(subscription.periodEnd)}
                 </p>
               </div>
@@ -236,51 +246,51 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle>Usage This Month</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground dark:text-white">Usage This Month</CardTitle>
+            <CardDescription className="text-foreground/60 dark:text-white/60">
               Track your feature usage against your plan limits
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {usageLimits ? (
               <>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span>Resume Optimizations</span>
-                    <span className="font-medium">
+                    <span className="text-foreground/70 dark:text-white/70">Resume Optimizations</span>
+                    <span className="font-medium text-foreground dark:text-white">
                       {usageLimits.resumeOptimizations.used} / {usageLimits.resumeOptimizations.limit}
                     </span>
                   </div>
                   <Progress
                     value={(usageLimits.resumeOptimizations.used / usageLimits.resumeOptimizations.limit) * 100}
-                    className="h-2"
+                    className="h-2 bg-white/10"
                   />
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground">Loading usage data...</p>
+              <p className="text-foreground/60 dark:text-white/60">Loading usage data...</p>
             )}
 
             {subscription?.plan === "free" && (
-              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                <div className="flex items-start space-x-2">
-                  <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="mt-4 p-4 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl">
+                <div className="flex items-start space-x-3">
+                  <Zap className="w-5 h-5 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
                       Need more?
                     </p>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="text-sm text-emerald-600 dark:text-emerald-400/80">
                       Upgrade to Pro for unlimited optimizations.
                     </p>
                     <Button
                       size="sm"
                       variant="link"
-                      className="h-auto p-0 text-blue-600 dark:text-blue-400"
+                      className="h-auto p-0 text-emerald-600 dark:text-emerald-400 hover:text-emerald-500"
                       onClick={() => router.push("/pricing")}
                     >
-                      View pricing →
+                      View pricing &rarr;
                     </Button>
                   </div>
                 </div>
@@ -290,37 +300,37 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
         </Card>
       </TabsContent>
 
-      <TabsContent value="preferences" className="space-y-4">
-        <Card>
+      <TabsContent value="preferences" className="space-y-6">
+        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle>Newsletter Preferences</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground dark:text-white">Newsletter Preferences</CardTitle>
+            <CardDescription className="text-foreground/60 dark:text-white/60">
               Manage your newsletter subscription and email preferences
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {!newsletterEnabled ? (
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="text-sm text-muted-foreground">
+              <div className="p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl">
+                <p className="text-sm text-foreground/60 dark:text-white/60">
                   Newsletter integration is not currently enabled.
                 </p>
               </div>
             ) : newsletterLoading ? (
               <div className="flex items-center space-x-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm text-muted-foreground">Loading subscription status...</span>
+                <Loader2 className="h-4 w-4 animate-spin text-foreground/60 dark:text-white/60" />
+                <span className="text-sm text-foreground/60 dark:text-white/60">Loading subscription status...</span>
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between space-x-4">
+                <div className="flex items-center justify-between space-x-4 p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl">
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center space-x-2">
-                      <Mail className="w-5 h-5 text-muted-foreground" />
-                      <Label htmlFor="newsletter" className="text-base font-medium">
+                      <Mail className="w-5 h-5 text-foreground/70 dark:text-white/70" />
+                      <Label htmlFor="newsletter" className="text-base font-medium text-foreground dark:text-white">
                         Newsletter Subscription
                       </Label>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-foreground/60 dark:text-white/60 ml-7">
                       Receive updates, tips, and exclusive content via email
                     </p>
                   </div>
@@ -333,24 +343,24 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
                 </div>
 
                 {newsletterSubscribed && (
-                  <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                    <div className="flex items-start space-x-2">
-                      <Mail className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5" />
+                  <div className="p-4 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl">
+                    <div className="flex items-start space-x-3">
+                      <Mail className="w-5 h-5 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
                           You're subscribed!
                         </p>
-                        <p className="text-sm text-green-700 dark:text-green-300">
-                          You'll receive our newsletter at <strong>{user.email}</strong>
+                        <p className="text-sm text-emerald-600 dark:text-emerald-400/80">
+                          You'll receive our newsletter at <strong className="text-emerald-700 dark:text-emerald-300">{user.email}</strong>
                         </p>
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="pt-4 border-t">
-                  <p className="text-xs text-muted-foreground">
-                    You can unsubscribe at any time by toggling the switch above or by clicking the 
+                <div className="pt-2 border-t border-border dark:border-white/10">
+                  <p className="text-xs text-foreground/50 dark:text-white/50">
+                    You can unsubscribe at any time by toggling the switch above or by clicking the
                     unsubscribe link in any newsletter email.
                   </p>
                 </div>
@@ -359,33 +369,33 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle>Email Notifications</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-foreground dark:text-white">Email Notifications</CardTitle>
+            <CardDescription className="text-foreground/60 dark:text-white/60">
               Configure when we send you emails
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl opacity-60">
               <div className="flex-1 space-y-1">
-                <Label className="text-sm font-medium">Resume Updates</Label>
-                <p className="text-sm text-muted-foreground">
+                <Label className="text-sm font-medium text-foreground dark:text-white">Resume Updates</Label>
+                <p className="text-sm text-foreground/60 dark:text-white/60">
                   Get notified when your resume optimization is complete
                 </p>
               </div>
               <Switch defaultChecked disabled />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl opacity-60">
               <div className="flex-1 space-y-1">
-                <Label className="text-sm font-medium">Account Activity</Label>
-                <p className="text-sm text-muted-foreground">
+                <Label className="text-sm font-medium text-foreground dark:text-white">Account Activity</Label>
+                <p className="text-sm text-foreground/60 dark:text-white/60">
                   Important updates about your account and security
                 </p>
               </div>
               <Switch defaultChecked disabled />
             </div>
-            <p className="text-xs text-muted-foreground pt-2">
+            <p className="text-xs text-foreground/50 dark:text-white/50 pt-2">
               Note: Critical account emails cannot be disabled.
             </p>
           </CardContent>
