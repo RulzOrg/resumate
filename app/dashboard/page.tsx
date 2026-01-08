@@ -73,8 +73,8 @@ export default async function DashboardPage() {
                 plan={subscription?.plan || 'free'}
                 status={subscription?.status || 'free'}
                 periodEnd={subscription?.periodEnd?.toISOString()}
-                jobAnalyses={0}
-                optimizedResumes={optimizedResumes.length}
+                jobAnalyses={usageLimits?.jobAnalyses?.used ?? 0}
+                optimizedResumes={usageLimits?.resumeOptimizations?.used ?? optimizedResumes.length}
                 usageLimits={usageLimits || undefined}
               />
 

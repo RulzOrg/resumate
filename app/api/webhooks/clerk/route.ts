@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
       const email = data.email_addresses?.[0]?.email_address || data.primary_email_address?.email_address || ""
       const name = data.full_name || [data.first_name, data.last_name].filter(Boolean).join(" ") || "User"
 
-      await createUserFromClerk(clerkId, email, name)
-      logger.log('User created:', { clerk_user_id: clerkId, email })
+      const newUser = await createUserFromClerk(clerkId, email, name)
+      logger.log('User created:', { clerk_user_id: clerkId, user_id: newUser?.id, email })
 
       // Automatically subscribe all users to Beehiiv newsletter (graceful - never fails webhook)
       if (email) {
@@ -63,13 +63,15 @@ export async function POST(req: NextRequest) {
 
       // Check for pending Polar subscription (payment-first flow)
       // If user paid before creating account, link their subscription now
-      if (email) {
+      if (email && newUser) {
         try {
           const pendingSub = await getPendingSubscriptionByEmail(email)
           if (pendingSub) {
-            await linkPendingSubscription(clerkId, pendingSub)
+            // Use the database user ID (newUser.id), not the Clerk ID
+            await linkPendingSubscription(newUser.id, pendingSub)
             logger.log('Linked pending Polar subscription:', {
               clerk_user_id: clerkId,
+              user_id: newUser.id,
               email,
               polar_subscription_id: pendingSub.polar_subscription_id
             })

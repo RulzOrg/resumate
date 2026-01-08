@@ -39,6 +39,46 @@ export interface UsageLimits {
 }
 
 /**
+ * Sync pending subscription if user paid before creating account
+ * This is a fallback mechanism in case the Clerk webhook failed to link the subscription
+ */
+async function syncPendingSubscriptionIfNeeded(
+  userId: string,
+  email: string,
+  currentPlan: string
+): Promise<{ synced: boolean; user?: any }> {
+  // Only check if user appears to be on free plan
+  if (currentPlan !== 'free') {
+    return { synced: false }
+  }
+
+  try {
+    // Dynamic import to avoid circular dependency
+    const { getPendingSubscriptionByEmail, linkPendingSubscription } = await import("./db")
+
+    const pendingSub = await getPendingSubscriptionByEmail(email)
+    if (pendingSub) {
+      console.log('[syncPendingSubscription] Found unlinked pending subscription, linking now:', {
+        userId,
+        email,
+        polarSubscriptionId: pendingSub.polar_subscription_id
+      })
+
+      const updatedUser = await linkPendingSubscription(userId, pendingSub)
+      if (updatedUser) {
+        console.log('[syncPendingSubscription] Successfully linked pending subscription')
+        return { synced: true, user: updatedUser }
+      }
+    }
+  } catch (error) {
+    // Don't fail the subscription check if sync fails
+    console.error('[syncPendingSubscription] Error syncing pending subscription:', error)
+  }
+
+  return { synced: false }
+}
+
+/**
  * Get current user's subscription information
  */
 export async function getCurrentSubscription(): Promise<SubscriptionInfo | null> {
@@ -48,7 +88,7 @@ export async function getCurrentSubscription(): Promise<SubscriptionInfo | null>
 
     // Dynamic import to avoid circular dependency
     const { getOrCreateUser } = await import("./db")
-    
+
     let user = await getOrCreateUser()
     if (!user) {
       // Fallback when DB not ready
@@ -65,12 +105,22 @@ export async function getCurrentSubscription(): Promise<SubscriptionInfo | null>
       }
     }
 
+    // If user is on free plan, check for any pending subscriptions that weren't linked
+    // This handles the case where Clerk webhook failed or had a bug
+    let currentUser = user
+    if (currentUser.subscription_plan === 'free' || !currentUser.subscription_plan) {
+      const syncResult = await syncPendingSubscriptionIfNeeded(currentUser.id, currentUser.email, currentUser.subscription_plan || 'free')
+      if (syncResult.synced && syncResult.user) {
+        currentUser = syncResult.user
+      }
+    }
+
     return {
-      status: (user.subscription_status as SubscriptionStatus) || 'free',
-      plan: user.subscription_plan || 'free',
-      periodEnd: user.subscription_period_end ? new Date(user.subscription_period_end) : undefined,
-      polarCustomerId: user.polar_customer_id || undefined,
-      polarSubscriptionId: user.polar_subscription_id || undefined,
+      status: (currentUser.subscription_status as SubscriptionStatus) || 'free',
+      plan: currentUser.subscription_plan || 'free',
+      periodEnd: currentUser.subscription_period_end ? new Date(currentUser.subscription_period_end) : undefined,
+      polarCustomerId: currentUser.polar_customer_id || undefined,
+      polarSubscriptionId: currentUser.polar_subscription_id || undefined,
     }
   } catch (error) {
     console.error('Error getting current subscription:', error)
