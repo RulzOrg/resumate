@@ -56,9 +56,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const priceId = process.env.POLAR_PRICE_PRO_MONTHLY
-    if (!priceId) {
-      console.error("[Billing] POLAR_PRICE_PRO_MONTHLY not configured")
+    const productId = process.env.POLAR_PRODUCT_PRO_MONTHLY
+    if (!productId) {
+      console.error("[Billing] POLAR_PRODUCT_PRO_MONTHLY not configured")
       return NextResponse.json(
         { error: "Billing not configured" },
         { status: 500 }
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin
 
     // Create Polar checkout session with user email pre-filled
-    const checkout = await polar.checkouts.custom.create({
-      productPriceId: priceId,
+    const checkout = await polar.checkouts.create({
+      products: [productId],
       successUrl: `${baseUrl}/checkout/success`,
       customerEmail: clerkUser.emailAddresses[0]?.emailAddress || dbUser.email,
       customerName: clerkUser.fullName || dbUser.name || undefined,
