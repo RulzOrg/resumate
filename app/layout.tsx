@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/images/og-image.jpg",
+        url: "/images/og-image.webp",
         width: 1200,
         height: 630,
         alt: "ResuMate AI - AI Resume Optimizer",
@@ -51,13 +51,11 @@ export const metadata: Metadata = {
     title: "AI Resume Optimizer - ATS Friendly Resume Tailoring",
     description: "Create ATS-friendly resumes optimized for each job application. Our AI generates multiple tailored versions to increase interview rates.",
     creator: "@resumate_ai",
-    images: ["/images/twitter-image.jpg"],
+    images: ["/images/twitter-image.webp"],
   },
   metadataBase: new URL("https://www.useresumate.com"),
-  verification: {
-    google: "google-site-verification-code",
-    yandex: "yandex-verification-code",
-    yahoo: "yahoo-site-verification-code",
+  alternates: {
+    canonical: "/",
   },
 }
 

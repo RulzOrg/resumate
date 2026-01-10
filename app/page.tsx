@@ -812,12 +812,12 @@ export default function HomePage() {
                 <Link href="/support" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Support</Link>
               </div>
               <div className="flex items-center gap-4">
-                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                <a href="https://x.com/resumate_ai" target="_blank" rel="noopener noreferrer" aria-label="Follow us on X (Twitter)" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                 </a>
-                <a href="#" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                <a href="https://linkedin.com/company/resumate-ai" target="_blank" rel="noopener noreferrer" aria-label="Follow us on LinkedIn" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
                     <rect x="2" y="9" width="4" height="12" />

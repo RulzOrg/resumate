@@ -29,8 +29,8 @@ export default E2E_MODE
 
 export const config = {
   matcher: [
-    // Exclude Next.js internals, static files, and webhook routes
-    "/((?!.+\\.[\\w]+$|_next|api/webhooks).*)",
+    // Exclude Next.js internals, static files, webhook routes, and Sentry monitoring
+    "/((?!.+\\.[\\w]+$|_next|api/webhooks|monitoring).*)",
     "/",
     // API routes EXCEPT webhooks (webhooks use Svix auth, not Clerk)
     "/(api(?!/webhooks)|trpc)(.*)",

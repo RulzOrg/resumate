@@ -13,12 +13,16 @@ import { LogoutButton } from "./logout-button"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import type { User as UserType } from "@/lib/db"
 import { UserAvatar } from "./user-avatar"
+import { WelcomeVideoButton } from "./welcome-video-button"
+import { useWelcomeVideo } from "@/components/providers/welcome-video-provider"
 
 interface DashboardHeaderProps {
   user: UserType
 }
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
+  const { openWelcomeVideo } = useWelcomeVideo()
+
   return (
     <header className="sticky top-0 z-30 bg-background/50 backdrop-blur-lg border-b border-border">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -33,6 +37,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
+            <WelcomeVideoButton onClick={openWelcomeVideo} />
             <ThemeSwitcher />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
