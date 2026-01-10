@@ -10,9 +10,18 @@ const isProtectedRoute = createRouteMatcher([
   "/api/resumes(.*)",
 ])
 
+// Webhook routes that should bypass Clerk middleware entirely
+const isWebhookRoute = createRouteMatcher([
+  "/api/webhooks(.*)",
+])
+
 export default E2E_MODE
   ? (() => NextResponse.next())
   : clerkMiddleware(async (auth, req) => {
+      // Skip Clerk processing for webhook routes - they use their own auth (Svix signatures)
+      if (isWebhookRoute(req)) {
+        return NextResponse.next()
+      }
       if (isProtectedRoute(req)) {
         await auth.protect()
       }
