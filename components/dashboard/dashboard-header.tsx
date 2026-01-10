@@ -21,7 +21,7 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
-  const { openWelcomeVideo } = useWelcomeVideo()
+  const welcomeVideo = useWelcomeVideo()
 
   return (
     <header className="sticky top-0 z-30 bg-background/50 backdrop-blur-lg border-b border-border">
@@ -37,7 +37,9 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            <WelcomeVideoButton onClick={openWelcomeVideo} />
+            {welcomeVideo && (
+              <WelcomeVideoButton onClick={welcomeVideo.openWelcomeVideo} />
+            )}
             <ThemeSwitcher />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

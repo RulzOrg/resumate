@@ -62,8 +62,5 @@ export function WelcomeVideoProvider({
 
 export function useWelcomeVideo() {
   const context = useContext(WelcomeVideoContext)
-  if (!context) {
-    throw new Error("useWelcomeVideo must be used within a WelcomeVideoProvider")
-  }
   return context
 }
