@@ -34,3 +34,12 @@ docs/marketing/
 
 # ai dev tasks (local only)
 ai-dev-tasks/
+
+# IDE/editor artifacts
+.cursor/
+.claude/
+*.swo
+*.swp
+
+# Local documentation
+docs/
