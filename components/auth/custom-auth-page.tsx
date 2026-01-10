@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import type { FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useSignIn, useSignUp, useAuth } from "@clerk/nextjs"
@@ -34,17 +34,6 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   const [isVerifying, setIsVerifying] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
   const [verificationError, setVerificationError] = useState<string | null>(null)
-
-  // Debug: Log Clerk initialization state
-  useEffect(() => {
-    console.log("[Clerk Debug] State:", {
-      isSignInLoaded,
-      isSignUpLoaded,
-      hasSignIn: !!signIn,
-      hasSignUp: !!signUp,
-      isSignedIn,
-    })
-  }, [isSignInLoaded, isSignUpLoaded, signIn, signUp, isSignedIn])
 
   const clearFormState = () => {
     setSignInEmail("")
@@ -213,10 +202,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   }
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_linkedin") {
-    console.log("[OAuth] handleOAuth called", { strategy, isSignInLoaded, hasSignIn: !!signIn })
-
     if (!isSignInLoaded || !signIn) {
-      console.warn("[OAuth] Clerk not ready yet", { isSignInLoaded, signIn: !!signIn })
       setOauthError("Authentication is still loading. Please wait a moment and try again.")
       return
     }
@@ -224,22 +210,12 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     setOauthError(null)
 
     try {
-      console.log("[OAuth] Starting authenticateWithRedirect...")
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/dashboard",
       })
-      console.log("[OAuth] authenticateWithRedirect completed (should have redirected)")
     } catch (err) {
-      // Log detailed error for debugging without exposing internals to users
-      console.error("[OAuth] redirect failed", {
-        strategy,
-        error:
-          err instanceof Error
-            ? { name: err.name, message: err.message, stack: err.stack }
-            : err,
-      })
       const message = extractClerkError(err)
       if (/session already exists/i.test(message)) {
         router.replace("/dashboard")

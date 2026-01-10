@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql, createUserFromClerk, updateUserFromClerk, deleteUserByClerkId, getUserByClerkId, updateBeehiivSubscriberId, getPendingSubscriptionByEmail, linkPendingSubscription } from "@/lib/db"
-import { subscribeUser, getSubscriberByEmail, unsubscribeUser, isBeehiivEnabled, safeBeehiivOperation } from "@/lib/beehiiv"
+import { subscribeUser, getSubscriberByEmail, unsubscribeUser, isBeehiivEnabled, safeBeehiivOperation, validateBeehiivConfig } from "@/lib/beehiiv"
 import { createLogger } from "@/lib/debug-logger"
 
 const logger = createLogger("ClerkWebhook")
+
+// Log Beehiiv config status once on first webhook (for debugging)
+let hasLoggedBeehiivStatus = false
+function logBeehiivStatus() {
+  if (hasLoggedBeehiivStatus) return
+  hasLoggedBeehiivStatus = true
+
+  const enabled = isBeehiivEnabled()
+  const validation = enabled ? validateBeehiivConfig() : null
+  logger.log('Beehiiv config status:', {
+    enabled,
+    valid: validation?.valid ?? 'N/A',
+    errors: validation?.errors ?? [],
+  })
+}
 
 // Minimal verification via Clerk's recommended header secret (Svix). If not set, skip verify in dev.
 export async function POST(req: NextRequest) {
@@ -30,6 +45,9 @@ export async function POST(req: NextRequest) {
     const type = evt?.type as string
     const data = evt?.data || {}
 
+    // Log Beehiiv config on first webhook for debugging
+    logBeehiivStatus()
+
     if (type === "user.created") {
       const clerkId = data.id as string
       const email = data.email_addresses?.[0]?.email_address || data.primary_email_address?.email_address || ""
@@ -40,6 +58,7 @@ export async function POST(req: NextRequest) {
 
       // Automatically subscribe all users to Beehiiv newsletter (graceful - never fails webhook)
       if (email) {
+        logger.log('Attempting Beehiiv subscription:', { email, beehiivEnabled: isBeehiivEnabled() })
         const result = await safeBeehiivOperation(
           () => subscribeUser({
             email,
@@ -57,8 +76,17 @@ export async function POST(req: NextRequest) {
           updateBeehiivSubscriberId(clerkId, result.data.id).catch((err) => {
             logger.error('Failed to store Beehiiv subscriber ID:', err)
           })
+        } else {
+          // Log explicit failure to make debugging easier
+          logger.error('Beehiiv subscription FAILED:', {
+            email,
+            error: result.error?.message,
+            errorCode: result.error?.error,
+            clerkId,
+          })
         }
-        // Failures are already logged by safeBeehiivOperation - no need to duplicate
+      } else {
+        logger.warn('Skipping Beehiiv subscription: no email found in webhook data', { clerkId })
       }
 
       // Check for pending Polar subscription (payment-first flow)
