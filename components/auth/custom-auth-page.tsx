@@ -205,10 +205,9 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
     if (!isSignInLoaded || !signIn) return
     setOauthError(null)
     try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : ''
       await signIn.authenticateWithRedirect({
         strategy,
-        redirectUrl: origin ? `${origin}/sso-callback` : "/sso-callback",
+        redirectUrl: "/sso-callback",
         redirectUrlComplete: "/dashboard",
       })
     } catch (err) {
