@@ -52,4 +52,3 @@ Check that `incrementUsage` is exported and available in [lib/db.ts](lib/db.ts).
 ## Notes
 
 - The `ON CONFLICT` clause means existing job analyses will be updated, not re-created, so we only increment for truly new records
-- The user object is already available from the verification step (line 1027-1058)
