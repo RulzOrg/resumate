@@ -6,6 +6,7 @@ import Image from "next/image"
 import { RefreshCw, Upload, Target, Download, Check, Star, Plus, Menu } from "lucide-react"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { ProCheckoutButton } from "@/components/pricing/pro-checkout-button"
+import { useAuth } from "@clerk/nextjs"
 
 // Structured data for SEO
 const structuredData = {
@@ -69,6 +70,7 @@ const faqStructuredData = {
 }
 
 export default function HomePage() {
+  const { isSignedIn } = useAuth()
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -132,10 +134,10 @@ export default function HomePage() {
             <div className="hidden md:flex items-center gap-3">
               <ThemeSwitcher />
               <Link
-                href="/auth/signup"
+                href={isSignedIn ? "/dashboard" : "/auth/signup"}
                 className="inline-flex items-center gap-2 text-sm font-medium text-black bg-emerald-500 rounded-full py-2 px-4 hover:bg-emerald-400 transition-colors font-sans"
               >
-                Optimize My Resume
+                {isSignedIn ? "Open Dashboard" : "Optimize My Resume"}
               </Link>
             </div>
 
@@ -253,29 +255,31 @@ export default function HomePage() {
                 <div className="mt-8 pt-8 border-t border-border dark:border-white/20">
                   <div className="space-y-4">
                     <div className="text-center px-4 py-2 bg-emerald-500/10 rounded-lg">
-                      <div className="text-sm text-emerald-400 font-medium font-sans">Start Free Today</div>
-                      <div className="text-xs text-foreground/60 dark:text-white/60 font-sans">No credit card required</div>
+                      <div className="text-sm text-emerald-400 font-medium font-sans">{isSignedIn ? "Welcome Back" : "Start Free Today"}</div>
+                      <div className="text-xs text-foreground/60 dark:text-white/60 font-sans">{isSignedIn ? "Continue optimizing your resume" : "No credit card required"}</div>
                     </div>
                     
                     <Link
-                      href="/auth/signup"
+                      href={isSignedIn ? "/dashboard" : "/auth/signup"}
                       onClick={toggleMobileMenu}
                       className="group relative overflow-hidden rounded-xl bg-emerald-500 px-6 py-4 text-center text-lg font-semibold text-black transition-all duration-300 hover:bg-emerald-400 active:scale-95"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <span className="relative flex items-center justify-center gap-2 font-sans">
-                        Get Started
+                        {isSignedIn ? "Open Dashboard" : "Get Started"}
                         <Download className="h-4 w-4" />
                       </span>
                     </Link>
 
-                    <Link
-                      href="/auth/login"
-                      onClick={toggleMobileMenu}
-                      className="block text-center px-6 py-3 text-base font-medium text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white transition-colors font-sans"
-                    >
-                      Already have an account? Sign In
-                    </Link>
+                    {!isSignedIn && (
+                      <Link
+                        href="/auth/login"
+                        onClick={toggleMobileMenu}
+                        className="block text-center px-6 py-3 text-base font-medium text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white transition-colors font-sans"
+                      >
+                        Already have an account? Sign In
+                      </Link>
+                    )}
                   </div>
                 </div>
 
@@ -352,10 +356,10 @@ export default function HomePage() {
 
             <div className="flex flex-col gap-3 sm:flex-row mt-8 items-center justify-center">
               <Link
-                href="/auth/signup"
+                href={isSignedIn ? "/dashboard" : "/auth/signup"}
                 className="inline-flex items-center gap-2 shadow-[0_0_0_1px_rgba(255,255,255,0.08)_inset] text-base font-medium text-black bg-emerald-500 rounded-full py-3 px-6 hover:bg-emerald-400 transition-colors font-sans"
               >
-                Get Started for Free
+                {isSignedIn ? "Open Dashboard" : "Get Started for Free"}
               </Link>
               <a
                 href="#how-it-works"
@@ -654,7 +658,7 @@ export default function HomePage() {
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Export to PDF/Word</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-emerald-400" /><span className="text-foreground/90 dark:text-white/90 font-sans">Community support</span></li>
               </ul>
-              <Link href="/auth/signup" className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 text-sm font-medium hover:bg-surface-strong dark:hover:bg-white/20 transition font-sans">Get Started</Link>
+              <Link href={isSignedIn ? "/dashboard" : "/auth/signup"} className="mt-8 inline-flex items-center justify-center h-11 w-full rounded-full bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 text-sm font-medium hover:bg-surface-strong dark:hover:bg-white/20 transition font-sans">{isSignedIn ? "Open Dashboard" : "Get Started"}</Link>
             </article>
 
             {/* Pro */}
