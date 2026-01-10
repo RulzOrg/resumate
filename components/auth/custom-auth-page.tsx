@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { useSignIn, useSignUp, useAuth } from "@clerk/nextjs"
@@ -34,6 +34,17 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   const [isVerifying, setIsVerifying] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
   const [verificationError, setVerificationError] = useState<string | null>(null)
+
+  // Debug: Log Clerk initialization state
+  useEffect(() => {
+    console.log("[Clerk Debug] State:", {
+      isSignInLoaded,
+      isSignUpLoaded,
+      hasSignIn: !!signIn,
+      hasSignUp: !!signUp,
+      isSignedIn,
+    })
+  }, [isSignInLoaded, isSignUpLoaded, signIn, signUp, isSignedIn])
 
   const clearFormState = () => {
     setSignInEmail("")
@@ -202,17 +213,27 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   }
 
   async function handleOAuth(strategy: "oauth_google" | "oauth_linkedin") {
-    if (!isSignInLoaded || !signIn) return
+    console.log("[OAuth] handleOAuth called", { strategy, isSignInLoaded, hasSignIn: !!signIn })
+
+    if (!isSignInLoaded || !signIn) {
+      console.warn("[OAuth] Clerk not ready yet", { isSignInLoaded, signIn: !!signIn })
+      setOauthError("Authentication is still loading. Please wait a moment and try again.")
+      return
+    }
+
     setOauthError(null)
+
     try {
+      console.log("[OAuth] Starting authenticateWithRedirect...")
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/dashboard",
       })
+      console.log("[OAuth] authenticateWithRedirect completed (should have redirected)")
     } catch (err) {
       // Log detailed error for debugging without exposing internals to users
-      console.error("OAuth redirect failed", {
+      console.error("[OAuth] redirect failed", {
         strategy,
         error:
           err instanceof Error
@@ -521,10 +542,11 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               )}
 
               {/* Social Logins */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => handleOAuth("oauth_google")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 shadow-sm transition-colors hover:bg-surface-muted dark:hover:bg-white/10"
+                  disabled={!isSignInLoaded}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 shadow-sm transition-colors hover:bg-surface-muted dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -533,16 +555,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                     <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                     <path d="M1 1h22v22H1z" fill="none" />
                   </svg>
-                  <span>Google</span>
-                </button>
-                <button
-                  onClick={() => handleOAuth("oauth_linkedin")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 shadow-sm transition-colors hover:bg-surface-muted dark:hover:bg-white/10"
-                >
-                  <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M4.983 3.5C3.334 3.5 2 4.845 2 6.503c0 1.63 1.31 2.998 2.958 2.998h.035c1.676 0 2.983-1.368 2.983-2.998C7.941 4.845 6.658 3.5 4.983 3.5zM2.337 20.5h5.246V9.25H2.337V20.5zM9.337 9.25v11.25h5.04v-6.219c0-1.654.31-3.257 2.365-3.257 2.03 0 2.062 1.877 2.062 3.357V20.5H24v-6.691c0-3.359-.729-5.95-4.676-5.95-1.894 0-3.165 1.04-3.688 2.02h-.053V9.25H9.337z" />
-                  </svg>
-                  <span>LinkedIn</span>
+                  <span>{!isSignInLoaded ? "Loading..." : "Continue with Google"}</span>
                 </button>
               </div>
             </div>
