@@ -1,7 +1,7 @@
-import CustomAuthPage from "@/components/auth/custom-auth-page"
+import { redirect } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 
 export default function SignUpCatchAllPage() {
-  return <CustomAuthPage defaultTab="signup" />
+  redirect("/auth/signup")
 }

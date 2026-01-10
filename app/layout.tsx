@@ -128,6 +128,7 @@ export default function RootLayout({
             signInUrl={clerkConfig.signInUrl}
             signUpUrl={clerkConfig.signUpUrl}
             signInFallbackRedirectUrl={clerkConfig.afterSignInUrl}
+            signUpFallbackRedirectUrl={clerkConfig.afterSignUpUrl}
             appearance={{
               baseTheme: dark,
               variables: {
