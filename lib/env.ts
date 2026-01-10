@@ -72,6 +72,13 @@ const envSchema = z.object({
     .default("")
     .transform((val) => val.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)),
 
+  // Admin emails for super admin access
+  ADMIN_EMAILS: z
+    .string()
+    .optional()
+    .default("")
+    .transform((val) => val.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)),
+
   // ClamAV for virus scanning - Optional
   CLAMAV_HOST: z.string().optional(),
   CLAMAV_PORT: z.string().optional(),

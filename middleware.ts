@@ -8,6 +8,8 @@ const E2E_MODE = process.env.E2E_TEST_MODE === "1"
 const isProtectedRoute = createRouteMatcher([
   "/dashboard(.*)",
   "/api/resumes(.*)",
+  "/admin(.*)",
+  "/api/admin(.*)",
 ])
 
 // Webhook routes that should bypass Clerk middleware entirely
