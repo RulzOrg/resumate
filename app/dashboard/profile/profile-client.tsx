@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
@@ -38,6 +38,8 @@ import {
   ChevronRight,
   Download,
   Settings,
+  Camera,
+  Loader2,
 } from "lucide-react"
 
 interface ProfileClientProps {
@@ -46,6 +48,7 @@ interface ProfileClientProps {
     name: string
     email: string
     imageUrl: string | null
+    avatarUrl: string | null
     createdAt: string
   }
   subscription: any
@@ -77,7 +80,60 @@ export function ProfileClient({
   const [previewResume, setPreviewResume] = useState<Resume | null>(null)
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
+  // Avatar upload state
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
   const isFreeUser = subscription?.plan === "free" || !subscription?.plan
+
+  // Determine which avatar to display: custom avatar > Clerk image > placeholder
+  const displayAvatarUrl = user.avatarUrl || user.imageUrl
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"]
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Please upload JPG, PNG, WebP, or GIF.")
+      return
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File too large. Maximum size is 5MB.")
+      return
+    }
+
+    setIsUploadingAvatar(true)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/user/avatar", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to upload avatar")
+      }
+
+      toast.success("Avatar updated successfully")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload avatar")
+    } finally {
+      setIsUploadingAvatar(false)
+      // Reset the input so the same file can be selected again
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = ""
+      }
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -192,54 +248,69 @@ export function ProfileClient({
   return (
     <div className="space-y-8">
       {/* Profile Overview Card */}
-      <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 overflow-hidden">
-        <div className="h-24 bg-gradient-to-r from-emerald-500/20 via-emerald-600/10 to-transparent" />
-        <CardContent className="relative px-6 pb-6">
-          <div className="flex flex-col sm:flex-row gap-6 -mt-12">
+      <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+        <CardContent className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             {/* Avatar */}
-            <div className="relative">
-              {user.imageUrl ? (
+            <div className="relative shrink-0 group">
+              {displayAvatarUrl ? (
                 <Image
-                  src={user.imageUrl}
+                  src={displayAvatarUrl}
                   alt={user.name}
-                  width={96}
-                  height={96}
-                  className="h-24 w-24 rounded-full border-4 border-background dark:border-black object-cover"
+                  width={56}
+                  height={56}
+                  className="h-14 w-14 rounded-full border-2 border-border dark:border-white/20 object-cover"
                 />
               ) : (
-                <div className="h-24 w-24 rounded-full border-4 border-background dark:border-black bg-emerald-500/20 flex items-center justify-center">
-                  <User className="h-10 w-10 text-emerald-500" />
+                <div className="h-14 w-14 rounded-full border-2 border-border dark:border-white/20 bg-emerald-500/20 flex items-center justify-center">
+                  <User className="h-6 w-6 text-emerald-500" />
                 </div>
               )}
+              {/* Avatar upload overlay */}
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-wait"
+                aria-label="Upload avatar"
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 className="h-5 w-5 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5 text-white" />
+                )}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleAvatarUpload}
+                className="hidden"
+              />
               {!isFreeUser && (
-                <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full p-1.5">
-                  <Crown className="h-4 w-4 text-white" />
+                <div className="absolute -bottom-0.5 -right-0.5 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full p-1 pointer-events-none">
+                  <Crown className="h-3 w-3 text-white" />
                 </div>
               )}
             </div>
 
             {/* User Info */}
-            <div className="flex-1 pt-2 sm:pt-8">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-foreground dark:text-white">{user.name}</h2>
-                  <div className="flex items-center gap-2 mt-1 text-foreground/60 dark:text-white/60">
-                    <Mail className="h-4 w-4" />
-                    <span className="text-sm">{user.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1 text-foreground/60 dark:text-white/60">
-                    <Calendar className="h-4 w-4" />
-                    <span className="text-sm">Member since {format(new Date(user.createdAt), 'MMMM yyyy')}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold text-foreground dark:text-white truncate">{user.name}</h2>
+                  <div className="flex items-center gap-4 mt-0.5 text-foreground/60 dark:text-white/60">
+                    <span className="text-sm truncate">{user.email}</span>
+                    <span className="text-xs hidden sm:inline">Member since {format(new Date(user.createdAt), 'MMM yyyy')}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <Badge className={`${getStatusColor(subscription?.status || "free")} border px-3 py-1`}>
-                    {subscription?.plan === "pro" ? "Pro Plan" : "Free Plan"}
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge className={`${getStatusColor(subscription?.status || "free")} border text-xs px-2.5 py-0.5`}>
+                    {subscription?.plan === "pro" ? "Pro" : "Free"}
                   </Badge>
                   <Link href="/dashboard/settings">
-                    <Button variant="outline" size="sm" className="dark:bg-white/5 dark:border-white/20 dark:hover:bg-white/10">
-                      <Settings className="h-4 w-4 mr-2" />
+                    <Button variant="outline" size="sm" className="h-8 dark:bg-white/5 dark:border-white/20 dark:hover:bg-white/10">
+                      <Settings className="h-3.5 w-3.5 mr-1.5" />
                       Settings
                     </Button>
                   </Link>
@@ -248,35 +319,27 @@ export function ProfileClient({
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8">
-            <div className="rounded-xl bg-surface-muted dark:bg-white/5 border border-border dark:border-white/10 p-4">
-              <div className="flex items-center gap-2 text-foreground/60 dark:text-white/60 mb-1">
-                <FileText className="h-4 w-4" />
-                <span className="text-xs font-medium">Master Resumes</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground dark:text-white">{masterResumes.length}</p>
+          {/* Quick Stats - Inline */}
+          <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-border dark:border-white/10">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-foreground/40 dark:text-white/40" />
+              <span className="text-sm text-foreground/60 dark:text-white/60">Resumes</span>
+              <span className="text-sm font-semibold text-foreground dark:text-white">{masterResumes.length}</span>
             </div>
-            <div className="rounded-xl bg-surface-muted dark:bg-white/5 border border-border dark:border-white/10 p-4">
-              <div className="flex items-center gap-2 text-foreground/60 dark:text-white/60 mb-1">
-                <Sparkles className="h-4 w-4" />
-                <span className="text-xs font-medium">Optimizations</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground dark:text-white">{totalOptimizations}</p>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-foreground/40 dark:text-white/40" />
+              <span className="text-sm text-foreground/60 dark:text-white/60">Optimized</span>
+              <span className="text-sm font-semibold text-foreground dark:text-white">{totalOptimizations}</span>
             </div>
-            <div className="rounded-xl bg-surface-muted dark:bg-white/5 border border-border dark:border-white/10 p-4">
-              <div className="flex items-center gap-2 text-foreground/60 dark:text-white/60 mb-1">
-                <Briefcase className="h-4 w-4" />
-                <span className="text-xs font-medium">Jobs Analyzed</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground dark:text-white">{totalJobAnalyses}</p>
+            <div className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-foreground/40 dark:text-white/40" />
+              <span className="text-sm text-foreground/60 dark:text-white/60">Jobs</span>
+              <span className="text-sm font-semibold text-foreground dark:text-white">{totalJobAnalyses}</span>
             </div>
-            <div className="rounded-xl bg-surface-muted dark:bg-white/5 border border-border dark:border-white/10 p-4">
-              <div className="flex items-center gap-2 text-foreground/60 dark:text-white/60 mb-1">
-                <Building2 className="h-4 w-4" />
-                <span className="text-xs font-medium">Companies</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground dark:text-white">{uniqueCompanies.length}</p>
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-foreground/40 dark:text-white/40" />
+              <span className="text-sm text-foreground/60 dark:text-white/60">Companies</span>
+              <span className="text-sm font-semibold text-foreground dark:text-white">{uniqueCompanies.length}</span>
             </div>
           </div>
         </CardContent>
@@ -321,7 +384,7 @@ export function ProfileClient({
             {/* Recent Activity */}
             <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
               <CardHeader>
-                <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+                <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                   <Clock className="h-5 w-5 text-emerald-500" />
                   Recent Activity
                 </CardTitle>
@@ -332,30 +395,69 @@ export function ProfileClient({
               <CardContent>
                 {recentActivity.length > 0 ? (
                   <div className="space-y-3">
-                    {recentActivity.map((item: any, index) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-surface-muted dark:bg-white/5 border border-border/50 dark:border-white/10"
-                      >
-                        <div className={`p-2 rounded-lg ${item.job_title && !item.original_resume_id ? 'bg-blue-500/20' : 'bg-emerald-500/20'}`}>
-                          {item.job_title && !item.original_resume_id ? (
-                            <Briefcase className="h-4 w-4 text-blue-400" />
-                          ) : (
-                            <Sparkles className="h-4 w-4 text-emerald-400" />
-                          )}
+                    {recentActivity.map((item: any) => {
+                      const isOptimizedResume = item.original_resume_id
+                      const href = isOptimizedResume
+                        ? `/dashboard/optimized/${item.id}`
+                        : item.job_url || null
+
+                      const content = (
+                        <>
+                          <div className={`p-2 rounded-lg ${isOptimizedResume ? 'bg-emerald-500/20' : 'bg-blue-500/20'}`}>
+                            {isOptimizedResume ? (
+                              <Sparkles className="h-4 w-4 text-emerald-400" />
+                            ) : (
+                              <Briefcase className="h-4 w-4 text-blue-400" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground dark:text-white truncate">
+                              {item.job_title || 'Resume Optimization'}
+                            </p>
+                            <p className="text-xs text-foreground/60 dark:text-white/60">
+                              {item.company_name && `${item.company_name} • `}
+                              {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                            </p>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-foreground/40 dark:text-white/40 group-hover:text-foreground/60 dark:group-hover:text-white/60 transition-colors" />
+                        </>
+                      )
+
+                      if (isOptimizedResume && href) {
+                        return (
+                          <Link
+                            key={item.id}
+                            href={href}
+                            className="group flex items-center gap-3 p-3 rounded-lg bg-surface-muted dark:bg-white/5 border border-border/50 dark:border-white/10 hover:bg-surface-strong dark:hover:bg-white/10 transition-colors cursor-pointer"
+                          >
+                            {content}
+                          </Link>
+                        )
+                      }
+
+                      if (!isOptimizedResume && href) {
+                        return (
+                          <a
+                            key={item.id}
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex items-center gap-3 p-3 rounded-lg bg-surface-muted dark:bg-white/5 border border-border/50 dark:border-white/10 hover:bg-surface-strong dark:hover:bg-white/10 transition-colors cursor-pointer"
+                          >
+                            {content}
+                          </a>
+                        )
+                      }
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-surface-muted dark:bg-white/5 border border-border/50 dark:border-white/10"
+                        >
+                          {content}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground dark:text-white truncate">
-                            {item.job_title || 'Resume Optimization'}
-                          </p>
-                          <p className="text-xs text-foreground/60 dark:text-white/60">
-                            {item.company_name && `${item.company_name} • `}
-                            {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
-                          </p>
-                        </div>
-                        <ChevronRight className="h-4 w-4 text-foreground/40 dark:text-white/40" />
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-foreground/60 dark:text-white/60">
@@ -370,7 +472,7 @@ export function ProfileClient({
             {/* Quick Actions */}
             <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
               <CardHeader>
-                <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+                <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                   <Sparkles className="h-5 w-5 text-emerald-500" />
                   Quick Actions
                 </CardTitle>
@@ -427,7 +529,7 @@ export function ProfileClient({
           {uniqueCompanies.length > 0 && (
             <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
               <CardHeader>
-                <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+                <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                   <Building2 className="h-5 w-5 text-emerald-500" />
                   Companies You've Targeted
                 </CardTitle>
@@ -467,7 +569,7 @@ export function ProfileClient({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+                  <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                     <FileCheck className="h-5 w-5 text-emerald-500" />
                     Master Resumes
                   </CardTitle>
@@ -667,7 +769,7 @@ export function ProfileClient({
           {/* Optimized Resumes */}
           <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
             <CardHeader>
-              <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+              <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                 <Sparkles className="h-5 w-5 text-emerald-500" />
                 Optimized Resumes
               </CardTitle>
@@ -732,7 +834,7 @@ export function ProfileClient({
         <TabsContent value="history" className="space-y-6">
           <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
             <CardHeader>
-              <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+              <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                 <Briefcase className="h-5 w-5 text-emerald-500" />
                 Job Analysis History
               </CardTitle>
@@ -817,7 +919,7 @@ export function ProfileClient({
             {/* Subscription Info */}
             <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
               <CardHeader>
-                <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+                <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                   <Crown className="h-5 w-5 text-amber-500" />
                   Subscription
                 </CardTitle>
@@ -882,7 +984,7 @@ export function ProfileClient({
             {/* Usage Stats */}
             <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
               <CardHeader>
-                <CardTitle className="text-foreground dark:text-white flex items-center gap-2">
+                <CardTitle className="text-foreground dark:text-white flex items-center gap-2 font-space-grotesk">
                   <BarChart3 className="h-5 w-5 text-emerald-500" />
                   Usage This Month
                 </CardTitle>

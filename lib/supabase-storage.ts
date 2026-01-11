@@ -10,6 +10,7 @@ import crypto from "crypto"
 export const STORAGE_BUCKETS = {
   RESUMES: "resumes",
   EXPORTS: "exports",
+  AVATARS: "avatars",
 } as const
 
 export type BucketName = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS]
@@ -263,6 +264,33 @@ export function buildStorageKey(parts: { userId: string; kind: string; fileName:
   const sanitized = parts.fileName.replace(/[^a-zA-Z0-9._-]/g, "_")
   const ts = Date.now()
   return `${parts.userId}/${parts.kind}/${ts}-${sanitized}`
+}
+
+/**
+ * Upload avatar image
+ */
+export async function uploadAvatar(
+  userId: string,
+  filename: string,
+  content: Buffer,
+  contentType: string
+): Promise<{ key: string; url: string }> {
+  const fileHash = calculateFileHash(content)
+  const ext = filename.split(".").pop() || "jpg"
+  const key = `${userId}/${Date.now()}_${fileHash.slice(0, 8)}.${ext}`
+
+  await uploadFile(STORAGE_BUCKETS.AVATARS, content, key, contentType, fileHash)
+
+  // Return public URL for avatar
+  const url = getPublicUrl(STORAGE_BUCKETS.AVATARS, key)
+  return { key, url }
+}
+
+/**
+ * Delete avatar from storage
+ */
+export async function deleteAvatar(key: string): Promise<boolean> {
+  return deleteFile(STORAGE_BUCKETS.AVATARS, key)
 }
 
 

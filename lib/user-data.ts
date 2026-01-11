@@ -31,6 +31,7 @@ export async function getAuthenticatedUser() {
     clerkId: userId,
     email: dbUser.email,
     name: dbUser.name,
+    avatar_url: dbUser.avatar_url,
     subscription_status: dbUser.subscription_status,
     subscription_plan: dbUser.subscription_plan,
     subscription_period_end: dbUser.subscription_period_end,

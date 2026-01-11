@@ -98,6 +98,7 @@ export interface User {
   polar_subscription_id?: string | null
   beehiiv_subscriber_id?: string | null
   onboarding_completed_at?: string | null
+  avatar_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -425,9 +426,9 @@ export async function createUserFromClerk(clerkUserId: string, email: string, na
 
 export async function getUserByClerkId(clerkUserId: string) {
   const [user] = await sql`
-    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan, 
+    SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
            subscription_period_end, polar_customer_id, polar_subscription_id,
-           beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
+           beehiiv_subscriber_id, onboarding_completed_at, avatar_url, created_at, updated_at
     FROM users_sync
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
   `
@@ -438,7 +439,7 @@ export async function getUserById(id: string) {
   const [user] = await sql`
     SELECT id, clerk_user_id, email, name, subscription_status, subscription_plan,
            subscription_period_end, polar_customer_id, polar_subscription_id,
-           beehiiv_subscriber_id, onboarding_completed_at, created_at, updated_at
+           beehiiv_subscriber_id, onboarding_completed_at, avatar_url, created_at, updated_at
     FROM users_sync
     WHERE id = ${id} AND deleted_at IS NULL
   `
@@ -465,6 +466,17 @@ export async function updateUserFromClerk(clerkUserId: string, data: { email?: s
         updated_at = NOW()
     WHERE clerk_user_id = ${clerkUserId} AND deleted_at IS NULL
     RETURNING id, clerk_user_id, email, name, subscription_status, subscription_plan, onboarding_completed_at, created_at, updated_at
+  `
+  return user as User | undefined
+}
+
+export async function updateUserAvatar(userId: string, avatarUrl: string | null) {
+  const [user] = await sql`
+    UPDATE users_sync
+    SET avatar_url = ${avatarUrl},
+        updated_at = NOW()
+    WHERE id = ${userId} AND deleted_at IS NULL
+    RETURNING *
   `
   return user as User | undefined
 }

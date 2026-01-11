@@ -169,7 +169,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       <TabsContent value="account" className="space-y-6">
         <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Account Information</CardTitle>
+            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Account Information</CardTitle>
             <CardDescription className="text-foreground/60 dark:text-white/60">
               Your account details and profile information
             </CardDescription>
@@ -192,7 +192,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
 
         <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Security</CardTitle>
+            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Security</CardTitle>
             <CardDescription className="text-foreground/60 dark:text-white/60">
               Manage your security settings
             </CardDescription>
@@ -216,7 +216,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       <TabsContent value="subscription" className="space-y-6">
         <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Current Plan</CardTitle>
+            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Current Plan</CardTitle>
             <CardDescription className="text-foreground/60 dark:text-white/60">
               Your subscription details and usage
             </CardDescription>
@@ -256,7 +256,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
 
         <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Usage This Month</CardTitle>
+            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Usage This Month</CardTitle>
             <CardDescription className="text-foreground/60 dark:text-white/60">
               Track your feature usage against your plan limits
             </CardDescription>
@@ -311,7 +311,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       <TabsContent value="preferences" className="space-y-6">
         <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Newsletter Preferences</CardTitle>
+            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Newsletter Preferences</CardTitle>
             <CardDescription className="text-foreground/60 dark:text-white/60">
               Manage your newsletter subscription and email preferences
             </CardDescription>
@@ -379,7 +379,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
 
         <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white">Email Notifications</CardTitle>
+            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Email Notifications</CardTitle>
             <CardDescription className="text-foreground/60 dark:text-white/60">
               Configure when we send you emails
             </CardDescription>
