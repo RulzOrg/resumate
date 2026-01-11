@@ -4,6 +4,7 @@ import { createResume, getOrCreateUser } from "@/lib/db"
 import { buildS3Key, uploadBufferToS3 } from "@/lib/storage"
 import { validateFileUpload, sanitizeFilename, basicMalwareScan } from "@/lib/file-validation"
 import { extractText } from "@/lib/extract"
+import { validateResumeContent } from "@/lib/llm-resume-extractor"
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,10 +65,31 @@ export async function POST(request: NextRequest) {
     const extractResult = await extractText(buffer, file.type)
     
     const contentText = extractResult.text || ""
-    const processingStatus = contentText.length > 50 ? "completed" : "failed"
-    const processingError = contentText.length <= 50 
-      ? "Could not extract sufficient text from the resume. Please try uploading a different format (DOCX recommended)."
-      : null
+
+    // Check if we got enough text
+    if (contentText.length < 50) {
+      return NextResponse.json(
+        { error: "Could not extract sufficient text from the document. Please try uploading a different format (PDF or DOCX recommended)." },
+        { status: 400 }
+      )
+    }
+
+    // CRITICAL: Validate that the content is actually a resume
+    console.log(`[upload] Validating document content...`)
+    const contentValidation = await validateResumeContent(contentText)
+
+    if (!contentValidation.isResume) {
+      console.log(`[upload] Document rejected: ${contentValidation.documentType} - ${contentValidation.message}`)
+      return NextResponse.json(
+        { error: contentValidation.message },
+        { status: 400 }
+      )
+    }
+
+    console.log(`[upload] Document validated as resume (confidence: ${contentValidation.confidence})`)
+
+    const processingStatus = "completed"
+    const processingError = null
 
     // Create resume record with extracted content
     console.log('[upload] Creating resume record:', {

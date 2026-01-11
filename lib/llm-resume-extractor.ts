@@ -5,6 +5,233 @@ import { createLogger } from "@/lib/debug-logger"
 
 const logger = createLogger("LLM-Resume-Extractor")
 
+// Document type detection result
+export type DocumentValidationResult = {
+  isResume: boolean
+  documentType?: 'resume' | 'cover_letter' | 'job_description' | 'bank_statement' | 'invoice' | 'legal_document' | 'academic_paper' | 'other'
+  confidence: 'high' | 'medium' | 'low'
+  message: string
+}
+
+/**
+ * Quickly validate if the provided text content is a resume/CV
+ * This is a lightweight check meant to be called during upload before full extraction
+ *
+ * @param rawText - The extracted text content from the uploaded file
+ * @param apiKey - Optional Anthropic API key
+ * @returns Validation result indicating if the content is a resume
+ */
+export async function validateResumeContent(
+  rawText: string,
+  apiKey?: string
+): Promise<DocumentValidationResult> {
+  const key = apiKey || process.env.ANTHROPIC_API_KEY
+
+  // Basic pre-validation - too short to be a resume
+  if (!rawText || rawText.trim().length < 100) {
+    return {
+      isResume: false,
+      documentType: 'other',
+      confidence: 'high',
+      message: 'The document is too short to be a valid resume. Please upload a complete resume.'
+    }
+  }
+
+  // DEFINITIVE pattern checks - these patterns are so specific that if matched,
+  // we immediately reject WITHOUT needing LLM confirmation
+  const definitiveNonResumePatterns = [
+    {
+      pattern: /(?:account\s*(?:number|no\.?|#|statement)|statement\s*period|opening\s*balance|closing\s*balance|transaction\s*(?:details|history|date)|available\s*balance|withdrawal|deposit(?:s)?|current\s*balance|previous\s*balance|bank\s*statement)/i,
+      type: 'bank_statement' as const,
+      message: 'This appears to be a bank statement, not a resume. Please upload your actual resume or CV.'
+    },
+    {
+      pattern: /(?:credit\s*card\s*statement|card\s*number|minimum\s*payment|credit\s*limit|payment\s*due\s*date|statement\s*closing\s*date|purchases?\s*and\s*adjustments)/i,
+      type: 'bank_statement' as const,
+      message: 'This appears to be a credit card statement, not a resume. Please upload your actual resume or CV.'
+    },
+    {
+      pattern: /(?:invoice\s*(?:number|no\.?|#|date)|bill\s*to|amount\s*due|payment\s*terms|total\s*due|remit(?:tance)?\s*to|qty|unit\s*price|line\s*total)/i,
+      type: 'invoice' as const,
+      message: 'This appears to be an invoice or bill, not a resume. Please upload your actual resume or CV.'
+    },
+    {
+      pattern: /(?:receipt|transaction\s*id|order\s*(?:number|#|confirmation)|payment\s*received|thank\s*you\s*for\s*your\s*(?:purchase|payment|order))/i,
+      type: 'invoice' as const,
+      message: 'This appears to be a receipt or order confirmation, not a resume. Please upload your actual resume or CV.'
+    },
+  ]
+
+  for (const { pattern, type, message } of definitiveNonResumePatterns) {
+    if (pattern.test(rawText)) {
+      logger.log(`Definitive non-resume pattern matched: ${type}`)
+      return {
+        isResume: false,
+        documentType: type,
+        confidence: 'high',
+        message
+      }
+    }
+  }
+
+  // Check for STRONG resume indicators (work experience, education - NOT just contact info)
+  const strongResumeIndicators = [
+    /(?:work|professional|employment)\s*(?:experience|history)/i,
+    /(?:education|academic\s*background|qualifications)/i,
+    /(?:skills|competencies|technical\s*skills|core\s*competencies)/i,
+    /\b(?:resume|curriculum\s*vitae|cv)\b/i,
+    /(?:summary|objective|profile)\s*(?:statement)?/i,
+  ]
+
+  const strongIndicatorCount = strongResumeIndicators.filter(p => p.test(rawText)).length
+
+  // Suspicious patterns that need LLM confirmation
+  const suspiciousPatterns = [
+    { pattern: /hereby\s*(?:agree|certify|declare)|witness\s*whereof|legal\s*agreement|terms\s*and\s*conditions/i, type: 'legal_document' as const },
+    { pattern: /dear\s*(?:hiring\s*manager|recruiter|sir|madam)|i\s*am\s*(?:writing|applying)\s*(?:to|for)|please\s*find\s*(?:attached|enclosed)/i, type: 'cover_letter' as const },
+    { pattern: /(?:job\s*description|we\s*are\s*(?:looking|seeking)|ideal\s*candidate|apply\s*(?:now|today)|qualifications\s*required|responsibilities\s*include)/i, type: 'job_description' as const },
+  ]
+
+  let suspiciousType: DocumentValidationResult['documentType'] = undefined
+  for (const { pattern, type } of suspiciousPatterns) {
+    if (pattern.test(rawText)) {
+      logger.log(`Suspicious pattern suggests: ${type}`)
+      suspiciousType = type
+      break
+    }
+  }
+
+  // If no API key available, use strict pattern-based logic
+  if (!key) {
+    logger.warn("No API key for content validation, using strict pattern-based check")
+
+    // If suspicious pattern found and few resume indicators, reject
+    if (suspiciousType && strongIndicatorCount < 2) {
+      const typeMessages: Record<string, string> = {
+        'cover_letter': 'This appears to be a cover letter, not a resume. Please upload your resume or CV instead.',
+        'job_description': 'This appears to be a job description, not a resume. Please upload your resume or CV instead.',
+        'legal_document': 'This appears to be a legal document, not a resume. Please upload your actual resume or CV.',
+      }
+      return {
+        isResume: false,
+        documentType: suspiciousType,
+        confidence: 'medium',
+        message: typeMessages[suspiciousType] || 'This document does not appear to be a resume. Please upload a valid resume or CV.'
+      }
+    }
+
+    // Require at least 2 strong indicators without API
+    if (strongIndicatorCount < 2) {
+      return {
+        isResume: false,
+        documentType: 'other',
+        confidence: 'medium',
+        message: 'This document does not appear to be a resume. Please upload a valid resume or CV.'
+      }
+    }
+
+    return {
+      isResume: true,
+      documentType: 'resume',
+      confidence: 'low',
+      message: 'Document appears to be a resume based on content patterns'
+    }
+  }
+
+  // Use LLM for classification
+  try {
+    const client = new Anthropic({ apiKey: key })
+    const truncatedText = rawText.length > 3000 ? rawText.substring(0, 3000) : rawText
+
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 256,
+      system: `You are a document classifier. Your ONLY job is to determine if a document is a resume/CV or something else.
+
+CLASSIFICATION RULES:
+- A RESUME/CV must contain: A person's name + contact info + work history OR education
+- NOT a resume: bank statements, invoices, cover letters, job descriptions, academic papers, legal documents, receipts, bills, contracts
+
+Respond ONLY with valid JSON in this exact format:
+{"is_resume": boolean, "document_type": "resume"|"cover_letter"|"job_description"|"bank_statement"|"invoice"|"legal_document"|"academic_paper"|"other", "confidence": "high"|"medium"|"low", "reason": "brief explanation"}`,
+      messages: [
+        { role: "user", content: `Classify this document:\n\n${truncatedText}` }
+      ]
+    })
+
+    const textContent = response.content.find(c => c.type === 'text')
+    if (!textContent || textContent.type !== 'text') {
+      throw new Error("No text response from classifier")
+    }
+
+    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error("Could not parse classifier response")
+    }
+
+    const result = JSON.parse(jsonMatch[0])
+    logger.log(`Document classification result:`, result)
+
+    if (result.is_resume) {
+      return {
+        isResume: true,
+        documentType: 'resume',
+        confidence: result.confidence || 'medium',
+        message: 'Document validated as a resume'
+      }
+    }
+
+    const typeMessages: Record<string, string> = {
+      'bank_statement': 'This appears to be a bank statement, not a resume. Please upload your actual resume or CV.',
+      'invoice': 'This appears to be an invoice or bill, not a resume. Please upload your actual resume or CV.',
+      'cover_letter': 'This appears to be a cover letter, not a resume. Please upload your resume or CV instead.',
+      'job_description': 'This appears to be a job description, not a resume. Please upload your resume or CV instead.',
+      'legal_document': 'This appears to be a legal document, not a resume. Please upload your actual resume or CV.',
+      'academic_paper': 'This appears to be an academic paper, not a resume. Please upload your resume or CV instead.',
+      'other': 'This document does not appear to be a resume or CV. Please upload a valid resume.',
+    }
+
+    return {
+      isResume: false,
+      documentType: result.document_type || 'other',
+      confidence: result.confidence || 'medium',
+      message: typeMessages[result.document_type] || typeMessages['other']
+    }
+
+  } catch (error: any) {
+    logger.error("Content validation error:", error)
+
+    // On LLM error, be STRICT - only allow if we have strong evidence it's a resume
+    // Require at least 3 strong resume indicators to pass without LLM
+    if (strongIndicatorCount >= 3) {
+      return {
+        isResume: true,
+        documentType: 'resume',
+        confidence: 'low',
+        message: 'Document appears to be a resume based on content patterns'
+      }
+    }
+
+    // If we have suspicious patterns, reject
+    if (suspiciousType) {
+      return {
+        isResume: false,
+        documentType: suspiciousType,
+        confidence: 'low',
+        message: 'This document does not appear to be a resume. Please upload a valid resume or CV.'
+      }
+    }
+
+    // Default: REJECT when uncertain (fail safe)
+    return {
+      isResume: false,
+      documentType: 'other',
+      confidence: 'low',
+      message: 'Unable to verify this document as a resume. Please ensure you are uploading a valid resume or CV.'
+    }
+  }
+}
+
 // Define the schema using Zod for validation and tool definition
 // This matches the ParsedResume interface but with Zod validation
 const ContactInfoSchema = z.object({
