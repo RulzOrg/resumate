@@ -62,32 +62,44 @@ export function AdminDashboardContent() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasFetched, setHasFetched] = useState(false)
 
   const fetchStats = async () => {
+    if (hasFetched) return
+    setHasFetched(true)
+
     try {
       setLoading(true)
       setError(null)
       console.log("[AdminDashboard] Fetching stats...")
-      const response = await fetch("/api/admin/stats")
+      const response = await fetch("/api/admin/stats", {
+        cache: "no-store",
+      })
       console.log("[AdminDashboard] Response status:", response.status)
+      console.log("[AdminDashboard] Response headers:", response.headers)
+
       if (!response.ok) {
         const errorText = await response.text()
         console.error("[AdminDashboard] Error response:", errorText)
         throw new Error(`Failed to fetch stats: ${response.status}`)
       }
+
       const data = await response.json()
+      console.log("[AdminDashboard] Stats data received:", data)
       console.log("[AdminDashboard] Stats loaded successfully")
       setStats(data)
     } catch (err) {
       console.error("[AdminDashboard] Fetch error:", err)
       setError(err instanceof Error ? err.message : "Failed to load stats")
     } finally {
+      console.log("[AdminDashboard] Setting loading to false")
       setLoading(false)
     }
   }
 
   useEffect(() => {
     fetchStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (loading) {

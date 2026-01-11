@@ -1,8 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Space_Grotesk } from "next/font/google"
 import { GeistMono } from "geist/font/mono"
-import { Space_Grotesk } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import Script from "next/script"
 
@@ -69,49 +68,87 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  if (process.env.E2E_TEST_MODE === '1') {
+  const isE2E = process.env.E2E_TEST_MODE === '1'
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+  if (isE2E) {
     return (
-      <html lang="en" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-          </ThemeProvider>
-        </body>
-      </html>
+      <BaseLayout>
+        {children}
+      </BaseLayout>
     )
   }
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
   if (!publishableKey) {
     return (
-      <html lang="en" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <div className="min-h-screen flex items-center justify-center bg-background">
-              <div className="text-center space-y-4">
-                <h1 className="text-xl font-semibold text-foreground">Authentication Configuration Error</h1>
-                <p className="text-muted-foreground">Missing Clerk publishable key. Please check your environment variables.</p>
-                <p className="text-sm text-muted-foreground">
-                  Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to your environment variables.
-                </p>
-              </div>
-            </div>
-          </ThemeProvider>
-        </body>
-      </html>
+      <BaseLayout>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center space-y-4">
+            <h1 className="text-xl font-semibold text-foreground">Authentication Configuration Error</h1>
+            <p className="text-muted-foreground">Missing Clerk publishable key. Please check your environment variables.</p>
+            <p className="text-sm text-muted-foreground">
+              Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to your environment variables.
+            </p>
+          </div>
+        </div>
+      </BaseLayout>
     )
   }
 
+  return (
+    <BaseLayout>
+      <ClerkProvider
+        publishableKey={publishableKey}
+        signInUrl={clerkConfig.signInUrl}
+        signUpUrl={clerkConfig.signUpUrl}
+        signInFallbackRedirectUrl={clerkConfig.afterSignInUrl}
+        signUpFallbackRedirectUrl={clerkConfig.afterSignUpUrl}
+        appearance={{
+          baseTheme: dark,
+          variables: {
+            colorPrimary: "#10b981",
+            colorBackground: "#000000",
+            colorInputBackground: "#111111",
+            colorInputText: "#ffffff",
+            colorText: "#ffffff",
+            colorTextSecondary: "#9ca3af",
+            colorNeutral: "#374151",
+            colorDanger: "#ef4444",
+            colorSuccess: "#10b981",
+            colorWarning: "#f59e0b",
+            borderRadius: "0.5rem",
+          },
+          elements: {
+            formButtonPrimary: "bg-emerald-500 text-foreground dark:text-white hover:bg-emerald-600",
+            card: "bg-gray-900 border border-gray-800",
+            headerTitle: "text-foreground dark:text-white",
+            headerSubtitle: "text-gray-400",
+            socialButtonsBlockButton: "border border-gray-700 bg-gray-800 text-foreground dark:text-white hover:bg-gray-700",
+            formFieldInput: "bg-gray-800 border border-gray-700 text-foreground dark:text-white",
+            footerActionLink: "text-emerald-500 hover:text-emerald-400",
+          },
+        }}
+      >
+        {children}
+      </ClerkProvider>
+      <Analytics />
+      <Script
+        src="https://www.googletagmanager.com/gtag/js?id=G-4FGR9B5JK4"
+        strategy="afterInteractive"
+      />
+      <Script id="google-analytics" strategy="afterInteractive">
+        {`
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-4FGR9B5JK4');
+        `}
+      </Script>
+    </BaseLayout>
+  )
+}
+
+function BaseLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
@@ -121,53 +158,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ClerkProvider
-            publishableKey={publishableKey}
-            signInUrl={clerkConfig.signInUrl}
-            signUpUrl={clerkConfig.signUpUrl}
-            signInFallbackRedirectUrl={clerkConfig.afterSignInUrl}
-            signUpFallbackRedirectUrl={clerkConfig.afterSignUpUrl}
-            appearance={{
-              baseTheme: dark,
-              variables: {
-                colorPrimary: "#10b981",
-                colorBackground: "#000000",
-                colorInputBackground: "#111111",
-                colorInputText: "#ffffff",
-                colorText: "#ffffff",
-                colorTextSecondary: "#9ca3af",
-                colorNeutral: "#374151",
-                colorDanger: "#ef4444",
-                colorSuccess: "#10b981",
-                colorWarning: "#f59e0b",
-                borderRadius: "0.5rem",
-              },
-              elements: {
-                formButtonPrimary: "bg-emerald-500 text-foreground dark:text-white hover:bg-emerald-600",
-                card: "bg-gray-900 border border-gray-800",
-                headerTitle: "text-foreground dark:text-white",
-                headerSubtitle: "text-gray-400",
-                socialButtonsBlockButton: "border border-gray-700 bg-gray-800 text-foreground dark:text-white hover:bg-gray-700",
-                formFieldInput: "bg-gray-800 border border-gray-700 text-foreground dark:text-white",
-                footerActionLink: "text-emerald-500 hover:text-emerald-400",
-              },
-            }}
-          >
-            {children}
-          </ClerkProvider>
-          <Analytics />
-          <Script
-            src="https://www.googletagmanager.com/gtag/js?id=G-4FGR9B5JK4"
-            strategy="afterInteractive"
-          />
-          <Script id="google-analytics" strategy="afterInteractive">
-            {`
-              window.dataLayer = window.dataLayer || [];
-              function gtag(){dataLayer.push(arguments);}
-              gtag('js', new Date());
-              gtag('config', 'G-4FGR9B5JK4');
-            `}
-          </Script>
+          {children}
         </ThemeProvider>
       </body>
     </html>
