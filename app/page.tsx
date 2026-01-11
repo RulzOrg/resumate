@@ -31,11 +31,6 @@ const structuredData = {
     "Cover Letter Generation",
     "ATS Score Checking"
   ],
-  aggregateRating: {
-    "@type": "AggregateRating",
-    ratingValue: "4.8",
-    ratingCount: "1000"
-  }
 }
 
 const faqStructuredData = {
@@ -283,21 +278,18 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Social Proof */}
+                {/* Capability Badges */}
                 <div className="mt-8 px-4">
-                  <div className="text-center">
-                    <div className="flex justify-center gap-1 mb-3">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-4 w-4 text-emerald-400 fill-current" />
-                      ))}
-                    </div>
-                    <p className="text-xs text-foreground/60 dark:text-white/60 font-sans">Join 1,000+ successful job seekers</p>
-                    <div className="flex justify-center -space-x-2 mt-3">
-                      <img src="/images/user-1.jpg" alt="User 1" className="h-6 w-6 rounded-full ring-2 ring-black/60 object-cover" />
-                      <img src="/images/user-2.jpg" alt="User 2" className="h-6 w-6 rounded-full ring-2 ring-black/60 object-cover" />
-                      <img src="/images/user-3.jpg" alt="User 3" className="h-6 w-6 rounded-full ring-2 ring-black/60 object-cover" />
-                      <img src="/images/user-4.jpg" alt="User 4" className="h-6 w-6 rounded-full ring-2 ring-black/60 object-cover" />
-                    </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <span className="inline-flex items-center rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground/70 dark:text-white/70 font-sans">
+                      AI-Powered
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground/70 dark:text-white/70 font-sans">
+                      ATS-Optimized
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-1.5 text-xs font-medium text-foreground/70 dark:text-white/70 font-sans">
+                      Unlimited Versions
+                    </span>
                   </div>
                 </div>
               </nav>
@@ -307,43 +299,17 @@ export default function HomePage() {
 
           {/* Hero */}
           <section className="relative z-10 max-w-5xl text-center mx-auto pt-14 pb-12 sm:pt-20 md:pt-28">
-            {/* Social proof */}
-            <div className="mb-6 flex items-center justify-center gap-4">
-              <div className="flex -space-x-3">
-                <img
-                  src="/images/user-1.jpg"
-                  alt="User 1"
-                  className="h-9 w-9 rounded-full ring-2 ring-black/60 object-cover"
-                />
-                <img
-                  src="/images/user-2.jpg"
-                  alt="User 2"
-                  className="h-9 w-9 rounded-full ring-2 ring-black/60 object-cover"
-                />
-                <img
-                  src="/images/user-3.jpg"
-                  alt="User 3"
-                  className="h-9 w-9 rounded-full ring-2 ring-black/60 object-cover"
-                />
-                <img
-                  src="/images/user-4.jpg"
-                  alt="User 4"
-                  className="h-9 w-9 rounded-full ring-2 ring-black/60 object-cover"
-                />
-                <img
-                  src="/images/user-5.jpg"
-                  alt="User 5"
-                  className="h-9 w-9 rounded-full ring-2 ring-black/60 object-cover"
-                />
-              </div>
-              <div className="flex flex-col items-start">
-                <div className="flex items-center">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 text-foreground dark:text-white fill-current" />
-                  ))}
-                </div>
-                <p className="mt-1 text-xs font-medium text-foreground/70 dark:text-white/70 font-sans">Join 1,000+ successful job seekers</p>
-              </div>
+            {/* Capability badges */}
+            <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-4 py-2 text-sm font-medium text-foreground/80 dark:text-white/80 font-sans">
+                AI-Powered
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-4 py-2 text-sm font-medium text-foreground/80 dark:text-white/80 font-sans">
+                ATS-Optimized
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-4 py-2 text-sm font-medium text-foreground/80 dark:text-white/80 font-sans">
+                Unlimited Versions
+              </span>
             </div>
 
             <h1 className="text-4xl tracking-tight sm:text-6xl md:text-7xl mx-auto font-space-grotesk font-semibold">
@@ -372,18 +338,18 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Trusted by */}
+      {/* ATS Compatibility */}
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 mt-16 sm:mt-24">
         <p className="mb-8 text-center text-sm font-medium text-foreground/50 dark:text-white/50 font-sans">
-          OUR USERS GET NOTICED BY TOP COMPANIES
+          OPTIMIZED FOR MAJOR APPLICANT TRACKING SYSTEMS
         </p>
         <div className="grid grid-cols-2 items-center justify-items-center gap-y-8 gap-x-4 sm:grid-cols-3 md:grid-cols-6">
-          <div className="h-7 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-lg font-bold">Google</div>
-          <div className="h-6 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-lg font-bold">Meta</div>
-          <div className="h-7 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-lg font-bold">Amazon</div>
-          <div className="h-6 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-lg font-bold">Netflix</div>
-          <div className="h-6 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-lg font-bold">Microsoft</div>
-          <div className="h-7 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-lg font-bold">Apple</div>
+          <div className="h-7 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-base font-semibold font-sans">Workday</div>
+          <div className="h-6 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-base font-semibold font-sans">Greenhouse</div>
+          <div className="h-7 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-base font-semibold font-sans">Lever</div>
+          <div className="h-6 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-base font-semibold font-sans">Taleo</div>
+          <div className="h-6 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-base font-semibold font-sans">iCIMS</div>
+          <div className="h-7 w-auto text-foreground/40 dark:text-white/40 flex items-center justify-center text-base font-semibold font-sans">BambooHR</div>
         </div>
       </section>
 
@@ -560,69 +526,89 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Value Propositions */}
       <section className="relative overflow-hidden py-16 sm:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl sm:text-4xl md:text-5xl tracking-tight font-space-grotesk font-semibold">
-              From hundreds of applications to multiple offers.
+              Why job seekers choose ResuMate AI
             </h2>
             <p className="mt-4 text-base text-foreground/70 dark:text-white/70 font-sans">
-              Hear from job seekers who transformed their job search with ResuMate AI.
+              Purpose-built features to help you stand out in today's competitive job market.
             </p>
           </div>
 
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
-              <p className="text-base text-foreground/80 dark:text-white/80 font-sans">
-                "I was applying for months with no luck. After using ResuMate AI, I got three interview requests in the
-                first week. The AI's ability to match my skills to the job description was a game-changer."
-              </p>
-              <div className="mt-5 pt-5 border-t border-border dark:border-white/10 flex items-center gap-3">
-                <img
-                  src="/images/testimonial-1.jpg"
-                  alt="Alex Johnson avatar"
-                  className="h-10 w-10 object-cover rounded-full"
-                />
-                <div>
-                  <p className="text-sm font-semibold tracking-tight font-sans">Alex Johnson</p>
-                  <p className="text-xs text-foreground/60 dark:text-white/60 font-sans">Software Engineer</p>
+            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-foreground/5 dark:bg-white/10 border border-border/80 dark:border-white/20">
+                  <Check className="h-5 w-5 text-foreground/70 dark:text-white/70" />
                 </div>
+                <h3 className="text-lg font-semibold tracking-tight font-sans">Pass ATS Filters</h3>
               </div>
+              <p className="text-sm text-foreground/70 dark:text-white/70 font-sans">
+                98% of Fortune 500 companies use ATS. Our AI formats your resume to get through automated screening before human eyes ever see it.
+              </p>
             </div>
-              <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
-              <p className="text-base text-foreground/80 dark:text-white/80 font-sans">
-                "As a creative, it's hard to quantify my impact. This tool helped me rephrase my experience with
-                powerful action verbs and metrics. I finally got past the ATS and landed my dream role at a top agency."
-              </p>
-              <div className="mt-5 pt-5 border-t border-border dark:border-white/10 flex items-center gap-3">
-                <img
-                  src="/images/testimonial-2.jpg"
-                  alt="Maria Garcia avatar"
-                  className="h-10 w-10 object-cover rounded-full"
-                />
-                <div>
-                  <p className="text-sm font-semibold tracking-tight font-sans">Maria Garcia</p>
-                  <p className="text-xs text-foreground/60 dark:text-white/60 font-sans">Senior UX Designer</p>
+
+            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-foreground/5 dark:bg-white/10 border border-border/80 dark:border-white/20">
+                  <RefreshCw className="h-5 w-5 text-foreground/70 dark:text-white/70" />
                 </div>
+                <h3 className="text-lg font-semibold tracking-tight font-sans">Save Hours Per Application</h3>
               </div>
+              <p className="text-sm text-foreground/70 dark:text-white/70 font-sans">
+                Generate tailored resumes in seconds instead of manually editing for each job. Focus your time on interview prep, not resume tweaking.
+              </p>
             </div>
-              <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
-              <p className="text-base text-foreground/80 dark:text-white/80 font-sans">
-                "The time savings alone are worth it. Instead of spending hours tweaking my resume for each application,
-                I can generate a perfectly tailored version in seconds. My interview rate has skyrocketed."
-              </p>
-              <div className="mt-5 pt-5 border-t border-border dark:border-white/10 flex items-center gap-3">
-                <img
-                  src="/images/testimonial-3.jpg"
-                  alt="David Chen avatar"
-                  className="h-10 w-10 object-cover rounded-full"
-                />
-                <div>
-                  <p className="text-sm font-semibold tracking-tight font-sans">David Chen</p>
-                  <p className="text-xs text-foreground/60 dark:text-white/60 font-sans">Marketing Director</p>
+
+            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-foreground/5 dark:bg-white/10 border border-border/80 dark:border-white/20">
+                  <Target className="h-5 w-5 text-foreground/70 dark:text-white/70" />
                 </div>
+                <h3 className="text-lg font-semibold tracking-tight font-sans">Match Job Requirements</h3>
               </div>
+              <p className="text-sm text-foreground/70 dark:text-white/70 font-sans">
+                AI analyzes job descriptions and highlights relevant skills and keywords automatically, so your experience aligns with what employers want.
+              </p>
+            </div>
+
+            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-foreground/5 dark:bg-white/10 border border-border/80 dark:border-white/20">
+                  <Upload className="h-5 w-5 text-foreground/70 dark:text-white/70" />
+                </div>
+                <h3 className="text-lg font-semibold tracking-tight font-sans">Multiple Versions, One Profile</h3>
+              </div>
+              <p className="text-sm text-foreground/70 dark:text-white/70 font-sans">
+                Maintain unlimited resume variations for different roles without starting from scratch. Switch between versions effortlessly.
+              </p>
+            </div>
+
+            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-foreground/5 dark:bg-white/10 border border-border/80 dark:border-white/20">
+                  <Star className="h-5 w-5 text-foreground/70 dark:text-white/70" />
+                </div>
+                <h3 className="text-lg font-semibold tracking-tight font-sans">Real-Time ATS Scoring</h3>
+              </div>
+              <p className="text-sm text-foreground/70 dark:text-white/70 font-sans">
+                See your compatibility score before applying and improve weak areas. Know exactly how well your resume matches each position.
+              </p>
+            </div>
+
+            <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-2xl backdrop-blur-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-foreground/5 dark:bg-white/10 border border-border/80 dark:border-white/20">
+                  <Download className="h-5 w-5 text-foreground/70 dark:text-white/70" />
+                </div>
+                <h3 className="text-lg font-semibold tracking-tight font-sans">Clean, Professional Format</h3>
+              </div>
+              <p className="text-sm text-foreground/70 dark:text-white/70 font-sans">
+                Templates designed for both human recruiters and automated systems. Export to PDF, Word, or plain text for any application portal.
+              </p>
             </div>
           </div>
         </div>
