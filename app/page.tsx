@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { RefreshCw, Upload, Target, Download, Check, Star, Plus, Menu } from "lucide-react"
+import { RefreshCw, Upload, Target, Download, Check, Star, Plus, Menu, History } from "lucide-react"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { ProCheckoutButton } from "@/components/pricing/pro-checkout-button"
 import { useAuth } from "@clerk/nextjs"
@@ -129,6 +129,12 @@ export default function HomePage() {
               <a href="#faq" className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans">
                 FAQ
               </a>
+              <Link
+                href="/changelog"
+                className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans"
+              >
+                Changelog
+              </Link>
             </div>
 
             <div className="hidden md:flex items-center gap-3">
@@ -249,6 +255,20 @@ export default function HomePage() {
                       <div className="text-sm text-foreground/60 dark:text-white/60">Common questions</div>
                     </div>
                   </a>
+
+                  <Link
+                    href="/changelog"
+                    onClick={toggleMobileMenu}
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
+                  >
+                    <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-cyan-500/10 group-hover:bg-cyan-500/20 transition-colors">
+                      <History className="h-5 w-5 text-cyan-400" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-foreground dark:text-white font-sans">Changelog</div>
+                      <div className="text-sm text-foreground/60 dark:text-white/60">What's new</div>
+                    </div>
+                  </Link>
                 </div>
 
                 {/* CTA Section */}
@@ -810,6 +830,7 @@ export default function HomePage() {
                 <Link href="/terms" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Terms</Link>
                 <Link href="/privacy" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Privacy</Link>
                 <Link href="/support" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Support</Link>
+                <Link href="/changelog" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Changelog</Link>
               </div>
               <div className="flex items-center gap-4">
                 <a href="https://x.com/resumate_ai" target="_blank" rel="noopener noreferrer" aria-label="Follow us on X (Twitter)" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
