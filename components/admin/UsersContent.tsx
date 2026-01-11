@@ -16,6 +16,7 @@ import {
   X,
   FileText,
   Briefcase,
+  CheckSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +44,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useDebounce } from "@/hooks/use-debounce"
 
 interface User {
@@ -124,6 +126,11 @@ export function UsersContent() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [deleting, setDeleting] = useState(false)
+
+  // Bulk selection
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set())
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const debouncedSearch = useDebounce(search, 300)
 
@@ -219,6 +226,65 @@ export function UsersContent() {
     }
   }
 
+  // Bulk selection handlers
+  const handleSelectUser = (userId: string) => {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) {
+        next.delete(userId)
+      } else {
+        next.add(userId)
+      }
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedUserIds.size === users.length) {
+      setSelectedUserIds(new Set())
+    } else {
+      setSelectedUserIds(new Set(users.map((u) => u.id)))
+    }
+  }
+
+  const clearSelection = () => {
+    setSelectedUserIds(new Set())
+  }
+
+  const handleBulkDeleteClick = () => {
+    if (selectedUserIds.size > 0) {
+      setBulkDeleteModalOpen(true)
+    }
+  }
+
+  const handleConfirmBulkDelete = async (hardDelete: boolean = false) => {
+    if (selectedUserIds.size === 0) return
+
+    try {
+      setBulkDeleting(true)
+      const response = await fetch("/api/admin/users/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userIds: Array.from(selectedUserIds),
+          hardDelete,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Failed to delete users")
+
+      setBulkDeleteModalOpen(false)
+      clearSelection()
+      fetchUsers()
+    } catch (err) {
+      console.error("Error bulk deleting users:", err)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  const selectedUsersData = users.filter((u) => selectedUserIds.has(u.id))
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -281,6 +347,27 @@ export function UsersContent() {
         </Button>
       </div>
 
+      {/* Bulk Actions Toolbar */}
+      {selectedUserIds.size > 0 && (
+        <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50 border">
+          <div className="flex items-center gap-2">
+            <CheckSquare className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">
+              {selectedUserIds.size} user{selectedUserIds.size !== 1 ? "s" : ""} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="outline" size="sm" onClick={clearSelection}>
+              Clear Selection
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleBulkDeleteClick}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Users Table */}
       <Card>
         <CardContent className="p-0">
@@ -288,6 +375,13 @@ export function UsersContent() {
             <table className="w-full">
               <thead>
                 <tr className="border-b bg-muted/50">
+                  <th className="py-3 px-4 w-12">
+                    <Checkbox
+                      checked={users.length > 0 && selectedUserIds.size === users.length ? true : selectedUserIds.size > 0 ? "indeterminate" : false}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all users"
+                    />
+                  </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">User</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Plan</th>
@@ -300,19 +394,26 @@ export function UsersContent() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center">
+                    <td colSpan={8} className="py-8 text-center">
                       <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <td colSpan={8} className="py-8 text-center text-muted-foreground">
                       No users found
                     </td>
                   </tr>
                 ) : (
                   users.map((user) => (
-                    <tr key={user.id} className="border-b last:border-0 hover:bg-muted/30">
+                    <tr key={user.id} className={`border-b last:border-0 hover:bg-muted/30 ${selectedUserIds.has(user.id) ? "bg-muted/20" : ""}`}>
+                      <td className="py-3 px-4">
+                        <Checkbox
+                          checked={selectedUserIds.has(user.id)}
+                          onCheckedChange={() => handleSelectUser(user.id)}
+                          aria-label={`Select ${user.name}`}
+                        />
+                      </td>
                       <td className="py-3 px-4">
                         <div>
                           <p className="font-medium text-sm">{user.name}</p>
@@ -593,6 +694,56 @@ export function UsersContent() {
             >
               {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Permanently Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <Dialog open={bulkDeleteModalOpen} onOpenChange={setBulkDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {selectedUserIds.size} Users</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete these users? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="p-4 rounded-lg bg-muted max-h-48 overflow-y-auto space-y-2">
+              {selectedUsersData.map((user) => (
+                <div key={user.id} className="flex justify-between items-center text-sm">
+                  <span className="font-medium">{user.name}</span>
+                  <span className="text-muted-foreground">{user.email}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                This will delete all data for {selectedUserIds.size} users including their resumes and job analyses.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setBulkDeleteModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleConfirmBulkDelete(false)}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Soft Delete All
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleConfirmBulkDelete(true)}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Permanently Delete All
             </Button>
           </DialogFooter>
         </DialogContent>
