@@ -143,7 +143,7 @@ export default function ForgotPasswordPage() {
               </svg>
             </span>
             <span className="text-base font-medium tracking-tighter" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-              ResuMate AI
+              Useresumate
             </span>
           </Link>
         </div>

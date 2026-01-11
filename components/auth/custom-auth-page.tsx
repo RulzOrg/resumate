@@ -261,7 +261,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 </svg>
               </span>
               <span className="text-base font-medium tracking-tighter" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-                ResuMate AI
+                Useresumate
               </span>
             </Link>
             <h2 className="text-3xl font-semibold tracking-tight text-foreground dark:text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
@@ -301,7 +301,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 </svg>
               </span>
               <span className="text-base font-medium tracking-tighter" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-                ResuMate AI
+                Useresumate
               </span>
             </Link>
               <h1 className="text-3xl font-semibold tracking-tight text-foreground dark:text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>

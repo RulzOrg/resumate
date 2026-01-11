@@ -12,7 +12,7 @@ import { useAuth } from "@clerk/nextjs"
 const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
-  name: "ResuMate AI",
+  name: "Useresumate",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description: "AI-powered resume optimization platform that creates ATS-friendly tailored resumes for multiple job applications",
@@ -47,7 +47,7 @@ const faqStructuredData = {
     },
     {
       "@type": "Question", 
-      name: "How does ResuMate AI optimize resumes for Applicant Tracking Systems?",
+      name: "How does Useresumate optimize resumes for Applicant Tracking Systems?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Our AI analyzes job descriptions to extract critical keywords and skills, then strategically integrates them into your resume using natural language patterns that ATS algorithms prefer. We format your resume with clean, ATS-friendly layouts, optimize bullet points with action verbs and metrics, and ensure proper section structure that automated systems can easily parse."
@@ -105,7 +105,7 @@ export default function HomePage() {
               <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
                 <RefreshCw className="h-4 w-4" />
               </span>
-              <span className="text-base font-medium tracking-tighter font-sans">ResuMate AI</span>
+              <span className="text-base font-medium tracking-tighter font-sans">Useresumate</span>
             </Link>
 
             <div className="hidden gap-1 md:flex bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-full p-1 backdrop-blur items-center">
@@ -168,7 +168,7 @@ export default function HomePage() {
                     <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
                       <RefreshCw className="h-4 w-4" />
                     </span>
-                    <span className="text-base font-medium tracking-tighter font-sans">ResuMate AI</span>
+                    <span className="text-base font-medium tracking-tighter font-sans">Useresumate</span>
                   </Link>
                 </div>
                 <button
@@ -531,7 +531,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl sm:text-4xl md:text-5xl tracking-tight font-space-grotesk font-semibold">
-              Why job seekers choose ResuMate AI
+              Why job seekers choose Useresumate
             </h2>
             <p className="mt-4 text-base text-foreground/70 dark:text-white/70 font-sans">
               Purpose-built features to help you stand out in today's competitive job market.
@@ -693,7 +693,7 @@ export default function HomePage() {
                   "ATS (Applicant Tracking Systems) are software used by 98% of employers to filter resumes automatically. These systems scan resumes for specific keywords, formatting, and qualifications before a human ever sees them. Without ATS-optimized formatting and proper keyword placement, even highly qualified candidates get rejected. Our AI ensures your resume passes these automated filters.",
               },
               {
-                question: "How does ResuMate AI optimize resumes for Applicant Tracking Systems?",
+                question: "How does Useresumate optimize resumes for Applicant Tracking Systems?",
                 answer:
                   "Our AI analyzes job descriptions to extract critical keywords and skills, then strategically integrates them into your resume using natural language patterns that ATS algorithms prefer. We format your resume with clean, ATS-friendly layouts, optimize bullet points with action verbs and metrics, and ensure proper section structure that automated systems can easily parse.",
               },
@@ -718,9 +718,9 @@ export default function HomePage() {
                   "While results vary by industry and qualifications, our users report dramatic increases in interview responses - many see 3-5x higher response rates after AI optimization. Tailored resumes that match job descriptions perfectly significantly outperform generic, one-size-fits-all applications.",
               },
               {
-                question: "Is ResuMate AI better than Jobscan or Rezi?",
+                question: "Is Useresumate better than Jobscan or Rezi?",
                 answer:
-                  "Unlike simple ATS scanners like Jobscan or basic builders like Rezi, ResuMate AI actively rewrites your content using AI, creates unlimited tailored versions, and optimizes for job specifics. We combine AI content generation, ATS formatting, and multi-application optimization in one platform, typically at better pricing.",
+                  "Unlike simple ATS scanners like Jobscan or basic builders like Rezi, Useresumate actively rewrites your content using AI, creates unlimited tailored versions, and optimizes for job specifics. We combine AI content generation, ATS formatting, and multi-application optimization in one platform, typically at better pricing.",
               },
               {
                 question: "Can I try the AI resume optimizer for free?",
@@ -790,7 +790,7 @@ export default function HomePage() {
       <footer className="border-t border-border dark:border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <p className="text-sm text-foreground/50 dark:text-white/50 font-sans">© {new Date().getFullYear()} ResuMate AI. All rights reserved.</p>
+            <p className="text-sm text-foreground/50 dark:text-white/50 font-sans">© {new Date().getFullYear()} Useresumate. All rights reserved.</p>
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-4">
                 <Link href="/terms" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Terms</Link>
@@ -798,12 +798,12 @@ export default function HomePage() {
                 <Link href="/support" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white font-sans">Support</Link>
               </div>
               <div className="flex items-center gap-4">
-                <a href="https://x.com/resumate_ai" target="_blank" rel="noopener noreferrer" aria-label="Follow us on X (Twitter)" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                <a href="https://x.com/useresumate" target="_blank" rel="noopener noreferrer" aria-label="Follow us on X (Twitter)" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                 </a>
-                <a href="https://linkedin.com/company/resumate-ai" target="_blank" rel="noopener noreferrer" aria-label="Follow us on LinkedIn" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
+                <a href="https://linkedin.com/company/useresumate" target="_blank" rel="noopener noreferrer" aria-label="Follow us on LinkedIn" className="text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
                     <rect x="2" y="9" width="4" height="12" />

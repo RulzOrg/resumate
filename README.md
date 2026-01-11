@@ -1,8 +1,8 @@
-# ResuMate AI
+# Useresumate
 
 **Stop sending the same generic resume everywhere. Land more interviews with AI-tailored resumes.**
 
-ResuMate AI is an AI-powered resume optimization platform that creates ATS-friendly, job-specific resume versions in seconds. Upload once, generate unlimited tailored resumes for every job application.
+Useresumate is an AI-powered resume optimization platform that creates ATS-friendly, job-specific resume versions in seconds. Upload once, generate unlimited tailored resumes for every job application.
 
 ---
 
@@ -15,7 +15,7 @@ ResuMate AI is an AI-powered resume optimization platform that creates ATS-frien
 
 ## The Solution
 
-ResuMate AI analyzes job descriptions and intelligently rewrites your resume to match what employers are looking for. Our AI doesn't just stuff keywords—it naturally integrates relevant skills and achievements that resonate with both ATS algorithms and hiring managers.
+Useresumate analyzes job descriptions and intelligently rewrites your resume to match what employers are looking for. Our AI doesn't just stuff keywords—it naturally integrates relevant skills and achievements that resonate with both ATS algorithms and hiring managers.
 
 ---
 
@@ -41,9 +41,9 @@ What used to take hours now takes seconds. Apply to more jobs in less time.
 
 ---
 
-## Why Choose ResuMate AI
+## Why Choose Useresumate
 
-| Feature | ResuMate AI | Basic ATS Scanners | Manual Editing |
+| Feature | Useresumate | Basic ATS Scanners | Manual Editing |
 |---------|-------------|-------------------|----------------|
 | Active AI rewriting | Yes | No | No |
 | Multiple tailored versions | Unlimited | Limited | Time-consuming |

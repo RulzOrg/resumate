@@ -36,7 +36,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
               <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
                 <Zap className="h-4 w-4" />
               </span>
-              <span className="text-base font-medium tracking-tighter">ResuMate AI</span>
+              <span className="text-base font-medium tracking-tighter">Useresumate</span>
             </Link>
 
             <div className="hidden gap-1 md:flex bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 border rounded-full p-1 backdrop-blur items-center">
@@ -183,12 +183,12 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl sm:text-4xl md:text-5xl tracking-tight font-space-grotesk font-semibold">From hundreds of applications to multiple offers.</h2>
-            <p className="mt-4 text-base text-foreground/70 dark:text-white/70">Hear from job seekers who transformed their job search with ResuMate AI.</p>
+            <p className="mt-4 text-base text-foreground/70 dark:text-white/70">Hear from job seekers who transformed their job search with Useresumate.</p>
           </div>
 
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div className="relative overflow-hidden p-6 bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 border rounded-2xl backdrop-blur-xl">
-              <p className="text-base text-foreground/80 dark:text-white/80">"I was applying for months with no luck. After using ResuMate AI, I got three interview requests in the first week. The AI's ability to match my skills to the job description was a game-changer."</p>
+              <p className="text-base text-foreground/80 dark:text-white/80">"I was applying for months with no luck. After using Useresumate, I got three interview requests in the first week. The AI's ability to match my skills to the job description was a game-changer."</p>
               <div className="mt-5 pt-5 border-t border-border dark:border-white/10 flex items-center gap-3">
                 <img src="/images/testimonial-1.jpg" alt="Alex Johnson avatar" className="h-10 w-10 object-cover rounded-full" />
                 <div>
@@ -268,7 +268,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
       <footer className="border-t border-border dark:border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <p className="text-sm text-foreground/50 dark:text-white/50">© {new Date().getFullYear()} ResuMate AI. All rights reserved.</p>
+            <p className="text-sm text-foreground/50 dark:text-white/50">© {new Date().getFullYear()} Useresumate. All rights reserved.</p>
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-4">
                 <Link href="/terms" className="text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white">Terms</Link>

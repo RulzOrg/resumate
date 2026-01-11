@@ -35,8 +35,8 @@ export async function sendOptimizedResumeEmail({
   improvements,
   expiresInDays = 7,
 }: SendOptimizedResumeEmailParams): Promise<EmailResponse> {
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@resumate.com';
-  const fromName = 'ResuMate';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@useresumate.com';
+  const fromName = 'Useresumate';
 
   if (!resend) {
     console.warn('[Email] RESEND_API_KEY not configured - skipping email send');
@@ -109,8 +109,8 @@ export async function sendNotificationEmail(
   html: string,
   replyTo?: string
 ): Promise<EmailResponse> {
-  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@resumate.com';
-  const fromName = 'ResuMate';
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@useresumate.com';
+  const fromName = 'Useresumate';
 
   if (!resend) {
     console.warn('[Email] RESEND_API_KEY not configured - skipping email send');

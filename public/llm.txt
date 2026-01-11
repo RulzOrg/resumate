@@ -1,7 +1,7 @@
-# ResuMate AI - AI Resume Optimization Platform
+# Useresumate - AI Resume Optimization Platform
 
 ## Overview
-ResuMate AI is an AI-powered resume optimization platform that helps job seekers create ATS-friendly resumes tailored for multiple job applications. The platform uses advanced AI technology to analyze job descriptions and generate resume versions that maximize interview chances.
+Useresumate is an AI-powered resume optimization platform that helps job seekers create ATS-friendly resumes tailored for multiple job applications. The platform uses advanced AI technology to analyze job descriptions and generate resume versions that maximize interview chances.
 
 ## Primary Features
 - **AI Resume Optimization**: Automatically rewrites resumes to match job requirements

@@ -2,8 +2,8 @@ import Link from "next/link"
 import { RefreshCw } from "lucide-react"
 
 export const metadata = {
-  title: "Privacy Policy | ResuMate AI",
-  description: "Privacy Policy for ResuMate AI - How we collect, use, and protect your data",
+  title: "Privacy Policy | Useresumate",
+  description: "Privacy Policy for Useresumate - How we collect, use, and protect your data",
 }
 
 export default function PrivacyPage() {
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
             <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
               <RefreshCw className="h-4 w-4" />
             </span>
-            <span className="text-base font-medium tracking-tighter">ResuMate AI</span>
+            <span className="text-base font-medium tracking-tighter">Useresumate</span>
           </Link>
         </div>
       </header>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">1. Introduction</h2>
             <p className="text-foreground/80 leading-relaxed">
-              ResuMate AI ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
+              Useresumate ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy 
               explains how we collect, use, disclose, and safeguard your information when you use our AI-powered 
               resume optimization service.
             </p>
@@ -332,7 +332,7 @@ export default function PrivacyPage() {
       <footer className="border-t border-border dark:border-white/10 mt-16">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} ResuMate AI. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Useresumate. All rights reserved.</p>
             <div className="flex items-center gap-4">
               <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms</Link>
               <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy</Link>

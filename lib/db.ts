@@ -310,8 +310,8 @@ export async function ensureUserSyncRecord(params: {
   subscription_status?: string | null
   subscription_plan?: string | null
 }) {
-  const safeEmail = params.email && params.email.trim().length > 0 ? params.email : `${params.id}@placeholder.resumate.ai`
-  const safeName = params.name && params.name.trim().length > 0 ? params.name : "ResuMate User"
+  const safeEmail = params.email && params.email.trim().length > 0 ? params.email : `${params.id}@placeholder.useresumate.com`
+  const safeName = params.name && params.name.trim().length > 0 ? params.name : "Useresumate User"
 
   try {
     const [record] = await sql`

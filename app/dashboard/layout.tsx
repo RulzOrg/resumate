@@ -31,7 +31,7 @@ export default async function DashboardLayout({
         <footer className="border-t border-border dark:border-white/20 mt-16">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-foreground/50 dark:text-white/50">&copy; {new Date().getFullYear()} ResuMate AI</p>
+              <p className="text-sm text-foreground/50 dark:text-white/50">&copy; {new Date().getFullYear()} Useresumate</p>
               <div className="flex items-center gap-4">
                 <Link href="/dashboard" className="text-sm text-foreground/75 dark:text-white/75 hover:text-foreground dark:hover:text-white">
                   Dashboard

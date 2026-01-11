@@ -121,7 +121,7 @@ export function WelcomeVideoModal({
             {/* Header */}
             <div className="px-6 pt-6 pb-4">
               <h2 className="text-xl font-semibold font-space-grotesk">
-                Welcome to ResuMate AI!
+                Welcome to Useresumate!
               </h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Watch this quick video to learn how to get the most out of your

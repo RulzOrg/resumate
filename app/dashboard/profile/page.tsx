@@ -7,7 +7,7 @@ import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
 
 export const metadata = {
-  title: "Profile | ResuMate AI",
+  title: "Profile | Useresumate",
   description: "Manage your profile, resumes, and job application history",
 }
 

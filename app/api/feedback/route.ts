@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     // Send email
     const result = await sendNotificationEmail(
       FEEDBACK_EMAIL,
-      `[ResuMate ${typeLabel}] from ${name}`,
+      `[Useresumate ${typeLabel}] from ${name}`,
       htmlContent,
       email
     )

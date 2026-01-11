@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Send email to support
     const result = await sendNotificationEmail(
       SUPPORT_EMAIL,
-      `[ResuMate Support] ${subject}`,
+      `[Useresumate Support] ${subject}`,
       htmlContent,
       email
     )

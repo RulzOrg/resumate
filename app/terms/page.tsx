@@ -2,8 +2,8 @@ import Link from "next/link"
 import { RefreshCw } from "lucide-react"
 
 export const metadata = {
-  title: "Terms of Service | ResuMate AI",
-  description: "Terms of Service for ResuMate AI - AI-powered resume optimization platform",
+  title: "Terms of Service | Useresumate",
+  description: "Terms of Service for Useresumate - AI-powered resume optimization platform",
 }
 
 export default function TermsPage() {
@@ -21,7 +21,7 @@ export default function TermsPage() {
             <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
               <RefreshCw className="h-4 w-4" />
             </span>
-            <span className="text-base font-medium tracking-tighter">ResuMate AI</span>
+            <span className="text-base font-medium tracking-tighter">Useresumate</span>
           </Link>
         </div>
       </header>
@@ -35,7 +35,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">1. Agreement to Terms</h2>
             <p className="text-foreground/80 leading-relaxed">
-              By accessing or using ResuMate AI ("Service"), you agree to be bound by these Terms of Service ("Terms"). 
+              By accessing or using Useresumate ("Service"), you agree to be bound by these Terms of Service ("Terms"). 
               If you disagree with any part of these terms, you may not access the Service. These Terms apply to all 
               visitors, users, and others who access or use the Service.
             </p>
@@ -44,7 +44,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">2. Description of Service</h2>
             <p className="text-foreground/80 leading-relaxed">
-              ResuMate AI is an AI-powered resume optimization platform that helps users create ATS-friendly, 
+              Useresumate is an AI-powered resume optimization platform that helps users create ATS-friendly, 
               job-tailored resumes. Our services include:
             </p>
             <ul className="list-disc pl-6 mt-4 space-y-2 text-foreground/80">
@@ -123,7 +123,7 @@ export default function TermsPage() {
             <h3 className="text-xl font-medium mt-6 mb-3">6.2 Our Content</h3>
             <p className="text-foreground/80 leading-relaxed">
               The Service and its original content (excluding content provided by users), features, and 
-              functionality are and will remain the exclusive property of ResuMate AI and its licensors. 
+              functionality are and will remain the exclusive property of Useresumate and its licensors. 
               The Service is protected by copyright, trademark, and other laws.
             </p>
           </section>
@@ -164,7 +164,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mt-8 mb-4">9. Limitation of Liability</h2>
             <p className="text-foreground/80 leading-relaxed">
-              IN NO EVENT SHALL RESUMATE AI, ITS DIRECTORS, EMPLOYEES, PARTNERS, AGENTS, SUPPLIERS, OR AFFILIATES 
+              IN NO EVENT SHALL USERESUMATE, ITS DIRECTORS, EMPLOYEES, PARTNERS, AGENTS, SUPPLIERS, OR AFFILIATES 
               BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING 
               WITHOUT LIMITATION, LOSS OF PROFITS, DATA, USE, GOODWILL, OR OTHER INTANGIBLE LOSSES, RESULTING FROM:
             </p>
@@ -233,7 +233,7 @@ export default function TermsPage() {
       <footer className="border-t border-border dark:border-white/10 mt-16">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} ResuMate AI. All rights reserved.</p>
+            <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Useresumate. All rights reserved.</p>
             <div className="flex items-center gap-4">
               <Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground">Terms</Link>
               <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">Privacy</Link>
