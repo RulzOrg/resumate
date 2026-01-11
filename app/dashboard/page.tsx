@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation"
 import { getAuthenticatedUser } from "@/lib/user-data"
 import { getUserResumes, getUserOptimizedResumes } from "@/lib/db"
 import { getCurrentSubscription, getUsageLimits } from "@/lib/subscription"
@@ -7,14 +8,11 @@ import Link from "next/link"
 import { AccountStatusCard } from "@/components/dashboard/AccountStatusCard"
 import { MasterResumesSection } from "@/components/dashboard/MasterResumesSection"
 import { QuickOptimizeForm } from "@/components/dashboard/QuickOptimizeForm"
-import { WelcomeVideoProvider } from "@/components/providers/welcome-video-provider"
-
-const WELCOME_VIDEO_URL = "/videos/welcome.mp4"
 
 export default async function DashboardPage() {
   const user = await getAuthenticatedUser()
   if (!user?.id) {
-    return null
+    redirect("/auth/login")
   }
 
   const [
@@ -30,11 +28,7 @@ export default async function DashboardPage() {
   ])
 
   return (
-    <WelcomeVideoProvider
-      showOnMount={!user.onboarding_completed_at}
-      videoUrl={WELCOME_VIDEO_URL}
-    >
-      <div className="antialiased text-foreground bg-background font-geist min-h-screen">
+    <div className="antialiased text-foreground bg-background font-geist min-h-screen">
         <div className="absolute top-0 left-0 w-full h-[400px] -z-10 gradient-blur"></div>
 
         <DashboardHeader user={user as any} />
@@ -115,7 +109,6 @@ export default async function DashboardPage() {
           </div>
         </div>
       </footer>
-      </div>
-    </WelcomeVideoProvider>
+    </div>
   )
 }

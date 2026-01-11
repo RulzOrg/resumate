@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Shield } from "lucide-react"
 import { UserButton } from "@clerk/nextjs"
@@ -18,6 +19,12 @@ interface AdminHeaderProps {
 }
 
 export function AdminHeader({ admin }: AdminHeaderProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <header className="sticky top-0 z-50 h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="flex h-full items-center justify-between px-4 lg:px-6">
@@ -38,14 +45,16 @@ export function AdminHeader({ admin }: AdminHeaderProps) {
             <span className="font-medium text-foreground">{admin.email}</span>
           </div>
           <ThemeSwitcher />
-          <UserButton
-            afterSwitchSessionUrl="/admin"
-            appearance={{
-              elements: {
-                avatarBox: "h-8 w-8",
-              },
-            }}
-          />
+          {mounted && (
+            <UserButton
+              afterSwitchSessionUrl="/admin"
+              appearance={{
+                elements: {
+                  avatarBox: "h-8 w-8",
+                },
+              }}
+            />
+          )}
         </div>
       </div>
     </header>

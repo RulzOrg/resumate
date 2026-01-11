@@ -1,6 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server"
 import { redirect } from "next/navigation"
-import { prisma } from "./prisma"
+import { sql } from "./db"
 
 // Admin emails - should be set in environment variables
 const ADMIN_EMAILS = process.env.ADMIN_EMAILS
@@ -15,12 +15,37 @@ export interface AdminUser {
   isAdmin: boolean
 }
 
+interface DbUser {
+  id: string
+  email: string
+  name: string
+  clerk_user_id: string
+}
+
 /**
  * Check if an email is an admin email
  */
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
   return ADMIN_EMAILS.includes(email.toLowerCase())
+}
+
+/**
+ * Helper to get user by Clerk ID
+ */
+async function getUserByClerkId(clerkUserId: string): Promise<DbUser | null> {
+  try {
+    const users = await sql<DbUser>`
+      SELECT id, email, name, clerk_user_id
+      FROM users_sync
+      WHERE clerk_user_id = ${clerkUserId}
+      LIMIT 1
+    `
+    return users[0] || null
+  } catch (error) {
+    console.error("Error fetching user by Clerk ID:", error)
+    return null
+  }
 }
 
 /**
@@ -42,9 +67,7 @@ export async function requireAdminAuth(): Promise<AdminUser> {
   }
 
   // Get user from database
-  const dbUser = await prisma.userSync.findFirst({
-    where: { clerkUserId: userId },
-  })
+  const dbUser = await getUserByClerkId(userId)
 
   if (!dbUser) {
     redirect("/dashboard")
@@ -66,20 +89,26 @@ export async function requireAdminAuth(): Promise<AdminUser> {
 export async function getAdminSession(): Promise<AdminUser | null> {
   const { userId } = await auth()
 
+  console.log("[AdminAuth] userId:", userId)
+
   if (!userId) {
+    console.log("[AdminAuth] No userId found - user not authenticated")
     return null
   }
 
   const user = await currentUser()
   const email = user?.emailAddresses?.[0]?.emailAddress
 
+  console.log("[AdminAuth] User email:", email)
+  console.log("[AdminAuth] Admin emails configured:", ADMIN_EMAILS)
+  console.log("[AdminAuth] Is admin email:", isAdminEmail(email))
+
   if (!email || !isAdminEmail(email)) {
+    console.log("[AdminAuth] Email not in admin list")
     return null
   }
 
-  const dbUser = await prisma.userSync.findFirst({
-    where: { clerkUserId: userId },
-  })
+  const dbUser = await getUserByClerkId(userId)
 
   if (!dbUser) {
     return null

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { verifyAdminAccess } from "@/lib/admin-auth"
-import { prisma } from "@/lib/prisma"
+import { sql } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
@@ -22,7 +22,7 @@ export async function GET() {
     // Check Database
     try {
       const dbStart = Date.now()
-      await prisma.$queryRaw`SELECT 1`
+      await sql`SELECT 1`
       const dbLatency = Date.now() - dbStart
 
       services.push({
@@ -94,16 +94,21 @@ export async function GET() {
 
     // Get database statistics
     const [
-      totalUsers,
-      totalResumes,
-      pendingResumes,
-      failedResumes,
+      totalUsersResult,
+      totalResumesResult,
+      pendingResumesResult,
+      failedResumesResult,
     ] = await Promise.all([
-      prisma.userSync.count({ where: { deletedAt: null } }),
-      prisma.resume.count({ where: { deletedAt: null } }),
-      prisma.resume.count({ where: { processingStatus: "pending", deletedAt: null } }),
-      prisma.resume.count({ where: { processingStatus: "failed", deletedAt: null } }),
+      sql<{ count: string }>`SELECT COUNT(*)::text as count FROM users_sync WHERE deleted_at IS NULL`,
+      sql<{ count: string }>`SELECT COUNT(*)::text as count FROM resumes WHERE deleted_at IS NULL`,
+      sql<{ count: string }>`SELECT COUNT(*)::text as count FROM resumes WHERE processing_status = 'pending' AND deleted_at IS NULL`,
+      sql<{ count: string }>`SELECT COUNT(*)::text as count FROM resumes WHERE processing_status = 'failed' AND deleted_at IS NULL`,
     ])
+
+    const totalUsers = parseInt(totalUsersResult[0]?.count || "0")
+    const totalResumes = parseInt(totalResumesResult[0]?.count || "0")
+    const pendingResumes = parseInt(pendingResumesResult[0]?.count || "0")
+    const failedResumes = parseInt(failedResumesResult[0]?.count || "0")
 
     const totalLatency = Date.now() - startTime
     const healthyCount = services.filter(s => s.status === "healthy").length

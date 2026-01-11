@@ -67,13 +67,19 @@ export function AdminDashboardContent() {
     try {
       setLoading(true)
       setError(null)
+      console.log("[AdminDashboard] Fetching stats...")
       const response = await fetch("/api/admin/stats")
+      console.log("[AdminDashboard] Response status:", response.status)
       if (!response.ok) {
-        throw new Error("Failed to fetch stats")
+        const errorText = await response.text()
+        console.error("[AdminDashboard] Error response:", errorText)
+        throw new Error(`Failed to fetch stats: ${response.status}`)
       }
       const data = await response.json()
+      console.log("[AdminDashboard] Stats loaded successfully")
       setStats(data)
     } catch (err) {
+      console.error("[AdminDashboard] Fetch error:", err)
       setError(err instanceof Error ? err.message : "Failed to load stats")
     } finally {
       setLoading(false)

@@ -1,26 +1,24 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyAdminAccess } from "@/lib/admin-auth"
-import { prisma } from "@/lib/prisma"
+import { sql } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
 
-interface UserWithCount {
+interface DbUser {
   id: string
   email: string
   name: string
-  clerkUserId: string | null
-  subscriptionStatus: string
-  subscriptionPlan: string
-  subscriptionPeriodEnd: Date | null
-  polarCustomerId: string | null
-  createdAt: Date
-  updatedAt: Date
-  deletedAt: Date | null
-  _count: {
-    resumes: number
-    jobAnalyses: number
-    resumeVersions: number
-  }
+  clerk_user_id: string | null
+  subscription_status: string
+  subscription_plan: string
+  subscription_period_end: string | null
+  polar_customer_id: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  resume_count: string
+  job_analysis_count: string
+  resume_version_count: string
 }
 
 export async function GET(request: NextRequest) {
@@ -33,74 +31,66 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search") || ""
     const status = searchParams.get("status") || "all"
     const plan = searchParams.get("plan") || "all"
-    const sortBy = searchParams.get("sortBy") || "createdAt"
-    const sortOrder = searchParams.get("sortOrder") || "desc"
     const includeDeleted = searchParams.get("includeDeleted") === "true"
 
-    const skip = (page - 1) * limit
+    const offset = (page - 1) * limit
 
-    // Build where clause
-    const where: Record<string, unknown> = {}
-
-    if (!includeDeleted) {
-      where.deletedAt = null
-    }
-
+    // Simple query without dynamic ordering (to avoid SQL injection)
+    // Build dynamic conditions
+    const conditions = []
     if (search) {
-      where.OR = [
-        { email: { contains: search, mode: "insensitive" } },
-        { name: { contains: search, mode: "insensitive" } },
-      ]
+      conditions.push(sql`(u.email ILIKE ${'%' + search + '%'} OR u.name ILIKE ${'%' + search + '%'})`)
     }
-
     if (status !== "all") {
-      where.subscriptionStatus = status
+      conditions.push(sql`u.subscription_status = ${status}`)
     }
-
     if (plan !== "all") {
-      where.subscriptionPlan = plan
+      conditions.push(sql`u.subscription_plan = ${plan}`)
+    }
+    if (!includeDeleted) {
+      conditions.push(sql`u.deleted_at IS NULL`)
     }
 
-    // Build order by
-    const orderBy: Record<string, string> = {}
-    orderBy[sortBy] = sortOrder
+    // Ensure valid WHERE clause
+    if (conditions.length === 0) {
+      conditions.push(sql`1=1`)
+    }
 
-    const [users, total] = await Promise.all([
-      prisma.userSync.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: {
-          _count: {
-            select: {
-              resumes: true,
-              jobAnalyses: true,
-              resumeVersions: true,
-            },
-          },
-        },
-      }),
-      prisma.userSync.count({ where }),
-    ])
+    const users = await sql<DbUser>`
+      SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan,
+        u.subscription_period_end, u.polar_customer_id, u.created_at, u.updated_at, u.deleted_at,
+        COALESCE((SELECT COUNT(*) FROM resumes r WHERE r.user_id = u.id), 0)::text as resume_count,
+        COALESCE((SELECT COUNT(*) FROM job_analysis j WHERE j.user_id = u.id), 0)::text as job_analysis_count,
+        COALESCE((SELECT COUNT(*) FROM resume_versions rv WHERE rv.user_id = u.id), 0)::text as resume_version_count
+      FROM users_sync u
+      WHERE ${(sql as any).join(conditions, sql` AND `)}
+      ORDER BY u.created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+    `
 
-    // Format user data
-    const formattedUsers = users.map((user: UserWithCount) => ({
+    const totalResult = await sql<{ count: string }>`
+      SELECT COUNT(*)::text as count FROM users_sync u
+      WHERE ${(sql as any).join(conditions, sql` AND `)}
+    `
+
+    const total = parseInt(totalResult[0]?.count || "0")
+
+    const formattedUsers = users.map((user) => ({
       id: user.id,
       email: user.email,
       name: user.name,
-      clerkUserId: user.clerkUserId,
-      subscriptionStatus: user.subscriptionStatus,
-      subscriptionPlan: user.subscriptionPlan,
-      subscriptionPeriodEnd: user.subscriptionPeriodEnd,
-      polarCustomerId: user.polarCustomerId,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      deletedAt: user.deletedAt,
+      clerkUserId: user.clerk_user_id,
+      subscriptionStatus: user.subscription_status,
+      subscriptionPlan: user.subscription_plan,
+      subscriptionPeriodEnd: user.subscription_period_end,
+      polarCustomerId: user.polar_customer_id,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
+      deletedAt: user.deleted_at,
       stats: {
-        resumes: user._count.resumes,
-        jobAnalyses: user._count.jobAnalyses,
-        resumeVersions: user._count.resumeVersions,
+        resumes: parseInt(user.resume_count || "0"),
+        jobAnalyses: parseInt(user.job_analysis_count || "0"),
+        resumeVersions: parseInt(user.resume_version_count || "0"),
       },
     }))
 
@@ -111,7 +101,7 @@ export async function GET(request: NextRequest) {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
-        hasMore: skip + limit < total,
+        hasMore: offset + limit < total,
       },
     })
   } catch (error) {

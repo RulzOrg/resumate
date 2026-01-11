@@ -1,38 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyAdminAccess } from "@/lib/admin-auth"
-import { prisma } from "@/lib/prisma"
+import { sql } from "@/lib/db"
 
 export const dynamic = "force-dynamic"
-
-interface SubscriptionGroupBy {
-  subscriptionPlan: string
-  subscriptionStatus: string
-  _count: number
-}
-
-interface TopUser {
-  id: string
-  email: string
-  name: string
-  subscriptionPlan: string
-  _count: {
-    resumes: number
-    jobAnalyses: number
-  }
-}
-
-interface LeadMagnetStat {
-  date: Date
-  total: bigint
-  converted: bigint
-}
 
 export async function GET(request: NextRequest) {
   try {
     await verifyAdminAccess()
 
     const searchParams = request.nextUrl.searchParams
-    const period = searchParams.get("period") || "30" // days
+    const period = searchParams.get("period") || "30"
     const periodDays = parseInt(period)
 
     const startDate = new Date()
@@ -40,122 +17,119 @@ export async function GET(request: NextRequest) {
     startDate.setHours(0, 0, 0, 0)
 
     // Get daily signups
-    const dailySignups = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
-      SELECT DATE(created_at) as date, COUNT(*) as count
+    const dailySignups = await sql<{ date: string; count: string }>`
+      SELECT DATE(created_at)::text as date, COUNT(*)::text as count
       FROM users_sync
-      WHERE created_at >= ${startDate} AND deleted_at IS NULL
+      WHERE created_at >= ${startDate.toISOString()} AND deleted_at IS NULL
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `
 
     // Get daily resume uploads
-    const dailyResumes = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
-      SELECT DATE(created_at) as date, COUNT(*) as count
+    const dailyResumes = await sql<{ date: string; count: string }>`
+      SELECT DATE(created_at)::text as date, COUNT(*)::text as count
       FROM resumes
-      WHERE created_at >= ${startDate} AND deleted_at IS NULL AND kind = 'uploaded'
+      WHERE created_at >= ${startDate.toISOString()} AND deleted_at IS NULL AND kind = 'uploaded'
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `
 
     // Get daily optimizations
-    const dailyOptimizations = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
-      SELECT DATE(created_at) as date, COUNT(*) as count
+    const dailyOptimizations = await sql<{ date: string; count: string }>`
+      SELECT DATE(created_at)::text as date, COUNT(*)::text as count
       FROM resumes
-      WHERE created_at >= ${startDate} AND deleted_at IS NULL AND kind = 'generated'
+      WHERE created_at >= ${startDate.toISOString()} AND deleted_at IS NULL AND kind = 'generated'
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `
 
     // Get daily job analyses
-    const dailyJobAnalyses = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
-      SELECT DATE(created_at) as date, COUNT(*) as count
+    const dailyJobAnalyses = await sql<{ date: string; count: string }>`
+      SELECT DATE(created_at)::text as date, COUNT(*)::text as count
       FROM job_analysis
-      WHERE created_at >= ${startDate} AND deleted_at IS NULL
+      WHERE created_at >= ${startDate.toISOString()} AND deleted_at IS NULL
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `
 
-    // Get subscription changes
-    const subscriptionsByPlan = await prisma.userSync.groupBy({
-      by: ["subscriptionPlan"],
-      _count: true,
-      where: { deletedAt: null },
-    })
+    // Get subscription distribution by plan
+    const subscriptionsByPlan = await sql<{ subscription_plan: string; count: string }>`
+      SELECT subscription_plan, COUNT(*)::text as count
+      FROM users_sync WHERE deleted_at IS NULL
+      GROUP BY subscription_plan
+    `
 
-    const subscriptionsByStatus = await prisma.userSync.groupBy({
-      by: ["subscriptionStatus"],
-      _count: true,
-      where: { deletedAt: null },
-    })
+    // Get subscription distribution by status
+    const subscriptionsByStatus = await sql<{ subscription_status: string; count: string }>`
+      SELECT subscription_status, COUNT(*)::text as count
+      FROM users_sync WHERE deleted_at IS NULL
+      GROUP BY subscription_status
+    `
 
     // Get top users by activity
-    const topUsersByResumes = await prisma.userSync.findMany({
-      where: { deletedAt: null },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        subscriptionPlan: true,
-        _count: {
-          select: {
-            resumes: true,
-            jobAnalyses: true,
-          },
-        },
-      },
-      orderBy: {
-        resumes: { _count: "desc" },
-      },
-      take: 10,
-    })
+    const topUsers = await sql<{
+      id: string
+      email: string
+      name: string
+      subscription_plan: string
+      resume_count: string
+      job_analysis_count: string
+    }>`
+      SELECT u.id, u.email, u.name, u.subscription_plan,
+        COALESCE(r.count, 0)::text as resume_count,
+        COALESCE(j.count, 0)::text as job_analysis_count
+      FROM users_sync u
+      LEFT JOIN (
+        SELECT user_id, COUNT(*) as count FROM resumes WHERE deleted_at IS NULL GROUP BY user_id
+      ) r ON u.id = r.user_id
+      LEFT JOIN (
+        SELECT user_id, COUNT(*) as count FROM job_analysis WHERE deleted_at IS NULL GROUP BY user_id
+      ) j ON u.id = j.user_id
+      WHERE u.deleted_at IS NULL
+      ORDER BY COALESCE(r.count, 0) DESC
+      LIMIT 10
+    `
 
     // Get lead magnet performance
-    const leadMagnetStats = await prisma.$queryRaw<Array<{ date: Date; total: bigint; converted: bigint }>>`
+    const leadMagnetStats = await sql<{ date: string; total: string; converted: string }>`
       SELECT
-        DATE(submitted_at) as date,
-        COUNT(*) as total,
-        COUNT(CASE WHEN converted_to_user = true THEN 1 END) as converted
+        DATE(submitted_at)::text as date,
+        COUNT(*)::text as total,
+        COUNT(CASE WHEN converted_to_user = true THEN 1 END)::text as converted
       FROM lead_magnet_submissions
-      WHERE submitted_at >= ${startDate}
+      WHERE submitted_at >= ${startDate.toISOString()}
       GROUP BY DATE(submitted_at)
       ORDER BY date ASC
     `
 
-    // Format data for charts
-    const formatDailyData = (data: Array<{ date: Date; count: bigint }>) =>
-      data.map((item) => ({
-        date: item.date.toISOString().split("T")[0],
-        count: Number(item.count),
-      }))
-
     return NextResponse.json({
       period: periodDays,
-      signups: formatDailyData(dailySignups),
-      resumes: formatDailyData(dailyResumes),
-      optimizations: formatDailyData(dailyOptimizations),
-      jobAnalyses: formatDailyData(dailyJobAnalyses),
+      signups: dailySignups.map(d => ({ date: d.date, count: parseInt(d.count) })),
+      resumes: dailyResumes.map(d => ({ date: d.date, count: parseInt(d.count) })),
+      optimizations: dailyOptimizations.map(d => ({ date: d.date, count: parseInt(d.count) })),
+      jobAnalyses: dailyJobAnalyses.map(d => ({ date: d.date, count: parseInt(d.count) })),
       subscriptions: {
-        byPlan: subscriptionsByPlan.map((item: { subscriptionPlan: string; _count: number }) => ({
-          plan: item.subscriptionPlan,
-          count: item._count,
+        byPlan: subscriptionsByPlan.map(item => ({
+          plan: item.subscription_plan,
+          count: parseInt(item.count),
         })),
-        byStatus: subscriptionsByStatus.map((item: { subscriptionStatus: string; _count: number }) => ({
-          status: item.subscriptionStatus,
-          count: item._count,
+        byStatus: subscriptionsByStatus.map(item => ({
+          status: item.subscription_status,
+          count: parseInt(item.count),
         })),
       },
-      topUsers: topUsersByResumes.map((user: TopUser) => ({
+      topUsers: topUsers.map(user => ({
         id: user.id,
         email: user.email,
         name: user.name,
-        plan: user.subscriptionPlan,
-        resumes: user._count.resumes,
-        jobAnalyses: user._count.jobAnalyses,
+        plan: user.subscription_plan,
+        resumes: parseInt(user.resume_count),
+        jobAnalyses: parseInt(user.job_analysis_count),
       })),
-      leadMagnets: leadMagnetStats.map((item: LeadMagnetStat) => ({
-        date: item.date.toISOString().split("T")[0],
-        total: Number(item.total),
-        converted: Number(item.converted),
+      leadMagnets: leadMagnetStats.map(item => ({
+        date: item.date,
+        total: parseInt(item.total),
+        converted: parseInt(item.converted),
       })),
     })
   } catch (error) {
