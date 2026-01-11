@@ -144,19 +144,21 @@ export default function HomePage() {
               Menu
             </button>
 
+          </nav>
+
           {/* Mobile Menu */}
           <div className={`fixed inset-0 z-50 md:hidden ${mobileMenuOpen ? 'block' : 'hidden'}`}>
             {/* Backdrop */}
-            <div 
-              className="fixed inset-0 bg-foreground/50 dark:bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
               onClick={toggleMobileMenu}
               style={{ opacity: mobileMenuOpen ? 1 : 0 }}
             />
-            
+
             {/* Slide-in Panel */}
-            <div className={`fixed right-0 top-0 bottom-0 w-full sm:w-80 bg-foreground/95 dark:bg-black/95 backdrop-blur-xl border-l border-border dark:border-white/10 transform transition-transform duration-300 ease-out`}
+            <div className={`fixed right-0 top-0 bottom-0 w-full sm:w-80 bg-background backdrop-blur-xl border-l border-border dark:border-white/10 transform transition-transform duration-300 ease-out`}
                  style={{ transform: mobileMenuOpen ? 'translateX(0)' : 'translateX(100%)' }}>
-              
+
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-border dark:border-white/10">
                 <div className="flex items-center gap-3">
@@ -166,7 +168,7 @@ export default function HomePage() {
                     className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
                   >
                     <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
-                      <RefreshCw className="h-4 w-4" />
+                      <RefreshCw className="h-4 w-4 text-black" />
                     </span>
                     <span className="text-base font-medium tracking-tighter font-sans">Useresumate</span>
                   </Link>
@@ -174,25 +176,21 @@ export default function HomePage() {
                 <button
                   onClick={toggleMobileMenu}
                   className="relative w-10 h-10 flex items-center justify-center rounded-lg border border-border/80 dark:border-white/20 hover:bg-surface-subtle dark:hover:bg-white/5 transition-colors"
+                  aria-label="Close menu"
                 >
-                  <div className="relative">
-                    <span className={`absolute block w-6 h-0.5 bg-white transition-all duration-300 ${mobileMenuOpen ? 'rotate-45 translate-y-0' : '-translate-y-1.5'}`}
-                          style={{ transform: mobileMenuOpen ? 'rotate(45deg) translateY(0)' : 'translateY(-6px)' }}></span>
-                    <span className={`absolute block w-6 h-0.5 bg-white transition-all duration-300 ${mobileMenuOpen ? 'opacity-0' : 'opacity-100'}`}
-                          style={{ opacity: mobileMenuOpen ? 0 : 1 }}></span>
-                    <span className={`absolute block w-6 h-0.5 bg-white transition-all duration-300 ${mobileMenuOpen ? '-rotate-45 translate-y-0' : 'translate-y-1.5'}`}
-                          style={{ transform: mobileMenuOpen ? 'rotate(-45deg) translateY(0)' : 'translateY(6px)' }}></span>
-                  </div>
+                  <svg className="w-6 h-6 text-foreground dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
 
               {/* Navigation */}
-              <nav className="py-6 px-6">
-                <div className="space-y-1">
+              <div className="py-6 px-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 88px)' }}>
+                <div className="space-y-3">
                   <a
                     href="#how-it-works"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-emerald-500/10 group-hover:bg-emerald-500/20 transition-colors">
                       <Upload className="h-5 w-5 text-emerald-400" />
@@ -206,7 +204,7 @@ export default function HomePage() {
                   <a
                     href="#features"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
                       <Target className="h-5 w-5 text-blue-400" />
@@ -220,7 +218,7 @@ export default function HomePage() {
                   <a
                     href="#pricing"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
                       <Star className="h-5 w-5 text-purple-400" />
@@ -234,7 +232,7 @@ export default function HomePage() {
                   <a
                     href="#faq"
                     onClick={toggleMobileMenu}
-                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
+                    className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-500/10 group-hover:bg-amber-500/20 transition-colors">
                       <Check className="h-5 w-5 text-amber-400" />
@@ -250,14 +248,14 @@ export default function HomePage() {
                 <div className="mt-8 pt-8 border-t border-border dark:border-white/20">
                   <div className="space-y-4">
                     <div className="text-center px-4 py-2 bg-emerald-500/10 rounded-lg">
-                      <div className="text-sm text-emerald-400 font-medium font-sans">{isSignedIn ? "Welcome Back" : "Start Free Today"}</div>
+                      <div className="text-sm text-emerald-500 dark:text-emerald-400 font-medium font-sans">{isSignedIn ? "Welcome Back" : "Start Free Today"}</div>
                       <div className="text-xs text-foreground/60 dark:text-white/60 font-sans">{isSignedIn ? "Continue optimizing your resume" : "No credit card required"}</div>
                     </div>
-                    
+
                     <Link
                       href={isSignedIn ? "/dashboard" : "/auth/signup"}
                       onClick={toggleMobileMenu}
-                      className="group relative overflow-hidden rounded-xl bg-emerald-500 px-6 py-4 text-center text-lg font-semibold text-black transition-all duration-300 hover:bg-emerald-400 active:scale-95"
+                      className="block group relative overflow-hidden rounded-xl bg-emerald-500 px-6 py-4 text-center text-lg font-semibold text-black transition-all duration-300 hover:bg-emerald-400 active:scale-95"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       <span className="relative flex items-center justify-center gap-2 font-sans">
@@ -292,10 +290,9 @@ export default function HomePage() {
                     </span>
                   </div>
                 </div>
-              </nav>
+              </div>
             </div>
           </div>
-          </nav>
 
           {/* Hero */}
           <section className="relative z-10 max-w-5xl text-center mx-auto pt-14 pb-12 sm:pt-20 md:pt-28">
