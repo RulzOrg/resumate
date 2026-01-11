@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { Upload, FileText, X, CheckCircle } from "lucide-react"
+import { Upload, FileText, X, CheckCircle, AlertTriangle } from "lucide-react"
 import { uploadResume } from "@/lib/upload-handler"
 import { ReviewFallbackUI } from "@/components/resume/review-fallback-ui"
 import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
@@ -25,6 +25,9 @@ import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processi
 interface UploadResumeDialogProps {
   children: React.ReactNode
 }
+
+// Error code indicating the document is not a resume
+const NOT_A_RESUME_ERROR_CODE = "NOT_A_RESUME"
 
 interface ResumeAnalysis {
   personal_info: {
@@ -74,6 +77,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   const [step, setStep] = useState<"upload" | "analysis" | "fallback">("upload")
   const [rawParagraphs, setRawParagraphs] = useState<string[]>([])
   const [processingStepIndex, setProcessingStepIndex] = useState(0)
+  const [isNotResumeError, setIsNotResumeError] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -154,7 +158,23 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
       })
 
       if (!result.success) {
-        setError(result.error || "Upload failed")
+        const errorMessage = result.error || "Upload failed"
+        setError(errorMessage)
+        // Check if this is a "not a resume" error
+        const isNotResume = result.responseBody?.code === NOT_A_RESUME_ERROR_CODE ||
+          errorMessage.toLowerCase().includes("not a resume") ||
+          errorMessage.toLowerCase().includes("bank statement") ||
+          errorMessage.toLowerCase().includes("invoice") ||
+          errorMessage.toLowerCase().includes("cover letter") ||
+          errorMessage.toLowerCase().includes("job description")
+        setIsNotResumeError(isNotResume)
+        // Reset file selection so user can upload a different file
+        if (isNotResume) {
+          setFile(null)
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ""
+          }
+        }
         setIsUploading(false)
         setProcessingStepIndex(0)
         return
@@ -205,6 +225,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
     setUploadedResumeId(null)
     setRawParagraphs([])
     setStep("upload")
+    setIsNotResumeError(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -254,14 +275,58 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4">
-          {error && (
+          {error && isNotResumeError ? (
+            <div className="border-2 border-destructive/50 bg-destructive/10 rounded-lg p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-destructive">Wrong Document Type</p>
+                  <p className="text-sm text-muted-foreground">{error.replace(/^\[\d+\]\s*/, '')}</p>
+                </div>
+              </div>
+              <div className="bg-background/50 rounded-md p-3 space-y-2">
+                <p className="text-sm font-medium">What you can upload:</p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    Resume or CV (PDF, DOCX, DOC, TXT)
+                  </li>
+                </ul>
+                <p className="text-sm font-medium mt-3">Not accepted:</p>
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  <li className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-destructive" />
+                    Bank statements, invoices, receipts
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-destructive" />
+                    Cover letters, job descriptions
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <X className="w-4 h-4 text-destructive" />
+                    Legal documents, contracts
+                  </li>
+                </ul>
+              </div>
+              <Button
+                onClick={() => {
+                  setError("")
+                  setIsNotResumeError(false)
+                }}
+                className="w-full"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload a Different File
+              </Button>
+            </div>
+          ) : error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-          )}
+          ) : null}
 
           {/* Upload Step */}
-          {step === "upload" && (
+          {step === "upload" && !isNotResumeError && (
             <>
               {!file ? (
                 <div
