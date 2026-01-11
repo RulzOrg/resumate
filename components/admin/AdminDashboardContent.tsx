@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import {
   Users,
   FileText,
@@ -62,37 +62,29 @@ export function AdminDashboardContent() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [hasFetched, setHasFetched] = useState(false)
+  const isFetching = useRef(false)
 
   const fetchStats = async () => {
-    if (hasFetched) return
-    setHasFetched(true)
+    if (isFetching.current) return
+    isFetching.current = true
 
     try {
       setLoading(true)
       setError(null)
-      console.log("[AdminDashboard] Fetching stats...")
       const response = await fetch("/api/admin/stats", {
         cache: "no-store",
       })
-      console.log("[AdminDashboard] Response status:", response.status)
-      console.log("[AdminDashboard] Response headers:", response.headers)
 
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error("[AdminDashboard] Error response:", errorText)
         throw new Error(`Failed to fetch stats: ${response.status}`)
       }
 
       const data = await response.json()
-      console.log("[AdminDashboard] Stats data received:", data)
-      console.log("[AdminDashboard] Stats loaded successfully")
       setStats(data)
     } catch (err) {
-      console.error("[AdminDashboard] Fetch error:", err)
       setError(err instanceof Error ? err.message : "Failed to load stats")
     } finally {
-      console.log("[AdminDashboard] Setting loading to false")
+      isFetching.current = false
       setLoading(false)
     }
   }
@@ -337,12 +329,10 @@ function StatCard({ title, value, subtitle, trend, icon: Icon, variant = "defaul
             <p className="text-3xl font-bold mt-1">{value}</p>
             <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
           </div>
-          <div className={`p-3 rounded-full ${
-            variant === "success" ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-muted"
-          }`}>
-            <Icon className={`h-6 w-6 ${
-              variant === "success" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
-            }`} />
+          <div className={`p-3 rounded-full ${variant === "success" ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-muted"
+            }`}>
+            <Icon className={`h-6 w-6 ${variant === "success" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"
+              }`} />
           </div>
         </div>
         {trend !== undefined && (

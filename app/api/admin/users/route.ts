@@ -35,26 +35,8 @@ export async function GET(request: NextRequest) {
 
     const offset = (page - 1) * limit
 
-    // Simple query without dynamic ordering (to avoid SQL injection)
-    // Build dynamic conditions
-    const conditions = []
-    if (search) {
-      conditions.push(sql`(u.email ILIKE ${'%' + search + '%'} OR u.name ILIKE ${'%' + search + '%'})`)
-    }
-    if (status !== "all") {
-      conditions.push(sql`u.subscription_status = ${status}`)
-    }
-    if (plan !== "all") {
-      conditions.push(sql`u.subscription_plan = ${plan}`)
-    }
-    if (!includeDeleted) {
-      conditions.push(sql`u.deleted_at IS NULL`)
-    }
-
-    // Ensure valid WHERE clause
-    if (conditions.length === 0) {
-      conditions.push(sql`1=1`)
-    }
+    // Build search pattern
+    const searchPattern = search ? `%${search}%` : null
 
     const users = await sql<DbUser>`
       SELECT u.id, u.email, u.name, u.clerk_user_id, u.subscription_status, u.subscription_plan,
@@ -63,14 +45,22 @@ export async function GET(request: NextRequest) {
         COALESCE((SELECT COUNT(*) FROM job_analysis j WHERE j.user_id = u.id), 0)::text as job_analysis_count,
         COALESCE((SELECT COUNT(*) FROM resume_versions rv WHERE rv.user_id = u.id), 0)::text as resume_version_count
       FROM users_sync u
-      WHERE ${(sql as any).join(conditions, sql` AND `)}
+      WHERE
+        (${searchPattern}::text IS NULL OR (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}))
+        AND (${status} = 'all' OR u.subscription_status = ${status})
+        AND (${plan} = 'all' OR u.subscription_plan = ${plan})
+        AND (${includeDeleted} = true OR u.deleted_at IS NULL)
       ORDER BY u.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `
 
     const totalResult = await sql<{ count: string }>`
       SELECT COUNT(*)::text as count FROM users_sync u
-      WHERE ${(sql as any).join(conditions, sql` AND `)}
+      WHERE
+        (${searchPattern}::text IS NULL OR (u.email ILIKE ${searchPattern} OR u.name ILIKE ${searchPattern}))
+        AND (${status} = 'all' OR u.subscription_status = ${status})
+        AND (${plan} = 'all' OR u.subscription_plan = ${plan})
+        AND (${includeDeleted} = true OR u.deleted_at IS NULL)
     `
 
     const total = parseInt(totalResult[0]?.count || "0")
