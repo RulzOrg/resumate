@@ -10,6 +10,7 @@ import { ClerkProvider } from "@clerk/nextjs"
 import { clerkConfig } from "@/lib/clerk-config"
 import { dark } from "@clerk/themes"
 import { ThemeProvider } from "@/components/theme-provider"
+import { FeedbackWidget } from "@/components/feedback-widget"
 import "./globals.css"
 
 const inter = Inter({
@@ -80,6 +81,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <FeedbackWidget />
           </ThemeProvider>
         </body>
       </html>
@@ -106,6 +108,7 @@ export default function RootLayout({
                 </p>
               </div>
             </div>
+            <FeedbackWidget />
           </ThemeProvider>
         </body>
       </html>
@@ -155,6 +158,7 @@ export default function RootLayout({
           >
             {children}
           </ClerkProvider>
+          <FeedbackWidget />
           <Analytics />
           <Script
             src="https://www.googletagmanager.com/gtag/js?id=G-4FGR9B5JK4"
