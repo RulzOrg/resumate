@@ -1,7 +1,7 @@
 import { getAuthenticatedUser } from "@/lib/user-data"
 import { redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { WelcomeVideoProvider } from "@/components/providers/welcome-video-provider"
+import { OnboardingWrapper } from "@/components/onboarding/onboarding-wrapper"
 import Link from "next/link"
 
 const WELCOME_VIDEO_URL = "/videos/welcome.mp4"
@@ -16,9 +16,13 @@ export default async function DashboardLayout({
     redirect("/auth/login")
   }
 
+  // Show tour if user hasn't completed it yet
+  const shouldShowTour = !user.tour_completed_at
+
   return (
-    <WelcomeVideoProvider
-      showOnMount={!user.onboarding_completed_at}
+    <OnboardingWrapper
+      showVideoOnMount={!user.onboarding_completed_at}
+      showTourAfterVideo={shouldShowTour}
       videoUrl={WELCOME_VIDEO_URL}
     >
       <div className="antialiased text-foreground bg-background font-geist min-h-screen">
@@ -56,6 +60,6 @@ export default async function DashboardLayout({
           </div>
         </footer>
       </div>
-    </WelcomeVideoProvider>
+    </OnboardingWrapper>
   )
 }

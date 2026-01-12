@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-import { Loader2, Sparkles, FileSearch } from "lucide-react"
+import { Loader2, Sparkles, FileSearch, Check } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { UploadMasterResumeDialog } from "./master-resume-dialog"
 import { ReviewContentDialog, type ReviewContent } from "@/components/optimization/ReviewContentDialog"
 import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
@@ -53,6 +55,29 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   const [companyName, setCompanyName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
 
+  // Track which fields have been interacted with (for showing errors)
+  const [jobTitleTouched, setJobTitleTouched] = useState(false)
+  const [jobDescriptionTouched, setJobDescriptionTouched] = useState(false)
+
+  // Validation state (computed values)
+  const charProgress = Math.min((jobDescription.length / 50) * 100, 100)
+  const charsNeeded = Math.max(0, 50 - jobDescription.length)
+  const isJobDescriptionValid = jobDescription.length >= 50
+  const isJobTitleValid = jobTitle.trim().length >= 3
+  const isFormValid = selectedResumeId && isJobTitleValid && isJobDescriptionValid && !isLoading
+
+  // Show error states only after field has been touched
+  const showJobTitleError = jobTitleTouched && !isJobTitleValid && jobTitle.length > 0
+  const showJobDescriptionError = jobDescriptionTouched && !isJobDescriptionValid && jobDescription.length > 0
+
+  // Get tooltip message for disabled button
+  const getDisabledReason = () => {
+    if (!selectedResumeId) return "Select a resume to continue"
+    if (!isJobTitleValid) return "Job title must be at least 3 characters"
+    if (!isJobDescriptionValid) return `Job description needs ${charsNeeded} more characters`
+    return ""
+  }
+
   // Sync selectedResumeId when resumes change (e.g., after upload)
   useEffect(() => {
     // Clear any stale error
@@ -70,18 +95,19 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
     e.preventDefault()
     setError(null)
 
-    if (!selectedResumeId) {
-      setError("Please select a resume")
-      return
-    }
+    // Mark all fields as touched on submit attempt (shows inline errors)
+    setJobTitleTouched(true)
+    setJobDescriptionTouched(true)
 
-    if (!jobTitle.trim()) {
-      setError("Please enter a job title")
-      return
-    }
-
-    if (jobDescription.trim().length < 50) {
-      setError("Please enter a more detailed job description (at least 50 characters)")
+    // Early return if validation fails (defensive check - button should be disabled)
+    if (!isFormValid) {
+      if (!selectedResumeId) {
+        setError("Please select a resume")
+      } else if (!isJobTitleValid) {
+        setError("Job title must be at least 3 characters")
+      } else if (!isJobDescriptionValid) {
+        setError(`Job description needs ${charsNeeded} more characters`)
+      }
       return
     }
 
@@ -230,6 +256,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         title="Analyzing your resume"
         steps={extractionSteps}
         currentStepIndex={extractionStepIndex}
+        estimatedTime="~15-30 seconds"
       />
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -239,7 +266,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         </div>
       )}
 
-      <div>
+      <div data-tour-target="resume-select">
         <label className="block text-sm font-medium mb-2">Select Resume</label>
         <select
           value={selectedResumeId}
@@ -258,17 +285,32 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div data-tour-target="job-details" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Job Title *</label>
+          <label className="block text-sm font-medium mb-2">
+            Job Title *
+            {isJobTitleValid && <Check className="inline w-4 h-4 ml-1 text-emerald-500" />}
+          </label>
           <input
             type="text"
             value={jobTitle}
             onChange={(e) => setJobTitle(e.target.value)}
+            onBlur={() => setJobTitleTouched(true)}
             placeholder="e.g. Senior Software Engineer"
-            className="w-full px-3 py-2 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className={`w-full px-3 py-2 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+              showJobTitleError
+                ? "border-red-500 dark:border-red-500"
+                : isJobTitleValid
+                ? "border-emerald-500/50 dark:border-emerald-500/50"
+                : "border-border dark:border-white/10"
+            }`}
             disabled={isLoading}
           />
+          {showJobTitleError && (
+            <p className="mt-1 text-xs text-red-500">
+              Job title must be at least 3 characters
+            </p>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-2">Company Name</label>
@@ -284,42 +326,84 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-2">Job Description *</label>
+        <label className="block text-sm font-medium mb-2">
+          Job Description *
+          {isJobDescriptionValid && <Check className="inline w-4 h-4 ml-1 text-emerald-500" />}
+        </label>
         <textarea
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
+          onBlur={() => setJobDescriptionTouched(true)}
           placeholder="Paste the full job description here..."
           rows={6}
-          className="w-full px-3 py-2 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
+          className={`w-full px-3 py-2 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
+            showJobDescriptionError
+              ? "border-red-500 dark:border-red-500"
+              : isJobDescriptionValid
+              ? "border-emerald-500/50 dark:border-emerald-500/50"
+              : "border-border dark:border-white/10"
+          }`}
           disabled={isLoading}
         />
-        <p className="mt-1 text-xs text-foreground/50 dark:text-white/50">
-          {jobDescription.length} characters {jobDescription.length < 50 && "(minimum 50)"}
-        </p>
+        <div className="mt-2 space-y-1">
+          <Progress
+            value={charProgress}
+            className={`h-1.5 ${isJobDescriptionValid ? "[&>div]:bg-emerald-500" : showJobDescriptionError ? "[&>div]:bg-red-500" : ""}`}
+          />
+          <p className={`text-xs ${
+            isJobDescriptionValid
+              ? "text-emerald-500"
+              : showJobDescriptionError
+              ? "text-red-500"
+              : "text-foreground/60 dark:text-white/60"
+          }`}>
+            {isJobDescriptionValid ? (
+              <>
+                <Check className="inline w-3 h-3 mr-1" />
+                {jobDescription.length} characters
+              </>
+            ) : (
+              <>{jobDescription.length}/50 characters ({charsNeeded} more needed)</>
+            )}
+          </p>
+        </div>
       </div>
 
-      <Button
-        type="submit"
-        disabled={isLoading || !selectedResumeId || !jobTitle.trim() || jobDescription.length < 50}
-        className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-medium py-3"
-      >
-        {isExtracting ? (
-          <>
-            <FileSearch className="w-4 h-4 mr-2 animate-pulse" />
-            Analyzing resume...
-          </>
-        ) : isLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Processing...
-          </>
-        ) : (
-          <>
-            <Sparkles className="w-4 h-4 mr-2" />
-            Optimize Resume
-          </>
-        )}
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span data-tour-target="optimize-button" className="w-full">
+              <Button
+                type="submit"
+                disabled={!isFormValid}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-medium py-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+              >
+                {isExtracting ? (
+                  <>
+                    <FileSearch className="w-4 h-4 mr-2 animate-pulse" />
+                    Analyzing resume...
+                  </>
+                ) : isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Optimize Resume
+                  </>
+                )}
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {!isFormValid && !isLoading && (
+            <TooltipContent>
+              <p>{getDisabledReason()}</p>
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
 
       {/* Phase 4: Review Content Dialog */}
         <ReviewContentDialog

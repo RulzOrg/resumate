@@ -1,10 +1,20 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Copy, Download, SplitSquareVertical, FileText, Settings2 } from "lucide-react"
 import { LayoutSelector } from "./layout-selector"
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { usePlatform } from "@/hooks/use-platform"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Kbd } from "@/components/keyboard-shortcuts/kbd"
 
 interface OptimizedDetailViewProps {
   optimizedId: string
@@ -58,19 +68,52 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
   const copyText = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
-    } catch {}
+      toast.success("Copied to clipboard")
+    } catch {
+      toast.error("Copy failed. Try again.")
+    }
   }
 
   const download = (format: 'docx' | 'html') => {
-    const link = document.createElement('a')
-    const encodedId = encodeURIComponent(optimizedId)
-    link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}&layout=${layout}`
-    link.target = '_blank'
-    link.rel = 'noopener'
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
+    try {
+      const link = document.createElement('a')
+      const encodedId = encodeURIComponent(optimizedId)
+      link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}&layout=${layout}`
+      link.target = '_blank'
+      link.rel = 'noopener'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      toast.success("Download started")
+    } catch {
+      toast.error("Download failed. Try again.")
+    }
   }
+
+  // Platform detection for shortcut display
+  const { modifierKey } = usePlatform()
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: "d",
+      modifiers: { meta: true },
+      handler: () => download("docx"),
+      description: "Download DOCX",
+    },
+    {
+      key: "c",
+      modifiers: { meta: true },
+      handler: () => copyText(optimizedContent),
+      description: "Copy resume content",
+    },
+    {
+      key: "p",
+      modifiers: { meta: true },
+      handler: () => download("html"),
+      description: "Preview HTML",
+    },
+  ])
 
   return (
     <div className="space-y-6">
@@ -95,15 +138,70 @@ export function OptimizedDetailView({ optimizedId, title, optimizedContent, orig
               </Button>
             </div>
 
-            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => copyText(optimizedContent)}>
-              <Copy className="h-4 w-4 mr-2" /> Copy
-            </Button>
-            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('html')}>
-              <FileText className="h-4 w-4 mr-2" /> Preview
-            </Button>
-            <Button variant="outline" size="sm" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => download('docx')}>
-              <Download className="h-4 w-4 mr-2" /> DOCX
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10"
+                    onClick={() => copyText(optimizedContent)}
+                    aria-label="Copy resume content to clipboard"
+                  >
+                    <Copy className="h-4 w-4 mr-2" aria-hidden="true" /> Copy
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Copy resume content</span>
+                  <span className="ml-2 opacity-60">
+                    <Kbd>{modifierKey}</Kbd>
+                    <Kbd>C</Kbd>
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10"
+                    onClick={() => download("html")}
+                    aria-label="Preview resume as HTML"
+                  >
+                    <FileText className="h-4 w-4 mr-2" aria-hidden="true" /> Preview
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Preview as HTML</span>
+                  <span className="ml-2 opacity-60">
+                    <Kbd>{modifierKey}</Kbd>
+                    <Kbd>P</Kbd>
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10"
+                    onClick={() => download("docx")}
+                    aria-label="Download resume as Word document"
+                  >
+                    <Download className="h-4 w-4 mr-2" aria-hidden="true" /> DOCX
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Download as DOCX</span>
+                  <span className="ml-2 opacity-60">
+                    <Kbd>{modifierKey}</Kbd>
+                    <Kbd>D</Kbd>
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </CardHeader>
         <CardContent>

@@ -78,8 +78,8 @@ export function SkillsEditDialog({
                 onKeyDown={handleKeyDown}
                 placeholder="Type a skill and press Enter..."
               />
-              <Button type="button" onClick={addSkill} size="icon">
-                <Plus className="h-4 w-4" />
+              <Button type="button" onClick={addSkill} size="icon" aria-label="Add skill">
+                <Plus className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -103,8 +103,9 @@ export function SkillsEditDialog({
                       type="button"
                       onClick={() => removeSkill(index)}
                       className="ml-1 hover:bg-muted rounded-full p-0.5"
+                      aria-label={`Remove ${skill}`}
                     >
-                      <X className="h-3 w-3" />
+                      <X className="h-3 w-3" aria-hidden="true" />
                     </button>
                   </Badge>
                 ))

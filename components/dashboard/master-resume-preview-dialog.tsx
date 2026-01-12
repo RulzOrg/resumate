@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Download, FileText, ExternalLink, X, Loader2, AlertCircle } from "lucide-react"
@@ -59,17 +60,25 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
   const handleDownload = () => {
     // Use signed URL if available, otherwise fallback to public URL (which might fail if bucket is private)
     const url = signedUrl || resume.file_url
-    if (!url) return
-    
-    // Create a temporary link to force download
-    const link = document.createElement("a")
-    link.href = url
-    link.download = resume.file_name
-    link.target = "_blank"
-    link.rel = "noopener noreferrer"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    if (!url) {
+      toast.error("Download failed. No file available.")
+      return
+    }
+
+    try {
+      // Create a temporary link to force download
+      const link = document.createElement("a")
+      link.href = url
+      link.download = resume.file_name
+      link.target = "_blank"
+      link.rel = "noopener noreferrer"
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      toast.success("Download started")
+    } catch {
+      toast.error("Download failed. Try again.")
+    }
   }
 
   return (

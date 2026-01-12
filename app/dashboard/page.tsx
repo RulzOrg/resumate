@@ -6,6 +6,7 @@ import Link from "next/link"
 import { AccountStatusCard } from "@/components/dashboard/AccountStatusCard"
 import { MasterResumesSection } from "@/components/dashboard/MasterResumesSection"
 import { QuickOptimizeForm } from "@/components/dashboard/QuickOptimizeForm"
+import { GettingStartedCard } from "@/components/dashboard/getting-started-card"
 
 export default async function DashboardPage() {
   const user = await getAuthenticatedUser()
@@ -63,6 +64,15 @@ export default async function DashboardPage() {
 
           {/* Sidebar */}
           <div className="space-y-8 mt-8 lg:mt-0">
+            {/* Getting Started Card - shows for new users */}
+            {!user.getting_started_dismissed_at && (
+              <GettingStartedCard
+                hasResume={resumes.length > 0}
+                hasOptimized={optimizedResumes.length > 0}
+                currentResumeCount={resumes.length}
+              />
+            )}
+
             <AccountStatusCard
               plan={subscription?.plan || 'free'}
               status={subscription?.status || 'free'}

@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { FileCheck, Pencil, Trash2, UploadCloud, Check, X, Eye } from "lucide-react"
@@ -61,15 +62,18 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
       if (response.ok) {
         setEditingId(null)
         setEditingTitle("")
+        toast.success("Resume updated")
         router.refresh()
       } else {
         const error = await response.json()
+        toast.error("Update failed. Try again.")
         setUpdateError({
           id: resumeId,
           message: error.error || error.message || 'Failed to update resume title. Please try again.',
         })
       }
-    } catch (error) {
+    } catch {
+      toast.error("Update failed. Try again.")
       setUpdateError({
         id: resumeId,
         message: 'Failed to update resume title. Please try again.',
@@ -96,10 +100,12 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
         const result = await response.json()
         console.log('Delete successful:', result)
         setConfirmingDeleteId(null)
+        toast.success("Resume deleted")
         router.refresh()
       } else {
         const error = await response.json()
         console.error('Delete failed:', error)
+        toast.error("Delete failed. Try again.")
         setDeleteError({
           id: resumeId,
           message: error.error || error.message || 'Failed to delete resume. Please try again.',
@@ -107,6 +113,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
       }
     } catch (error) {
       console.error('Delete error:', error)
+      toast.error("Delete failed. Try again.")
       setDeleteError({
         id: resumeId,
         message: 'Failed to delete resume. Please try again.',
@@ -162,12 +169,13 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                           onClick={() => handleSaveEdit(resume.id)}
                           disabled={isUpdating === resume.id}
                           className="text-xs px-2 py-1 bg-emerald-500 text-black rounded hover:bg-emerald-400 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          aria-label="Save resume name"
                         >
                           {isUpdating === resume.id ? (
                             "Saving..."
                           ) : (
                             <>
-                              <Check className="h-3 w-3" />
+                              <Check className="h-3 w-3" aria-hidden="true" />
                               Save
                             </>
                           )}
@@ -176,8 +184,9 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                           onClick={handleCancelEdit}
                           disabled={isUpdating === resume.id}
                           className="text-xs px-2 py-1 bg-surface-muted dark:bg-white/10 text-foreground/80 dark:text-white/80 rounded hover:bg-surface-strong dark:hover:bg-white/20 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          aria-label="Cancel editing"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3 w-3" aria-hidden="true" />
                           Cancel
                         </button>
                       </div>
@@ -216,16 +225,16 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                     <button
                       onClick={() => handlePreview(resume)}
                       className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
-                      title="View original file"
+                      aria-label={`View ${resume.title} details`}
                     >
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => handleStartEdit(resume.id, resume.title)}
                       className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
-                      title="Edit resume name"
+                      aria-label={`Edit ${resume.title} name`}
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => {
@@ -234,9 +243,9 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                       }}
                       disabled={isDeleting === resume.id}
                       className="text-foreground/60 dark:text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
-                      title="Delete resume"
+                      aria-label={`Delete ${resume.title}`}
                     >
-                      <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} />
+                      <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} aria-hidden="true" />
                     </button>
                   </div>
                 )}
@@ -279,8 +288,11 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
 
       {masterResumes.length < 3 && (
         <UploadMasterResumeDialog currentResumeCount={masterResumes.length}>
-          <button className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white transition bg-surface-muted dark:bg-white/10 rounded-full py-2">
-            <UploadCloud className="h-4 w-4" />
+          <button
+            className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white transition bg-surface-muted dark:bg-white/10 rounded-full py-2"
+            aria-label="Upload new resume"
+          >
+            <UploadCloud className="h-4 w-4" aria-hidden="true" />
             <span>Upload New</span>
           </button>
         </UploadMasterResumeDialog>

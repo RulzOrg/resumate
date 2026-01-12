@@ -11,6 +11,8 @@ import { clerkConfig } from "@/lib/clerk-config"
 import { dark } from "@clerk/themes"
 import { ThemeProvider } from "@/components/theme-provider"
 import { FeedbackWidget } from "@/components/feedback-widget"
+import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 const inter = Inter({
@@ -82,6 +84,7 @@ export default function RootLayout({
           >
             {children}
             <FeedbackWidget />
+            <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
       </html>
@@ -109,6 +112,7 @@ export default function RootLayout({
               </div>
             </div>
             <FeedbackWidget />
+            <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
       </html>
@@ -156,9 +160,12 @@ export default function RootLayout({
               },
             }}
           >
-            {children}
+            <KeyboardShortcutsProvider>
+              {children}
+            </KeyboardShortcutsProvider>
           </ClerkProvider>
           <FeedbackWidget />
+          <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           <Analytics />
           <Script
             src="https://www.googletagmanager.com/gtag/js?id=G-4FGR9B5JK4"

@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { FileText, Download, Settings2, Eye } from "lucide-react"
 import type { OptimizedResume } from "@/lib/db"
@@ -33,7 +34,7 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
     try {
       const response = await fetch(`/api/resumes/export?resume_id=${id}&format=${format}&layout=${layout}`)
       if (!response.ok) {
-        console.error('Download failed:', response.statusText)
+        toast.error("Download failed. Try again.")
         return
       }
       const blob = await response.blob()
@@ -45,8 +46,9 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error('Download error:', error)
+      toast.success("Download started")
+    } catch {
+      toast.error("Download failed. Try again.")
     }
   }
 
