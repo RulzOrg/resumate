@@ -23,6 +23,7 @@ export interface ProcessingOverlayProps {
   error?: string | null
   onRetry?: () => void
   timeout?: number
+  estimatedTime?: string
 }
 
 function StepIndicator({ step }: { step: ProcessingStep }) {
@@ -74,6 +75,7 @@ function OverlayContent({
   error,
   onRetry,
   timeout = 30000,
+  estimatedTime,
 }: Omit<ProcessingOverlayProps, "isOpen" | "currentStepIndex">) {
   const completedSteps = steps.filter((s) => s.status === "completed").length
   const displayProgress = progress ?? Math.round((completedSteps / steps.length) * 100)
@@ -150,9 +152,17 @@ function OverlayContent({
               </div>
 
               {/* Progress text */}
-              <p className="text-xs text-muted-foreground text-center mb-5">
+              <p className="text-xs text-muted-foreground text-center mb-1">
                 {displayProgress}% completed
               </p>
+
+              {/* Estimated time */}
+              {estimatedTime && (
+                <p className="text-xs text-muted-foreground/70 text-center mb-5">
+                  Estimated time: {estimatedTime}
+                </p>
+              )}
+              {!estimatedTime && <div className="mb-4" />}
 
               {/* Timeout warning */}
               {showTimeoutWarning && (

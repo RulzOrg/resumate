@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -49,11 +50,12 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+        toast.success("Download started")
       } else {
-        console.error("Download failed")
+        toast.error("Download failed. Try again.")
       }
-    } catch (error) {
-      console.error("Download error:", error)
+    } catch {
+      toast.error("Download failed. Try again.")
     }
   }
 
@@ -64,12 +66,13 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
           method: "DELETE",
         })
         if (response.ok) {
+          toast.success("Resume deleted")
           window.location.reload()
         } else {
-          console.error("Delete failed")
+          toast.error("Delete failed. Try again.")
         }
-      } catch (error) {
-        console.error("Delete error:", error)
+      } catch {
+        toast.error("Delete failed. Try again.")
       }
     }
   }

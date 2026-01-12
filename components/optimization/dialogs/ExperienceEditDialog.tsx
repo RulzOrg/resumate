@@ -187,8 +187,9 @@ export function ExperienceEditDialog({
                 size="sm"
                 onClick={addBullet}
                 className="h-8"
+                aria-label="Add new bullet point"
               >
-                <Plus className="h-3.5 w-3.5 mr-1" />
+                <Plus className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
                 Add Bullet
               </Button>
             </div>
@@ -196,12 +197,13 @@ export function ExperienceEditDialog({
             <div className="space-y-2">
               {form.bullets.map((bullet, index) => (
                 <div key={index} className="flex gap-2 items-start">
-                  <GripVertical className="h-4 w-4 mt-3 text-muted-foreground cursor-grab" />
+                  <GripVertical className="h-4 w-4 mt-3 text-muted-foreground cursor-grab" aria-hidden="true" />
                   <Textarea
                     value={bullet}
                     onChange={(e) => updateBullet(index, e.target.value)}
                     placeholder="Describe your achievement with metrics if possible..."
                     className="min-h-[80px] flex-1"
+                    aria-label={`Bullet point ${index + 1}`}
                   />
                   {form.bullets.length > 1 && (
                     <Button
@@ -210,8 +212,9 @@ export function ExperienceEditDialog({
                       size="icon"
                       onClick={() => removeBullet(index)}
                       className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      aria-label={`Remove bullet point ${index + 1}`}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   )}
                 </div>

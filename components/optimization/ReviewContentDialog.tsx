@@ -209,6 +209,7 @@ export function ReviewContentDialog({
         subtitle="This may take a moment..."
         steps={optimizationSteps}
         currentStepIndex={optimizationStepIndex}
+        estimatedTime="~30-60 seconds"
       />
 
       <Dialog open={open} onOpenChange={isLoading ? undefined : onOpenChange}>

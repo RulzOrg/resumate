@@ -21,6 +21,9 @@ export async function getAuthenticatedUser() {
       subscription_status: "free",
       subscription_plan: "free",
       subscription_period_end: undefined,
+      onboarding_completed_at: undefined,
+      tour_completed_at: undefined,
+      getting_started_dismissed_at: undefined,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
@@ -36,6 +39,8 @@ export async function getAuthenticatedUser() {
     subscription_plan: dbUser.subscription_plan,
     subscription_period_end: dbUser.subscription_period_end,
     onboarding_completed_at: dbUser.onboarding_completed_at,
+    tour_completed_at: dbUser.tour_completed_at,
+    getting_started_dismissed_at: dbUser.getting_started_dismissed_at,
     created_at: dbUser.created_at,
     updated_at: dbUser.updated_at,
   }

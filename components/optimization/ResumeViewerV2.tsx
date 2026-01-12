@@ -1,5 +1,6 @@
 "use client"
 
+import { toast } from "sonner"
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -59,6 +60,15 @@ import {
   PublicationEditDialog,
 } from "./dialogs"
 import { cn } from "@/lib/utils"
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { usePlatform } from "@/hooks/use-platform"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Kbd } from "@/components/keyboard-shortcuts/kbd"
 
 /**
  * Strip markdown formatting from text
@@ -1726,18 +1736,19 @@ export function ResumeViewerV2({
     try {
       // Format resume data as HTML for Word (preserves formatting)
       const { html, text } = formatResumeForWord(resumeData)
-      
+
       // Use Clipboard API with HTML format for Word compatibility
       const clipboardItem = new ClipboardItem({
         'text/html': new Blob([html], { type: 'text/html' }),
         'text/plain': new Blob([text], { type: 'text/plain' })
       })
-      
+
       await navigator.clipboard.write([clipboardItem])
-      
+
       // Show success feedback
       setCopySuccess(true)
       setTimeout(() => setCopySuccess(false), 2000)
+      toast.success("Copied to clipboard")
     } catch (err) {
       console.error('Failed to copy HTML:', err)
       // Fallback: try copying plain text
@@ -1746,6 +1757,7 @@ export function ResumeViewerV2({
         await navigator.clipboard.writeText(text)
         setCopySuccess(true)
         setTimeout(() => setCopySuccess(false), 2000)
+        toast.success("Copied to clipboard")
       } catch (fallbackErr) {
         console.error('Fallback copy also failed:', fallbackErr)
         // Last resort: try raw content
@@ -1753,22 +1765,29 @@ export function ResumeViewerV2({
           await navigator.clipboard.writeText(optimizedContent)
           setCopySuccess(true)
           setTimeout(() => setCopySuccess(false), 2000)
+          toast.success("Copied to clipboard")
         } catch (lastErr) {
           console.error('All copy methods failed:', lastErr)
+          toast.error("Copy failed. Try again.")
         }
       }
     }
   }
 
   const download = (format: "docx" | "html") => {
-    const link = document.createElement("a")
-    const encodedId = encodeURIComponent(optimizedId)
-    link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}&layout=${layout}`
-    link.target = "_blank"
-    link.rel = "noopener"
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
+    try {
+      const link = document.createElement("a")
+      const encodedId = encodeURIComponent(optimizedId)
+      link.href = `/api/resumes/export?resume_id=${encodedId}&format=${format}&layout=${layout}`
+      link.target = "_blank"
+      link.rel = "noopener"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      toast.success("Download started")
+    } catch {
+      toast.error("Download failed. Try again.")
+    }
   }
 
   const handleSaveChanges = async () => {
@@ -1782,13 +1801,48 @@ export function ResumeViewerV2({
 
       if (response.ok) {
         setHasChanges(false)
+        toast.success("Changes saved")
+      } else {
+        toast.error("Save failed. Try again.")
       }
-    } catch (error) {
-      console.error("Failed to save changes:", error)
+    } catch {
+      toast.error("Save failed. Try again.")
     } finally {
       setIsSaving(false)
     }
   }
+
+  // Platform detection for shortcut display
+  const { modifierKey } = usePlatform()
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts([
+    {
+      key: "d",
+      modifiers: { meta: true },
+      handler: () => download("docx"),
+      description: "Download DOCX",
+    },
+    {
+      key: "c",
+      modifiers: { meta: true },
+      handler: copyText,
+      description: "Copy resume content",
+    },
+    {
+      key: "s",
+      modifiers: { meta: true },
+      handler: handleSaveChanges,
+      description: "Save changes",
+      enabled: hasChanges && !isSaving,
+    },
+    {
+      key: "p",
+      modifiers: { meta: true },
+      handler: () => download("html"),
+      description: "Preview HTML",
+    },
+  ])
 
   return (
     <div className="space-y-6">
@@ -1802,45 +1856,105 @@ export function ResumeViewerV2({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {hasChanges && (
-              <Button
-                onClick={handleSaveChanges}
-                disabled={isSaving}
-                className="bg-primary"
-              >
-                {isSaving ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Save Changes
-              </Button>
-            )}
-
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={copyText}
-              className={copySuccess ? "bg-emerald-500/10 border-emerald-500/20" : ""}
-            >
-              {copySuccess ? (
-                <>
-                  <Check className="h-4 w-4 mr-2 text-emerald-500" /> Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4 mr-2" /> Copy
-                </>
+          <TooltipProvider>
+            <div className="flex flex-wrap items-center gap-2">
+              {hasChanges && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleSaveChanges}
+                      disabled={isSaving}
+                      className="bg-primary"
+                      aria-label="Save resume changes"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" aria-hidden="true" />
+                      )}
+                      Save Changes
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>Save changes</span>
+                    <span className="ml-2 opacity-60">
+                      <Kbd>{modifierKey}</Kbd>
+                      <Kbd>S</Kbd>
+                    </span>
+                  </TooltipContent>
+                </Tooltip>
               )}
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => download("html")}>
-              <FileText className="h-4 w-4 mr-2" /> Preview
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => download("docx")}>
-              <Download className="h-4 w-4 mr-2" /> DOCX
-            </Button>
-          </div>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={copyText}
+                    className={copySuccess ? "bg-emerald-500/10 border-emerald-500/20" : ""}
+                    aria-label="Copy resume content to clipboard"
+                  >
+                    {copySuccess ? (
+                      <>
+                        <Check className="h-4 w-4 mr-2 text-emerald-500" aria-hidden="true" /> Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4 mr-2" aria-hidden="true" /> Copy
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Copy resume content</span>
+                  <span className="ml-2 opacity-60">
+                    <Kbd>{modifierKey}</Kbd>
+                    <Kbd>C</Kbd>
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => download("html")}
+                    aria-label="Preview resume as HTML"
+                  >
+                    <FileText className="h-4 w-4 mr-2" aria-hidden="true" /> Preview
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Preview as HTML</span>
+                  <span className="ml-2 opacity-60">
+                    <Kbd>{modifierKey}</Kbd>
+                    <Kbd>P</Kbd>
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => download("docx")}
+                    aria-label="Download resume as Word document"
+                  >
+                    <Download className="h-4 w-4 mr-2" aria-hidden="true" /> DOCX
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Download as DOCX</span>
+                  <span className="ml-2 opacity-60">
+                    <Kbd>{modifierKey}</Kbd>
+                    <Kbd>D</Kbd>
+                  </span>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </div>
 
         <CardContent className="p-0">
