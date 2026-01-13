@@ -28,9 +28,9 @@ export default function OptimizedResumeLoading() {
           </div>
 
           <CardContent className="p-0">
-            <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] lg:grid-cols-[380px_1fr] h-[calc(100vh-280px)] min-h-[800px]">
+            <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] lg:grid-cols-[380px_1fr] min-h-0 md:h-[calc(100vh-280px)] md:min-h-[800px]">
               {/* Left Panel - Sections List Skeleton */}
-              <div className="relative border-r-0 md:border-r border-border bg-muted/20 overflow-hidden">
+              <div className="relative border-r-0 md:border-r border-border bg-muted/20 overflow-visible md:overflow-hidden">
                 <div className="p-4 space-y-1">
                   {/* Section items */}
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
@@ -45,7 +45,7 @@ export default function OptimizedResumeLoading() {
               </div>
 
               {/* Right Panel - Resume Preview Skeleton */}
-              <div className="relative bg-gray-100 dark:bg-gray-900 overflow-hidden">
+              <div className="relative bg-gray-100 dark:bg-gray-900 overflow-visible md:overflow-hidden">
                 <div className="p-4 md:p-6 lg:p-8">
                   <div className="bg-white rounded-lg shadow-xl p-8 md:p-10 min-h-[900px] space-y-6">
                     {/* Header */}

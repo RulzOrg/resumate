@@ -1958,9 +1958,9 @@ export function ResumeViewerV2({
         </div>
 
         <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] lg:grid-cols-[380px_1fr] h-[calc(100vh-280px)] min-h-[800px]">
+          <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] lg:grid-cols-[380px_1fr] min-h-0 md:h-[calc(100vh-280px)] md:min-h-[800px]">
             {/* Left Panel - Sections List */}
-            <div className="relative border-r-0 md:border-r border-border bg-muted/20 overflow-hidden flex flex-col">
+            <div className="relative border-r-0 md:border-r border-border bg-muted/20 overflow-visible md:overflow-hidden flex flex-col">
               <ScrollArea className="flex-1 h-full">
                 <div className="p-4">
                   <SectionsList
@@ -1977,7 +1977,7 @@ export function ResumeViewerV2({
             </div>
 
             {/* Right Panel - PDF Preview */}
-            <div className="relative bg-gray-100 dark:bg-gray-900 overflow-hidden min-w-0 flex flex-col">
+            <div className="relative bg-gray-100 dark:bg-gray-900 overflow-visible md:overflow-hidden min-w-0 flex flex-col">
               <ScrollArea className="flex-1 h-full">
                 <div className="p-4 md:p-6 lg:p-8">
                   <PaginatedResumePreview parsed={resumeData} rawContent={optimizedContent} />
