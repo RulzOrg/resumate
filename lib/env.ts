@@ -29,10 +29,10 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
   ANTHROPIC_API_KEY: z.string().optional(), // For Claude models (resume optimization)
 
-  // Vector Database (Qdrant) - REQUIRED
-  QDRANT_URL: z.string().url().min(1, "Qdrant URL is required"),
-  QDRANT_API_KEY: z.string().min(1, "Qdrant API key is required"),
-  QDRANT_COLLECTION: z.string().default("resumes"),
+  // Vector Database (Qdrant) - Optional (not currently used)
+  QDRANT_URL: z.string().url().optional(),
+  QDRANT_API_KEY: z.string().optional(),
+  QDRANT_COLLECTION: z.string().optional(),
 
   // LlamaCloud (for document parsing) - REQUIRED
   LLAMACLOUD_API_KEY: z.string().min(1, "LlamaCloud API key is required"),
@@ -210,7 +210,6 @@ export function getConfig() {
     // URLs
     urls: {
       app: environment.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-      qdrant: environment.QDRANT_URL,
       supabase: environment.SUPABASE_URL,
     },
   }
@@ -225,7 +224,7 @@ export function logEnvironmentStatus() {
 
   console.log("🔧 Environment Configuration:")
   console.log("  📍 Environment:", environment.NODE_ENV)
-  console.log("  💳 Payment Provider:", config.payments.preferredProvider)
+  console.log("  💳 Payment Provider:", config.payments.provider)
   console.log("  🛡️  Features Enabled:")
   console.log("    - Virus Scanning:", config.features.virusScan ? "✅" : "❌")
   console.log("    - Rate Limiting:", config.features.rateLimiting ? "✅" : "❌")
@@ -235,5 +234,4 @@ export function logEnvironmentStatus() {
   console.log("    - Database (Supabase):", environment.SUPABASE_URL ? "✅ Connected" : "❌ Missing")
   console.log("    - Storage (Supabase):", environment.SUPABASE_URL ? "✅ Connected" : "❌ Missing")
   console.log("    - OpenAI:", environment.OPENAI_API_KEY ? "✅ Configured" : "❌ Missing")
-  console.log("    - Qdrant:", environment.QDRANT_URL ? "✅ Connected" : "❌ Missing")
 }

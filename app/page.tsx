@@ -57,8 +57,8 @@ const faqStructuredData = {
       "@type": "Question",
       name: "Can I create multiple tailored resumes for different jobs?",
       acceptedAnswer: {
-        "@type": "Answer", 
-        text: "Yes! This is our core strength. Upload your base resume once, then generate unlimited optimized versions for different job applications. Each version is tailored to specific job descriptions while maintaining your authentic experience. This approach increases interview rates by matching each position's unique requirements and keywords perfectly."
+        "@type": "Answer",
+        text: "Yes! This is our core strength. Upload your base resume once, then generate optimized versions for different job applications. Each version is tailored to specific job descriptions while maintaining your authentic experience. Free users get 3 optimizations per month, while Pro users get unlimited optimizations."
       }
     }
   ]
@@ -697,12 +697,12 @@ export default function HomePage() {
               {
                 question: "Can I create multiple tailored resumes for different jobs?",
                 answer:
-                  "Yes! This is our core strength. Upload your base resume once, then generate unlimited optimized versions for different job applications. Each version is tailored to specific job descriptions while maintaining your authentic experience. This approach increases interview rates by matching each position's unique requirements and keywords perfectly.",
+                  "Yes! This is our core strength. Upload your base resume once, then generate optimized versions for different job applications. Each version is tailored to specific job descriptions while maintaining your authentic experience. Free users get 3 optimizations per month, while Pro users get unlimited optimizations.",
               },
               {
                 question: "How many job applications can I optimize per month?",
                 answer:
-                  "With our free plan, you can optimize 3 resumes per month. Pro users get unlimited resume optimizations and can create multiple tailored versions for different jobs simultaneously. Enterprise users also get team collaboration features and API access for bulk operations.",
+                  "With our free plan, you can optimize 3 resumes per month. Pro users get unlimited resume optimizations and can create multiple tailored versions for different jobs simultaneously.",
               },
               {
                 question: "What file formats work best for ATS optimization?",
@@ -727,17 +727,17 @@ export default function HomePage() {
               {
                 question: "How does the AI work for different industries and job types?",
                 answer:
-                  "Our AI is trained on millions of successful resumes across all industries - tech, healthcare, finance, education, creative fields, and more. It adapts language style, highlights industry-specific keywords, and tailors achievements relevant to each sector's expectations and recruitment patterns.",
+                  "Our AI leverages advanced language models with sophisticated prompts designed for resume optimization across all industries—tech, healthcare, finance, education, creative fields, and more. It adapts language style, highlights industry-specific keywords, and tailors achievements relevant to each sector's expectations and recruitment patterns.",
               },
               {
                 question: "Can I check my ATS score before applying to jobs?",
                 answer:
-                  "Absolutely! Each optimized resume includes a comprehensive ATS score showing compatibility with major systems like Workday, Taleo, and Greenhouse. Our real-time scanner checks formatting, keyword density, structure, and other critical factors, with suggestions for improvements before you apply.",
+                  "Absolutely! Each optimized resume includes a match score showing how well your resume aligns with the job requirements. Our analysis checks keyword density, content relevance, and provides specific recommendations for improvement before you apply.",
               },
               {
                 question: "What kind of results do users see with tailored resumes?",
                 answer:
-                  "Users report significant improvements: 80% see increased interview requests, many cut job search time in half, and 60% receive job offers after optimizing multiple applications. Tailored resumes consistently outperform generic versions by highlighting matched skills and experiences that match what employers seek.",
+                  "Users report significant improvements in interview response rates when using tailored resumes. Optimized resumes that match job requirements consistently outperform generic versions by highlighting the skills and experiences that employers are actively seeking.",
               },
               {
                 question: "How long does it take to optimize a resume for each job?",
@@ -747,7 +747,7 @@ export default function HomePage() {
               {
                 question: "Does your AI include a cover letter generator?",
                 answer:
-                  "Yes! Pro and Enterprise plans include our AI cover letter generator that complements your tailored resumes. Cover letters are automatically customized for each job application, using the same job analysis and keyword optimization that makes our resumes so effective.",
+                  "Cover letter generation is coming soon! We're developing an AI-powered cover letter feature that will complement your tailored resumes, automatically customizing cover letters for each job application using the same optimization approach that makes our resumes effective.",
               },
               {
                 question: "Is my personal and resume data kept secure and private?",
@@ -757,7 +757,7 @@ export default function HomePage() {
               {
                 question: "What if I need help or have questions about using the AI?",
                 answer:
-                  "Pro users receive priority email support, while Enterprise plans include dedicated account managers. Our comprehensive help center covers everything from basic setup to advanced optimization strategies. Most users get started successfully within minutes of creating their account.",
+                  "Pro users receive priority email support with faster response times. Our comprehensive help center covers everything from basic setup to advanced optimization strategies. Most users get started successfully within minutes of creating their account.",
               },
             ].map((faq, index) => (
               <div key={index} className="relative overflow-hidden rounded-xl border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5">

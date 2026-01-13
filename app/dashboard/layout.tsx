@@ -2,6 +2,7 @@ import { getAuthenticatedUser } from "@/lib/user-data"
 import { redirect } from "next/navigation"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { OnboardingWrapper } from "@/components/onboarding/onboarding-wrapper"
+import { getUserResumes } from "@/lib/db"
 import Link from "next/link"
 
 const WELCOME_VIDEO_URL = "/videos/welcome.mp4"
@@ -16,6 +17,12 @@ export default async function DashboardLayout({
     redirect("/auth/login")
   }
 
+  // Fetch resumes to determine tour behavior
+  const resumes = await getUserResumes(user.id).catch(() => [])
+  const completedResumes = resumes.filter(
+    (r: any) => r.processing_status === "completed" && (r.kind === "master" || r.kind === "uploaded")
+  )
+
   // Show tour if user hasn't completed it yet
   const shouldShowTour = !user.tour_completed_at
 
@@ -23,6 +30,7 @@ export default async function DashboardLayout({
     <OnboardingWrapper
       showVideoOnMount={!user.onboarding_completed_at}
       showTourAfterVideo={shouldShowTour}
+      hasResumes={completedResumes.length > 0}
       videoUrl={WELCOME_VIDEO_URL}
     >
       <div className="antialiased text-foreground bg-background font-geist min-h-screen">

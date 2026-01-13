@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react"
 import { WelcomeVideoModal } from "@/components/dashboard/welcome-video-modal"
-import { TOUR_STEPS, type TourStep } from "./tour-steps"
+import { TOUR_STEPS, TOUR_STEPS_NO_RESUMES, type TourStep } from "./tour-steps"
 import { SpotlightTour } from "./spotlight-tour"
 
 // Combined context for both video and tour state
@@ -35,6 +35,7 @@ interface OnboardingWrapperProps {
   children: ReactNode
   showVideoOnMount: boolean
   showTourAfterVideo: boolean
+  hasResumes: boolean
   videoUrl: string
 }
 
@@ -42,6 +43,7 @@ export function OnboardingWrapper({
   children,
   showVideoOnMount,
   showTourAfterVideo,
+  hasResumes,
   videoUrl,
 }: OnboardingWrapperProps) {
   // Video state
@@ -53,7 +55,10 @@ export function OnboardingWrapper({
   const [currentStep, setCurrentStep] = useState(0)
   const [hasCompletedTour, setHasCompletedTour] = useState(false)
 
-  const totalSteps = TOUR_STEPS.length
+  // Use different tour steps based on whether user has resumes
+  // Users with no resumes see upload prompt, users with resumes see full tour with select prompt
+  const activeTourSteps = hasResumes ? TOUR_STEPS : TOUR_STEPS_NO_RESUMES
+  const totalSteps = activeTourSteps.length
 
   // Video controls
   const openWelcomeVideo = useCallback(() => {
@@ -111,24 +116,28 @@ export function OnboardingWrapper({
     if (hasCompletedTour) return
 
     setIsTourActive(false)
-    setHasCompletedTour(true)
 
-    try {
-      await fetch("/api/user/onboarding/complete-tour", {
-        method: "POST",
-      })
-    } catch (error) {
-      console.error("Failed to mark tour complete:", error)
+    // Only mark tour as permanently complete if user has seen the full tour
+    // Users without resumes will see the tour again after uploading their first resume
+    if (hasResumes) {
+      setHasCompletedTour(true)
+      try {
+        await fetch("/api/user/onboarding/complete-tour", {
+          method: "POST",
+        })
+      } catch (error) {
+        console.error("Failed to mark tour complete:", error)
+      }
     }
-  }, [hasCompletedTour])
+  }, [hasCompletedTour, hasResumes])
 
   const skipTour = useCallback(() => {
     completeTour()
   }, [completeTour])
 
   const getCurrentStep = useCallback(() => {
-    return TOUR_STEPS[currentStep] || null
-  }, [currentStep])
+    return activeTourSteps[currentStep] || null
+  }, [currentStep, activeTourSteps])
 
   // If tour should show but video doesn't need to show first
   useEffect(() => {
@@ -173,7 +182,7 @@ export function OnboardingWrapper({
       {/* Spotlight Tour */}
       {isTourActive && (
         <SpotlightTour
-          steps={TOUR_STEPS}
+          steps={activeTourSteps}
           currentStep={currentStep}
           onNext={isLastStep ? completeTour : nextStep}
           onPrev={prevStep}

@@ -235,7 +235,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
 
   if (completedResumes.length === 0) {
     return (
-      <div className="text-center py-8">
+      <div data-tour-target="resume-select" className="text-center py-8">
         <p className="text-foreground/60 dark:text-white/60 mb-4">
           Upload a resume first to start optimizing
         </p>
@@ -325,7 +325,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         </div>
       </div>
 
-      <div>
+      <div data-tour-target="job-description">
         <label className="block text-sm font-medium mb-2">
           Job Description *
           {isJobDescriptionValid && <Check className="inline w-4 h-4 ml-1 text-emerald-500" />}

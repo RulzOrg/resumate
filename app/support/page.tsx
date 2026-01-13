@@ -100,7 +100,7 @@ export default function SupportPage() {
         },
         {
           q: "How accurate is the AI optimization?",
-          a: "Our AI uses advanced language models trained on thousands of successful resumes. While highly accurate, we recommend reviewing and personalizing the output before submitting."
+          a: "Our AI uses advanced language models with sophisticated prompts designed for resume optimization. While highly accurate, we recommend reviewing and personalizing the output before submitting."
         },
       ]
     },
@@ -114,15 +114,11 @@ export default function SupportPage() {
         },
         {
           q: "How do I upgrade my subscription?",
-          a: "Go to Settings > Subscription and click 'Upgrade Plan'. You can choose between Pro (unlimited optimizations) or Enterprise (team features) plans."
+          a: "Go to Settings > Subscription and click 'Upgrade Plan' to access our Pro plan with unlimited optimizations and priority support."
         },
         {
           q: "Can I cancel my subscription?",
           a: "Yes, you can cancel anytime from Settings > Subscription. You'll retain access until the end of your billing period."
-        },
-        {
-          q: "Do you offer refunds?",
-          a: "We offer a 7-day money-back guarantee for new subscriptions. Contact support within 7 days of purchase for a full refund."
         },
       ]
     },

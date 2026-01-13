@@ -14,14 +14,14 @@ import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import type { User as UserType } from "@/lib/db"
 import { UserAvatar } from "./user-avatar"
 import { WelcomeVideoButton } from "./welcome-video-button"
-import { useWelcomeVideo } from "@/components/providers/welcome-video-provider"
+import { useOnboarding } from "@/components/onboarding"
 
 interface DashboardHeaderProps {
   user: UserType
 }
 
 export function DashboardHeader({ user }: DashboardHeaderProps) {
-  const welcomeVideo = useWelcomeVideo()
+  const onboarding = useOnboarding()
 
   return (
     <header className="sticky top-0 z-30 bg-background/50 backdrop-blur-lg border-b border-border">
@@ -37,8 +37,8 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            {welcomeVideo && (
-              <WelcomeVideoButton onClick={welcomeVideo.openWelcomeVideo} />
+            {onboarding && (
+              <WelcomeVideoButton onClick={onboarding.openWelcomeVideo} />
             )}
             <ThemeSwitcher />
             <DropdownMenu>
