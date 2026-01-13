@@ -5,7 +5,7 @@ import { OnboardingWrapper } from "@/components/onboarding/onboarding-wrapper"
 import { getUserResumes } from "@/lib/db"
 import Link from "next/link"
 
-const WELCOME_VIDEO_URL = "/videos/welcome.mp4"
+const WELCOME_VIDEO_URL = "https://www.tella.tv/video/vid_cmkcgmm5y041604jycs8l4ab0/embed?b=0&title=0&a=1&loop=0&t=0&muted=0&wt=0"
 
 export default async function DashboardLayout({
   children,
