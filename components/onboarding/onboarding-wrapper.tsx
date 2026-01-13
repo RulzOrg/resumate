@@ -116,11 +116,11 @@ export function OnboardingWrapper({
     if (hasCompletedTour) return
 
     setIsTourActive(false)
+    setHasCompletedTour(true) // Always set locally to prevent re-triggering
 
-    // Only mark tour as permanently complete if user has seen the full tour
-    // Users without resumes will see the tour again after uploading their first resume
+    // Only persist to DB if user has seen the full tour
+    // Users without resumes will see the tour again after page refresh
     if (hasResumes) {
-      setHasCompletedTour(true)
       try {
         await fetch("/api/user/onboarding/complete-tour", {
           method: "POST",

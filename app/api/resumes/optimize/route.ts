@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage, getCachedStructure, saveParsedStructure } from "@/lib/db"
+import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ensureUserSyncRecord, incrementUsage, getCachedStructure, saveParsedStructure, createJobAnalysisWithVerification } from "@/lib/db"
 import { extractResumeWithLLM } from "@/lib/llm-resume-extractor"
 import { canPerformAction } from "@/lib/subscription"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
@@ -344,10 +344,29 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Create or update job analysis record (increments usage only for new jobs)
+    const jobAnalysis = await createJobAnalysisWithVerification({
+      user_id: resume.user_id,
+      job_title,
+      company_name: company_name || undefined,
+      job_description,
+      analysis_result: {
+        keywords: optimization.keywords_added || [],
+        required_skills: [],
+        preferred_skills: [],
+        experience_level: '',
+        key_requirements: [],
+        nice_to_have: [],
+        company_culture: [],
+        benefits: [],
+      }
+    })
+
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
       user_id: resume.user_id,
       original_resume_id: resume_id,
+      job_analysis_id: jobAnalysis.id,
       job_title,
       company_name: company_name || null,
       job_description,
