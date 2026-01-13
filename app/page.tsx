@@ -3,8 +3,9 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { RefreshCw, Upload, Target, Download, Check, Star, Plus, Menu } from "lucide-react"
+import { Upload, Target, Download, Check, Star, Plus, Menu, RefreshCw } from "lucide-react"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { Logo } from "@/components/ui/logo"
 import { ProCheckoutButton } from "@/components/pricing/pro-checkout-button"
 import { useAuth } from "@clerk/nextjs"
 
@@ -100,12 +101,9 @@ export default function HomePage() {
           <nav className="mt-6 flex items-center justify-between">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
+              className="inline-flex items-center rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
             >
-              <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
-                <RefreshCw className="h-4 w-4" />
-              </span>
-              <span className="text-base font-medium tracking-tighter font-sans">Useresumate</span>
+              <Logo size="sm" />
             </Link>
 
             <div className="hidden gap-1 md:flex bg-surface-subtle dark:bg-white/5 border-border/80 dark:border-white/20 border rounded-full p-1 backdrop-blur items-center">
@@ -165,12 +163,9 @@ export default function HomePage() {
                   <Link
                     href="/"
                     onClick={toggleMobileMenu}
-                    className="inline-flex items-center gap-2 rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
+                    className="inline-flex items-center rounded-full border border-border/80 dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
                   >
-                    <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
-                      <RefreshCw className="h-4 w-4 text-black" />
-                    </span>
-                    <span className="text-base font-medium tracking-tighter font-sans">Useresumate</span>
+                    <Logo size="sm" />
                   </Link>
                 </div>
                 <button

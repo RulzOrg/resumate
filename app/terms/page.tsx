@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { RefreshCw } from "lucide-react"
+import { Logo } from "@/components/ui/logo"
 
 export const metadata = {
   title: "Terms of Service | Useresumate",
@@ -16,12 +16,9 @@ export default function TermsPage() {
         <div className="mx-auto max-w-4xl px-4 py-6">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
+            className="inline-flex items-center rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
-              <RefreshCw className="h-4 w-4" />
-            </span>
-            <span className="text-base font-medium tracking-tighter">Useresumate</span>
+            <Logo size="sm" />
           </Link>
         </div>
       </header>

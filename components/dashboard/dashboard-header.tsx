@@ -7,7 +7,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { RefreshCw, Settings, User } from "lucide-react"
+import { Settings, User } from "lucide-react"
+import { Logo } from "@/components/ui/logo"
 import Link from "next/link"
 import { LogoutButton } from "./logout-button"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
@@ -28,11 +29,8 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="inline-flex items-center gap-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
-                <RefreshCw className="h-4 w-4" />
-              </span>
-              <span className="text-base font-medium tracking-tighter">Useresumate</span>
+            <Link href="/dashboard" className="inline-flex items-center">
+              <Logo size="sm" />
             </Link>
           </div>
 
