@@ -19,6 +19,7 @@ import {
   ReadingProgress,
   ShareButtons,
   TableOfContents,
+  NewsletterForm,
 } from '@/components/blog'
 
 interface BlogPostPageProps {
@@ -240,13 +241,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
               {/* Author */}
               {author && (
-                <div className="mb-12">
+                <div className="mb-8">
                   <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
                     Written by
                   </h3>
                   <AuthorCard author={author} />
                 </div>
               )}
+
+              {/* Newsletter CTA - inline for mobile, hidden on desktop (shown in sidebar) */}
+              <div className="mb-12 lg:hidden">
+                <NewsletterForm variant="card" source="blog_post_inline" />
+              </div>
 
               {/* Related posts */}
               {relatedPosts.length > 0 && (
@@ -278,21 +284,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   <ShareButtons title={post.title} url={postUrl} variant="vertical" />
                 </div>
 
-                {/* CTA */}
-                <div className="rounded-xl border bg-card p-5">
-                  <h3 className="mb-2 font-semibold text-foreground">
-                    Optimize Your Resume
-                  </h3>
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    Let AI tailor your resume to any job description in seconds.
-                  </p>
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
-                  >
-                    Try Resumate Free
-                  </Link>
-                </div>
+                {/* Newsletter */}
+                <NewsletterForm variant="card" source="blog_post_sidebar" />
               </div>
             </aside>
           </div>

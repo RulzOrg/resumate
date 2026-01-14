@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { TagCloud } from './TagCloud'
+import { NewsletterForm } from './NewsletterForm'
 import type { BlogCategory, BlogPostSummary } from '@/lib/blog'
 
 interface BlogSidebarProps {
@@ -98,20 +99,7 @@ export function BlogSidebar({
       )}
 
       {/* Newsletter CTA */}
-      <div className="rounded-xl border bg-card p-5">
-        <h3 className="mb-2 font-semibold text-foreground">
-          Get Career Tips
-        </h3>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Subscribe to our newsletter for the latest resume tips and job search strategies.
-        </p>
-        <Link
-          href="/dashboard"
-          className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-600"
-        >
-          Get Started Free
-        </Link>
-      </div>
+      <NewsletterForm variant="card" source="blog_sidebar" />
     </aside>
   )
 }

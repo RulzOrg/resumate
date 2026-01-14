@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { getAllPosts, getAllCategories, getAllTags, getFeaturedPosts } from '@/lib/blog'
-import { BlogHeader, BlogGrid, BlogLayout } from '@/components/blog'
+import { BlogHeader, BlogGrid, BlogLayout, NewsletterSection } from '@/components/blog'
 
 export const metadata: Metadata = {
   title: 'Blog | Resumate - Resume Tips & Career Advice',
@@ -39,6 +39,9 @@ export default async function BlogPage() {
           featuredPosts={featuredPosts}
         >
           <BlogGrid posts={posts} />
+
+          {/* Newsletter Section - shown below posts on main content area */}
+          <NewsletterSection className="mt-12" source="blog_listing" />
         </BlogLayout>
       </div>
     </main>
