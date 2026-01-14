@@ -128,9 +128,9 @@ export default function HomePage() {
 
               {/* Resources Dropdown - Click to open, click outside to close */}
               <DropdownMenu>
-                <DropdownMenuTrigger className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans focus:outline-none">
+                <DropdownMenuTrigger className="group inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans focus:outline-none">
                   Resources
-                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-[data-state=open]:rotate-180" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="center"

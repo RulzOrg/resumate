@@ -277,7 +277,7 @@ export function analyzeFonts(rawText: string): SubcategoryResult {
   // Check for encoding issues that might indicate font problems
   const encodingIssues = [
     /[\uFFFD]/g,                  // Replacement character (encoding issue)
-    /[^\x00-\x7F\u00A0-\u00FF\u2018-\u201F\u2013-\u2014]/g,  // Non-standard chars
+    /[^\x00-\x7F\u00A0-\u00FF\u2018-\u2022\u2013-\u2014]/g,  // Non-standard chars (includes bullet • U+2022)
   ]
 
   let fontIndicators = 0

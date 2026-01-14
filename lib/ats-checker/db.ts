@@ -91,7 +91,7 @@ export async function getATSCheckById(id: string): Promise<ATSCheckRecord | null
 export async function getATSCheckByIdAndEmail(id: string, email: string): Promise<ATSCheckRecord | null> {
   const results = await sql<any>`
     SELECT * FROM ats_checks
-    WHERE id = ${id} AND email = ${email}
+    WHERE id = ${id} AND LOWER(email) = LOWER(${email})
   `
 
   if (!results[0]) {
@@ -132,10 +132,13 @@ export async function captureEmail(
     jobTitle?: string
   }
 ): Promise<void> {
+  // Normalize email to lowercase for consistent storage and lookups
+  const normalizedEmail = data.email.toLowerCase().trim()
+  
   await sql`
     UPDATE ats_checks
     SET
-      email = ${data.email},
+      email = ${normalizedEmail},
       first_name = ${data.firstName || null},
       marketing_consent = ${data.marketingConsent},
       job_description = ${data.jobDescription || null},
@@ -238,11 +241,15 @@ export async function trackConversion(
       converted_user_id = ${userId},
       converted_at = NOW(),
       updated_at = NOW()
-    WHERE email = ${email}
-      AND converted_to_user = false
-      AND status = 'completed'
-    ORDER BY created_at DESC
-    LIMIT 1
+    WHERE id IN (
+      SELECT id
+      FROM ats_checks
+      WHERE LOWER(email) = LOWER(${email})
+        AND converted_to_user = false
+        AND status = 'completed'
+      ORDER BY created_at DESC
+      LIMIT 1
+    )
     RETURNING id
   `
 
@@ -286,7 +293,7 @@ export async function getRecentAnalysesByEmail(
   const results = await sql<{ count: string }>`
     SELECT COUNT(*) as count
     FROM ats_checks
-    WHERE email = ${email}
+    WHERE LOWER(email) = LOWER(${email})
       AND analyzed_at IS NOT NULL
       AND analyzed_at > ${cutoffTime.toISOString()}
   `
@@ -303,7 +310,7 @@ export async function getATSCheckHistory(
 ): Promise<ATSCheckRecord[]> {
   const results = await sql<any>`
     SELECT * FROM ats_checks
-    WHERE email = ${email}
+    WHERE LOWER(email) = LOWER(${email})
       AND status = 'completed'
     ORDER BY created_at DESC
     LIMIT ${limit}
@@ -377,11 +384,18 @@ function mapDbToRecord(row: any): ATSCheckRecord {
   return {
     id: row.id,
     email: row.email,
+    firstName: row.first_name,
     originalFileName: row.original_file_name,
     originalFileUrl: row.original_file_url,
+    originalFileHash: row.original_file_hash,
     fileType: row.file_type,
     fileSize: row.file_size,
     extractedText: row.extracted_text,
+    parsedSections: row.parsed_sections
+      ? typeof row.parsed_sections === 'string'
+        ? JSON.parse(row.parsed_sections)
+        : row.parsed_sections
+      : null,
     overallScore: row.overall_score,
     contentScore: row.content_score,
     sectionsScore: row.sections_score,
@@ -391,15 +405,21 @@ function mapDbToRecord(row: any): ATSCheckRecord {
     categoryDetails: row.category_details,
     jobDescription: row.job_description,
     jobTitle: row.job_title,
+    marketingConsent: row.marketing_consent,
     status: row.status,
     processingError: row.processing_error,
     ipAddress: row.ip_address,
     userAgent: row.user_agent,
+    utmSource: row.utm_source,
+    utmMedium: row.utm_medium,
+    utmCampaign: row.utm_campaign,
+    referrer: row.referrer,
     convertedToUser: row.converted_to_user,
     convertedUserId: row.converted_user_id,
     convertedAt: row.converted_at ? new Date(row.converted_at) : null,
     beehiivSubscribed: row.beehiiv_subscribed,
     beehiivSubscriberId: row.beehiiv_subscriber_id,
+    emailSubmittedAt: row.email_submitted_at ? new Date(row.email_submitted_at) : null,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     analyzedAt: row.analyzed_at ? new Date(row.analyzed_at) : null,

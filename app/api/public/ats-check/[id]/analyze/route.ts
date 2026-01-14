@@ -18,6 +18,23 @@ import { downloadLeadMagnetFile } from '@/lib/supabase-storage'
 import { extractText } from '@/lib/extract'
 import { subscribeUser } from '@/lib/beehiiv'
 
+// Helper function to mask email for logging (PII protection)
+function maskEmail(email: string): string {
+  const [localPart, domain] = email.split('@')
+  if (!domain) return '***@***'
+  
+  const maskedLocal = localPart.length > 1 
+    ? `${localPart[0]}***` 
+    : '***'
+  
+  const [domainName, ...domainParts] = domain.split('.')
+  const maskedDomain = domainName.length > 2
+    ? `${domainName.slice(0, 2)}***`
+    : '***'
+  
+  return `${maskedLocal}@${maskedDomain}.${domainParts.join('.')}`
+}
+
 // Request validation schema
 const AnalyzeRequestSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -109,7 +126,11 @@ export async function POST(
     try {
       // Extract the storage key from the URL
       const urlParts = atsCheck.originalFileUrl.split('/')
-      const storageKey = urlParts.slice(urlParts.indexOf('lead-magnets') + 1).join('/')
+      const leadMagnetsIndex = urlParts.indexOf('lead-magnets')
+      if (leadMagnetsIndex === -1) {
+        throw new Error(`Invalid file URL format: ${atsCheck.originalFileUrl}`)
+      }
+      const storageKey = urlParts.slice(leadMagnetsIndex + 1).join('/')
 
       // Download and extract text
       const fileBuffer = await downloadLeadMagnetFile(storageKey)
@@ -170,7 +191,7 @@ export async function POST(
 
     console.log('[ATS Check] Analysis complete:', {
       checkId,
-      email,
+      email: maskEmail(email),
       overallScore: analysisResult.result.overallScore,
       totalIssues: analysisResult.result.issues.length,
     })

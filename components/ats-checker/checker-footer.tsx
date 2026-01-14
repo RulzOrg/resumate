@@ -15,7 +15,7 @@ export function CheckerFooter() {
           </p>
           <div className="flex items-center gap-4">
             <Link
-              href="https://twitter.com"
+              href="https://twitter.com/useresumate"
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-400 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-foreground transition-colors"
@@ -24,7 +24,7 @@ export function CheckerFooter() {
               <span className="sr-only">Twitter</span>
             </Link>
             <Link
-              href="https://linkedin.com"
+              href="https://www.linkedin.com/company/useresumate/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-slate-400 dark:text-muted-foreground hover:text-slate-600 dark:hover:text-foreground transition-colors"

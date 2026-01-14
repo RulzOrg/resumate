@@ -22,6 +22,7 @@ import type {
   SectionsAnalysis,
   EssentialsAnalysis,
   TailoringAnalysis,
+  ATSIssue,
 } from './types'
 
 export interface AnalyzerInput {
@@ -61,7 +62,6 @@ export async function runATSAnalysis(input: AnalyzerInput): Promise<AnalyzerOutp
   try {
     parsed = parseResumeContent(rawText)
     console.log('[ATS Analyzer] Resume parsed:', {
-      name: parsed.contact.name,
       experienceCount: parsed.workExperience.length,
       skillCount: parsed.skills.length,
     })
@@ -195,8 +195,8 @@ Analyze and return:
     )
 
     // Build subcategory results
-    const keywordMatchIssues: any[] = []
-    const skillsAlignmentIssues: any[] = []
+    const keywordMatchIssues: ATSIssue[] = []
+    const skillsAlignmentIssues: ATSIssue[] = []
 
     // Generate issues for missing skills
     if (result.hardSkillsMissing.length > 3) {
@@ -301,19 +301,33 @@ export function getQuickPreview(rawText: string): {
   hasExperience: boolean
   estimatedWordCount: number
 } {
-  const parsed = parseResumeContent(rawText)
+  // Compute word count from rawText (always available, even on parse error)
+  const estimatedWordCount = rawText.split(/\s+/).filter(Boolean).length
 
-  let sectionCount = 0
-  if (parsed.contact.name || parsed.contact.email) sectionCount++
-  if (parsed.workExperience.length > 0) sectionCount++
-  if (parsed.education.length > 0) sectionCount++
-  if (parsed.skills.length > 0) sectionCount++
-  if (parsed.summary) sectionCount++
+  try {
+    const parsed = parseResumeContent(rawText)
 
-  return {
-    estimatedSections: sectionCount,
-    hasContactInfo: !!(parsed.contact.name || parsed.contact.email),
-    hasExperience: parsed.workExperience.length > 0,
-    estimatedWordCount: rawText.split(/\s+/).filter(Boolean).length,
+    let sectionCount = 0
+    if (parsed.contact.name || parsed.contact.email) sectionCount++
+    if (parsed.workExperience.length > 0) sectionCount++
+    if (parsed.education.length > 0) sectionCount++
+    if (parsed.skills.length > 0) sectionCount++
+    if (parsed.summary) sectionCount++
+
+    return {
+      estimatedSections: sectionCount,
+      hasContactInfo: !!(parsed.contact.name || parsed.contact.email),
+      hasExperience: parsed.workExperience.length > 0,
+      estimatedWordCount,
+    }
+  } catch (error) {
+    console.error('[ATS Analyzer] getQuickPreview: Failed to parse resume content:', error)
+    // Return safe default on parsing error
+    return {
+      estimatedSections: 0,
+      hasContactInfo: false,
+      hasExperience: false,
+      estimatedWordCount,
+    }
   }
 }

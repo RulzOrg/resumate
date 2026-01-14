@@ -62,7 +62,9 @@ export function analyzeParseRate(
   }
 
   // Calculate parse rate (cap at 100, allow some overhead for formatting)
-  const parseRate = Math.min(100, Math.round((parsedLength / rawTextLength) * 100 * 1.3))
+  const parseRate = rawTextLength === 0
+    ? (parsedLength === 0 ? 100 : 0)
+    : Math.min(100, Math.round((parsedLength / rawTextLength) * 100 * 1.3))
 
   // Generate issues if parse rate is low
   if (parseRate < 60) {
@@ -315,14 +317,15 @@ Return:
   } catch (error) {
     console.error('[ATS Checker] Spelling/grammar check failed:', error)
 
-    // Return a neutral result if AI check fails
+    // Return a failure result if AI check fails
+    const errorMessage = error instanceof Error ? error.message : 'AI check failed'
     return {
       name: 'Spelling & Grammar',
       key: 'spelling_grammar',
-      score: 80, // Assume decent quality
-      status: 'pass',
+      score: 0,
+      status: 'fail',
       issues: [],
-      details: 'Check completed',
+      details: `Check failed: ${errorMessage}`,
     }
   }
 }

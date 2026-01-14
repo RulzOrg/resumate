@@ -87,12 +87,25 @@ export async function GET(
       ? JSON.parse(atsCheck.issues)
       : Array.isArray(atsCheck.issues) ? atsCheck.issues : []
 
+    // Validate required fields for completed analysis
+    if (atsCheck.overallScore === null || atsCheck.overallScore === undefined) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          error: 'Invalid analysis data',
+          code: 'MISSING_SCORE',
+          userMessage: 'Analysis results are incomplete. Please try uploading your resume again.',
+        },
+        { status: 500 }
+      )
+    }
+
     const result: ATSCheckResult = {
       checkId: atsCheck.id,
       fileName: atsCheck.originalFileName,
       fileType: atsCheck.fileType,
       analyzedAt: atsCheck.analyzedAt?.toISOString() || new Date().toISOString(),
-      overallScore: atsCheck.overallScore!,
+      overallScore: atsCheck.overallScore,
       content: categoryDetails.content,
       sections: categoryDetails.sections,
       atsEssentials: categoryDetails.atsEssentials,

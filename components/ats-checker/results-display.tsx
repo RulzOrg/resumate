@@ -263,7 +263,7 @@ export function ResultsDisplay({ results, onFixIssue, onCreateAccount }: Results
         )}
 
         {/* Bottom CTA */}
-        <div className="p-5 rounded-xl border border-emerald-200 dark:border-emerald-500/20 bg-gradient-to-r from-emerald-50 dark:from-emerald-500/10 via-emerald-25 dark:via-emerald-500/5 to-transparent">
+        <div className="p-5 rounded-xl border border-emerald-200 dark:border-emerald-500/20 bg-gradient-to-r from-emerald-50 dark:from-emerald-500/10 via-emerald-50 dark:via-emerald-500/5 to-transparent">
           <div className="flex flex-col md:flex-row md:items-center gap-4">
             <div className="flex-1">
               <h3 className="font-semibold text-base mb-1 font-sans text-slate-900 dark:text-white">Ready to fix these issues?</h3>

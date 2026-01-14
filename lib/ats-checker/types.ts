@@ -133,11 +133,14 @@ export type ATSCheckStatus = 'uploaded' | 'email_captured' | 'analyzing' | 'comp
 export interface ATSCheckRecord {
   id: string
   email: string | null
+  firstName: string | null
   originalFileName: string
   originalFileUrl: string
+  originalFileHash: string | null
   fileType: string
   fileSize: number
   extractedText: string | null
+  parsedSections: Record<string, any> | null
   overallScore: number | null
   contentScore: number | null
   sectionsScore: number | null
@@ -152,15 +155,21 @@ export interface ATSCheckRecord {
   } | null
   jobDescription: string | null
   jobTitle: string | null
+  marketingConsent: boolean | null
   status: ATSCheckStatus
   processingError: string | null
   ipAddress: string | null
   userAgent: string | null
+  utmSource: string | null
+  utmMedium: string | null
+  utmCampaign: string | null
+  referrer: string | null
   convertedToUser: boolean
   convertedUserId: string | null
   convertedAt: Date | null
   beehiivSubscribed: boolean
   beehiivSubscriberId: string | null
+  emailSubmittedAt: Date | null
   createdAt: Date
   updatedAt: Date
   analyzedAt: Date | null

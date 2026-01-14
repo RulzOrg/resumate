@@ -142,7 +142,34 @@ export function ResumeUploader({
       // Step 3: Validating
       onUploadProgress(2)
 
-      const result = await response.json()
+      if (!response.ok) {
+        let errorMessage = `Upload failed: ${response.status} ${response.statusText}`
+        try {
+          const errorText = await response.text()
+          if (errorText) {
+            try {
+              const errorJson = JSON.parse(errorText)
+              errorMessage = errorJson.userMessage || errorJson.message || errorMessage
+            } catch {
+              errorMessage = errorText || errorMessage
+            }
+          }
+        } catch {
+          // Use default errorMessage if reading response fails
+        }
+        onUploadError(errorMessage)
+        setIsUploading(false)
+        return
+      }
+
+      let result
+      try {
+        result = await response.json()
+      } catch (error) {
+        onUploadError("Failed to parse server response. Please try again.")
+        setIsUploading(false)
+        return
+      }
 
       if (result.status === "error") {
         onUploadError(result.userMessage || "Upload failed")

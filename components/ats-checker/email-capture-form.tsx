@@ -68,7 +68,34 @@ export function EmailCaptureForm({
         // Step 2: Analyzing
         onAnalyzeProgress(1)
 
-        const result = await response.json()
+        if (!response.ok) {
+          let errorMessage = `Request failed with status ${response.status}`
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.userMessage || errorData.message || errorMessage
+          } catch {
+            try {
+              const errorText = await response.text()
+              if (errorText) {
+                errorMessage = errorText
+              }
+            } catch {
+              // Keep default errorMessage
+            }
+          }
+          onAnalyzeError(errorMessage)
+          setIsSubmitting(false)
+          return
+        }
+
+        let result
+        try {
+          result = await response.json()
+        } catch (parseError) {
+          onAnalyzeError("Failed to parse server response. Please try again.")
+          setIsSubmitting(false)
+          return
+        }
 
         if (result.status === "error") {
           onAnalyzeError(result.userMessage || "Analysis failed")
@@ -86,6 +113,12 @@ export function EmailCaptureForm({
 
         // Step 4: Generating recommendations
         onAnalyzeProgress(3)
+
+        if (!resultsResponse.ok) {
+          onAnalyzeError(resultsResponse.statusText || "Failed to load results")
+          setIsSubmitting(false)
+          return
+        }
 
         const resultsData = await resultsResponse.json()
 
