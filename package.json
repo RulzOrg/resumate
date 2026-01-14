@@ -10,7 +10,8 @@
     "check-schema": "dotenv -e .env.local tsx scripts/check-schema.ts",
     "check-env": "dotenv -e .env.local tsx scripts/check-env.ts",
     "test-beehiiv": "dotenv -e .env.local tsx scripts/test-beehiiv.ts",
-    "test-clerk-webhook": "dotenv -e .env.local tsx scripts/test-clerk-webhook-beehiiv.ts"
+    "test-clerk-webhook": "dotenv -e .env.local tsx scripts/test-clerk-webhook-beehiiv.ts",
+    "backfill-beehiiv-names": "dotenv -e .env.local tsx scripts/backfill-beehiiv-names.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.1",
