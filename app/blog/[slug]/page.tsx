@@ -10,7 +10,7 @@ import {
   getCategoryBySlug,
   getAuthorBySlug,
 } from '@/lib/blog'
-import { MarkdownContent, BlogCard } from '@/components/blog'
+import { MarkdownContent, BlogCard, AuthorCard, TagCloud } from '@/components/blog'
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
@@ -175,21 +175,21 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
           {/* Tags */}
           {post.tags && post.tags.length > 0 && (
-            <div className="mb-12 border-t border-border pt-8">
-              <h3 className="mb-4 text-sm font-medium text-muted-foreground">
+            <div className="mb-8 border-t border-border pt-8">
+              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
                 Tags
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {post.tags.map((tag) => (
-                  <Link
-                    key={tag}
-                    href={`/blog/tag/${tag}`}
-                    className="rounded-full bg-muted px-3 py-1 text-sm text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                  >
-                    #{tag}
-                  </Link>
-                ))}
-              </div>
+              <TagCloud tags={post.tags} />
+            </div>
+          )}
+
+          {/* Author */}
+          {author && (
+            <div className="mb-12">
+              <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+                Written by
+              </h3>
+              <AuthorCard author={author} />
             </div>
           )}
 

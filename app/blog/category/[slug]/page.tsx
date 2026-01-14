@@ -4,8 +4,10 @@ import {
   getPostsByCategory,
   getAllCategories,
   getCategoryBySlug,
+  getAllTags,
+  getFeaturedPosts,
 } from '@/lib/blog'
-import { BlogHeader, BlogGrid, CategoryList } from '@/components/blog'
+import { BlogHeader, BlogGrid, BlogLayout } from '@/components/blog'
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>
@@ -53,26 +55,29 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     notFound()
   }
 
-  const [posts, categories] = await Promise.all([
+  const [posts, categories, tags, featuredPosts] = await Promise.all([
     getPostsByCategory(slug),
     getAllCategories(),
+    getAllTags(),
+    getFeaturedPosts(3),
   ])
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <BlogHeader
           title={category.name}
           description={category.description || `All posts about ${category.name.toLowerCase()}.`}
         />
 
-        <CategoryList
+        <BlogLayout
           categories={categories}
+          tags={tags}
+          featuredPosts={featuredPosts}
           activeCategory={slug}
-          className="mb-8"
-        />
-
-        <BlogGrid posts={posts} />
+        >
+          <BlogGrid posts={posts} />
+        </BlogLayout>
       </div>
     </main>
   )

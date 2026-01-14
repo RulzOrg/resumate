@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { getAllPosts, getAllCategories } from '@/lib/blog'
-import { BlogHeader, BlogGrid, CategoryList } from '@/components/blog'
+import { getAllPosts, getAllCategories, getAllTags, getFeaturedPosts } from '@/lib/blog'
+import { BlogHeader, BlogGrid, BlogLayout } from '@/components/blog'
 
 export const metadata: Metadata = {
   title: 'Blog | Resumate - Resume Tips & Career Advice',
@@ -18,24 +18,28 @@ export const metadata: Metadata = {
 export const revalidate = 3600
 
 export default async function BlogPage() {
-  const [posts, categories] = await Promise.all([
+  const [posts, categories, tags, featuredPosts] = await Promise.all([
     getAllPosts(),
     getAllCategories(),
+    getAllTags(),
+    getFeaturedPosts(3),
   ])
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <BlogHeader
           title="Blog"
           description="Tips, guides, and insights to help you land your dream job."
         />
 
-        {categories.length > 0 && (
-          <CategoryList categories={categories} className="mb-8" />
-        )}
-
-        <BlogGrid posts={posts} />
+        <BlogLayout
+          categories={categories}
+          tags={tags}
+          featuredPosts={featuredPosts}
+        >
+          <BlogGrid posts={posts} />
+        </BlogLayout>
       </div>
     </main>
   )
