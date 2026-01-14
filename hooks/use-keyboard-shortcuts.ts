@@ -34,6 +34,9 @@ export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]) {
       for (const shortcut of shortcuts) {
         if (shortcut.enabled === false) continue
 
+        // Guard against undefined event.key (can happen with IME or assistive tech)
+        if (!event.key) continue
+
         const keyMatches =
           event.key.toLowerCase() === shortcut.key.toLowerCase()
         if (!keyMatches) continue

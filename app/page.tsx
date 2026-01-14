@@ -3,11 +3,17 @@
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Upload, Target, Download, Check, Star, Plus, Menu, RefreshCw } from "lucide-react"
+import { Upload, Target, Download, Check, Star, Plus, Menu, RefreshCw, FileSearch, ChevronDown } from "lucide-react"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
 import { Logo } from "@/components/ui/logo"
 import { ProCheckoutButton } from "@/components/pricing/pro-checkout-button"
 import { useAuth } from "@clerk/nextjs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ResourcesMegaMenu, RESOURCES_ITEMS } from "@/components/resources-mega-menu"
 
 // Structured data for SEO
 const structuredData = {
@@ -119,9 +125,21 @@ export default function HomePage() {
               <a href="#pricing" className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans">
                 Pricing
               </a>
-              <a href="#faq" className="px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans">
-                FAQ
-              </a>
+
+              {/* Resources Dropdown - Click to open, click outside to close */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="inline-flex items-center gap-1 px-4 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 hover:text-foreground dark:hover:text-white font-sans focus:outline-none">
+                  Resources
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="center"
+                  sideOffset={12}
+                  className="w-auto min-w-[320px] p-0 border-2 border-neutral-200 dark:border-neutral-700 bg-[#ffffff] dark:bg-[#0a0a0a] rounded-2xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]"
+                >
+                  <ResourcesMegaMenu />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <div className="hidden md:flex items-center gap-3">
@@ -237,6 +255,27 @@ export default function HomePage() {
                       <div className="text-sm text-foreground/60 dark:text-white/60">Common questions</div>
                     </div>
                   </a>
+
+                  {/* Resources Section */}
+                  <div className="pt-4 pb-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-foreground/50 dark:text-white/50 px-4">Resources</div>
+                  </div>
+                  {RESOURCES_ITEMS.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={toggleMobileMenu}
+                      className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle dark:hover:bg-white/5 rounded-xl border border-border/80 dark:border-white/20 transition-all duration-200"
+                    >
+                      <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-sky-500/10 group-hover:bg-sky-500/20 transition-colors">
+                        <item.icon className="h-5 w-5 text-sky-400" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-foreground dark:text-white font-sans">{item.label}</div>
+                        <div className="text-sm text-foreground/60 dark:text-white/60">{item.description}</div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
 
                 {/* CTA Section */}
