@@ -11,6 +11,7 @@ export const STORAGE_BUCKETS = {
   RESUMES: "resumes",
   EXPORTS: "exports",
   AVATARS: "avatars",
+  LEAD_MAGNETS: "lead-magnets",
 } as const
 
 export type BucketName = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS]
@@ -293,4 +294,39 @@ export async function deleteAvatar(key: string): Promise<boolean> {
   return deleteFile(STORAGE_BUCKETS.AVATARS, key)
 }
 
+/**
+ * Upload lead magnet file (for ATS checker)
+ * Uses a random ID instead of userId for anonymous uploads
+ */
+export async function uploadLeadMagnetFile(
+  checkId: string,
+  filename: string,
+  content: Buffer,
+  contentType: string
+): Promise<{ key: string; hash: string; size: number; url: string }> {
+  const fileHash = calculateFileHash(content)
+  const ext = filename.split(".").pop() || "pdf"
+  const sanitizedName = filename.replace(/[^a-zA-Z0-9.-]/g, "_").slice(0, 50)
+  const key = `ats-checks/${checkId}/${Date.now()}_${fileHash.slice(0, 8)}_${sanitizedName}`
 
+  const result = await uploadFile(STORAGE_BUCKETS.LEAD_MAGNETS, content, key, contentType, fileHash)
+
+  // Get signed URL for 7 days
+  const url = await getSignedUrl(STORAGE_BUCKETS.LEAD_MAGNETS, key, 7 * 24 * 60 * 60)
+
+  return { ...result, url }
+}
+
+/**
+ * Get download URL for a lead magnet file
+ */
+export async function getLeadMagnetDownloadUrl(key: string, expiresIn: number = 3600): Promise<string> {
+  return getSignedUrl(STORAGE_BUCKETS.LEAD_MAGNETS, key, expiresIn)
+}
+
+/**
+ * Download lead magnet file
+ */
+export async function downloadLeadMagnetFile(key: string): Promise<Buffer> {
+  return downloadFile(STORAGE_BUCKETS.LEAD_MAGNETS, key)
+}
