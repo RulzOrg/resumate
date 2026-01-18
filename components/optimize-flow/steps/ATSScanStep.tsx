@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, ScanLine, Loader2, Shield } from "lucide-react"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
 import { ATSScanResults } from "../results/ATSScanResults"
-import type { EditedContent, ATSScanResult } from "@/lib/types/optimize-flow"
+import type { EditedContent, ATSScanResult, AnalysisResult } from "@/lib/types/optimize-flow"
 
 interface ATSScanStepProps {
   editedContent: EditedContent
   resumeId: string
   jobDescription: string
+  jobTitle: string
+  companyName?: string
+  analysisResult?: AnalysisResult
   onScanComplete: (result: ATSScanResult) => void
   onBack: () => void
 }
@@ -28,6 +31,9 @@ export function ATSScanStep({
   editedContent,
   resumeId,
   jobDescription,
+  jobTitle,
+  companyName,
+  analysisResult,
   onScanComplete,
   onBack,
 }: ATSScanStepProps) {
@@ -96,6 +102,9 @@ export function ATSScanStep({
       <div>
         <ATSScanResults
           result={scanResult}
+          jobTitle={jobTitle}
+          companyName={companyName}
+          analysisResult={analysisResult}
           onContinue={handleContinue}
           onSkipInterview={handleContinue}
         />

@@ -14,26 +14,35 @@ import {
   Sparkles,
   Download,
   ArrowRight,
+  Copy,
+  FileDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { RewriteResult, EditedContent, RewrittenExperience } from "@/lib/types/optimize-flow"
+import {
+  generateResumeMarkdown,
+  generateResumePlainText,
+  downloadAsFile,
+  copyToClipboard,
+  generateFilename,
+} from "@/lib/export/optimize-flow-exports"
 
 interface RewriteEditorProps {
   result: RewriteResult
   missingKeywords: string[]
+  jobTitle: string
+  companyName?: string
   onContentChange: (content: EditedContent) => void
   onContinue: () => void
-  onDownload: (format: "docx" | "pdf") => void
-  isDownloading?: boolean
 }
 
 export function RewriteEditor({
   result,
   missingKeywords,
+  jobTitle,
+  companyName,
   onContentChange,
   onContinue,
-  onDownload,
-  isDownloading,
 }: RewriteEditorProps) {
   const [editedSummary, setEditedSummary] = useState(result.professionalSummary)
   const [editedExperiences, setEditedExperiences] = useState<RewrittenExperience[]>(
@@ -45,6 +54,36 @@ export function RewriteEditor({
     bulletIndex: number
   } | null>(null)
   const [expandedExperiences, setExpandedExperiences] = useState<number[]>([0])
+  const [copied, setCopied] = useState(false)
+
+  // Get current edited content
+  const getCurrentContent = (): EditedContent => ({
+    professionalSummary: editedSummary,
+    workExperiences: editedExperiences,
+  })
+
+  // Handle download as markdown
+  const handleDownload = () => {
+    const content = getCurrentContent()
+    const markdown = generateResumeMarkdown(content, {
+      jobTitle,
+      companyName,
+      includeKeywordsAdded: true,
+    })
+    const filename = generateFilename("resume", jobTitle, "md")
+    downloadAsFile(markdown, filename)
+  }
+
+  // Handle copy to clipboard
+  const handleCopy = async () => {
+    const content = getCurrentContent()
+    const plainText = generateResumePlainText(content)
+    const success = await copyToClipboard(plainText)
+    if (success) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
 
   // Track which keywords have been added
   const addedKeywords = result.keywordsAdded
@@ -141,11 +180,27 @@ export function RewriteEditor({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onDownload("docx")}
-            disabled={isDownloading}
+            onClick={handleCopy}
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4 mr-2 text-emerald-500" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Copy className="w-4 h-4 mr-2" />
+                Copy
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
           >
             <Download className="w-4 h-4 mr-2" />
-            Download DOCX
+            Download
           </Button>
         </div>
       </div>

@@ -412,6 +412,9 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
             editedContent={state.editedContent}
             resumeId={state.resumeId}
             jobDescription={state.jobDescription}
+            jobTitle={state.jobTitle}
+            companyName={state.companyName}
+            analysisResult={state.analysisResult || undefined}
             onScanComplete={handleATSScanComplete}
             onBack={handleBack}
           />

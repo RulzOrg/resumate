@@ -11,13 +11,25 @@ import {
   ChevronUp,
   Lightbulb,
   Wrench,
+  Download,
+  Copy,
+  Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
-import type { ATSScanResult, ATSSectionResult, ATSIssue } from "@/lib/types/optimize-flow"
+import type { ATSScanResult, ATSSectionResult, ATSIssue, AnalysisResult } from "@/lib/types/optimize-flow"
+import {
+  generateATSReportMarkdown,
+  downloadAsFile,
+  copyToClipboard,
+  generateFilename,
+} from "@/lib/export/optimize-flow-exports"
 
 interface ATSScanResultsProps {
   result: ATSScanResult
+  jobTitle: string
+  companyName?: string
+  analysisResult?: AnalysisResult
   onContinue: () => void
   onSkipInterview?: () => void
 }
@@ -82,26 +94,91 @@ function getStatusBorder(status: ATSSectionResult["status"]) {
 
 export function ATSScanResults({
   result,
+  jobTitle,
+  companyName,
+  analysisResult,
   onContinue,
   onSkipInterview,
 }: ATSScanResultsProps) {
   const { overallScore, sections, criticalIssues, warnings, recommendations } = result
   const [expandedSection, setExpandedSection] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const passCount = sections.filter((s) => s.status === "pass").length
   const warningCount = sections.filter((s) => s.status === "warning").length
   const failCount = sections.filter((s) => s.status === "fail").length
 
+  // Download as markdown report
+  const handleDownload = () => {
+    const markdown = generateATSReportMarkdown(result, {
+      jobTitle,
+      companyName,
+      analysisResult,
+    })
+    const filename = generateFilename("ats-report", jobTitle, "md")
+    downloadAsFile(markdown, filename)
+  }
+
+  // Copy report to clipboard
+  const handleCopy = async () => {
+    const markdown = generateATSReportMarkdown(result, {
+      jobTitle,
+      companyName,
+      analysisResult,
+    })
+    const success = await copyToClipboard(markdown)
+    if (success) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="text-center pb-4 border-b border-border dark:border-white/10">
-        <h2 className="text-xl font-semibold font-space-grotesk mb-1">
-          ATS Scan Complete
-        </h2>
-        <p className="text-sm text-foreground/60 dark:text-white/60">
-          Your resume has been scanned for ATS compatibility
-        </p>
+      <div className="pb-4 border-b border-border dark:border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <Shield className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold font-space-grotesk mb-1">
+                ATS Scan Complete
+              </h2>
+              <p className="text-sm text-foreground/60 dark:text-white/60">
+                Your resume has been scanned for ATS compatibility
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4 mr-2 text-emerald-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Main Content Grid */}

@@ -46,7 +46,6 @@ export function RewriteStep({
   const [rewriteResult, setRewriteResult] = useState<RewriteResult | null>(null)
   const [editedContent, setEditedContent] = useState<EditedContent | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isDownloading, setIsDownloading] = useState(false)
 
   // Processing steps
   const processingSteps = useProcessingSteps(REWRITE_STEPS)
@@ -114,31 +113,6 @@ export function RewriteStep({
     }
   }
 
-  // Handle download
-  const handleDownload = async (format: "docx" | "pdf") => {
-    if (!editedContent) return
-
-    setIsDownloading(true)
-    try {
-      // For now, we'll create a simple text download
-      // In the future, this could use the existing export API
-      const content = generateMarkdownContent(editedContent, jobTitle, companyName)
-
-      const blob = new Blob([content], { type: "text/markdown" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `Resume_${jobTitle.replace(/[^a-zA-Z0-9]/g, "_")}_Optimized.md`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error("Download failed:", err)
-    } finally {
-      setIsDownloading(false)
-    }
-  }
 
   // Show rewrite results if available
   if (rewriteResult && editedContent) {
@@ -147,10 +121,10 @@ export function RewriteStep({
         <RewriteEditor
           result={rewriteResult}
           missingKeywords={analysisResult.missingKeywords}
+          jobTitle={jobTitle}
+          companyName={companyName}
           onContentChange={handleContentChange}
           onContinue={handleContinue}
-          onDownload={handleDownload}
-          isDownloading={isDownloading}
         />
 
         {/* Back button */}
@@ -287,26 +261,3 @@ export function RewriteStep({
   )
 }
 
-// Helper function to generate markdown content
-function generateMarkdownContent(
-  content: EditedContent,
-  jobTitle: string,
-  companyName: string
-): string {
-  let markdown = `# Resume - Optimized for ${jobTitle}${companyName ? ` at ${companyName}` : ""}\n\n`
-
-  markdown += `## Professional Summary\n\n${content.professionalSummary}\n\n`
-
-  markdown += `## Work Experience\n\n`
-
-  for (const exp of content.workExperiences) {
-    markdown += `### ${exp.title}\n`
-    markdown += `**${exp.company}** | ${exp.duration}\n\n`
-    for (const bullet of exp.rewrittenBullets) {
-      markdown += `- ${bullet}\n`
-    }
-    markdown += `\n`
-  }
-
-  return markdown
-}

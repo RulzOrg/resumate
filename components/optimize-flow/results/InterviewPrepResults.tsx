@@ -15,9 +15,16 @@ import {
   Copy,
   Check,
   Sparkles,
+  Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { InterviewPrepResult, InterviewQuestion } from "@/lib/types/optimize-flow"
+import {
+  generateInterviewMarkdown,
+  downloadAsFile,
+  copyToClipboard,
+  generateFilename,
+} from "@/lib/export/optimize-flow-exports"
 
 interface InterviewPrepResultsProps {
   result: InterviewPrepResult
@@ -87,6 +94,7 @@ export function InterviewPrepResults({
   const { questions } = result
   const [expandedIndex, setExpandedIndex] = useState<number>(0)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+  const [copiedAll, setCopiedAll] = useState(false)
 
   const handleCopyAnswer = async (answer: string, index: number) => {
     try {
@@ -98,26 +106,86 @@ export function InterviewPrepResults({
     }
   }
 
+  // Download as markdown study guide
+  const handleDownload = () => {
+    const markdown = generateInterviewMarkdown(result, {
+      jobTitle,
+      companyName,
+      includeKeyPoints: true,
+      includeRelatedExperience: true,
+    })
+    const filename = generateFilename("interview-prep", jobTitle, "md")
+    downloadAsFile(markdown, filename)
+  }
+
+  // Copy all Q&A to clipboard
+  const handleCopyAll = async () => {
+    const markdown = generateInterviewMarkdown(result, {
+      jobTitle,
+      companyName,
+      includeKeyPoints: true,
+      includeRelatedExperience: true,
+    })
+    const success = await copyToClipboard(markdown)
+    if (success) {
+      setCopiedAll(true)
+      setTimeout(() => setCopiedAll(false), 2000)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="text-center pb-4 border-b border-border dark:border-white/10">
-        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-3">
-          <Sparkles className="w-6 h-6 text-emerald-500" />
+      <div className="pb-4 border-b border-border dark:border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-emerald-500" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold font-space-grotesk mb-1">
+                Interview Preparation Complete
+              </h2>
+              <p className="text-sm text-foreground/60 dark:text-white/60">
+                3 challenging questions for{" "}
+                <span className="font-medium text-foreground dark:text-white">{jobTitle}</span>
+                {companyName && (
+                  <>
+                    {" "}at{" "}
+                    <span className="font-medium text-foreground dark:text-white">{companyName}</span>
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyAll}
+            >
+              {copiedAll ? (
+                <>
+                  <Check className="w-4 h-4 mr-2 text-emerald-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy All
+                </>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownload}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          </div>
         </div>
-        <h2 className="text-xl font-semibold font-space-grotesk mb-1">
-          Interview Preparation Complete
-        </h2>
-        <p className="text-sm text-foreground/60 dark:text-white/60">
-          3 challenging questions for{" "}
-          <span className="font-medium text-foreground dark:text-white">{jobTitle}</span>
-          {companyName && (
-            <>
-              {" "}at{" "}
-              <span className="font-medium text-foreground dark:text-white">{companyName}</span>
-            </>
-          )}
-        </p>
       </div>
 
       {/* Questions */}
