@@ -21,8 +21,16 @@ import type {
 // ============================================
 
 /**
- * Safely parse JSON with error recovery
- * Attempts to fix common JSON issues before parsing
+ * Safely parse JSON with error recovery.
+ * Attempts to fix common JSON issues before parsing.
+ *
+ * @warning This function performs aggressive JSON recovery (fixing unquoted keys,
+ * replacing single quotes, removing control characters, etc.) and should ONLY be
+ * used with trusted input such as LLM API responses. Do NOT use with untrusted
+ * user input as the transformations could mask malicious content.
+ *
+ * @param text - The JSON string to parse (from trusted source only)
+ * @returns Object with parsed data or error message
  */
 export function safeJsonParse<T>(text: string): { data: T | null; error: string | null } {
   if (!text || typeof text !== "string") {
@@ -339,8 +347,8 @@ export function parseATSScanResult(data: any): {
   }
 
   // Parse issues
-  const criticalIssues = parseIssues(data.criticalIssues || data.critical_issues, warnings)
-  const atsWarnings = parseIssues(data.warnings, warnings)
+  const criticalIssues = parseIssues(data.criticalIssues || data.critical_issues)
+  const atsWarnings = parseIssues(data.warnings)
   const recommendations = parseStringArray(data.recommendations, "recommendations", warnings)
 
   if (sections.length === 0) {
@@ -368,7 +376,7 @@ function parseStatus(status: any): ATSSectionResult["status"] {
   return "warning"
 }
 
-function parseIssues(data: any, warnings: string[]): ATSIssue[] {
+function parseIssues(data: any): ATSIssue[] {
   if (!Array.isArray(data)) return []
 
   return data

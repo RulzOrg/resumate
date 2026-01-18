@@ -73,7 +73,7 @@ export function AnalysisStep({
   const showJobTitleError = jobTitleTouched && !isJobTitleValid && jobTitle.length > 0
   const showJobDescriptionError = jobDescriptionTouched && !isJobDescriptionValid && jobDescription.length > 0
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setRetryState(initialRetryState)
@@ -149,13 +149,13 @@ export function AnalysisStep({
     } finally {
       setIsAnalyzing(false)
     }
-  }
+  }, [selectedResumeId, jobDescription, jobTitle, companyName, isFormValid, processingSteps])
 
   // Manual retry handler
   const handleRetry = useCallback(() => {
     const fakeEvent = { preventDefault: () => {} } as React.FormEvent
     handleSubmit(fakeEvent)
-  }, [selectedResumeId, jobDescription, jobTitle, companyName])
+  }, [handleSubmit])
 
   const handleContinue = () => {
     if (analysisResult) {
