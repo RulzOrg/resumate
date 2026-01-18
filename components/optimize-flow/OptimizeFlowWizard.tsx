@@ -6,6 +6,7 @@ import { AnalysisStep } from "./steps/AnalysisStep"
 import { RewriteStep } from "./steps/RewriteStep"
 import { ATSScanStep } from "./steps/ATSScanStep"
 import { InterviewPrepStep } from "./steps/InterviewPrepStep"
+import { ConnectionStatus } from "@/components/ui/connection-status"
 import type {
   FlowStep,
   OptimizeFlowState,
@@ -341,6 +342,9 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
 
   return (
     <div className="space-y-8">
+      {/* Connection Status Banner */}
+      <ConnectionStatus variant="banner" autoHide={true} />
+
       {/* Resumed Session Banner */}
       {isResumed && (
         <div className="rounded-xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/10 p-4">
