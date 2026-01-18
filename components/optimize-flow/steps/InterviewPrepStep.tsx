@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Mic, SkipForward, Loader2, MessageSquare, Brain, Users } from "lucide-react"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
+import { RetryIndicator } from "@/components/ui/retry-indicator"
 import { InterviewPrepResults } from "../results/InterviewPrepResults"
+import { fetchWithRetry, initialRetryState, type RetryState } from "@/lib/utils/api-retry"
 import type { InterviewPrepResult } from "@/lib/types/optimize-flow"
 
 interface InterviewPrepStepProps {
@@ -41,55 +43,81 @@ export function InterviewPrepStep({
   const [isGenerating, setIsGenerating] = useState(false)
   const [prepResult, setPrepResult] = useState<InterviewPrepResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(PREP_STEPS)
 
   // Start generating
-  const handleStartGenerate = async () => {
+  const handleStartGenerate = useCallback(async () => {
     setError(null)
+    setRetryState(initialRetryState)
     setIsGenerating(true)
     processingSteps.start()
 
+    // Track step interval for cleanup
+    let stepInterval: NodeJS.Timeout | null = null
+
     try {
       // Simulate step progression for better UX
-      const stepInterval = setInterval(() => {
+      stepInterval = setInterval(() => {
         processingSteps.nextStep()
       }, 4000)
 
-      const response = await fetch("/api/optimize-flow/interview-prep", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resume_id: resumeId,
-          resume_text: resumeText,
-          job_description: jobDescription,
-          job_title: jobTitle,
-          company_name: companyName || undefined,
-        }),
-      })
+      const response = await fetchWithRetry(
+        "/api/optimize-flow/interview-prep",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resume_id: resumeId,
+            resume_text: resumeText,
+            job_description: jobDescription,
+            job_title: jobTitle,
+            company_name: companyName || undefined,
+          }),
+        },
+        {
+          maxRetries: 3,
+          initialDelay: 2000,
+          onRetry: (attempt, err, delay) => {
+            setRetryState({
+              isRetrying: true,
+              retryCount: attempt,
+              lastError: err,
+              nextRetryIn: delay,
+            })
+          },
+          onFinalError: (err) => {
+            setRetryState({
+              isRetrying: false,
+              retryCount: 0,
+              lastError: err,
+              nextRetryIn: null,
+            })
+          },
+        }
+      )
 
-      clearInterval(stepInterval)
+      if (stepInterval) clearInterval(stepInterval)
       processingSteps.complete()
 
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to generate interview prep")
-      }
-
       // Store results
       setPrepResult(data.result)
+      setRetryState(initialRetryState)
 
       // Small delay to show completion
       await new Promise((resolve) => setTimeout(resolve, 500))
     } catch (err: any) {
+      if (stepInterval) clearInterval(stepInterval)
       setError(err.message || "Something went wrong during generation")
       processingSteps.reset()
     } finally {
       setIsGenerating(false)
     }
-  }
+  }, [resumeId, resumeText, jobDescription, jobTitle, companyName, processingSteps])
 
   // Handle finish
   const handleFinish = () => {
@@ -151,11 +179,14 @@ export function InterviewPrepStep({
           </p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-            {error}
-          </div>
-        )}
+        {/* Retry/Error Indicator */}
+        <RetryIndicator
+          retryState={retryState}
+          error={error}
+          onRetry={handleStartGenerate}
+          isRetrying={isGenerating}
+          className="mb-6"
+        />
 
         {/* What You'll Get */}
         <div className="mb-6 p-5 rounded-xl border border-border dark:border-white/10 bg-background dark:bg-white/5">

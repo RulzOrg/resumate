@@ -1,12 +1,14 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Check, Sparkles, Loader2 } from "lucide-react"
 import { UploadMasterResumeDialog } from "@/components/dashboard/master-resume-dialog"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
+import { RetryIndicator } from "@/components/ui/retry-indicator"
 import { AnalysisResults } from "../results/AnalysisResults"
+import { fetchWithRetry, initialRetryState, type RetryState } from "@/lib/utils/api-retry"
 import type { AnalysisResult } from "@/lib/types/optimize-flow"
 
 interface Resume {
@@ -53,6 +55,7 @@ export function AnalysisStep({
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
   const [resumeText, setResumeText] = useState<string>("")
+  const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(ANALYSIS_STEPS)
@@ -73,6 +76,7 @@ export function AnalysisStep({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setRetryState(initialRetryState)
     setJobTitleTouched(true)
     setJobDescriptionTouched(true)
 
@@ -83,45 +87,75 @@ export function AnalysisStep({
     setIsAnalyzing(true)
     processingSteps.start()
 
+    // Track step interval for cleanup
+    let stepInterval: NodeJS.Timeout | null = null
+
     try {
       // Simulate step progression for better UX
-      const stepInterval = setInterval(() => {
+      stepInterval = setInterval(() => {
         processingSteps.nextStep()
       }, 3000)
 
-      const response = await fetch("/api/optimize-flow/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resume_id: selectedResumeId,
-          job_description: jobDescription.trim(),
-          job_title: jobTitle.trim(),
-          company_name: companyName.trim() || undefined,
-        }),
-      })
+      const response = await fetchWithRetry(
+        "/api/optimize-flow/analyze",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resume_id: selectedResumeId,
+            job_description: jobDescription.trim(),
+            job_title: jobTitle.trim(),
+            company_name: companyName.trim() || undefined,
+          }),
+        },
+        {
+          maxRetries: 3,
+          initialDelay: 2000,
+          onRetry: (attempt, err, delay) => {
+            setRetryState({
+              isRetrying: true,
+              retryCount: attempt,
+              lastError: err,
+              nextRetryIn: delay,
+            })
+          },
+          onFinalError: (err) => {
+            setRetryState({
+              isRetrying: false,
+              retryCount: 0,
+              lastError: err,
+              nextRetryIn: null,
+            })
+          },
+        }
+      )
 
-      clearInterval(stepInterval)
+      if (stepInterval) clearInterval(stepInterval)
       processingSteps.complete()
 
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to analyze resume")
-      }
-
       // Store results
       setAnalysisResult(data.result)
       setResumeText(data.resume_text || "")
+      setRetryState(initialRetryState)
 
       // Small delay to show completion
       await new Promise((resolve) => setTimeout(resolve, 500))
     } catch (err: any) {
+      if (stepInterval) clearInterval(stepInterval)
       setError(err.message || "Something went wrong during analysis")
       processingSteps.reset()
     } finally {
       setIsAnalyzing(false)
     }
   }
+
+  // Manual retry handler
+  const handleRetry = useCallback(() => {
+    const fakeEvent = { preventDefault: () => {} } as React.FormEvent
+    handleSubmit(fakeEvent)
+  }, [selectedResumeId, jobDescription, jobTitle, companyName])
 
   const handleContinue = () => {
     if (analysisResult) {
@@ -209,11 +243,13 @@ export function AnalysisStep({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-              {error}
-            </div>
-          )}
+          {/* Retry/Error Indicator */}
+          <RetryIndicator
+            retryState={retryState}
+            error={error}
+            onRetry={handleRetry}
+            isRetrying={isAnalyzing}
+          />
 
           {/* Resume Selection */}
           <div>

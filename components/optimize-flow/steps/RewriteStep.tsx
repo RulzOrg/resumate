@@ -4,7 +4,9 @@ import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Pencil, Sparkles, Loader2 } from "lucide-react"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
+import { RetryIndicator } from "@/components/ui/retry-indicator"
 import { RewriteEditor } from "../results/RewriteEditor"
+import { fetchWithRetry, initialRetryState, type RetryState } from "@/lib/utils/api-retry"
 import type {
   AnalysisResult,
   RewriteResult,
@@ -46,43 +48,67 @@ export function RewriteStep({
   const [rewriteResult, setRewriteResult] = useState<RewriteResult | null>(null)
   const [editedContent, setEditedContent] = useState<EditedContent | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(REWRITE_STEPS)
 
   // Start rewriting
-  const handleStartRewrite = async () => {
+  const handleStartRewrite = useCallback(async () => {
     setError(null)
+    setRetryState(initialRetryState)
     setIsRewriting(true)
     processingSteps.start()
 
+    // Track step interval for cleanup
+    let stepInterval: NodeJS.Timeout | null = null
+
     try {
       // Simulate step progression for better UX
-      const stepInterval = setInterval(() => {
+      stepInterval = setInterval(() => {
         processingSteps.nextStep()
       }, 4000)
 
-      const response = await fetch("/api/optimize-flow/rewrite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resume_id: resumeId,
-          job_description: jobDescription,
-          job_title: jobTitle,
-          company_name: companyName || undefined,
-          analysis_result: analysisResult,
-          resume_text: resumeText,
-        }),
-      })
+      const response = await fetchWithRetry(
+        "/api/optimize-flow/rewrite",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resume_id: resumeId,
+            job_description: jobDescription,
+            job_title: jobTitle,
+            company_name: companyName || undefined,
+            analysis_result: analysisResult,
+            resume_text: resumeText,
+          }),
+        },
+        {
+          maxRetries: 3,
+          initialDelay: 2000,
+          onRetry: (attempt, err, delay) => {
+            setRetryState({
+              isRetrying: true,
+              retryCount: attempt,
+              lastError: err,
+              nextRetryIn: delay,
+            })
+          },
+          onFinalError: (err) => {
+            setRetryState({
+              isRetrying: false,
+              retryCount: 0,
+              lastError: err,
+              nextRetryIn: null,
+            })
+          },
+        }
+      )
 
-      clearInterval(stepInterval)
+      if (stepInterval) clearInterval(stepInterval)
       processingSteps.complete()
 
       const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to rewrite resume")
-      }
 
       // Store results
       setRewriteResult(data.result)
@@ -90,16 +116,18 @@ export function RewriteStep({
         professionalSummary: data.result.professionalSummary,
         workExperiences: data.result.workExperiences,
       })
+      setRetryState(initialRetryState)
 
       // Small delay to show completion
       await new Promise((resolve) => setTimeout(resolve, 500))
     } catch (err: any) {
+      if (stepInterval) clearInterval(stepInterval)
       setError(err.message || "Something went wrong during rewriting")
       processingSteps.reset()
     } finally {
       setIsRewriting(false)
     }
-  }
+  }, [resumeId, jobDescription, jobTitle, companyName, analysisResult, resumeText, processingSteps])
 
   // Handle content changes from editor
   const handleContentChange = useCallback((content: EditedContent) => {
@@ -165,11 +193,14 @@ export function RewriteStep({
           </p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-            {error}
-          </div>
-        )}
+        {/* Retry/Error Indicator */}
+        <RetryIndicator
+          retryState={retryState}
+          error={error}
+          onRetry={handleStartRewrite}
+          isRetrying={isRewriting}
+          className="mb-6"
+        />
 
         {/* X-Y-Z Formula Explanation */}
         <div className="mb-6 p-5 rounded-xl border border-border dark:border-white/10 bg-background dark:bg-white/5">

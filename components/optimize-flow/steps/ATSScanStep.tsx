@@ -4,7 +4,9 @@ import { useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ScanLine, Loader2, Shield } from "lucide-react"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
+import { RetryIndicator } from "@/components/ui/retry-indicator"
 import { ATSScanResults } from "../results/ATSScanResults"
+import { fetchWithRetry, initialRetryState, type RetryState } from "@/lib/utils/api-retry"
 import type { EditedContent, ATSScanResult, AnalysisResult } from "@/lib/types/optimize-flow"
 
 interface ATSScanStepProps {
@@ -41,53 +43,79 @@ export function ATSScanStep({
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState<ATSScanResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(SCAN_STEPS)
 
   // Start scanning
-  const handleStartScan = async () => {
+  const handleStartScan = useCallback(async () => {
     setError(null)
+    setRetryState(initialRetryState)
     setIsScanning(true)
     processingSteps.start()
 
+    // Track step interval for cleanup
+    let stepInterval: NodeJS.Timeout | null = null
+
     try {
       // Simulate step progression for better UX
-      const stepInterval = setInterval(() => {
+      stepInterval = setInterval(() => {
         processingSteps.nextStep()
       }, 2500)
 
-      const response = await fetch("/api/optimize-flow/ats-scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resume_id: resumeId,
-          edited_content: editedContent,
-          job_description: jobDescription || undefined,
-        }),
-      })
+      const response = await fetchWithRetry(
+        "/api/optimize-flow/ats-scan",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resume_id: resumeId,
+            edited_content: editedContent,
+            job_description: jobDescription || undefined,
+          }),
+        },
+        {
+          maxRetries: 3,
+          initialDelay: 2000,
+          onRetry: (attempt, err, delay) => {
+            setRetryState({
+              isRetrying: true,
+              retryCount: attempt,
+              lastError: err,
+              nextRetryIn: delay,
+            })
+          },
+          onFinalError: (err) => {
+            setRetryState({
+              isRetrying: false,
+              retryCount: 0,
+              lastError: err,
+              nextRetryIn: null,
+            })
+          },
+        }
+      )
 
-      clearInterval(stepInterval)
+      if (stepInterval) clearInterval(stepInterval)
       processingSteps.complete()
 
       const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to scan resume")
-      }
-
       // Store results
       setScanResult(data.result)
+      setRetryState(initialRetryState)
 
       // Small delay to show completion
       await new Promise((resolve) => setTimeout(resolve, 500))
     } catch (err: any) {
+      if (stepInterval) clearInterval(stepInterval)
       setError(err.message || "Something went wrong during scanning")
       processingSteps.reset()
     } finally {
       setIsScanning(false)
     }
-  }
+  }, [resumeId, editedContent, jobDescription, processingSteps])
 
   // Handle continue to next step
   const handleContinue = () => {
@@ -146,11 +174,14 @@ export function ATSScanStep({
           </p>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-            {error}
-          </div>
-        )}
+        {/* Retry/Error Indicator */}
+        <RetryIndicator
+          retryState={retryState}
+          error={error}
+          onRetry={handleStartScan}
+          isRetrying={isScanning}
+          className="mb-6"
+        />
 
         {/* What We Check */}
         <div className="mb-6 p-5 rounded-xl border border-border dark:border-white/10 bg-background dark:bg-white/5">
