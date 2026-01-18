@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Check, Sparkles, Loader2 } from "lucide-react"
 import { UploadMasterResumeDialog } from "@/components/dashboard/master-resume-dialog"
+import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
+import { AnalysisResults } from "../results/AnalysisResults"
 import type { AnalysisResult } from "@/lib/types/optimize-flow"
 
 interface Resume {
@@ -25,19 +27,35 @@ interface AnalysisStepProps {
   initialResumeId?: string
 }
 
+const ANALYSIS_STEPS = [
+  "Reading your resume...",
+  "Parsing job description...",
+  "Analyzing skill alignment...",
+  "Identifying keyword gaps...",
+  "Generating recommendations...",
+]
+
 export function AnalysisStep({
   resumes,
   onAnalysisComplete,
   initialResumeId,
 }: AnalysisStepProps) {
+  // Form state
   const [selectedResumeId, setSelectedResumeId] = useState(
     initialResumeId || resumes[0]?.id || ""
   )
   const [jobTitle, setJobTitle] = useState("")
   const [companyName, setCompanyName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Analysis state
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
+  const [resumeText, setResumeText] = useState<string>("")
+
+  // Processing steps
+  const processingSteps = useProcessingSteps(ANALYSIS_STEPS)
 
   // Validation
   const [jobTitleTouched, setJobTitleTouched] = useState(false)
@@ -47,7 +65,7 @@ export function AnalysisStep({
   const charsNeeded = Math.max(0, 50 - jobDescription.length)
   const isJobDescriptionValid = jobDescription.length >= 50
   const isJobTitleValid = jobTitle.trim().length >= 3
-  const isFormValid = selectedResumeId && isJobTitleValid && isJobDescriptionValid && !isLoading
+  const isFormValid = selectedResumeId && isJobTitleValid && isJobDescriptionValid && !isAnalyzing
 
   const showJobTitleError = jobTitleTouched && !isJobTitleValid && jobTitle.length > 0
   const showJobDescriptionError = jobDescriptionTouched && !isJobDescriptionValid && jobDescription.length > 0
@@ -62,9 +80,15 @@ export function AnalysisStep({
       return
     }
 
-    setIsLoading(true)
+    setIsAnalyzing(true)
+    processingSteps.start()
 
     try {
+      // Simulate step progression for better UX
+      const stepInterval = setInterval(() => {
+        processingSteps.nextStep()
+      }, 3000)
+
       const response = await fetch("/api/optimize-flow/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,25 +100,47 @@ export function AnalysisStep({
         }),
       })
 
+      clearInterval(stepInterval)
+      processingSteps.complete()
+
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to analyze resume")
       }
 
-      onAnalysisComplete(data.result, data.resume_text || "", {
+      // Store results
+      setAnalysisResult(data.result)
+      setResumeText(data.resume_text || "")
+
+      // Small delay to show completion
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    } catch (err: any) {
+      setError(err.message || "Something went wrong during analysis")
+      processingSteps.reset()
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const handleContinue = () => {
+    if (analysisResult) {
+      onAnalysisComplete(analysisResult, resumeText, {
         resumeId: selectedResumeId,
         jobTitle: jobTitle.trim(),
         jobDescription: jobDescription.trim(),
         companyName: companyName.trim(),
       })
-    } catch (err: any) {
-      setError(err.message || "Something went wrong")
-    } finally {
-      setIsLoading(false)
     }
   }
 
+  const handleStartOver = () => {
+    setAnalysisResult(null)
+    setResumeText("")
+    processingSteps.reset()
+  }
+
+  // Show empty state if no resumes
   if (resumes.length === 0) {
     return (
       <div className="text-center py-12">
@@ -114,156 +160,207 @@ export function AnalysisStep({
     )
   }
 
-  return (
-    <div>
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold font-space-grotesk mb-1">
-          Step 1: Analyze Your Resume
-        </h2>
-        <p className="text-foreground/60 dark:text-white/60">
-          Select your resume and paste the job description to get a detailed analysis
-        </p>
-      </div>
+  // Show results if analysis is complete
+  if (analysisResult) {
+    return (
+      <div>
+        <AnalysisResults
+          result={analysisResult}
+          jobTitle={jobTitle}
+          companyName={companyName}
+          onContinue={handleContinue}
+        />
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {error && (
-          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Resume Selection */}
-        <div>
-          <label className="block text-sm font-medium mb-2">Select Resume</label>
-          <select
-            value={selectedResumeId}
-            onChange={(e) => setSelectedResumeId(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            disabled={isLoading}
+        {/* Start Over button */}
+        <div className="mt-6 pt-6 border-t border-border dark:border-white/10 text-center">
+          <button
+            onClick={handleStartOver}
+            className="text-sm text-foreground/50 dark:text-white/50 hover:text-foreground dark:hover:text-white transition-colors"
           >
-            {resumes.map((resume) => (
-              <option key={resume.id} value={resume.id}>
-                {resume.title}
-              </option>
-            ))}
-          </select>
+            ← Analyze a different job
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Show form
+  return (
+    <>
+      {/* Processing Overlay */}
+      <ProcessingOverlay
+        isOpen={isAnalyzing}
+        title="Analyzing Your Resume"
+        subtitle="Comparing your experience against the job description"
+        steps={processingSteps.steps}
+        currentStepIndex={processingSteps.currentStep}
+        estimatedTime="~20-30 seconds"
+        timeout={60000}
+      />
+
+      <div>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold font-space-grotesk mb-1">
+            Step 1: Analyze Your Resume
+          </h2>
+          <p className="text-foreground/60 dark:text-white/60">
+            Select your resume and paste the job description to get a detailed match analysis
+          </p>
         </div>
 
-        {/* Job Details */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Resume Selection */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Select Resume</label>
+            <select
+              value={selectedResumeId}
+              onChange={(e) => setSelectedResumeId(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              disabled={isAnalyzing}
+            >
+              {resumes.map((resume) => (
+                <option key={resume.id} value={resume.id}>
+                  {resume.title}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Job Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Job Title *
+                {isJobTitleValid && (
+                  <Check className="inline w-4 h-4 ml-1 text-emerald-500" />
+                )}
+              </label>
+              <input
+                type="text"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                onBlur={() => setJobTitleTouched(true)}
+                placeholder="e.g. Senior Software Engineer"
+                className={`w-full px-3 py-2.5 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                  showJobTitleError
+                    ? "border-red-500"
+                    : isJobTitleValid
+                    ? "border-emerald-500/50"
+                    : "border-border dark:border-white/10"
+                }`}
+                disabled={isAnalyzing}
+              />
+              {showJobTitleError && (
+                <p className="mt-1 text-xs text-red-500">
+                  Job title must be at least 3 characters
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Company Name
+                <span className="text-foreground/40 dark:text-white/40 ml-1">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="e.g. Google"
+                className="w-full px-3 py-2.5 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                disabled={isAnalyzing}
+              />
+            </div>
+          </div>
+
+          {/* Job Description */}
           <div>
             <label className="block text-sm font-medium mb-2">
-              Job Title *
-              {isJobTitleValid && <Check className="inline w-4 h-4 ml-1 text-emerald-500" />}
+              Job Description *
+              {isJobDescriptionValid && (
+                <Check className="inline w-4 h-4 ml-1 text-emerald-500" />
+              )}
             </label>
-            <input
-              type="text"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-              onBlur={() => setJobTitleTouched(true)}
-              placeholder="e.g. Senior Software Engineer"
-              className={`w-full px-3 py-2.5 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                showJobTitleError
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              onBlur={() => setJobDescriptionTouched(true)}
+              placeholder="Paste the full job description here. Include responsibilities, requirements, and qualifications for the most accurate analysis..."
+              rows={10}
+              className={`w-full px-3 py-2.5 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
+                showJobDescriptionError
                   ? "border-red-500"
-                  : isJobTitleValid
+                  : isJobDescriptionValid
                   ? "border-emerald-500/50"
                   : "border-border dark:border-white/10"
               }`}
-              disabled={isLoading}
+              disabled={isAnalyzing}
             />
-            {showJobTitleError && (
-              <p className="mt-1 text-xs text-red-500">
-                Job title must be at least 3 characters
+            <div className="mt-2 space-y-1">
+              <Progress
+                value={charProgress}
+                className={`h-1.5 ${
+                  isJobDescriptionValid
+                    ? "[&>div]:bg-emerald-500"
+                    : showJobDescriptionError
+                    ? "[&>div]:bg-red-500"
+                    : ""
+                }`}
+              />
+              <p
+                className={`text-xs ${
+                  isJobDescriptionValid
+                    ? "text-emerald-500"
+                    : showJobDescriptionError
+                    ? "text-red-500"
+                    : "text-foreground/60 dark:text-white/60"
+                }`}
+              >
+                {isJobDescriptionValid ? (
+                  <>
+                    <Check className="inline w-3 h-3 mr-1" />
+                    {jobDescription.length} characters
+                  </>
+                ) : (
+                  <>
+                    {jobDescription.length}/50 characters ({charsNeeded} more needed)
+                  </>
+                )}
               </p>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            disabled={!isFormValid}
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-medium py-3 disabled:opacity-50"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Analyzing Resume...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Analyze Resume Match
+              </>
             )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Company Name</label>
-            <input
-              type="text"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="e.g. Google"
-              className="w-full px-3 py-2.5 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              disabled={isLoading}
-            />
-          </div>
-        </div>
+          </Button>
 
-        {/* Job Description */}
-        <div>
-          <label className="block text-sm font-medium mb-2">
-            Job Description *
-            {isJobDescriptionValid && <Check className="inline w-4 h-4 ml-1 text-emerald-500" />}
-          </label>
-          <textarea
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            onBlur={() => setJobDescriptionTouched(true)}
-            placeholder="Paste the full job description here..."
-            rows={8}
-            className={`w-full px-3 py-2.5 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
-              showJobDescriptionError
-                ? "border-red-500"
-                : isJobDescriptionValid
-                ? "border-emerald-500/50"
-                : "border-border dark:border-white/10"
-            }`}
-            disabled={isLoading}
-          />
-          <div className="mt-2 space-y-1">
-            <Progress
-              value={charProgress}
-              className={`h-1.5 ${
-                isJobDescriptionValid
-                  ? "[&>div]:bg-emerald-500"
-                  : showJobDescriptionError
-                  ? "[&>div]:bg-red-500"
-                  : ""
-              }`}
-            />
-            <p
-              className={`text-xs ${
-                isJobDescriptionValid
-                  ? "text-emerald-500"
-                  : showJobDescriptionError
-                  ? "text-red-500"
-                  : "text-foreground/60 dark:text-white/60"
-              }`}
-            >
-              {isJobDescriptionValid ? (
-                <>
-                  <Check className="inline w-3 h-3 mr-1" />
-                  {jobDescription.length} characters
-                </>
-              ) : (
-                <>
-                  {jobDescription.length}/50 characters ({charsNeeded} more needed)
-                </>
-              )}
-            </p>
-          </div>
-        </div>
-
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          disabled={!isFormValid}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-medium py-3 disabled:opacity-50"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Analyzing Resume...
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4 mr-2" />
-              Analyze Resume
-            </>
-          )}
-        </Button>
-      </form>
-    </div>
+          {/* Helper text */}
+          <p className="text-xs text-center text-foreground/40 dark:text-white/40">
+            Your resume will be analyzed against the job description to identify
+            strengths, gaps, and missing keywords.
+          </p>
+        </form>
+      </div>
+    </>
   )
 }
