@@ -8,6 +8,7 @@ import {
   getFeaturedPosts,
 } from '@/lib/blog'
 import { BlogHeader, BlogGrid, BlogLayout } from '@/components/blog'
+import { SiteHeader } from '@/components/site-header'
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>
@@ -63,22 +64,25 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   ])
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <BlogHeader
-          title={category.name}
-          description={category.description || `All posts about ${category.name.toLowerCase()}.`}
-        />
+    <>
+      <SiteHeader />
+      <main className="min-h-screen blog-warm-bg overflow-x-hidden">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 overflow-hidden">
+          <BlogHeader
+            title={category.name}
+            description={category.description || `All posts about ${category.name.toLowerCase()}.`}
+          />
 
-        <BlogLayout
-          categories={categories}
-          tags={tags}
-          featuredPosts={featuredPosts}
-          activeCategory={slug}
-        >
-          <BlogGrid posts={posts} />
-        </BlogLayout>
-      </div>
-    </main>
+          <BlogLayout
+            categories={categories}
+            tags={tags}
+            featuredPosts={featuredPosts}
+            activeCategory={slug}
+          >
+            <BlogGrid posts={posts} />
+          </BlogLayout>
+        </div>
+      </main>
+    </>
   )
 }

@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Calendar, Clock, Rss } from 'lucide-react'
+import { Calendar, Clock } from 'lucide-react'
+import { SiteHeader } from '@/components/site-header'
 import {
   getAllPostSlugs,
   getPostBySlug,
@@ -24,6 +25,14 @@ import {
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>
+}
+
+// Safe JSON serialization that escapes HTML-breaking sequences
+function safeJsonLd(data: object): string {
+  return JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
 }
 
 // Generate static pages at build time
@@ -79,7 +88,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   const [relatedPosts, category, author] = await Promise.all([
-    getRelatedPosts(slug, post.category, post.tags, 3),
+    getRelatedPosts(slug, post.category, post.tags, 2),
     post.category ? getCategoryBySlug(post.category) : null,
     post.author ? getAuthorBySlug(post.author) : null,
   ])
@@ -121,52 +130,48 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
+      <SiteHeader />
       <ReadingProgress />
-      <main className="min-h-screen bg-background">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-          {/* Back link and RSS */}
-          <div className="mb-8 flex items-center justify-between">
-            <Link
-              href="/blog"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Blog
-            </Link>
-            <Link
-              href="/blog/feed"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-emerald-500"
-              title="RSS Feed"
-            >
-              <Rss className="h-4 w-4" />
-              <span className="hidden sm:inline">RSS</span>
-            </Link>
-          </div>
-
-          <div className="grid gap-10 lg:grid-cols-[1fr_250px]">
+      <main className="min-h-screen blog-warm-bg overflow-x-hidden">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 overflow-hidden">
+          <div className="grid gap-16 lg:grid-cols-[1fr_280px]">
             {/* Main content */}
             <article className="min-w-0">
               {/* Post header */}
-              <header className="mb-8">
+              <header className="mb-12 lg:mb-16">
                 {category && (
                   <Link
                     href={`/blog/category/${category.slug}`}
-                    className="mb-4 inline-block text-sm font-medium uppercase tracking-wider text-emerald-500 hover:text-emerald-400"
+                    className="mb-6 inline-block text-sm font-semibold uppercase tracking-widest text-emerald-500 hover:text-emerald-400 transition-colors"
                   >
                     {category.name}
                   </Link>
                 )}
-                <h1 className="mb-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+                <h1 className="font-serif text-4xl font-semibold tracking-tight text-foreground sm:text-5xl lg:text-6xl leading-[1.1] mb-6">
                   {post.title}
                 </h1>
                 {post.excerpt && (
-                  <p className="mb-6 text-lg text-muted-foreground lg:text-xl">
+                  <p className="text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl">
                     {post.excerpt}
                   </p>
                 )}
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground">
+                  {author && (
+                    <div className="flex items-center gap-3">
+                      {author.avatar && (
+                        <Image
+                          src={author.avatar}
+                          alt={author.name}
+                          width={40}
+                          height={40}
+                          className="rounded-full ring-2 ring-border/50"
+                        />
+                      )}
+                      <span className="font-medium text-foreground">{author.name}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
                     <time dateTime={post.date}>
@@ -181,31 +186,17 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     <Clock className="h-4 w-4" />
                     <span>{post.readingTime}</span>
                   </div>
-                  {author && (
-                    <div className="flex items-center gap-2">
-                      {author.avatar && (
-                        <Image
-                          src={author.avatar}
-                          alt={author.name}
-                          width={24}
-                          height={24}
-                          className="rounded-full"
-                        />
-                      )}
-                      <span>{author.name}</span>
-                    </div>
-                  )}
                 </div>
 
                 {/* Share buttons - mobile */}
-                <div className="mt-6 lg:hidden">
+                <div className="mt-8 lg:hidden">
                   <ShareButtons title={post.title} url={postUrl} />
                 </div>
               </header>
 
               {/* Featured image */}
               {post.featured_image && (
-                <div className="relative mb-10 aspect-video overflow-hidden rounded-xl">
+                <div className="relative mb-16 aspect-[2.4/1] overflow-hidden rounded-2xl">
                   <Image
                     src={post.featured_image}
                     alt={post.title}
@@ -216,51 +207,58 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 </div>
               )}
 
-              {/* Post content */}
-              {post.html && <MarkdownContent html={post.html} className="mb-12" />}
+              {/* Post content - constrained width for readability */}
+              <div className="max-w-[680px]">
+                {post.html && <MarkdownContent html={post.html} className="mb-16" />}
 
-              {/* Tags */}
-              {post.tags && post.tags.length > 0 && (
-                <div className="mb-8 border-t border-border pt-8">
-                  <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                    Tags
-                  </h3>
-                  <TagCloud tags={post.tags} />
+                {/* Tags */}
+                {post.tags && post.tags.length > 0 && (
+                  <div className="mb-12 border-t border-border/60 pt-12">
+                    <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Topics
+                    </h3>
+                    <TagCloud tags={post.tags} />
+                  </div>
+                )}
+
+                {/* Share section */}
+                <div className="mb-12 rounded-2xl border border-border/60 bg-card/50 p-8">
+                  <div className="flex flex-col items-center justify-between gap-6 sm:flex-row">
+                    <div>
+                      <p className="font-serif text-lg font-medium text-foreground mb-1">
+                        Enjoyed this article?
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Share it with others who might find it helpful.
+                      </p>
+                    </div>
+                    <ShareButtons title={post.title} url={postUrl} />
+                  </div>
                 </div>
-              )}
 
-              {/* Share section */}
-              <div className="mb-8 rounded-xl border bg-card p-6">
-                <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-                  <p className="text-sm text-muted-foreground">
-                    Found this helpful? Share it with others!
-                  </p>
-                  <ShareButtons title={post.title} url={postUrl} />
+                {/* Author */}
+                {author && (
+                  <div className="mb-12">
+                    <h3 className="mb-6 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                      Written by
+                    </h3>
+                    <AuthorCard author={author} />
+                  </div>
+                )}
+
+                {/* Newsletter CTA - inline for mobile, hidden on desktop (shown in sidebar) */}
+                <div className="mb-16 lg:hidden">
+                  <NewsletterForm variant="card" source="blog_post_inline" />
                 </div>
               </div>
 
-              {/* Author */}
-              {author && (
-                <div className="mb-8">
-                  <h3 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-                    Written by
-                  </h3>
-                  <AuthorCard author={author} />
-                </div>
-              )}
-
-              {/* Newsletter CTA - inline for mobile, hidden on desktop (shown in sidebar) */}
-              <div className="mb-12 lg:hidden">
-                <NewsletterForm variant="card" source="blog_post_inline" />
-              </div>
-
-              {/* Related posts */}
+              {/* Related posts - full width */}
               {relatedPosts.length > 0 && (
-                <section className="border-t border-border pt-12">
-                  <h2 className="mb-6 text-2xl font-bold text-foreground">
-                    Related Posts
+                <section className="border-t border-border/60 pt-16">
+                  <h2 className="font-serif text-3xl font-semibold text-foreground mb-10">
+                    Continue Reading
                   </h2>
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid gap-8 sm:grid-cols-2">
                     {relatedPosts.map((relatedPost) => (
                       <BlogCard key={relatedPost.slug} post={relatedPost} />
                     ))}
@@ -271,14 +269,14 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
             {/* Sidebar - Table of Contents */}
             <aside className="hidden lg:block">
-              <div className="sticky top-24 space-y-8">
+              <div className="sticky top-24 space-y-10">
                 {toc.length > 0 && (
                   <TableOfContents items={toc} />
                 )}
 
                 {/* Share buttons - desktop */}
                 <div>
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     Share
                   </h3>
                   <ShareButtons title={post.title} url={postUrl} variant="vertical" />

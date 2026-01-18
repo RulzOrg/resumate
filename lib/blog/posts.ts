@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { readdir, readFile } from 'fs/promises'
 import path from 'path'
 import matter from 'gray-matter'
 import { processMarkdown, parseMarkdownFile, generateExcerpt } from './markdown'
@@ -8,6 +9,47 @@ const CONTENT_DIR = path.join(process.cwd(), 'content')
 const POSTS_DIR = path.join(CONTENT_DIR, 'posts')
 const CATEGORIES_FILE = path.join(CONTENT_DIR, 'categories', 'categories.json')
 const AUTHORS_FILE = path.join(CONTENT_DIR, 'authors', 'authors.json')
+
+// Cached slug-to-filename index for O(1) lookups
+let slugIndex: Map<string, string> | null = null
+
+/**
+ * Build an index mapping slugs to filenames for efficient lookups
+ */
+function buildSlugIndex(): Map<string, string> {
+  const index = new Map<string, string>()
+
+  if (!fs.existsSync(POSTS_DIR)) {
+    return index
+  }
+
+  const files = fs.readdirSync(POSTS_DIR).filter((f) => f.endsWith('.md'))
+
+  for (const file of files) {
+    try {
+      const filePath = path.join(POSTS_DIR, file)
+      const fileContent = fs.readFileSync(filePath, 'utf-8')
+      const { data } = matter(fileContent)
+      if (data.slug) {
+        index.set(data.slug, file)
+      }
+    } catch (error) {
+      console.error(`Failed to index post file (${file}):`, error)
+    }
+  }
+
+  return index
+}
+
+/**
+ * Get the slug index, building it if necessary
+ */
+function getSlugIndex(): Map<string, string> {
+  if (!slugIndex) {
+    slugIndex = buildSlugIndex()
+  }
+  return slugIndex
+}
 
 /**
  * Get all published blog posts
@@ -53,42 +95,38 @@ export async function getAllPosts(): Promise<BlogPostSummary[]> {
  * Get a single post by slug
  */
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
-  if (!fs.existsSync(POSTS_DIR)) {
+  try {
+    const index = getSlugIndex()
+    const filename = index.get(slug)
+
+    if (!filename) {
+      return null
+    }
+
+    const filePath = path.join(POSTS_DIR, filename)
+    const fileContent = fs.readFileSync(filePath, 'utf-8')
+    const { frontmatter, content, readingTime, wordCount } = parseMarkdownFile(fileContent)
+
+    // Only return published posts (or allow draft preview in development)
+    if (frontmatter.status !== 'published' && process.env.NODE_ENV !== 'development') {
+      return null
+    }
+
+    const html = await processMarkdown(content)
+    const excerpt = frontmatter.excerpt || generateExcerpt(content)
+
+    return {
+      ...frontmatter,
+      excerpt,
+      content,
+      html,
+      readingTime,
+      wordCount,
+    }
+  } catch (error) {
+    console.error(`Error reading post ${slug}:`, error)
     return null
   }
-
-  const files = fs.readdirSync(POSTS_DIR)
-
-  for (const file of files) {
-    if (!file.endsWith('.md')) continue
-
-    const filePath = path.join(POSTS_DIR, file)
-    const fileContent = fs.readFileSync(filePath, 'utf-8')
-    const { data } = matter(fileContent)
-
-    if (data.slug === slug) {
-      const { frontmatter, content, readingTime, wordCount } = parseMarkdownFile(fileContent)
-
-      // Only return published posts (or allow draft preview in development)
-      if (frontmatter.status !== 'published' && process.env.NODE_ENV !== 'development') {
-        return null
-      }
-
-      const html = await processMarkdown(content)
-      const excerpt = frontmatter.excerpt || generateExcerpt(content)
-
-      return {
-        ...frontmatter,
-        excerpt,
-        content,
-        html,
-        readingTime,
-        wordCount,
-      }
-    }
-  }
-
-  return null
 }
 
 /**
@@ -110,23 +148,32 @@ export async function getPostsByTag(tag: string): Promise<BlogPostSummary[]> {
 /**
  * Get all unique tags from posts
  */
-export function getAllTags(): string[] {
-  if (!fs.existsSync(POSTS_DIR)) {
+export async function getAllTags(): Promise<string[]> {
+  try {
+    if (!fs.existsSync(POSTS_DIR)) {
+      return []
+    }
+
+    const files = await readdir(POSTS_DIR)
+    const mdFiles = files.filter((file) => file.endsWith('.md'))
+
+    const tagArrays = await Promise.all(
+      mdFiles.map(async (file) => {
+        const filePath = path.join(POSTS_DIR, file)
+        const fileContent = await readFile(filePath, 'utf-8')
+        const { data } = matter(fileContent)
+        // Only include tags from published posts
+        if (data.status !== 'published') return []
+        return data.tags || []
+      })
+    )
+
+    const tags = tagArrays.flat()
+    return [...new Set(tags)]
+  } catch (error) {
+    console.error(`Failed to get tags from posts directory (${POSTS_DIR}):`, error)
     return []
   }
-
-  const files = fs.readdirSync(POSTS_DIR)
-
-  const tags = files
-    .filter((file) => file.endsWith('.md'))
-    .flatMap((file) => {
-      const filePath = path.join(POSTS_DIR, file)
-      const fileContent = fs.readFileSync(filePath, 'utf-8')
-      const { data } = matter(fileContent)
-      return data.tags || []
-    })
-
-  return [...new Set(tags)]
 }
 
 /**
@@ -145,7 +192,8 @@ export function getAllPostSlugs(): string[] {
       const filePath = path.join(POSTS_DIR, file)
       const fileContent = fs.readFileSync(filePath, 'utf-8')
       const { data } = matter(fileContent)
-      return data.slug
+      // Only include slugs from published posts
+      return data.status === 'published' ? data.slug : null
     })
     .filter(Boolean)
 }
@@ -158,8 +206,13 @@ export function getAllCategories(): BlogCategory[] {
     return []
   }
 
-  const content = fs.readFileSync(CATEGORIES_FILE, 'utf-8')
-  return JSON.parse(content) as BlogCategory[]
+  try {
+    const content = fs.readFileSync(CATEGORIES_FILE, 'utf-8')
+    return JSON.parse(content) as BlogCategory[]
+  } catch (error) {
+    console.error(`Failed to parse categories file (${CATEGORIES_FILE}):`, error)
+    return []
+  }
 }
 
 /**
@@ -178,8 +231,13 @@ export function getAllAuthors(): BlogAuthor[] {
     return []
   }
 
-  const content = fs.readFileSync(AUTHORS_FILE, 'utf-8')
-  return JSON.parse(content) as BlogAuthor[]
+  try {
+    const content = fs.readFileSync(AUTHORS_FILE, 'utf-8')
+    return JSON.parse(content) as BlogAuthor[]
+  } catch (error) {
+    console.error(`Failed to parse authors file (${AUTHORS_FILE}):`, error)
+    return []
+  }
 }
 
 /**

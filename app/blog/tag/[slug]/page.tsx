@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getPostsByTag, getAllTags, getAllCategories, getFeaturedPosts } from '@/lib/blog'
 import { BlogHeader, BlogGrid, BlogLayout } from '@/components/blog'
+import { SiteHeader } from '@/components/site-header'
 
 interface TagPageProps {
   params: Promise<{ slug: string }>
@@ -48,22 +49,25 @@ export default async function TagPage({ params }: TagPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <BlogHeader
-          title={`#${decodedTag}`}
-          description={`All posts tagged with "${decodedTag}".`}
-        />
+    <>
+      <SiteHeader />
+      <main className="min-h-screen blog-warm-bg overflow-x-hidden">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 overflow-hidden">
+          <BlogHeader
+            title={`#${decodedTag}`}
+            description={`All posts tagged with "${decodedTag}".`}
+          />
 
-        <BlogLayout
-          categories={categories}
-          tags={tags}
-          featuredPosts={featuredPosts}
-          activeTag={decodedTag}
-        >
-          <BlogGrid posts={posts} />
-        </BlogLayout>
-      </div>
-    </main>
+          <BlogLayout
+            categories={categories}
+            tags={tags}
+            featuredPosts={featuredPosts}
+            activeTag={decodedTag}
+          >
+            <BlogGrid posts={posts} />
+          </BlogLayout>
+        </div>
+      </main>
+    </>
   )
 }

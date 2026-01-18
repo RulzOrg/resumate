@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Lora } from "next/font/google"
 import { GeistMono } from "geist/font/mono"
 import { Space_Grotesk } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
@@ -23,6 +23,12 @@ const inter = Inter({
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-space-grotesk",
+})
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
+  display: "swap",
 })
 
 export const metadata: Metadata = {
@@ -75,7 +81,7 @@ export default function RootLayout({
   if (process.env.E2E_TEST_MODE === '1') {
     return (
       <html lang="en" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
+        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -95,7 +101,7 @@ export default function RootLayout({
   if (!publishableKey) {
     return (
       <html lang="en" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
+        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -121,7 +127,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} antialiased`}>
+      <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

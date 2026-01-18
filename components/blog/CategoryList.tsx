@@ -8,6 +8,25 @@ interface CategoryListProps {
   className?: string
 }
 
+/**
+ * Calculate relative luminance of a hex color and return contrasting text color
+ */
+function getContrastingTextColor(hexColor: string): string {
+  // Remove # if present
+  const hex = hexColor.replace('#', '')
+
+  // Parse RGB values
+  const r = parseInt(hex.substring(0, 2), 16) / 255
+  const g = parseInt(hex.substring(2, 4), 16) / 255
+  const b = parseInt(hex.substring(4, 6), 16) / 255
+
+  // Calculate relative luminance using sRGB formula
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+  // Return black for light backgrounds, white for dark backgrounds
+  return luminance > 0.5 ? '#000000' : '#ffffff'
+}
+
 export function CategoryList({ categories, activeCategory, className }: CategoryListProps) {
   return (
     <div className={cn('flex flex-wrap gap-2', className)}>
@@ -22,25 +41,35 @@ export function CategoryList({ categories, activeCategory, className }: Category
       >
         All
       </Link>
-      {categories.map((category) => (
-        <Link
-          key={category.slug}
-          href={`/blog/category/${category.slug}`}
-          className={cn(
-            'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
-            activeCategory === category.slug
-              ? 'bg-emerald-500 text-white'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-          )}
-          style={
-            activeCategory === category.slug && category.color
-              ? { backgroundColor: category.color }
-              : undefined
-          }
-        >
-          {category.name}
-        </Link>
-      ))}
+      {categories.map((category) => {
+        const isActive = activeCategory === category.slug
+        const hasCustomColor = isActive && category.color
+
+        return (
+          <Link
+            key={category.slug}
+            href={`/blog/category/${category.slug}`}
+            className={cn(
+              'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
+              isActive
+                ? hasCustomColor
+                  ? 'bg-emerald-500' // backgroundColor overridden by inline style
+                  : 'bg-emerald-500 text-white'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+            )}
+            style={
+              hasCustomColor
+                ? {
+                    backgroundColor: category.color,
+                    color: getContrastingTextColor(category.color!),
+                  }
+                : undefined
+            }
+          >
+            {category.name}
+          </Link>
+        )
+      })}
     </div>
   )
 }

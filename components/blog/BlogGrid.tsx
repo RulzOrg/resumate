@@ -10,8 +10,11 @@ interface BlogGridProps {
 export function BlogGrid({ posts, className }: BlogGridProps) {
   if (posts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <p className="text-lg text-muted-foreground">No posts found.</p>
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <p className="font-serif text-xl text-muted-foreground">No posts found.</p>
+        <p className="mt-2 text-sm text-muted-foreground/70">
+          Check back soon for new content.
+        </p>
       </div>
     )
   }
@@ -19,7 +22,7 @@ export function BlogGrid({ posts, className }: BlogGridProps) {
   return (
     <div
       className={cn(
-        'grid gap-6 sm:grid-cols-2 lg:grid-cols-3',
+        'grid gap-8 sm:grid-cols-2 lg:gap-10',
         className
       )}
     >

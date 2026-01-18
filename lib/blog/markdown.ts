@@ -100,5 +100,5 @@ export function generateExcerpt(content: string, maxLength: number = 160): strin
   // Truncate at word boundary
   const truncated = plainText.substring(0, maxLength)
   const lastSpace = truncated.lastIndexOf(' ')
-  return truncated.substring(0, lastSpace) + '...'
+  return (lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated) + '...'
 }

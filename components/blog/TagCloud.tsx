@@ -9,7 +9,7 @@ interface TagCloudProps {
 }
 
 export function TagCloud({ tags, activeTag, className, limit }: TagCloudProps) {
-  const displayTags = limit ? tags.slice(0, limit) : tags
+  const displayTags = limit !== undefined ? tags.slice(0, limit) : tags
 
   if (displayTags.length === 0) {
     return null
@@ -22,10 +22,10 @@ export function TagCloud({ tags, activeTag, className, limit }: TagCloudProps) {
           key={tag}
           href={`/blog/tag/${encodeURIComponent(tag)}`}
           className={cn(
-            'rounded-full px-3 py-1 text-sm transition-colors',
+            'rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200',
             activeTag === tag
-              ? 'bg-emerald-500 text-white'
-              : 'bg-muted text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500'
+              ? 'bg-emerald-500 text-white shadow-sm'
+              : 'bg-muted/60 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500'
           )}
         >
           #{tag}

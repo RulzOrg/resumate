@@ -75,7 +75,7 @@ export function NewsletterForm({
 
   if (variant === 'inline') {
     return (
-      <form onSubmit={handleSubmit} className={cn('flex gap-2', className)}>
+      <form onSubmit={handleSubmit} className={cn('relative flex gap-2', className)}>
         <div className="relative flex-1">
           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input

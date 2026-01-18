@@ -9,7 +9,7 @@ tags:
   - job-search
   - career-advice
 excerpt: "Everything you need to know to ace your next job interview, from preparation strategies to follow-up best practices."
-author: "resumate-team"
+author: "john-iseghohi"
 seo:
   title: "Complete Interview Preparation Guide | Tips & Strategies"
   description: "Comprehensive guide to job interview preparation. Learn research strategies, common questions, body language tips, and follow-up best practices."

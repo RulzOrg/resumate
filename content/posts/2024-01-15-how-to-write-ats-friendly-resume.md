@@ -10,7 +10,7 @@ tags:
   - job-search
 featured_image: "/images/blog/ats-friendly-resume.jpg"
 excerpt: "Learn how to optimize your resume for Applicant Tracking Systems and dramatically increase your chances of getting interviews."
-author: "resumate-team"
+author: "john-iseghohi"
 featured: true
 seo:
   title: "How to Write an ATS-Friendly Resume | Complete Guide 2024"

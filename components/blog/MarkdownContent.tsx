@@ -11,25 +11,28 @@ export function MarkdownContent({ html, className }: MarkdownContentProps) {
   return (
     <div
       className={cn(
-        'prose prose-invert max-w-none',
-        // Headings
-        'prose-headings:font-semibold prose-headings:text-foreground',
-        'prose-h1:text-3xl prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg',
-        'prose-h2:mt-10 prose-h2:border-b prose-h2:border-border prose-h2:pb-2',
+        // Base editorial prose styling
+        'prose-editorial',
+        'max-w-none overflow-hidden',
+        // Dark mode adjustments
+        'dark:prose-invert',
+        // Headings - using serif font
+        'prose-headings:font-serif prose-headings:text-foreground',
         // Links
-        'prose-a:text-emerald-500 prose-a:no-underline hover:prose-a:text-emerald-400 hover:prose-a:underline',
-        // Code
+        'prose-a:text-emerald-500 prose-a:no-underline hover:prose-a:text-emerald-400',
+        // Code - inline
         'prose-code:rounded prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal',
         'prose-code:before:content-none prose-code:after:content-none',
-        'prose-pre:rounded-lg prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-border',
+        // Code blocks
+        'prose-pre:rounded-xl prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-border/50',
         // Lists
         'prose-li:marker:text-emerald-500',
         // Blockquotes
-        'prose-blockquote:border-l-emerald-500 prose-blockquote:text-muted-foreground',
+        'prose-blockquote:border-l-emerald-500 prose-blockquote:text-muted-foreground prose-blockquote:not-italic',
         // Images
-        'prose-img:rounded-lg',
+        'prose-img:rounded-xl',
         // Strong/Bold
-        'prose-strong:text-foreground',
+        'prose-strong:text-foreground prose-strong:font-semibold',
         className
       )}
       dangerouslySetInnerHTML={{ __html: html }}

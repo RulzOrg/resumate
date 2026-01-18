@@ -13,19 +13,21 @@ export function BlogHeader({
   className,
 }: BlogHeaderProps) {
   return (
-    <header className={cn('mb-10', className)}>
-      <nav className="mb-6 text-sm text-muted-foreground">
-        <Link href="/" className="hover:text-foreground">
+    <header className={cn('mb-16', className)}>
+      <nav className="mb-8 text-sm text-muted-foreground">
+        <Link href="/" className="hover:text-foreground transition-colors">
           Home
         </Link>
-        <span className="mx-2">/</span>
-        <span className="text-foreground">{title}</span>
+        <span className="mx-3 text-border">/</span>
+        <span className="text-foreground font-medium">{title}</span>
       </nav>
-      <h1 className="text-4xl font-bold tracking-tight text-foreground">
+      <h1 className="font-serif text-5xl font-semibold tracking-tight text-foreground sm:text-6xl lg:text-7xl leading-[1.05]">
         {title}
       </h1>
       {description && (
-        <p className="mt-3 text-lg text-muted-foreground">{description}</p>
+        <p className="mt-6 text-xl text-muted-foreground leading-relaxed max-w-2xl">
+          {description}
+        </p>
       )}
     </header>
   )

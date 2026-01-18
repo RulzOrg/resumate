@@ -9,7 +9,7 @@ tags:
   - resume-writing
   - career-tips
 excerpt: "Discover the most common resume mistakes job seekers make and learn how to fix them to land more interviews."
-author: "resumate-team"
+author: "john-iseghohi"
 seo:
   title: "10 Resume Mistakes Costing You Interviews | How to Fix Them"
   description: "Learn about the top 10 resume mistakes that prevent job seekers from getting interviews, plus expert tips on how to fix them."

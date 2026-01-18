@@ -28,7 +28,7 @@ export function BlogLayout({
   }
 
   return (
-    <div className={cn('grid gap-10 lg:grid-cols-[1fr_280px]', className)}>
+    <div className={cn('grid gap-12 lg:grid-cols-[1fr_300px] lg:gap-16', className)}>
       <div>{children}</div>
       <BlogSidebar
         categories={categories}

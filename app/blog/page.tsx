@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getAllPosts, getAllCategories, getAllTags, getFeaturedPosts } from '@/lib/blog'
 import { BlogHeader, BlogGrid, BlogLayout, NewsletterSection } from '@/components/blog'
+import { SiteHeader } from '@/components/site-header'
 
 export const metadata: Metadata = {
   title: 'Blog | Resumate - Resume Tips & Career Advice',
@@ -26,11 +27,13 @@ export default async function BlogPage() {
   ])
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <>
+      <SiteHeader />
+      <main className="min-h-screen blog-warm-bg overflow-x-hidden">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24 overflow-hidden">
         <BlogHeader
           title="Blog"
-          description="Tips, guides, and insights to help you land your dream job."
+          description="Expert tips, guides, and insights to help you craft the perfect resume and land your dream job."
         />
 
         <BlogLayout
@@ -41,9 +44,10 @@ export default async function BlogPage() {
           <BlogGrid posts={posts} />
 
           {/* Newsletter Section - shown below posts on main content area */}
-          <NewsletterSection className="mt-12" source="blog_listing" />
+          <NewsletterSection className="mt-20" source="blog_listing" />
         </BlogLayout>
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   )
 }
