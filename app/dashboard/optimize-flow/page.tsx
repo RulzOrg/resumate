@@ -1,6 +1,7 @@
 import { getAuthenticatedUser } from "@/lib/user-data"
 import { getUserResumes } from "@/lib/db"
-import { OptimizeFlowWizard } from "@/components/optimize-flow/OptimizeFlowWizard"
+import { getInProgressSessions } from "@/lib/db/optimization-sessions"
+import { OptimizeFlowPageClient } from "./client"
 
 export default async function OptimizeFlowPage() {
   const user = await getAuthenticatedUser()
@@ -8,7 +9,11 @@ export default async function OptimizeFlowPage() {
     return null
   }
 
-  const resumes = await getUserResumes(user.id).catch(() => [] as any[])
+  // Fetch resumes and sessions in parallel
+  const [resumes, sessions] = await Promise.all([
+    getUserResumes(user.id).catch(() => [] as any[]),
+    getInProgressSessions(user.id, 5).catch(() => []),
+  ])
 
   // Filter to only completed master/uploaded resumes
   const completedResumes = resumes.filter(
@@ -29,7 +34,10 @@ export default async function OptimizeFlowPage() {
           </p>
         </div>
 
-        <OptimizeFlowWizard resumes={completedResumes} />
+        <OptimizeFlowPageClient
+          resumes={completedResumes}
+          initialSessions={sessions}
+        />
       </div>
     </main>
   )
