@@ -1,0 +1,14 @@
+[
+  {
+    "slug": "resumate-team",
+    "name": "Resumate Team",
+    "bio": "The team behind Resumate, helping job seekers optimize their resumes and land their dream roles.",
+    "avatar": "/images/authors/resumate-team.png"
+  },
+  {
+    "slug": "john-iseghohi",
+    "name": "John Iseghohi",
+    "bio": "Senior UX Designer with 13+ years of experience in product design and strategy. Founder of Resumate, passionate about helping job seekers optimize their resumes and land their dream roles.",
+    "avatar": "/images/authors/john-iseghohi.png"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "resume-tips",
+    "name": "Resume Tips",
+    "description": "Expert advice on crafting effective resumes that get results",
+    "color": "#3B82F6"
+  },
+  {
+    "slug": "job-search",
+    "name": "Job Search",
+    "description": "Strategies for finding and landing your dream job",
+    "color": "#10B981"
+  },
+  {
+    "slug": "career-advice",
+    "name": "Career Advice",
+    "description": "Professional development and career growth tips",
+    "color": "#8B5CF6"
+  },
+  {
+    "slug": "interviews",
+    "name": "Interviews",
+    "description": "Interview preparation and techniques to help you succeed",
+    "color": "#F59E0B"
+  }
+]

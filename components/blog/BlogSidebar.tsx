@@ -1,0 +1,105 @@
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
+import { TagCloud } from './TagCloud'
+import { NewsletterForm } from './NewsletterForm'
+import type { BlogCategory, BlogPostSummary } from '@/lib/blog'
+
+interface BlogSidebarProps {
+  categories?: BlogCategory[]
+  tags?: string[]
+  featuredPosts?: BlogPostSummary[]
+  activeCategory?: string
+  activeTag?: string
+  className?: string
+}
+
+export function BlogSidebar({
+  categories,
+  tags,
+  featuredPosts,
+  activeCategory,
+  activeTag,
+  className,
+}: BlogSidebarProps) {
+  return (
+    <aside className={cn('space-y-10', className)}>
+      {/* Categories Section */}
+      {categories && categories.length > 0 && (
+        <div>
+          <h3 className="mb-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Categories
+          </h3>
+          <nav className="space-y-1">
+            <Link
+              href="/blog"
+              className={cn(
+                'block rounded-xl px-4 py-2.5 text-sm transition-colors',
+                !activeCategory
+                  ? 'bg-emerald-500/10 text-emerald-500 font-medium'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              )}
+            >
+              All Posts
+            </Link>
+            {categories.map((category) => (
+              <Link
+                key={category.slug}
+                href={`/blog/category/${category.slug}`}
+                className={cn(
+                  'flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-colors',
+                  activeCategory === category.slug
+                    ? 'bg-emerald-500/10 text-emerald-500 font-medium'
+                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                )}
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: category.color || '#10b981' }}
+                />
+                {category.name}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      {/* Tags Section */}
+      {tags && tags.length > 0 && (
+        <div>
+          <h3 className="mb-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Popular Tags
+          </h3>
+          <TagCloud tags={tags} activeTag={activeTag} limit={10} />
+        </div>
+      )}
+
+      {/* Featured Posts Section */}
+      {featuredPosts && featuredPosts.length > 0 && (
+        <div>
+          <h3 className="mb-5 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Featured Posts
+          </h3>
+          <div className="space-y-5">
+            {featuredPosts.map((post) => (
+              <Link
+                key={post.slug}
+                href={`/blog/${post.slug}`}
+                className="group block"
+              >
+                <h4 className="font-serif text-sm font-medium text-foreground leading-snug group-hover:text-emerald-500 transition-colors">
+                  {post.title}
+                </h4>
+                <p className="mt-1.5 text-xs text-muted-foreground/70">
+                  {post.readingTime}
+                </p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Newsletter CTA */}
+      <NewsletterForm variant="card" source="blog_sidebar" />
+    </aside>
+  )
+}
