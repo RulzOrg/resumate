@@ -8,10 +8,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Settings, User } from "lucide-react"
-import { Logo } from "@/components/ui/logo"
+import { Logo } from "@/components/logo"
 import Link from "next/link"
 import { LogoutButton } from "./logout-button"
-import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 import type { User as UserType } from "@/lib/db"
 import { UserAvatar } from "./user-avatar"
 import { WelcomeVideoButton } from "./welcome-video-button"

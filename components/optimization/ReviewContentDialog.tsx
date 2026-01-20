@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { AlertCircle, FileText, Loader2 } from "lucide-react"
 import { WorkExperienceEditor } from "./WorkExperienceEditor"
-import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/processing-overlay"
 import type { WorkExperienceItem } from "@/lib/resume-parser"
 
 export interface ReviewContent {
@@ -213,9 +213,8 @@ export function ReviewContentDialog({
       />
 
       <Dialog open={open} onOpenChange={isLoading ? undefined : onOpenChange}>
-      <DialogContent 
-        className="sm:max-w-[800px] w-[95vw] h-[90vh] max-h-[850px] flex flex-col p-0 bg-zinc-950 border-zinc-800 shadow-2xl overflow-hidden rounded-xl" 
-        overlayClassName="bg-black/80 backdrop-blur-sm"
+      <DialogContent
+        className="sm:max-w-[800px] w-[95vw] h-[90vh] max-h-[850px] flex flex-col p-0 shadow-2xl overflow-hidden"
       >
         <DialogHeader className="px-6 py-6 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-md z-10">
           <DialogTitle className="flex items-center gap-2 text-xl text-zinc-100">

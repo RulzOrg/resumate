@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import Link from "next/link"
 import { Menu, BookOpen, CreditCard, LayoutDashboard, X } from "lucide-react"
-import { ThemeSwitcher } from "@/components/ui/theme-switcher"
-import { Logo } from "@/components/ui/logo"
+import { ThemeSwitcher } from "@/components/theme-switcher"
+import { Logo } from "@/components/logo"
 import { useAuth } from "@clerk/nextjs"
 
 export function SiteHeader() {

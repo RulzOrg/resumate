@@ -20,7 +20,7 @@ import { Progress } from "@/components/ui/progress"
 import { Upload, FileText, X, CheckCircle, AlertTriangle } from "lucide-react"
 import { uploadResume } from "@/lib/upload-handler"
 import { ReviewFallbackUI } from "@/components/resume/review-fallback-ui"
-import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/processing-overlay"
 
 interface UploadResumeDialogProps {
   children: React.ReactNode

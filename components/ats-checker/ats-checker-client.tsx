@@ -10,7 +10,7 @@ import { HowItWorks } from "./how-it-works"
 import { FeaturesGrid } from "./features-grid"
 import { FAQSection } from "./faq-section"
 import { CheckerFooter } from "./checker-footer"
-import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
+import { ProcessingOverlay, useProcessingSteps } from "@/components/processing-overlay"
 import { PublicHeader } from "@/components/public-header"
 import type { ATSCheckResult } from "@/lib/ats-checker"
 

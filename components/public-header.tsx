@@ -3,8 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Menu, Upload, Target, Star, Check, Download, FileSearch } from "lucide-react"
-import { ThemeSwitcher } from "@/components/ui/theme-switcher"
-import { Logo } from "@/components/ui/logo"
+import { ThemeSwitcher } from "@/components/theme-switcher"
+import { Logo } from "@/components/logo"
 import { useAuth } from "@clerk/nextjs"
 import {
   DropdownMenu,

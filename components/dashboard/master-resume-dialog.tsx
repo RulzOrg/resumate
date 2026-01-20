@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
 import { Upload, Loader2, CheckCircle, X } from "lucide-react"
-import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/processing-overlay"
 
 interface UploadMasterResumeDialogProps {
   children: React.ReactNode

@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { UploadMasterResumeDialog } from "./master-resume-dialog"
 import { ReviewContentDialog, type ReviewContent } from "@/components/optimization/ReviewContentDialog"
-import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
+import { ProcessingOverlay, type ProcessingStep } from "@/components/processing-overlay"
 import type { WorkExperienceItem } from "@/lib/resume-parser"
 
 interface Resume {

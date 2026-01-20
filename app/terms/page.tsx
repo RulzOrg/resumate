@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Logo } from "@/components/ui/logo"
+import { Logo } from "@/components/logo"
 
 export const metadata = {
   title: "Terms of Service | Useresumate",

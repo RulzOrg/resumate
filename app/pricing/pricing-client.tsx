@@ -3,13 +3,13 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Star, Check, Minus, Menu } from "lucide-react"
-import { Logo } from "@/components/ui/logo"
+import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { PricingCard } from "@/components/pricing/pricing-card"
 import { PricingTier } from "@/lib/pricing"
-import { ThemeSwitcher } from "@/components/ui/theme-switcher"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 interface PricingClientProps {
   currentPlan?: string
