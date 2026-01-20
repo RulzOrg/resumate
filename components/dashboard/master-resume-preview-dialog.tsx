@@ -204,11 +204,12 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
               <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6">
                 <FileText className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Preview not available</h3>
+              <h3 className="text-xl font-semibold mb-2">Preview not available for this file type</h3>
+              <p className="text-sm text-muted-foreground mb-2 font-medium">{resume.file_name}</p>
               <p className="text-muted-foreground max-w-md mb-8">
                 {isPdf
                   ? "Unable to render PDF preview."
-                  : `This file format (${resume.file_type}) cannot be previewed directly in the browser.`}
+                  : `This file format cannot be previewed directly in the browser.`}
                 <br />
                 Please download the file to view its original formatting.
               </p>

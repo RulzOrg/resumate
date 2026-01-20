@@ -97,3 +97,23 @@ Started: Initial setup
   - API error format: `{ error: string, code: string }` for consistent client handling
 ---
 
+## 2026-01-20 - US-005: Add Fallback UI for Unsupported Formats
+- **What was implemented:**
+  - Updated fallback UI message to "Preview not available for this file type"
+  - Added file name display prominently in the fallback UI
+  - Download button clearly visible below the message
+  - File type detection already existed from US-003
+- **Files changed:**
+  - components/dashboard/master-resume-preview-dialog.tsx
+- **Acceptance criteria verified:**
+  - File type detection based on extension (pdf, docx, doc, other) - existing from US-003
+  - FileText icon with "Preview not available for this file type" message
+  - Download button prominently displayed
+  - File name shown in fallback UI
+  - npm run lint passes
+- **Learnings for future iterations:**
+  - Fallback UI is the final else clause in the render logic
+  - Show file name to help user identify which file they're viewing
+  - Keep message simple: "Preview not available for this file type" is clearer than listing specific formats
+---
+

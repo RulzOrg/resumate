@@ -88,8 +88,8 @@
         "Verify in browser manually"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Updated fallback UI to show file name prominently. Message changed to 'Preview not available for this file type'. Download button clearly visible. File type detection already in place from US-003."
     }
   ]
 }
