@@ -54,8 +54,18 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
 
   if (!resume) return null
 
-  // Check if file is PDF (standard MIME types)
-  const isPdf = resume.file_type === "application/pdf" || resume.file_name.toLowerCase().endsWith(".pdf")
+  // Get file extension for type detection
+  const getFileExtension = (fileName: string): string => {
+    const ext = fileName.toLowerCase().split('.').pop() || ''
+    return ext
+  }
+
+  const fileExtension = getFileExtension(resume.file_name)
+
+  // Detect file type from extension
+  const isPdf = fileExtension === 'pdf' || resume.file_type === "application/pdf"
+  const isDocx = fileExtension === 'docx' || resume.file_type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  const isLegacyDoc = fileExtension === 'doc' && !isDocx
 
   const handleDownload = () => {
     // Use signed URL if available, otherwise fallback to public URL (which might fail if bucket is private)
@@ -128,6 +138,28 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
               className="w-full h-full border-0"
               title={`Preview of ${resume.file_name}`}
             />
+          ) : isDocx && signedUrl ? (
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(signedUrl)}&embedded=true`}
+              className="w-full h-full border-0"
+              title={`Preview of ${resume.file_name}`}
+            />
+          ) : isLegacyDoc ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-in fade-in duration-300">
+              <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                <FileText className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Legacy .doc format</h3>
+              <p className="text-muted-foreground max-w-md mb-8">
+                Legacy .doc format cannot be previewed in the browser.
+                <br />
+                Please download to view.
+              </p>
+              <Button onClick={handleDownload} className="gap-2">
+                <Download className="h-4 w-4" />
+                Download File
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-in fade-in duration-300">
               <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6">
@@ -135,8 +167,8 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
               </div>
               <h3 className="text-xl font-semibold mb-2">Preview not available</h3>
               <p className="text-muted-foreground max-w-md mb-8">
-                {isPdf 
-                  ? "Unable to render PDF preview." 
+                {isPdf
+                  ? "Unable to render PDF preview."
                   : `This file format (${resume.file_type}) cannot be previewed directly in the browser.`}
                 <br />
                 Please download the file to view its original formatting.
