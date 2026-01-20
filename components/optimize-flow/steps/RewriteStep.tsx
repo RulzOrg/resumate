@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Pencil, Sparkles, Loader2 } from "lucide-react"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
@@ -22,6 +22,12 @@ interface RewriteStepProps {
   companyName: string
   onRewriteComplete: (result: RewriteResult, editedContent: EditedContent) => void
   onBack: () => void
+  /** Optional callback for auto-saving edited content changes (debounced by parent) */
+  onEditedContentChange?: (content: EditedContent) => void
+  /** Initial rewrite result to restore (from wizard state on back/forward) */
+  initialRewriteResult?: RewriteResult
+  /** Initial edited content to restore (from wizard state on back/forward) */
+  initialEditedContent?: EditedContent
 }
 
 const REWRITE_STEPS = [
@@ -42,16 +48,33 @@ export function RewriteStep({
   companyName,
   onRewriteComplete,
   onBack,
+  onEditedContentChange,
+  initialRewriteResult,
+  initialEditedContent,
 }: RewriteStepProps) {
-  // Rewrite state
+  // Rewrite state - initialize from props for back/forward navigation
   const [isRewriting, setIsRewriting] = useState(false)
-  const [rewriteResult, setRewriteResult] = useState<RewriteResult | null>(null)
-  const [editedContent, setEditedContent] = useState<EditedContent | null>(null)
+  const [rewriteResult, setRewriteResult] = useState<RewriteResult | null>(
+    initialRewriteResult ?? null
+  )
+  const [editedContent, setEditedContent] = useState<EditedContent | null>(
+    initialEditedContent ?? null
+  )
   const [error, setError] = useState<string | null>(null)
   const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(REWRITE_STEPS)
+
+  // Sync state with props when navigating back (props change but component may be reused)
+  useEffect(() => {
+    if (initialRewriteResult) {
+      setRewriteResult(initialRewriteResult)
+    }
+    if (initialEditedContent) {
+      setEditedContent(initialEditedContent)
+    }
+  }, [initialRewriteResult, initialEditedContent])
 
   // Start rewriting
   const handleStartRewrite = useCallback(async () => {
@@ -132,7 +155,9 @@ export function RewriteStep({
   // Handle content changes from editor
   const handleContentChange = useCallback((content: EditedContent) => {
     setEditedContent(content)
-  }, [])
+    // Notify parent for auto-save (debounced by parent)
+    onEditedContentChange?.(content)
+  }, [onEditedContentChange])
 
   // Handle continue to next step
   const handleContinue = () => {

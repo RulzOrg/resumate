@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, getOrCreateUser, sql } from "@/lib/db"
+import { getResumeById, getOrCreateUser, getCachedStructure, saveParsedStructure } from "@/lib/db"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
 import { buildAnalysisPrompt, parseAnalysisResponse } from "@/lib/prompts/analyze-resume"
 import { AnalyzeRequestSchema } from "@/lib/schemas/optimize-flow"
+import { extractResumeWithLLM } from "@/lib/llm-resume-extractor"
 import Anthropic from "@anthropic-ai/sdk"
 
 // Allow up to 2 minutes for analysis
@@ -69,6 +70,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Extract and cache parsed resume structure for later use in the flow
+    // This uses LLM to intelligently parse the raw text into structured data
+    let parsedResume = await getCachedStructure(resume_id)
+
+    if (!parsedResume) {
+      console.log("[Analyze] No cached structure found, extracting via LLM...")
+      const extractionResult = await extractResumeWithLLM(
+        resume.content_text,
+        process.env.ANTHROPIC_API_KEY
+      )
+
+      if (extractionResult.success && extractionResult.resume) {
+        parsedResume = extractionResult.resume
+        await saveParsedStructure(resume_id, parsedResume)
+        console.log("[Analyze] Resume structure extracted and cached:", {
+          hasContact: !!parsedResume.contact?.name,
+          workExperienceCount: parsedResume.workExperience?.length || 0,
+          educationCount: parsedResume.education?.length || 0,
+          skillsCount: parsedResume.skills?.length || 0,
+        })
+      } else {
+        console.warn("[Analyze] Failed to extract resume structure:", extractionResult.error)
+        // Continue without parsed structure - will use raw text fallback
+      }
+    } else {
+      console.log("[Analyze] Using cached resume structure:", {
+        hasContact: !!parsedResume.contact?.name,
+        workExperienceCount: parsedResume.workExperience?.length || 0,
+        educationCount: parsedResume.education?.length || 0,
+        skillsCount: parsedResume.skills?.length || 0,
+      })
+    }
+
     // Build the analysis prompt
     const prompt = buildAnalysisPrompt({
       resumeText: resume.content_text,
@@ -90,7 +124,7 @@ export async function POST(request: NextRequest) {
         const startTime = Date.now()
 
         const response = await anthropic.messages.create({
-          model: "claude-sonnet-4-5-20250514",
+          model: "claude-sonnet-4-20250514",
           max_tokens: 2048,
           messages: [
             {
@@ -142,6 +176,7 @@ export async function POST(request: NextRequest) {
           missingKeywords: analysisResult.missingKeywords,
         },
         resume_text: resume.content_text,
+        parsed_resume: parsedResume || null,
       },
       { headers: getRateLimitHeaders(rateLimitResult) }
     )

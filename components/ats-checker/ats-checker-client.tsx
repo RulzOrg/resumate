@@ -112,8 +112,8 @@ export function ATSCheckerClient() {
       issueId,
     })
 
-    // Redirect to signup with return URL to optimizer
-    const returnUrl = `/dashboard/optimizer?${params.toString()}`
+    // Redirect to signup with return URL to optimize flow
+    const returnUrl = `/dashboard/optimize-flow?${params.toString()}`
     window.location.href = `/sign-up?redirect=${encodeURIComponent(returnUrl)}`
   }, [state])
 

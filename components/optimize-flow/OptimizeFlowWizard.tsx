@@ -4,9 +4,13 @@ import { useState, useCallback, useEffect } from "react"
 import { StepIndicator } from "./StepIndicator"
 import { AnalysisStep } from "./steps/AnalysisStep"
 import { RewriteStep } from "./steps/RewriteStep"
+import { ReviewResumeStep } from "./steps/ReviewResumeStep"
 import { ATSScanStep } from "./steps/ATSScanStep"
 import { InterviewPrepStep } from "./steps/InterviewPrepStep"
 import { ConnectionStatus } from "@/components/ui/connection-status"
+import { SaveStatusIndicator } from "@/components/ui/save-status-indicator"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import { useUnsavedChanges } from "@/hooks/use-unsaved-changes"
 import type {
   FlowStep,
   OptimizeFlowState,
@@ -16,6 +20,7 @@ import type {
   ATSScanResult,
   InterviewPrepResult,
 } from "@/lib/types/optimize-flow"
+import type { ParsedResume } from "@/lib/resume-parser"
 
 interface Resume {
   id: string
@@ -30,12 +35,14 @@ interface SessionData {
   current_step: FlowStep
   resume_id: string
   resume_text?: string
+  parsed_resume?: ParsedResume
   job_title: string
   job_description: string
   company_name?: string
   analysis_result?: AnalysisResult
   rewrite_result?: RewriteResult
   edited_content?: EditedContent
+  reviewed_resume?: ParsedResume
   ats_scan_result?: ATSScanResult
   interview_prep_result?: InterviewPrepResult
 }
@@ -54,50 +61,18 @@ const initialState: ExtendedFlowState = {
   currentStep: 1,
   resumeId: null,
   resumeText: undefined,
+  parsedResume: null,
   jobTitle: "",
   jobDescription: "",
   companyName: "",
   analysisResult: null,
   rewriteResult: null,
   editedContent: null,
+  reviewedResume: null,
   atsScanResult: null,
   interviewPrepResult: null,
   isLoading: false,
   error: null,
-}
-
-/**
- * Save step result to the backend
- */
-async function saveStepToBackend(
-  sessionId: string,
-  step: FlowStep,
-  result: any,
-  additionalData?: { resumeText?: string; editedContent?: EditedContent }
-): Promise<boolean> {
-  try {
-    const response = await fetch(`/api/optimize-flow/sessions/${sessionId}/save-step`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        step,
-        result,
-        resume_text: additionalData?.resumeText,
-        edited_content: additionalData?.editedContent,
-      }),
-    })
-
-    if (!response.ok) {
-      console.error("[Wizard] Failed to save step:", await response.text())
-      return false
-    }
-
-    console.log("[Wizard] Step saved successfully:", { sessionId, step })
-    return true
-  } catch (error) {
-    console.error("[Wizard] Error saving step:", error)
-    return false
-  }
 }
 
 /**
@@ -148,12 +123,14 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
         currentStep: initialSession.current_step,
         resumeId: initialSession.resume_id,
         resumeText: initialSession.resume_text,
+        parsedResume: initialSession.parsed_resume || null,
         jobTitle: initialSession.job_title,
         jobDescription: initialSession.job_description,
         companyName: initialSession.company_name || "",
         analysisResult: initialSession.analysis_result || null,
         rewriteResult: initialSession.rewrite_result || null,
         editedContent: initialSession.edited_content || null,
+        reviewedResume: initialSession.reviewed_resume || null,
         atsScanResult: initialSession.ats_scan_result || null,
         interviewPrepResult: initialSession.interview_prep_result || null,
         isLoading: false,
@@ -166,6 +143,21 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
   // Track if we're resuming a session (for showing notification)
   const [isResumed, setIsResumed] = useState(!!initialSession)
 
+  // Auto-save hook for reliable persistence
+  const autoSave = useAutoSave({
+    sessionId: state.sessionId,
+    onSaveError: (error) => {
+      console.error("[Wizard] Auto-save error:", error)
+    },
+  })
+
+  // Warn user before leaving with unsaved changes
+  useUnsavedChanges(autoSave.hasPendingChanges, {
+    onBeforeUnload: () => {
+      autoSave.flush()
+    },
+  })
+
   // Clear resumed notification after a few seconds
   useEffect(() => {
     if (isResumed) {
@@ -174,13 +166,14 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
     }
   }, [isResumed])
 
-  // Get completed steps based on state
+  // Get completed steps based on state (5-step flow)
   const getCompletedSteps = (): FlowStep[] => {
     const completed: FlowStep[] = []
     if (state.analysisResult) completed.push(1)
     if (state.rewriteResult && state.editedContent) completed.push(2)
-    if (state.atsScanResult) completed.push(3)
-    if (state.interviewPrepResult) completed.push(4)
+    if (state.reviewedResume) completed.push(3)
+    if (state.atsScanResult) completed.push(4)
+    if (state.interviewPrepResult) completed.push(5)
     return completed
   }
 
@@ -207,7 +200,8 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
         jobTitle: string
         jobDescription: string
         companyName: string
-      }
+      },
+      parsedResume?: ParsedResume | null
     ) => {
       // Create or resume session
       const sessionResult = await createOrResumeSession({
@@ -220,76 +214,138 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
 
       const sessionId = sessionResult?.sessionId || state.sessionId
 
-      // Update state
+      // Update state with session ID first
       setState((prev) => ({
         ...prev,
         sessionId,
         analysisResult: result,
         resumeText,
+        parsedResume: parsedResume || null,
         resumeId: formData.resumeId,
         jobTitle: formData.jobTitle,
         jobDescription: formData.jobDescription,
         companyName: formData.companyName,
-        currentStep: 2,
       }))
 
-      // Save to backend (fire and forget - state is already updated)
+      // AWAIT save before navigating (critical fix!)
       if (sessionId) {
-        saveStepToBackend(sessionId, 1, result, { resumeText })
+        const saved = await autoSave.saveStepResult(1, result, { resumeText })
+        if (!saved) {
+          console.error("[Wizard] Failed to save step 1, but continuing...")
+        }
       }
+
+      // Now navigate to step 2
+      setState((prev) => ({ ...prev, currentStep: 2 }))
     },
-    [state.sessionId]
+    [state.sessionId, autoSave]
   )
 
   // Step 2: Rewrite complete handler
   const handleRewriteComplete = useCallback(
     async (result: RewriteResult, editedContent: EditedContent) => {
+      // Update state first
       setState((prev) => ({
         ...prev,
         rewriteResult: result,
         editedContent,
-        currentStep: 3,
       }))
 
-      // Save to backend
+      // AWAIT save before navigating (critical fix!)
       if (state.sessionId) {
-        saveStepToBackend(state.sessionId, 2, result, { editedContent })
+        const saved = await autoSave.saveStepResult(2, result, { editedContent })
+        if (!saved) {
+          console.error("[Wizard] Failed to save step 2, but continuing...")
+        }
       }
+
+      // Now navigate to step 3
+      setState((prev) => ({ ...prev, currentStep: 3 }))
     },
-    [state.sessionId]
+    [state.sessionId, autoSave]
   )
 
-  // Step 3: ATS Scan complete handler
+  // Step 3: Review Resume complete handler
+  const handleReviewComplete = useCallback(
+    async (reviewedResume: ParsedResume) => {
+      // Update state first
+      setState((prev) => ({
+        ...prev,
+        reviewedResume,
+      }))
+
+      // AWAIT save before navigating
+      if (state.sessionId) {
+        const saved = await autoSave.saveStepResult(3, reviewedResume)
+        if (!saved) {
+          console.error("[Wizard] Failed to save step 3, but continuing...")
+        }
+      }
+
+      // Now navigate to step 4 (ATS Scan)
+      setState((prev) => ({ ...prev, currentStep: 4 }))
+    },
+    [state.sessionId, autoSave]
+  )
+
+  // Handler for reviewed resume changes (auto-save with debouncing)
+  const handleReviewedResumeChange = useCallback(
+    (reviewedResume: ParsedResume) => {
+      // Update local state immediately
+      setState((prev) => ({
+        ...prev,
+        reviewedResume,
+      }))
+
+      // Auto-save with debouncing (uses saveEditedContent for debounced saves)
+      if (state.sessionId) {
+        autoSave.saveEditedContent({ reviewedResume } as any)
+      }
+    },
+    [state.sessionId, autoSave]
+  )
+
+  // Step 4: ATS Scan complete handler
   const handleATSScanComplete = useCallback(
     async (result: ATSScanResult) => {
+      // Update state first
       setState((prev) => ({
         ...prev,
         atsScanResult: result,
-        currentStep: 4,
       }))
 
-      // Save to backend
+      // AWAIT save before navigating
       if (state.sessionId) {
-        saveStepToBackend(state.sessionId, 3, result)
+        const saved = await autoSave.saveStepResult(4, result)
+        if (!saved) {
+          console.error("[Wizard] Failed to save step 4, but continuing...")
+        }
       }
+
+      // Now navigate to step 5 (Interview Prep)
+      setState((prev) => ({ ...prev, currentStep: 5 }))
     },
-    [state.sessionId]
+    [state.sessionId, autoSave]
   )
 
-  // Step 4: Interview prep complete handler
+  // Step 5: Interview prep complete handler
   const handleInterviewPrepComplete = useCallback(
     async (result: InterviewPrepResult) => {
+      // Update state
       setState((prev) => ({
         ...prev,
         interviewPrepResult: result,
       }))
 
-      // Save to backend (this marks the session as completed)
+      // AWAIT save (this marks the session as completed)
       if (state.sessionId) {
-        saveStepToBackend(state.sessionId, 4, result)
+        const saved = await autoSave.saveStepResult(5, result)
+        if (!saved) {
+          console.error("[Wizard] Failed to save step 5")
+        }
       }
     },
-    [state.sessionId]
+    [state.sessionId, autoSave]
   )
 
   // Skip to finish (from step 3 or 4)
@@ -316,34 +372,36 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
     }))
   }, [])
 
-  // Update edited content (for step 2 editing)
+  // Update edited content (for step 2 editing) - now uses auto-save with debouncing
   const handleUpdateEditedContent = useCallback(
-    async (editedContent: EditedContent) => {
+    (editedContent: EditedContent) => {
+      // Update local state immediately
       setState((prev) => ({
         ...prev,
         editedContent,
       }))
 
-      // Save edited content to backend
-      if (state.sessionId) {
-        try {
-          await fetch(`/api/optimize-flow/sessions/${state.sessionId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ edited_content: editedContent }),
-          })
-        } catch (error) {
-          console.error("[Wizard] Error saving edited content:", error)
-        }
-      }
+      // Auto-save with debouncing (2s delay)
+      autoSave.saveEditedContent(editedContent)
     },
-    [state.sessionId]
+    [autoSave]
   )
 
   return (
     <div className="space-y-8">
       {/* Connection Status Banner */}
       <ConnectionStatus variant="banner" autoHide={true} />
+
+      {/* Save Status Indicator - shows in top right when saving/saved */}
+      <div className="fixed top-20 right-4 z-50">
+        <SaveStatusIndicator
+          status={autoSave.state.status}
+          lastSavedAt={autoSave.state.lastSavedAt}
+          error={autoSave.state.error}
+          isOnline={autoSave.isOnline}
+          onRetry={() => autoSave.flush()}
+        />
+      </div>
 
       {/* Resumed Session Banner */}
       {isResumed && (
@@ -392,6 +450,11 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
             resumes={resumes}
             onAnalysisComplete={handleAnalysisComplete}
             initialResumeId={state.resumeId || undefined}
+            initialAnalysisResult={state.analysisResult ?? undefined}
+            initialResumeText={state.resumeText}
+            initialJobTitle={state.jobTitle}
+            initialJobDescription={state.jobDescription}
+            initialCompanyName={state.companyName}
           />
         )}
 
@@ -408,12 +471,33 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
               companyName={state.companyName}
               onRewriteComplete={handleRewriteComplete}
               onBack={handleBack}
+              onEditedContentChange={handleUpdateEditedContent}
+              initialRewriteResult={state.rewriteResult ?? undefined}
+              initialEditedContent={state.editedContent ?? undefined}
             />
           )}
 
-        {state.currentStep === 3 && state.editedContent && state.resumeId && (
+        {state.currentStep === 3 &&
+          state.rewriteResult &&
+          state.editedContent &&
+          state.analysisResult && (
+            <ReviewResumeStep
+              rewriteResult={state.rewriteResult}
+              editedContent={state.editedContent}
+              parsedResume={state.parsedResume ?? undefined}
+              resumeText={state.resumeText}
+              analysisResult={state.analysisResult}
+              initialReviewedResume={state.reviewedResume ?? undefined}
+              onReviewComplete={handleReviewComplete}
+              onResumeChange={handleReviewedResumeChange}
+              onBack={handleBack}
+            />
+          )}
+
+        {state.currentStep === 4 && state.editedContent && state.resumeId && (
           <ATSScanStep
             editedContent={state.editedContent}
+            reviewedResume={state.reviewedResume ?? undefined}
             resumeId={state.resumeId}
             jobDescription={state.jobDescription}
             jobTitle={state.jobTitle}
@@ -421,10 +505,11 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
             analysisResult={state.analysisResult || undefined}
             onScanComplete={handleATSScanComplete}
             onBack={handleBack}
+            initialScanResult={state.atsScanResult ?? undefined}
           />
         )}
 
-        {state.currentStep === 4 && state.resumeId && state.resumeText && (
+        {state.currentStep === 5 && state.resumeId && state.resumeText && (
           <InterviewPrepStep
             resumeId={state.resumeId}
             resumeText={state.resumeText}
@@ -434,6 +519,7 @@ export function OptimizeFlowWizard({ resumes, initialSession }: OptimizeFlowWiza
             onComplete={handleInterviewPrepComplete}
             onBack={handleBack}
             onSkip={handleSkipInterview}
+            initialPrepResult={state.interviewPrepResult ?? undefined}
           />
         )}
       </div>

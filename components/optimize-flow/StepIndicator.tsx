@@ -1,7 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { Check, Search, Pencil, ScanLine, Mic } from "lucide-react"
+import { Check, Search, Pencil, Eye, ScanLine, Mic } from "lucide-react"
 import type { FlowStep } from "@/lib/types/optimize-flow"
 
 interface StepConfig {
@@ -26,12 +26,18 @@ const STEPS: StepConfig[] = [
   },
   {
     number: 3,
+    title: "Review",
+    description: "Full resume edit",
+    icon: <Eye className="w-4 h-4" />,
+  },
+  {
+    number: 4,
     title: "ATS Scan",
     description: "Compatibility check",
     icon: <ScanLine className="w-4 h-4" />,
   },
   {
-    number: 4,
+    number: 5,
     title: "Interview",
     description: "Prepare answers",
     icon: <Mic className="w-4 h-4" />,

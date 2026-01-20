@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, ScanLine, Loader2, Shield } from "lucide-react"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
@@ -8,9 +8,12 @@ import { RetryIndicator } from "@/components/ui/retry-indicator"
 import { ATSScanResults } from "../results/ATSScanResults"
 import { fetchWithRetry, initialRetryState, type RetryState } from "@/lib/utils/api-retry"
 import type { EditedContent, ATSScanResult, AnalysisResult } from "@/lib/types/optimize-flow"
+import type { ParsedResume } from "@/lib/resume-parser"
 
 interface ATSScanStepProps {
   editedContent: EditedContent
+  /** Full reviewed resume from step 3 (optional, used for comprehensive scan) */
+  reviewedResume?: ParsedResume
   resumeId: string
   jobDescription: string
   jobTitle: string
@@ -18,6 +21,8 @@ interface ATSScanStepProps {
   analysisResult?: AnalysisResult
   onScanComplete: (result: ATSScanResult) => void
   onBack: () => void
+  /** Initial scan result to restore (from wizard state on back/forward) */
+  initialScanResult?: ATSScanResult
 }
 
 const SCAN_STEPS = [
@@ -31,6 +36,7 @@ const SCAN_STEPS = [
 
 export function ATSScanStep({
   editedContent,
+  reviewedResume,
   resumeId,
   jobDescription,
   jobTitle,
@@ -38,15 +44,27 @@ export function ATSScanStep({
   analysisResult,
   onScanComplete,
   onBack,
+  initialScanResult,
 }: ATSScanStepProps) {
-  // Scan state
+  // Note: reviewedResume can be used for more comprehensive ATS scanning
+  // Currently using editedContent for backward compatibility
+  // Scan state - initialize from props for back/forward navigation
   const [isScanning, setIsScanning] = useState(false)
-  const [scanResult, setScanResult] = useState<ATSScanResult | null>(null)
+  const [scanResult, setScanResult] = useState<ATSScanResult | null>(
+    initialScanResult ?? null
+  )
   const [error, setError] = useState<string | null>(null)
   const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(SCAN_STEPS)
+
+  // Sync state with props when navigating back (props change but component may be reused)
+  useEffect(() => {
+    if (initialScanResult) {
+      setScanResult(initialScanResult)
+    }
+  }, [initialScanResult])
 
   // Start scanning
   const handleStartScan = useCallback(async () => {

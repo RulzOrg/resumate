@@ -16,6 +16,7 @@ import type {
   ATSScanResult,
   InterviewPrepResult,
 } from "@/lib/types/optimize-flow"
+import type { ParsedResume } from "@/lib/resume-parser"
 
 // ============================================
 // Types
@@ -36,6 +37,7 @@ export interface OptimizationSession {
   analysis_result: AnalysisResult | null
   rewrite_result: RewriteResult | null
   edited_content: EditedContent | null
+  reviewed_resume: ParsedResume | null
   ats_scan_result: ATSScanResult | null
   interview_prep_result: InterviewPrepResult | null
   last_active_at: string
@@ -60,6 +62,7 @@ export interface UpdateSessionInput {
   analysis_result?: AnalysisResult
   rewrite_result?: RewriteResult
   edited_content?: EditedContent
+  reviewed_resume?: ParsedResume
   ats_scan_result?: ATSScanResult
   interview_prep_result?: InterviewPrepResult
 }
@@ -300,6 +303,11 @@ export async function updateOptimizationSession(
     values.push(JSON.stringify(input.edited_content))
   }
 
+  if (input.reviewed_resume !== undefined) {
+    updates.push(`reviewed_resume = $${paramIndex++}`)
+    values.push(JSON.stringify(input.reviewed_resume))
+  }
+
   if (input.ats_scan_result !== undefined) {
     updates.push(`ats_scan_result = $${paramIndex++}`)
     values.push(JSON.stringify(input.ats_scan_result))
@@ -345,12 +353,19 @@ export async function updateOptimizationSession(
 
 /**
  * Save step result and advance to next step
+ *
+ * Step flow (5 steps):
+ * 1. Analysis -> 2
+ * 2. Rewrite -> 3
+ * 3. Review Resume -> 4
+ * 4. ATS Scan -> 5
+ * 5. Interview Prep -> completed
  */
 export async function saveStepAndAdvance(
   sessionId: string,
   userId: string,
   step: FlowStep,
-  result: AnalysisResult | RewriteResult | ATSScanResult | InterviewPrepResult,
+  result: AnalysisResult | RewriteResult | ParsedResume | ATSScanResult | InterviewPrepResult,
   additionalData?: {
     resumeText?: string
     editedContent?: EditedContent
@@ -375,10 +390,15 @@ export async function saveStepAndAdvance(
       input.current_step = 3
       break
     case 3:
-      input.ats_scan_result = result as ATSScanResult
+      // Step 3: Review Resume - save the full edited ParsedResume
+      input.reviewed_resume = result as ParsedResume
       input.current_step = 4
       break
     case 4:
+      input.ats_scan_result = result as ATSScanResult
+      input.current_step = 5
+      break
+    case 5:
       input.interview_prep_result = result as InterviewPrepResult
       input.status = "completed"
       break
@@ -477,6 +497,11 @@ function parseSessionFromDb(row: any): OptimizationSession {
           ? JSON.parse(row.edited_content)
           : row.edited_content)
       : null,
+    reviewed_resume: row.reviewed_resume
+      ? (typeof row.reviewed_resume === "string"
+          ? JSON.parse(row.reviewed_resume)
+          : row.reviewed_resume)
+      : null,
     ats_scan_result: row.ats_scan_result
       ? (typeof row.ats_scan_result === "string"
           ? JSON.parse(row.ats_scan_result)
@@ -502,12 +527,16 @@ export function sessionToFlowState(session: OptimizationSession): OptimizeFlowSt
     currentStep: session.current_step,
     resumeId: session.resume_id,
     resumeText: session.resume_text || undefined,
+    // Note: parsedResume comes from cached structure (resumes table), not the session
+    // The caller should fetch it separately via getCachedStructure(session.resume_id)
+    parsedResume: null,
     jobTitle: session.job_title,
     jobDescription: session.job_description,
     companyName: session.company_name || "",
     analysisResult: session.analysis_result,
     rewriteResult: session.rewrite_result,
     editedContent: session.edited_content,
+    reviewedResume: session.reviewed_resume,
     atsScanResult: session.ats_scan_result,
     interviewPrepResult: session.interview_prep_result,
     isLoading: false,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Mic, SkipForward, Loader2, MessageSquare, Brain, Users } from "lucide-react"
 import { ProcessingOverlay, useProcessingSteps } from "@/components/ui/processing-overlay"
@@ -18,6 +18,8 @@ interface InterviewPrepStepProps {
   onComplete: (result: InterviewPrepResult) => void
   onBack: () => void
   onSkip: () => void
+  /** Initial prep result to restore (from wizard state on back/forward) */
+  initialPrepResult?: InterviewPrepResult
 }
 
 const PREP_STEPS = [
@@ -38,15 +40,25 @@ export function InterviewPrepStep({
   onComplete,
   onBack,
   onSkip,
+  initialPrepResult,
 }: InterviewPrepStepProps) {
-  // Prep state
+  // Prep state - initialize from props for back/forward navigation
   const [isGenerating, setIsGenerating] = useState(false)
-  const [prepResult, setPrepResult] = useState<InterviewPrepResult | null>(null)
+  const [prepResult, setPrepResult] = useState<InterviewPrepResult | null>(
+    initialPrepResult ?? null
+  )
   const [error, setError] = useState<string | null>(null)
   const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(PREP_STEPS)
+
+  // Sync state with props when navigating back (props change but component may be reused)
+  useEffect(() => {
+    if (initialPrepResult) {
+      setPrepResult(initialPrepResult)
+    }
+  }, [initialPrepResult])
 
   // Start generating
   const handleStartGenerate = useCallback(async () => {

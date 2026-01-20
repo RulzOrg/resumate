@@ -193,7 +193,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
         // Optionally run additional analysis here
         // For now, just show success
         setTimeout(() => {
-          router.push(`/dashboard/optimize?resumeId=${result.resumeId}`)
+          router.push(`/dashboard/optimize-flow?resumeId=${result.resumeId}`)
           setOpen(false)
           resetForm()
         }, 1500)
@@ -211,7 +211,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
   }
 
   const handleProceedToOptimization = () => {
-    router.push(`/dashboard/optimize?resumeId=${uploadedResumeId}`)
+    router.push(`/dashboard/optimize-flow?resumeId=${uploadedResumeId}`)
     setOpen(false)
     resetForm()
   }

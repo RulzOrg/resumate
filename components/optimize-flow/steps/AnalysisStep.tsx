@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Check, Sparkles, Loader2 } from "lucide-react"
@@ -10,6 +10,7 @@ import { RetryIndicator } from "@/components/ui/retry-indicator"
 import { AnalysisResults } from "../results/AnalysisResults"
 import { fetchWithRetry, initialRetryState, type RetryState } from "@/lib/utils/api-retry"
 import type { AnalysisResult } from "@/lib/types/optimize-flow"
+import type { ParsedResume } from "@/lib/resume-parser"
 
 interface Resume {
   id: string
@@ -24,9 +25,20 @@ interface AnalysisStepProps {
   onAnalysisComplete: (
     result: AnalysisResult,
     resumeText: string,
-    formData: { resumeId: string; jobTitle: string; jobDescription: string; companyName: string }
+    formData: { resumeId: string; jobTitle: string; jobDescription: string; companyName: string },
+    parsedResume?: ParsedResume | null
   ) => void
   initialResumeId?: string
+  /** Initial analysis result to restore (from wizard state on back/forward) */
+  initialAnalysisResult?: AnalysisResult
+  /** Initial resume text to restore */
+  initialResumeText?: string
+  /** Initial job title to restore */
+  initialJobTitle?: string
+  /** Initial job description to restore */
+  initialJobDescription?: string
+  /** Initial company name to restore */
+  initialCompanyName?: string
 }
 
 const ANALYSIS_STEPS = [
@@ -41,24 +53,54 @@ export function AnalysisStep({
   resumes,
   onAnalysisComplete,
   initialResumeId,
+  initialAnalysisResult,
+  initialResumeText,
+  initialJobTitle,
+  initialJobDescription,
+  initialCompanyName,
 }: AnalysisStepProps) {
-  // Form state
+  // Form state - initialize from props for back/forward navigation
   const [selectedResumeId, setSelectedResumeId] = useState(
     initialResumeId || resumes[0]?.id || ""
   )
-  const [jobTitle, setJobTitle] = useState("")
-  const [companyName, setCompanyName] = useState("")
-  const [jobDescription, setJobDescription] = useState("")
+  const [jobTitle, setJobTitle] = useState(initialJobTitle ?? "")
+  const [companyName, setCompanyName] = useState(initialCompanyName ?? "")
+  const [jobDescription, setJobDescription] = useState(initialJobDescription ?? "")
   const [error, setError] = useState<string | null>(null)
 
-  // Analysis state
+  // Analysis state - initialize from props for back/forward navigation
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null)
-  const [resumeText, setResumeText] = useState<string>("")
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
+    initialAnalysisResult ?? null
+  )
+  const [resumeText, setResumeText] = useState<string>(initialResumeText ?? "")
+  const [parsedResume, setParsedResume] = useState<ParsedResume | null>(null)
   const [retryState, setRetryState] = useState<RetryState>(initialRetryState)
 
   // Processing steps
   const processingSteps = useProcessingSteps(ANALYSIS_STEPS)
+
+  // Sync state with props when navigating back (props change but component may be reused)
+  useEffect(() => {
+    if (initialAnalysisResult) {
+      setAnalysisResult(initialAnalysisResult)
+    }
+    if (initialResumeText) {
+      setResumeText(initialResumeText)
+    }
+    if (initialJobTitle) {
+      setJobTitle(initialJobTitle)
+    }
+    if (initialJobDescription) {
+      setJobDescription(initialJobDescription)
+    }
+    if (initialCompanyName) {
+      setCompanyName(initialCompanyName)
+    }
+    if (initialResumeId) {
+      setSelectedResumeId(initialResumeId)
+    }
+  }, [initialAnalysisResult, initialResumeText, initialJobTitle, initialJobDescription, initialCompanyName, initialResumeId])
 
   // Validation
   const [jobTitleTouched, setJobTitleTouched] = useState(false)
@@ -138,6 +180,7 @@ export function AnalysisStep({
       // Store results
       setAnalysisResult(data.result)
       setResumeText(data.resume_text || "")
+      setParsedResume(data.parsed_resume || null)
       setRetryState(initialRetryState)
 
       // Small delay to show completion
@@ -159,12 +202,17 @@ export function AnalysisStep({
 
   const handleContinue = () => {
     if (analysisResult) {
-      onAnalysisComplete(analysisResult, resumeText, {
-        resumeId: selectedResumeId,
-        jobTitle: jobTitle.trim(),
-        jobDescription: jobDescription.trim(),
-        companyName: companyName.trim(),
-      })
+      onAnalysisComplete(
+        analysisResult,
+        resumeText,
+        {
+          resumeId: selectedResumeId,
+          jobTitle: jobTitle.trim(),
+          jobDescription: jobDescription.trim(),
+          companyName: companyName.trim(),
+        },
+        parsedResume
+      )
     }
   }
 

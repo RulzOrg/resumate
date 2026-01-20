@@ -143,7 +143,7 @@ export function GettingStartedCard({
             hasResume ? (
               <p className="text-xs text-emerald-500">
                 <FileText className="inline h-3 w-3 mr-1" />
-                Use the Quick Optimize form above
+                Paste a job description above to get started
               </p>
             ) : null
           }

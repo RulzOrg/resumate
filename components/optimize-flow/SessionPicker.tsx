@@ -39,12 +39,13 @@ interface SessionPickerProps {
 const STEP_LABELS: Record<FlowStep, string> = {
   1: "Analysis",
   2: "Rewrite",
-  3: "ATS Scan",
-  4: "Interview Prep",
+  3: "Review",
+  4: "ATS Scan",
+  5: "Interview Prep",
 }
 
 function getStepProgress(step: FlowStep): number {
-  return ((step - 1) / 3) * 100
+  return ((step - 1) / 4) * 100
 }
 
 export function SessionPicker({

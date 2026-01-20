@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getOrCreateUser } from "@/lib/db"
+import { getOrCreateUser, getCachedStructure } from "@/lib/db"
 import { handleApiError, AppError } from "@/lib/error-handler"
 import {
   getOptimizationSessionById,
@@ -51,9 +51,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       throw new AppError("Session not found", 404)
     }
 
+    // Fetch the parsed resume structure from cache (stored separately from session)
+    const parsedResume = await getCachedStructure(session.resume_id)
+
     return NextResponse.json({
       success: true,
-      session,
+      session: {
+        ...session,
+        parsed_resume: parsedResume || null,
+      },
     })
   } catch (error) {
     console.error("[Sessions API] GET error:", error)

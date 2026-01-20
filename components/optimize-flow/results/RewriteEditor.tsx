@@ -416,13 +416,13 @@ export function RewriteEditor({
       {/* Continue Button */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border dark:border-white/10">
         <p className="text-xs text-foreground/40 dark:text-white/40 text-center sm:text-left">
-          Content is saved automatically. Click continue when ready for ATS scanning.
+          Content is saved automatically. Click continue to review your full resume.
         </p>
         <Button
           onClick={onContinue}
           className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-black"
         >
-          Continue to ATS Scan
+          Review Resume
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
       </div>

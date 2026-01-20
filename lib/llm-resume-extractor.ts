@@ -306,8 +306,24 @@ const ParsedResumeSchema = z.object({
     z.array(CertificationItemSchema).optional().default([])
   ),
   awards: z.array(z.string()).optional().default([]),
-  projects: z.array(ProjectItemSchema).optional().default([]),
-  volunteering: z.array(VolunteerItemSchema).optional().default([]),
+  projects: z.preprocess(
+    (val) => {
+      if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'string') {
+        return val.map(name => ({ name, bullets: [] }));
+      }
+      return val;
+    },
+    z.array(ProjectItemSchema).optional().default([])
+  ),
+  volunteering: z.preprocess(
+    (val) => {
+      if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'string') {
+        return val.map(org => ({ organization: org }));
+      }
+      return val;
+    },
+    z.array(VolunteerItemSchema).optional().default([])
+  ),
   publications: z.array(PublicationItemSchema).optional().default([]),
 })
 

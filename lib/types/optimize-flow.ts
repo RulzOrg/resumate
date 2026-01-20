@@ -1,12 +1,15 @@
 /**
  * Type definitions for the Resume Optimization Flow
  *
- * This flow guides users through a 4-step process:
+ * This flow guides users through a 5-step process:
  * 1. Resume Analysis - Match score, strengths, weaknesses, keywords
  * 2. Experience Rewrite - X-Y-Z formula rewriting
- * 3. ATS Scanner - Section compatibility check
- * 4. Interview Prep - Technical questions + answers
+ * 3. Review Resume - Full resume view/edit with merged content
+ * 4. ATS Scanner - Section compatibility check
+ * 5. Interview Prep - Technical questions + answers
  */
+
+import type { ParsedResume } from '@/lib/resume-parser'
 
 // ============================================
 // Step 1: Analysis Types
@@ -61,7 +64,14 @@ export interface EditedContent {
 }
 
 // ============================================
-// Step 3: ATS Scan Types
+// Step 3: Review Resume Types
+// ============================================
+
+// Note: ParsedResume is imported from '@/lib/resume-parser'
+// and used directly for step 3 reviewed resume data
+
+// ============================================
+// Step 4: ATS Scan Types
 // ============================================
 
 export type ATSSectionStatus = 'pass' | 'warning' | 'fail'
@@ -105,7 +115,7 @@ export interface ATSScanResult {
 }
 
 // ============================================
-// Step 4: Interview Prep Types
+// Step 5: Interview Prep Types
 // ============================================
 
 export type QuestionDifficulty = 'hard' | 'very_hard' | 'expert'
@@ -135,16 +145,18 @@ export interface InterviewPrepResult {
 // Flow State Types
 // ============================================
 
-export type FlowStep = 1 | 2 | 3 | 4
+export type FlowStep = 1 | 2 | 3 | 4 | 5
 
 export interface OptimizeFlowState {
-  /** Current step in the flow (1-4) */
+  /** Current step in the flow (1-5) */
   currentStep: FlowStep
 
   /** Selected resume ID */
   resumeId: string | null
   /** Resume text content (for passing between steps) */
   resumeText?: string
+  /** Parsed resume structure from LLM extraction (for full resume data) */
+  parsedResume: ParsedResume | null
   /** Job title */
   jobTitle: string
   /** Job description (pasted by user) */
@@ -160,10 +172,13 @@ export interface OptimizeFlowState {
   /** User-edited content after rewrite */
   editedContent: EditedContent | null
 
-  /** Step 3 ATS scan results */
+  /** Step 3 reviewed/edited full resume */
+  reviewedResume: ParsedResume | null
+
+  /** Step 4 ATS scan results */
   atsScanResult: ATSScanResult | null
 
-  /** Step 4 interview prep results */
+  /** Step 5 interview prep results */
   interviewPrepResult: InterviewPrepResult | null
 
   /** Flow metadata */
@@ -259,8 +274,23 @@ export interface RewriteStepProps {
   onBack: () => void
 }
 
+export interface ReviewResumeStepProps {
+  rewriteResult: RewriteResult
+  editedContent: EditedContent
+  /** Parsed resume structure from LLM extraction (optional - fallback constructed from rewrite) */
+  parsedResume?: ParsedResume
+  /** Fallback: raw resume text for parsing (deprecated) */
+  resumeText?: string
+  analysisResult: AnalysisResult
+  initialReviewedResume?: ParsedResume
+  onReviewComplete: (reviewedResume: ParsedResume) => void
+  onResumeChange: (resume: ParsedResume) => void
+  onBack: () => void
+}
+
 export interface ATSScanStepProps {
   editedContent: EditedContent
+  reviewedResume?: ParsedResume
   resumeId: string
   jobDescription: string
   onScanComplete: (result: ATSScanResult) => void
@@ -304,12 +334,18 @@ export const FLOW_STEPS: StepConfig[] = [
   },
   {
     number: 3,
+    title: 'Review',
+    description: 'Full resume edit',
+    icon: 'eye',
+  },
+  {
+    number: 4,
     title: 'ATS Scan',
     description: 'Compatibility check',
     icon: 'scan',
   },
   {
-    number: 4,
+    number: 5,
     title: 'Interview',
     description: 'Prepare answers',
     icon: 'mic',

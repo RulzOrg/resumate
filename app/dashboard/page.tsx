@@ -1,12 +1,11 @@
 import { getAuthenticatedUser } from "@/lib/user-data"
 import { getUserResumes, getUserOptimizedResumes } from "@/lib/db"
+import { getInProgressSessions } from "@/lib/db/optimization-sessions"
 import { getCurrentSubscription, getUsageLimits } from "@/lib/subscription"
-import { GeneratedResumesCompactList } from "@/components/optimization/GeneratedResumesCompactList"
-import Link from "next/link"
 import { AccountStatusCard } from "@/components/dashboard/AccountStatusCard"
 import { MasterResumesSection } from "@/components/dashboard/MasterResumesSection"
-import { QuickOptimizeForm } from "@/components/dashboard/QuickOptimizeForm"
 import { GettingStartedCard } from "@/components/dashboard/getting-started-card"
+import { DashboardClient } from "./dashboard-client"
 
 export default async function DashboardPage() {
   const user = await getAuthenticatedUser()
@@ -19,11 +18,13 @@ export default async function DashboardPage() {
     optimizedResumes,
     subscription,
     usageLimits,
+    inProgressSessions,
   ] = await Promise.all([
     getUserResumes(user.id).catch(() => [] as any[]),
     getUserOptimizedResumes(user.id).catch(() => [] as any[]),
     getCurrentSubscription().catch(() => null),
     getUsageLimits().catch(() => null),
+    getInProgressSessions(user.id, 5).catch(() => []),
   ])
 
   return (
@@ -36,30 +37,12 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Quick Optimize Section */}
-            <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
-              <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Quick Optimize</h2>
-              <QuickOptimizeForm resumes={resumes} />
-            </div>
-
-            {/* Optimized Resumes */}
-            {optimizedResumes.length > 0 && (
-              <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
-                <h2 className="text-xl font-medium tracking-tight font-space-grotesk mb-6">Optimized Resumes</h2>
-                <GeneratedResumesCompactList resumes={optimizedResumes.slice(0, 5)} limit={5} />
-                {optimizedResumes.length > 5 && (
-                  <div className="mt-4 text-center">
-                    <Link
-                      href="/dashboard/optimized"
-                      className="text-sm text-emerald-500 hover:text-emerald-400"
-                    >
-                      View all {optimizedResumes.length} optimized resumes →
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )}
+          <div className="lg:col-span-2">
+            <DashboardClient
+              resumes={resumes}
+              optimizedResumes={optimizedResumes}
+              inProgressSessions={inProgressSessions}
+            />
           </div>
 
           {/* Sidebar */}

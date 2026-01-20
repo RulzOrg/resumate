@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useCallback, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { OptimizeFlowWizard } from "@/components/optimize-flow/OptimizeFlowWizard"
 import { SessionPicker } from "@/components/optimize-flow/SessionPicker"
 import type { FlowStep } from "@/lib/types/optimize-flow"
@@ -32,12 +32,14 @@ interface SessionData {
   current_step: FlowStep
   resume_id: string
   resume_text?: string
+  parsed_resume?: any
   job_title: string
   job_description: string
   company_name?: string
   analysis_result?: any
   rewrite_result?: any
   edited_content?: any
+  reviewed_resume?: any
   ats_scan_result?: any
   interview_prep_result?: any
 }
@@ -52,10 +54,39 @@ export function OptimizeFlowPageClient({
   initialSessions,
 }: OptimizeFlowPageClientProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [sessions, setSessions] = useState<SessionSummary[]>(initialSessions)
   const [selectedSession, setSelectedSession] = useState<SessionData | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showWizard, setShowWizard] = useState(initialSessions.length === 0)
+
+  // Check for sessionId in URL params and auto-load it
+  useEffect(() => {
+    const sessionId = searchParams.get("sessionId")
+    if (sessionId && !selectedSession) {
+      // Auto-load the session from URL
+      setIsLoading(true)
+      fetch(`/api/optimize-flow/sessions/${sessionId}`)
+        .then((response) => {
+          if (!response.ok) throw new Error("Failed to load session")
+          return response.json()
+        })
+        .then((data) => {
+          setSelectedSession(data.session)
+          setShowWizard(true)
+          // Clear the sessionId from URL to avoid re-loading on refresh
+          router.replace("/dashboard/optimize-flow", { scroll: false })
+        })
+        .catch((error) => {
+          console.error("Error loading session from URL:", error)
+          // Show wizard anyway on error
+          setShowWizard(true)
+        })
+        .finally(() => {
+          setIsLoading(false)
+        })
+    }
+  }, [searchParams, selectedSession, router])
 
   // Handle selecting a session to resume
   const handleSelectSession = useCallback(async (sessionId: string) => {
@@ -97,6 +128,18 @@ export function OptimizeFlowPageClient({
     setSelectedSession(null)
     setShowWizard(true)
   }, [])
+
+  // Show loading state when loading from URL param
+  if (isLoading && searchParams.get("sessionId")) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-foreground/60 dark:text-white/60">Loading your session...</p>
+        </div>
+      </div>
+    )
+  }
 
   // If we're showing the wizard
   if (showWizard) {

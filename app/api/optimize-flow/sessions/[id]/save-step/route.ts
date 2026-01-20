@@ -7,8 +7,9 @@ import type { FlowStep } from "@/lib/types/optimize-flow"
 import { z } from "zod"
 
 // Schema for saving a step result
+// 5-step flow: 1=Analyze, 2=Rewrite, 3=Review, 4=ATS Scan, 5=Interview
 const SaveStepSchema = z.object({
-  step: z.number().min(1).max(4),
+  step: z.number().min(1).max(5),
   result: z.any(), // The step result (varies by step)
   resume_text: z.string().optional(), // Only for step 1
   edited_content: z.any().optional(), // Only for step 2
@@ -22,8 +23,12 @@ interface RouteParams {
  * POST /api/optimize-flow/sessions/[id]/save-step
  * Save a step result and advance to the next step
  *
- * This is a convenience endpoint that handles the step-specific
- * logic for saving results and advancing the flow.
+ * 5-step flow:
+ * - Step 1: Analysis → Step 2
+ * - Step 2: Rewrite → Step 3
+ * - Step 3: Review Resume → Step 4
+ * - Step 4: ATS Scan → Step 5
+ * - Step 5: Interview Prep → Completed
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
