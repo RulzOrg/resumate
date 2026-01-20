@@ -10,7 +10,7 @@ interface TagPageProps {
 
 // Generate static pages at build time
 export async function generateStaticParams() {
-  const tags = getAllTags()
+  const tags = await getAllTags()
   return tags.map((tag) => ({ slug: tag }))
 }
 

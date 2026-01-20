@@ -11,6 +11,46 @@ Started: Initial setup
 - Prisma schema is at prisma/schema.prisma
 - Authentication via Clerk - use middleware.ts for protected routes
 - Always run `npm run lint` and `npm run build` before committing
+- Storage uses Supabase Storage via lib/storage.ts and lib/supabase-storage.ts
+- Resume storage key format: `{userId}/{kind}/{timestamp}-{filename}`
+- Storage key stored in resume.source_metadata.key (may need fallback to file_url)
+- Blog async functions: getAllTags(), getAllCategories() etc. are async - always await them
 
+---
+
+## 2026-01-20 - US-001: Fix Signed URL Generation in View API
+- **What was implemented:**
+  - Fixed incomplete fallback logic in /api/resumes/[id]/view/route.ts
+  - Added proper key extraction from file_url for Supabase Storage URLs
+  - Added comprehensive console logging for debugging preview issues
+  - Added specific error handling for signed URL generation failures
+- **Files changed:**
+  - app/api/resumes/[id]/view/route.ts
+- **Learnings for future iterations:**
+  - Supabase Storage URL format: `/storage/v1/object/{sign|public}/{bucket}/{key}`
+  - storage.ts strips `resumes/` or `exports/` prefix from key before calling Supabase
+  - Resume kind is stored in DB but also embedded in storage key path (e.g., `{userId}/master/{timestamp}-{file}`)
+  - source_metadata.key is the primary source for storage keys; file_url is a fallback
+  - The codebase has pre-existing TypeScript errors and a build failure in blog tag page - not blocking for other changes
+---
+
+## 2026-01-20 - US-002: Verify PDF Preview Works in Dialog
+- **What was implemented:**
+  - Verified master-resume-preview-dialog.tsx correctly implements all preview functionality
+  - Fixed pre-existing async bug in app/blog/tag/[slug]/page.tsx that was blocking builds
+  - All acceptance criteria verified through code review
+- **Files changed:**
+  - app/blog/tag/[slug]/page.tsx (fixed missing await on getAllTags())
+- **Acceptance criteria verified:**
+  - Preview dialog opens via eye icon click (line 225-231 in MasterResumesSection.tsx)
+  - Loading spinner shows with Loader2 component while fetching
+  - PDF iframe renders with signed URL on success
+  - Dialog closes via onOpenChange callback
+  - Error state resets in useEffect when dialog closes (lines 22-28)
+- **Learnings for future iterations:**
+  - Preview dialog at components/dashboard/master-resume-preview-dialog.tsx
+  - Eye icon triggers handlePreview() in MasterResumesSection.tsx
+  - isPdf check uses both file_type and file extension fallback
+  - Dialog uses shadcn/ui Dialog component with DialogContent, DialogHeader, DialogTitle
 ---
 
