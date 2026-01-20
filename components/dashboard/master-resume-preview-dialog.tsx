@@ -27,6 +27,32 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
     }
   }, [open])
 
+  // Get user-friendly error message based on error code or status
+  const getErrorMessage = (status: number, code?: string): string => {
+    // Handle specific error codes first
+    if (code === "RESUME_NOT_FOUND" || code === "STORAGE_KEY_NOT_FOUND") {
+      return "Resume not found"
+    }
+    if (code === "UNAUTHORIZED" || code === "FORBIDDEN") {
+      return "You do not have permission to view this resume"
+    }
+    if (code === "SIGNED_URL_FAILED" || code === "SERVER_ERROR") {
+      return "Unable to generate preview link. Please try downloading instead."
+    }
+
+    // Fallback to status-based messages
+    switch (status) {
+      case 404:
+        return "Resume not found"
+      case 401:
+      case 403:
+        return "You do not have permission to view this resume"
+      case 500:
+      default:
+        return "Unable to generate preview link. Please try downloading instead."
+    }
+  }
+
   // Fetch signed URL when resume is selected and dialog opens
   useEffect(() => {
     if (open && resume) {
@@ -36,13 +62,22 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
         try {
           const response = await fetch(`/api/resumes/${resume.id}/view`)
           if (!response.ok) {
-            throw new Error('Failed to generate secure preview link')
+            // Try to parse JSON error response
+            let errorCode: string | undefined
+            try {
+              const errorData = await response.json()
+              errorCode = errorData.code
+            } catch {
+              // Response wasn't JSON, use status-based message
+            }
+            const errorMessage = getErrorMessage(response.status, errorCode)
+            throw new Error(errorMessage)
           }
           const data = await response.json()
           setSignedUrl(data.url)
         } catch (err) {
           console.error("Preview error:", err)
-          setError("Could not load document preview. Please try downloading instead.")
+          setError(err instanceof Error ? err.message : "Could not load document preview. Please try downloading instead.")
         } finally {
           setIsLoading(false)
         }
@@ -123,13 +158,17 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
               <p className="text-sm text-muted-foreground">Loading preview...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center gap-3 text-center p-6">
-              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-red-600 dark:text-red-400">
-                <AlertCircle className="h-6 w-6" />
+            <div className="flex flex-col items-center gap-4 text-center p-6">
+              <div className="h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-red-600 dark:text-red-400">
+                <AlertCircle className="h-7 w-7" />
               </div>
-              <p className="text-sm font-medium">{error}</p>
-              <Button variant="outline" onClick={handleDownload} className="mt-2">
-                Try Direct Download
+              <div className="space-y-1">
+                <p className="text-base font-medium">{error}</p>
+                <p className="text-sm text-muted-foreground">You can still download the file directly.</p>
+              </div>
+              <Button onClick={handleDownload} className="mt-2 gap-2">
+                <Download className="h-4 w-4" />
+                Download File
               </Button>
             </div>
           ) : isPdf && signedUrl ? (

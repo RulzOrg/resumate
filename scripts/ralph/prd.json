@@ -52,8 +52,8 @@
         "Verify in browser manually"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added file type detection using getFileExtension helper. DOCX files use Google Docs Viewer iframe. Legacy .doc shows download message. Manual browser verification recommended."
     },
     {
       "id": "US-004",
@@ -71,8 +71,8 @@
         "Verify in browser manually"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added resumeExists() helper to db.ts. API returns 403 FORBIDDEN when resume exists but user doesn't own it. Preview dialog shows specific messages based on error code. Download button always visible on errors."
     },
     {
       "id": "US-005",

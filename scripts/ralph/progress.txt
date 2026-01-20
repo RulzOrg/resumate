@@ -54,3 +54,46 @@ Started: Initial setup
   - Dialog uses shadcn/ui Dialog component with DialogContent, DialogHeader, DialogTitle
 ---
 
+## 2026-01-20 - US-003: Add DOCX Preview Support Using Google Docs Viewer
+- **What was implemented:**
+  - Added file type detection using getFileExtension helper function
+  - Implemented Google Docs Viewer iframe for DOCX files: `https://docs.google.com/viewer?url=${encodeURIComponent(signedUrl)}&embedded=true`
+  - Added special handling for legacy .doc format with download-only message
+  - PDF files continue using direct iframe embed with toolbar disabled
+- **Files changed:**
+  - components/dashboard/master-resume-preview-dialog.tsx
+- **Acceptance criteria verified:**
+  - File type detection via extension (pdf, docx, doc) at lines 57-68
+  - DOCX uses Google Docs Viewer iframe at lines 141-146
+  - Legacy .doc shows download message at lines 147-162
+  - PDF iframe unchanged at lines 135-140
+  - npm run lint passes (only pre-existing warnings)
+  - npm run build passes successfully
+- **Learnings for future iterations:**
+  - Google Docs Viewer requires URL to be publicly accessible (signed URLs work)
+  - File extension extraction: `fileName.toLowerCase().split('.').pop() || ''`
+  - MIME type for DOCX: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+  - Build cache can cause false "PageNotFound" errors - use `rm -rf .next` for clean builds
+---
+
+## 2026-01-20 - US-004: Improve Error Handling with Specific Messages
+- **What was implemented:**
+  - Added `resumeExists()` helper function in lib/db.ts to check if resume exists without user constraint
+  - API now returns 403 FORBIDDEN when resume exists but user doesn't own it (vs 404 for non-existent)
+  - Updated preview dialog `getErrorMessage()` to handle new FORBIDDEN error code
+  - Error UI always shows download button prominently
+- **Files changed:**
+  - lib/db.ts (added resumeExists function)
+  - app/api/resumes/[id]/view/route.ts (added 403 handling)
+  - components/dashboard/master-resume-preview-dialog.tsx (updated error code handling)
+- **Acceptance criteria verified:**
+  - API returns 404 for "Resume not found", 403 for "No permission", 500 for server errors
+  - Preview dialog shows specific messages based on error code
+  - Download button always visible when error occurs
+  - npm run lint passes
+- **Learnings for future iterations:**
+  - Use separate queries to distinguish 404 (not found) vs 403 (forbidden) responses
+  - Always parse JSON error responses to get error codes for specific messaging
+  - API error format: `{ error: string, code: string }` for consistent client handling
+---
+

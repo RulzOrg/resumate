@@ -1,7 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { getResumeById, getOrCreateUser } from "@/lib/db"
+import { getResumeById, getOrCreateUser, resumeExists } from "@/lib/db"
 import { getSignedDownloadUrl } from "@/lib/storage"
+
+// Error response helper for consistent JSON error format
+function errorResponse(message: string, code: string, status: number) {
+  return NextResponse.json({ error: message, code }, { status })
+}
 
 export async function GET(
   request: NextRequest,
@@ -10,22 +15,27 @@ export async function GET(
   try {
     const { userId } = await auth()
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return errorResponse("You must be logged in to view this resume", "UNAUTHORIZED", 401)
     }
 
     const { id } = await params
-    
+
     // Ensure DB user exists
     const user = await getOrCreateUser()
     if (!user) {
-      return new NextResponse("User not found", { status: 404 })
+      return errorResponse("User account not found", "USER_NOT_FOUND", 404)
     }
 
     // Get resume and verify ownership
     const resume = await getResumeById(id, user.id)
-    
+
     if (!resume) {
-      return new NextResponse("Resume not found", { status: 404 })
+      // Check if resume exists but belongs to another user (403) vs doesn't exist (404)
+      const exists = await resumeExists(id)
+      if (exists) {
+        return errorResponse("You do not have permission to view this resume", "FORBIDDEN", 403)
+      }
+      return errorResponse("Resume not found", "RESUME_NOT_FOUND", 404)
     }
 
     // Try to get key from source_metadata first
@@ -71,7 +81,7 @@ export async function GET(
         source_metadata: resume.source_metadata,
         file_url: resume.file_url,
       })
-      return new NextResponse("File storage key not found", { status: 404 })
+      return errorResponse("File storage key not found", "STORAGE_KEY_NOT_FOUND", 404)
     }
 
     console.log(`[Resume View] Using key: ${key}`)
@@ -83,10 +93,10 @@ export async function GET(
       return NextResponse.json({ url })
     } catch (storageError) {
       console.error(`[Resume View] Failed to generate signed URL for resume ${id}:`, storageError)
-      return new NextResponse("Failed to generate preview URL", { status: 500 })
+      return errorResponse("Failed to generate preview URL", "SIGNED_URL_FAILED", 500)
     }
   } catch (error) {
     console.error("[Resume View] Unexpected error:", error)
-    return new NextResponse("Internal server error", { status: 500 })
+    return errorResponse("Internal server error", "SERVER_ERROR", 500)
   }
 }
