@@ -1,0 +1,16 @@
+# Ralph Progress Log
+Started: Initial setup
+---
+
+## Codebase Patterns
+- Use `@/` path alias for imports from the root directory
+- Database queries and utilities in lib/db.ts
+- API routes use Next.js App Router in app/api/
+- UI components use Shadcn/ui from components/ui/
+- Use Zod for schema validation
+- Prisma schema is at prisma/schema.prisma
+- Authentication via Clerk - use middleware.ts for protected routes
+- Always run `npm run lint` and `npm run build` before committing
+
+---
+

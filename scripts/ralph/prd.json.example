@@ -1,0 +1,52 @@
+{
+  "project": "Resumate",
+  "branchName": "ralph/example-feature",
+  "description": "Example Feature - This is a template showing the prd.json format",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add new database field",
+      "description": "As a developer, I need to store X in the database so it persists across sessions.",
+      "acceptanceCriteria": [
+        "Add new field to Prisma schema",
+        "Generate and run migration successfully",
+        "npm run lint passes",
+        "npm run build passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Create API endpoint",
+      "description": "As a developer, I need an API endpoint to interact with the new feature.",
+      "acceptanceCriteria": [
+        "Create route in app/api/",
+        "Implement GET and POST handlers",
+        "Add proper error handling",
+        "npm run lint passes",
+        "npm run build passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Build UI component",
+      "description": "As a user, I want to see and interact with the new feature in the dashboard.",
+      "acceptanceCriteria": [
+        "Create component in components/",
+        "Style with Tailwind CSS",
+        "Connect to API endpoint",
+        "npm run lint passes",
+        "npm run build passes",
+        "Verify in browser manually"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}
