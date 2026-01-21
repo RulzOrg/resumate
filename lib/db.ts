@@ -728,10 +728,18 @@ export async function getMasterResume(user_id: string) {
 
 export async function getResumeById(id: string, user_id: string) {
   const [resume] = await sql`
-    SELECT * FROM resumes 
+    SELECT * FROM resumes
     WHERE id = ${id} AND user_id = ${user_id} AND deleted_at IS NULL
   `
   return resume as Resume | undefined
+}
+
+// Check if a resume exists (without user ownership check) - used for distinguishing 404 vs 403
+export async function resumeExists(id: string): Promise<boolean> {
+  const [result] = await sql`
+    SELECT EXISTS(SELECT 1 FROM resumes WHERE id = ${id} AND deleted_at IS NULL) as exists
+  `
+  return result?.exists === true
 }
 
 export async function updateResume(id: string, user_id: string, data: Partial<Resume>) {

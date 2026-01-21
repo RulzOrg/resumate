@@ -27,6 +27,32 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
     }
   }, [open])
 
+  // Get user-friendly error message based on error code or status
+  const getErrorMessage = (status: number, code?: string): string => {
+    // Handle specific error codes first
+    if (code === "RESUME_NOT_FOUND" || code === "STORAGE_KEY_NOT_FOUND") {
+      return "Resume not found"
+    }
+    if (code === "UNAUTHORIZED" || code === "FORBIDDEN") {
+      return "You do not have permission to view this resume"
+    }
+    if (code === "SIGNED_URL_FAILED" || code === "SERVER_ERROR") {
+      return "Unable to generate preview link. Please try downloading instead."
+    }
+
+    // Fallback to status-based messages
+    switch (status) {
+      case 404:
+        return "Resume not found"
+      case 401:
+      case 403:
+        return "You do not have permission to view this resume"
+      case 500:
+      default:
+        return "Unable to generate preview link. Please try downloading instead."
+    }
+  }
+
   // Fetch signed URL when resume is selected and dialog opens
   useEffect(() => {
     if (open && resume) {
@@ -36,13 +62,22 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
         try {
           const response = await fetch(`/api/resumes/${resume.id}/view`)
           if (!response.ok) {
-            throw new Error('Failed to generate secure preview link')
+            // Try to parse JSON error response
+            let errorCode: string | undefined
+            try {
+              const errorData = await response.json()
+              errorCode = errorData.code
+            } catch {
+              // Response wasn't JSON, use status-based message
+            }
+            const errorMessage = getErrorMessage(response.status, errorCode)
+            throw new Error(errorMessage)
           }
           const data = await response.json()
           setSignedUrl(data.url)
         } catch (err) {
           console.error("Preview error:", err)
-          setError("Could not load document preview. Please try downloading instead.")
+          setError(err instanceof Error ? err.message : "Could not load document preview. Please try downloading instead.")
         } finally {
           setIsLoading(false)
         }
@@ -54,8 +89,18 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
 
   if (!resume) return null
 
-  // Check if file is PDF (standard MIME types)
-  const isPdf = resume.file_type === "application/pdf" || resume.file_name.toLowerCase().endsWith(".pdf")
+  // Get file extension for type detection
+  const getFileExtension = (fileName: string): string => {
+    const ext = fileName.toLowerCase().split('.').pop() || ''
+    return ext
+  }
+
+  const fileExtension = getFileExtension(resume.file_name)
+
+  // Detect file type from extension
+  const isPdf = fileExtension === 'pdf' || resume.file_type === "application/pdf"
+  const isDocx = fileExtension === 'docx' || resume.file_type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  const isLegacyDoc = fileExtension === 'doc' && !isDocx
 
   const handleDownload = () => {
     // Use signed URL if available, otherwise fallback to public URL (which might fail if bucket is private)
@@ -113,13 +158,17 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
               <p className="text-sm text-muted-foreground">Loading preview...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center gap-3 text-center p-6">
-              <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-red-600 dark:text-red-400">
-                <AlertCircle className="h-6 w-6" />
+            <div className="flex flex-col items-center gap-4 text-center p-6">
+              <div className="h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center text-red-600 dark:text-red-400">
+                <AlertCircle className="h-7 w-7" />
               </div>
-              <p className="text-sm font-medium">{error}</p>
-              <Button variant="outline" onClick={handleDownload} className="mt-2">
-                Try Direct Download
+              <div className="space-y-1">
+                <p className="text-base font-medium">{error}</p>
+                <p className="text-sm text-muted-foreground">You can still download the file directly.</p>
+              </div>
+              <Button onClick={handleDownload} className="mt-2 gap-2">
+                <Download className="h-4 w-4" />
+                Download File
               </Button>
             </div>
           ) : isPdf && signedUrl ? (
@@ -128,16 +177,39 @@ export function MasterResumePreviewDialog({ open, onOpenChange, resume }: Master
               className="w-full h-full border-0"
               title={`Preview of ${resume.file_name}`}
             />
+          ) : isDocx && signedUrl ? (
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(signedUrl)}&embedded=true`}
+              className="w-full h-full border-0"
+              title={`Preview of ${resume.file_name}`}
+            />
+          ) : isLegacyDoc ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-in fade-in duration-300">
+              <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6">
+                <FileText className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Legacy .doc format</h3>
+              <p className="text-muted-foreground max-w-md mb-8">
+                Legacy .doc format cannot be previewed in the browser.
+                <br />
+                Please download to view.
+              </p>
+              <Button onClick={handleDownload} className="gap-2">
+                <Download className="h-4 w-4" />
+                Download File
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center animate-in fade-in duration-300">
               <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center mb-6">
                 <FileText className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="text-xl font-semibold mb-2">Preview not available</h3>
+              <h3 className="text-xl font-semibold mb-2">Preview not available for this file type</h3>
+              <p className="text-sm text-muted-foreground mb-2 font-medium">{resume.file_name}</p>
               <p className="text-muted-foreground max-w-md mb-8">
-                {isPdf 
-                  ? "Unable to render PDF preview." 
-                  : `This file format (${resume.file_type}) cannot be previewed directly in the browser.`}
+                {isPdf
+                  ? "Unable to render PDF preview."
+                  : `This file format cannot be previewed directly in the browser.`}
                 <br />
                 Please download the file to view its original formatting.
               </p>

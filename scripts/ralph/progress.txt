@@ -11,6 +11,109 @@ Started: Initial setup
 - Prisma schema is at prisma/schema.prisma
 - Authentication via Clerk - use middleware.ts for protected routes
 - Always run `npm run lint` and `npm run build` before committing
+- Storage uses Supabase Storage via lib/storage.ts and lib/supabase-storage.ts
+- Resume storage key format: `{userId}/{kind}/{timestamp}-{filename}`
+- Storage key stored in resume.source_metadata.key (may need fallback to file_url)
+- Blog async functions: getAllTags(), getAllCategories() etc. are async - always await them
 
+---
+
+## 2026-01-20 - US-001: Fix Signed URL Generation in View API
+- **What was implemented:**
+  - Fixed incomplete fallback logic in /api/resumes/[id]/view/route.ts
+  - Added proper key extraction from file_url for Supabase Storage URLs
+  - Added comprehensive console logging for debugging preview issues
+  - Added specific error handling for signed URL generation failures
+- **Files changed:**
+  - app/api/resumes/[id]/view/route.ts
+- **Learnings for future iterations:**
+  - Supabase Storage URL format: `/storage/v1/object/{sign|public}/{bucket}/{key}`
+  - storage.ts strips `resumes/` or `exports/` prefix from key before calling Supabase
+  - Resume kind is stored in DB but also embedded in storage key path (e.g., `{userId}/master/{timestamp}-{file}`)
+  - source_metadata.key is the primary source for storage keys; file_url is a fallback
+  - The codebase has pre-existing TypeScript errors and a build failure in blog tag page - not blocking for other changes
+---
+
+## 2026-01-20 - US-002: Verify PDF Preview Works in Dialog
+- **What was implemented:**
+  - Verified master-resume-preview-dialog.tsx correctly implements all preview functionality
+  - Fixed pre-existing async bug in app/blog/tag/[slug]/page.tsx that was blocking builds
+  - All acceptance criteria verified through code review
+- **Files changed:**
+  - app/blog/tag/[slug]/page.tsx (fixed missing await on getAllTags())
+- **Acceptance criteria verified:**
+  - Preview dialog opens via eye icon click (line 225-231 in MasterResumesSection.tsx)
+  - Loading spinner shows with Loader2 component while fetching
+  - PDF iframe renders with signed URL on success
+  - Dialog closes via onOpenChange callback
+  - Error state resets in useEffect when dialog closes (lines 22-28)
+- **Learnings for future iterations:**
+  - Preview dialog at components/dashboard/master-resume-preview-dialog.tsx
+  - Eye icon triggers handlePreview() in MasterResumesSection.tsx
+  - isPdf check uses both file_type and file extension fallback
+  - Dialog uses shadcn/ui Dialog component with DialogContent, DialogHeader, DialogTitle
+---
+
+## 2026-01-20 - US-003: Add DOCX Preview Support Using Google Docs Viewer
+- **What was implemented:**
+  - Added file type detection using getFileExtension helper function
+  - Implemented Google Docs Viewer iframe for DOCX files: `https://docs.google.com/viewer?url=${encodeURIComponent(signedUrl)}&embedded=true`
+  - Added special handling for legacy .doc format with download-only message
+  - PDF files continue using direct iframe embed with toolbar disabled
+- **Files changed:**
+  - components/dashboard/master-resume-preview-dialog.tsx
+- **Acceptance criteria verified:**
+  - File type detection via extension (pdf, docx, doc) at lines 57-68
+  - DOCX uses Google Docs Viewer iframe at lines 141-146
+  - Legacy .doc shows download message at lines 147-162
+  - PDF iframe unchanged at lines 135-140
+  - npm run lint passes (only pre-existing warnings)
+  - npm run build passes successfully
+- **Learnings for future iterations:**
+  - Google Docs Viewer requires URL to be publicly accessible (signed URLs work)
+  - File extension extraction: `fileName.toLowerCase().split('.').pop() || ''`
+  - MIME type for DOCX: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+  - Build cache can cause false "PageNotFound" errors - use `rm -rf .next` for clean builds
+---
+
+## 2026-01-20 - US-004: Improve Error Handling with Specific Messages
+- **What was implemented:**
+  - Added `resumeExists()` helper function in lib/db.ts to check if resume exists without user constraint
+  - API now returns 403 FORBIDDEN when resume exists but user doesn't own it (vs 404 for non-existent)
+  - Updated preview dialog `getErrorMessage()` to handle new FORBIDDEN error code
+  - Error UI always shows download button prominently
+- **Files changed:**
+  - lib/db.ts (added resumeExists function)
+  - app/api/resumes/[id]/view/route.ts (added 403 handling)
+  - components/dashboard/master-resume-preview-dialog.tsx (updated error code handling)
+- **Acceptance criteria verified:**
+  - API returns 404 for "Resume not found", 403 for "No permission", 500 for server errors
+  - Preview dialog shows specific messages based on error code
+  - Download button always visible when error occurs
+  - npm run lint passes
+- **Learnings for future iterations:**
+  - Use separate queries to distinguish 404 (not found) vs 403 (forbidden) responses
+  - Always parse JSON error responses to get error codes for specific messaging
+  - API error format: `{ error: string, code: string }` for consistent client handling
+---
+
+## 2026-01-20 - US-005: Add Fallback UI for Unsupported Formats
+- **What was implemented:**
+  - Updated fallback UI message to "Preview not available for this file type"
+  - Added file name display prominently in the fallback UI
+  - Download button clearly visible below the message
+  - File type detection already existed from US-003
+- **Files changed:**
+  - components/dashboard/master-resume-preview-dialog.tsx
+- **Acceptance criteria verified:**
+  - File type detection based on extension (pdf, docx, doc, other) - existing from US-003
+  - FileText icon with "Preview not available for this file type" message
+  - Download button prominently displayed
+  - File name shown in fallback UI
+  - npm run lint passes
+- **Learnings for future iterations:**
+  - Fallback UI is the final else clause in the render logic
+  - Show file name to help user identify which file they're viewing
+  - Keep message simple: "Preview not available for this file type" is clearer than listing specific formats
 ---
 
