@@ -4,11 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { Sparkles, Zap, FileSearch, MessageCircle, Send, Loader2 } from "lucide-react"
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
 type FeedbackType = "feedback" | "suggestion" | "feature" | "bug" | "other"
@@ -31,23 +27,7 @@ const feedbackTypes: { value: FeedbackType; label: string }[] = [
   { value: "other", label: "Other" },
 ]
 
-const quickActions = [
-  {
-    icon: Zap,
-    label: "Optimize Resume",
-    description: "AI-powered resume optimization",
-    href: "/dashboard",
-  },
-  {
-    icon: FileSearch,
-    label: "Check ATS Score",
-    description: "Free ATS compatibility check",
-    href: "/ats-checker",
-  },
-]
-
 export function FloatingAgentButton() {
-  const [popoverOpen, setPopoverOpen] = useState(false)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -68,11 +48,6 @@ export function FloatingAgentButton() {
   const handleFeedbackClose = () => {
     setFeedbackOpen(false)
     setTimeout(resetForm, 300)
-  }
-
-  const handleFeedbackClick = () => {
-    setPopoverOpen(false)
-    setFeedbackOpen(true)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -112,78 +87,71 @@ export function FloatingAgentButton() {
 
   return (
     <>
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-        <PopoverTrigger asChild>
-          <button
-            className={cn(
-              "fixed bottom-6 right-6 z-50",
-              "flex items-center justify-center",
-              "size-14 rounded-full",
-              "bg-primary hover:bg-primary/90",
-              "text-primary-foreground shadow-lg",
-              "transition-all duration-200",
-              "hover:scale-110 hover:shadow-xl",
-              "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              "focus:ring-offset-background"
-            )}
-            aria-label="Open AI assistant"
-          >
-            <Sparkles className="size-6" />
-          </button>
-        </PopoverTrigger>
-
-        <PopoverContent
-          side="top"
-          align="end"
-          sideOffset={12}
-          className="w-72 p-0"
+      {/* Horizontal Command Center */}
+      <div
+        className={cn(
+          "fixed bottom-6 left-1/2 -translate-x-1/2 z-50",
+          "flex items-center gap-1",
+          "rounded-full px-1.5 py-1.5",
+          "bg-background/80 backdrop-blur-lg",
+          "border border-border shadow-lg",
+          "transition-all duration-200"
+        )}
+      >
+        <Link
+          href="/dashboard"
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5",
+            "text-xs font-medium text-foreground/80",
+            "transition-colors hover:bg-primary/10 hover:text-primary"
+          )}
         >
-          <div className="border-b border-border px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="size-4 text-primary" />
-              <span className="text-sm font-semibold">AI Assistant</span>
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Your career optimization co-pilot
-            </p>
-          </div>
+          <Zap className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Optimize</span>
+        </Link>
 
-          <div className="p-1.5">
-            {quickActions.map((action) => (
-              <Link
-                key={action.href}
-                href={action.href}
-                onClick={() => setPopoverOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5",
-                  "transition-colors hover:bg-accent"
-                )}
-              >
-                <action.icon className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-none">{action.label}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{action.description}</p>
-                </div>
-              </Link>
-            ))}
+        <Separator orientation="vertical" className="h-4" />
 
-            <button
-              onClick={handleFeedbackClick}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-md px-3 py-2.5",
-                "transition-colors hover:bg-accent text-left"
-              )}
-            >
-              <MessageCircle className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium leading-none">Send Feedback</p>
-                <p className="mt-1 text-xs text-muted-foreground">Share thoughts or report issues</p>
-              </div>
-            </button>
-          </div>
-        </PopoverContent>
-      </Popover>
+        <Link
+          href="/ats-checker"
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5",
+            "text-xs font-medium text-foreground/80",
+            "transition-colors hover:bg-primary/10 hover:text-primary"
+          )}
+        >
+          <FileSearch className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">ATS Check</span>
+        </Link>
 
+        <Separator orientation="vertical" className="h-4" />
+
+        <button
+          onClick={() => setFeedbackOpen(true)}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5",
+            "text-xs font-medium text-foreground/80",
+            "transition-colors hover:bg-primary/10 hover:text-primary"
+          )}
+        >
+          <MessageCircle className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Feedback</span>
+        </button>
+
+        <Separator orientation="vertical" className="h-4" />
+
+        <div
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-2.5 py-1.5",
+            "bg-primary/10"
+          )}
+        >
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-semibold text-primary hidden sm:inline">AI</span>
+        </div>
+      </div>
+
+      {/* Feedback Dialog */}
       <Dialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
         <DialogContent
           className="sm:max-w-md"

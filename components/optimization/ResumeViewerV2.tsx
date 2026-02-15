@@ -73,6 +73,8 @@ import {
   PublicationEditDialog,
 } from "./dialogs"
 import { cn } from "@/lib/utils"
+import { applyEdits } from "@/lib/resume-diff"
+import type { ResumeEditOperation } from "@/lib/chat-edit-types"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { usePlatform } from "@/hooks/use-platform"
 import {
@@ -1427,7 +1429,7 @@ export function ResumeViewerV2({
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
-  const [agentPanelOpen, setAgentPanelOpen] = useState(!!optimizationSummary)
+  const [agentPanelOpen, setAgentPanelOpen] = useState(true)
   const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
 
   // Parse initial content
@@ -1511,6 +1513,14 @@ export function ResumeViewerV2({
   const updateResumeData = useCallback(
     (updates: Partial<ParsedResume>) => {
       setResumeData((prev) => ({ ...prev, ...updates }))
+      setHasChanges(true)
+    },
+    []
+  )
+
+  const handleApplyEdits = useCallback(
+    (operations: ResumeEditOperation[]) => {
+      setResumeData((prev) => applyEdits(prev, operations))
       setHasChanges(true)
     },
     []
@@ -1990,28 +2000,29 @@ export function ResumeViewerV2({
 
         <CardContent className="p-0">
           {/* Mobile: Sheet-based panel */}
-          {optimizationSummary && (
-            <div className="md:hidden border-b border-border p-2">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="sm" className="w-full">
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    What Changed & Why
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[340px] p-0">
-                  <SheetHeader className="sr-only">
-                    <SheetTitle>What Changed & Why</SheetTitle>
-                  </SheetHeader>
-                  <AgentPanel
-                    optimizationSummary={optimizationSummary}
-                    jobTitle={jobTitle}
-                    companyName={companyName}
-                  />
-                </SheetContent>
-              </Sheet>
-            </div>
-          )}
+          <div className="md:hidden border-b border-border p-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  AI Assistant
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[340px] p-0">
+                <SheetHeader className="sr-only">
+                  <SheetTitle>AI Assistant</SheetTitle>
+                </SheetHeader>
+                <AgentPanel
+                  optimizationSummary={optimizationSummary}
+                  jobTitle={jobTitle}
+                  companyName={companyName}
+                  resumeData={resumeData}
+                  resumeId={optimizedId}
+                  onApplyEdits={handleApplyEdits}
+                />
+              </SheetContent>
+            </Sheet>
+          </div>
 
           {/* Desktop: Flex layout */}
           <div className="hidden md:flex h-[calc(100vh-280px)] min-h-[600px]">
@@ -2064,39 +2075,40 @@ export function ResumeViewerV2({
             </div>
 
             {/* Right Panel - Agent Panel */}
-            {optimizationSummary && (
-              <div
-                className={cn(
-                  "shrink-0 border-l border-border flex flex-col transition-all duration-300 ease-in-out",
-                  agentPanelOpen ? "w-[320px]" : "w-[36px]"
-                )}
-              >
-                <div className="flex items-center justify-start p-1 border-b border-border shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => setAgentPanelOpen((prev) => !prev)}
-                    aria-label={agentPanelOpen ? "Collapse changes panel" : "Expand changes panel"}
-                  >
-                    {agentPanelOpen ? (
-                      <PanelRightClose className="h-4 w-4" />
-                    ) : (
-                      <PanelRightOpen className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                {agentPanelOpen && (
-                  <div className="flex-1 min-h-0 overflow-hidden">
-                    <AgentPanel
-                      optimizationSummary={optimizationSummary}
-                      jobTitle={jobTitle}
-                      companyName={companyName}
-                    />
-                  </div>
-                )}
+            <div
+              className={cn(
+                "shrink-0 border-l border-border flex flex-col transition-all duration-300 ease-in-out",
+                agentPanelOpen ? "w-[360px]" : "w-[36px]"
+              )}
+            >
+              <div className="flex items-center justify-start p-1 border-b border-border shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setAgentPanelOpen((prev) => !prev)}
+                  aria-label={agentPanelOpen ? "Collapse agent panel" : "Expand agent panel"}
+                >
+                  {agentPanelOpen ? (
+                    <PanelRightClose className="h-4 w-4" />
+                  ) : (
+                    <PanelRightOpen className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
-            )}
+              {agentPanelOpen && (
+                <div className="flex-1 min-h-0 overflow-hidden">
+                  <AgentPanel
+                    optimizationSummary={optimizationSummary}
+                    jobTitle={jobTitle}
+                    companyName={companyName}
+                    resumeData={resumeData}
+                    resumeId={optimizedId}
+                    onApplyEdits={handleApplyEdits}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Mobile: Stacked layout */}
