@@ -52,6 +52,9 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
           title={optimized.title}
           optimizedContent={optimized.optimized_content}
           matchScore={optimized.match_score}
+          optimizationSummary={optimized.optimization_summary}
+          jobTitle={optimized.job_title}
+          companyName={optimized.company_name}
         />
       </div>
     </main>

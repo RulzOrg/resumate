@@ -6,6 +6,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable"
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { AgentPanel } from "./AgentPanel"
+import {
   Copy,
   Download,
   FileText,
@@ -28,6 +41,9 @@ import {
   Save,
   Loader2,
   Check,
+  PanelRightOpen,
+  PanelRightClose,
+  Sparkles,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -366,6 +382,17 @@ interface ResumeViewerV2Props {
   title: string
   optimizedContent: string
   matchScore?: number | null
+  optimizationSummary?: {
+    changes_made: string[]
+    keywords_added: string[]
+    skills_highlighted: string[]
+    sections_improved: string[]
+    match_score_before: number
+    match_score_after: number
+    recommendations: string[]
+  } | null
+  jobTitle?: string
+  companyName?: string | null
 }
 
 // Section configuration
@@ -1387,6 +1414,9 @@ export function ResumeViewerV2({
   title,
   optimizedContent,
   matchScore,
+  optimizationSummary,
+  jobTitle,
+  companyName,
 }: ResumeViewerV2Props) {
   const layout = "modern" // TODO: Add layout selector in V2
   const [expandedSections, setExpandedSections] = useState<string[]>([
@@ -1398,6 +1428,7 @@ export function ResumeViewerV2({
   const [isSaving, setIsSaving] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
+  const [agentPanelOpen, setAgentPanelOpen] = useState(!!optimizationSummary)
 
   // Parse initial content
   const initialParsed = useMemo(() => {
@@ -1953,36 +1984,141 @@ export function ResumeViewerV2({
                   </span>
                 </TooltipContent>
               </Tooltip>
+              {optimizationSummary && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={agentPanelOpen ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAgentPanelOpen((prev) => !prev)}
+                      aria-label={agentPanelOpen ? "Hide changes panel" : "Show changes panel"}
+                    >
+                      {agentPanelOpen ? (
+                        <PanelRightClose className="h-4 w-4 mr-2" aria-hidden="true" />
+                      ) : (
+                        <PanelRightOpen className="h-4 w-4 mr-2" aria-hidden="true" />
+                      )}
+                      {agentPanelOpen ? "Hide" : "Changes"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>{agentPanelOpen ? "Hide changes panel" : "Show what changed & why"}</span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </TooltipProvider>
         </div>
 
         <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] lg:grid-cols-[380px_1fr] h-[calc(100vh-280px)] min-h-[800px]">
-            {/* Left Panel - Sections List */}
-            <div className="relative border-r-0 md:border-r border-border bg-muted/20 overflow-hidden flex flex-col">
-              <ScrollArea className="flex-1 h-full">
-                <div className="p-4">
-                  <SectionsList
-                    parsed={resumeData}
-                    expandedSections={expandedSections}
-                    onToggle={toggleSection}
-                    onEdit={handleEditSection}
-                    onAdd={handleAddSection}
-                    onEditItem={handleEditItem}
-                    onDeleteItem={handleDeleteItem}
+          {/* Mobile: Sheet-based panel */}
+          {optimizationSummary && (
+            <div className="md:hidden border-b border-border p-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    What Changed & Why
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[340px] p-0">
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>What Changed & Why</SheetTitle>
+                  </SheetHeader>
+                  <AgentPanel
+                    optimizationSummary={optimizationSummary}
+                    jobTitle={jobTitle}
+                    companyName={companyName}
                   />
-                </div>
-              </ScrollArea>
+                </SheetContent>
+              </Sheet>
             </div>
+          )}
 
-            {/* Right Panel - PDF Preview */}
-            <div className="relative bg-gray-100 dark:bg-gray-900 overflow-hidden min-w-0 flex flex-col">
-              <ScrollArea className="flex-1 h-full">
-                <div className="p-4 md:p-6 lg:p-8">
-                  <PaginatedResumePreview parsed={resumeData} rawContent={optimizedContent} />
+          {/* Desktop: Resizable panels */}
+          <div className="hidden md:block">
+            <ResizablePanelGroup
+              direction="horizontal"
+              className="h-[calc(100vh-280px)] min-h-[800px]"
+            >
+              {/* Left Panel - Sections List */}
+              <ResizablePanel defaultSize={25} minSize={18} maxSize={35}>
+                <div className="relative bg-muted/20 overflow-hidden flex flex-col h-full">
+                  <ScrollArea className="flex-1 h-full">
+                    <div className="p-4">
+                      <SectionsList
+                        parsed={resumeData}
+                        expandedSections={expandedSections}
+                        onToggle={toggleSection}
+                        onEdit={handleEditSection}
+                        onAdd={handleAddSection}
+                        onEditItem={handleEditItem}
+                        onDeleteItem={handleDeleteItem}
+                      />
+                    </div>
+                  </ScrollArea>
                 </div>
-              </ScrollArea>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle />
+
+              {/* Center Panel - PDF Preview */}
+              <ResizablePanel defaultSize={agentPanelOpen ? 50 : 75} minSize={35}>
+                <div className="relative bg-muted/30 overflow-hidden min-w-0 flex flex-col h-full">
+                  <ScrollArea className="flex-1 h-full">
+                    <div className="p-4 md:p-6 lg:p-8">
+                      <PaginatedResumePreview parsed={resumeData} rawContent={optimizedContent} />
+                    </div>
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
+
+              {/* Right Panel - Agent Panel (collapsible) */}
+              {agentPanelOpen && optimizationSummary && (
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={25} minSize={18} maxSize={40}>
+                    <div className="border-l border-border h-full">
+                      <AgentPanel
+                        optimizationSummary={optimizationSummary}
+                        jobTitle={jobTitle}
+                        companyName={companyName}
+                      />
+                    </div>
+                  </ResizablePanel>
+                </>
+              )}
+            </ResizablePanelGroup>
+          </div>
+
+          {/* Mobile: Stacked layout */}
+          <div className="md:hidden">
+            <div className="h-[calc(100vh-280px)] min-h-[800px] flex flex-col">
+              {/* Sections List */}
+              <div className="relative border-b border-border bg-muted/20 overflow-hidden">
+                <ScrollArea className="h-[300px]">
+                  <div className="p-4">
+                    <SectionsList
+                      parsed={resumeData}
+                      expandedSections={expandedSections}
+                      onToggle={toggleSection}
+                      onEdit={handleEditSection}
+                      onAdd={handleAddSection}
+                      onEditItem={handleEditItem}
+                      onDeleteItem={handleDeleteItem}
+                    />
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* PDF Preview */}
+              <div className="relative bg-muted/30 overflow-hidden min-w-0 flex-1 flex flex-col">
+                <ScrollArea className="flex-1 h-full">
+                  <div className="p-4">
+                    <PaginatedResumePreview parsed={resumeData} rawContent={optimizedContent} />
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
           </div>
         </CardContent>
