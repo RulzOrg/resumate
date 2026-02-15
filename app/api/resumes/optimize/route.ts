@@ -7,21 +7,34 @@ import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { withRetry, AppError } from "@/lib/error-handler"
 import { optimizeResumeStructured } from "@/lib/structured-optimizer"
 import { formatResumeToMarkdown } from "@/lib/resume-formatter"
-import { toStructuredDocument } from "@/lib/optimized-resume-document"
+import { countNullValues, sanitizeParsedResume, toStructuredDocument } from "@/lib/optimized-resume-document"
 import { errorResponse, fromError } from "@/lib/api-response"
 import { redactForLog } from "@/lib/security/redaction"
-import { z } from "zod"
+import { createLogger } from "@/lib/debug-logger"
+import { z, ZodError } from "zod"
+
+const log = createLogger("Optimize")
 
 // Allow up to 5 minutes for generation (Pro plan limit)
 export const maxDuration = 300;
+
+const WorkExperienceInputSchema = z.object({
+  company: z.string().nullish(),
+  title: z.string().nullish(),
+  location: z.string().nullish(),
+  startDate: z.string().nullish(),
+  endDate: z.string().nullish(),
+  employmentType: z.string().nullish(),
+  bullets: z.array(z.string().nullish()).optional(),
+}).strict()
 
 const OptimizeRequestSchema = z.object({
   resume_id: z.string().min(1),
   job_title: z.string().min(1),
   company_name: z.string().nullish(),
   job_description: z.string().min(50),
-  work_experience: z.array(z.any()).optional(),
-  summary: z.string().optional(),
+  work_experience: z.array(WorkExperienceInputSchema).nullish(),
+  summary: z.string().nullish(),
 })
 
 export async function POST(request: NextRequest) {
@@ -82,24 +95,30 @@ export async function POST(request: NextRequest) {
       summary: confirmed_summary,
     } = parsedBody.data
 
-    console.log('[Optimize] Request received:', redactForLog({
+    const incomingNullCount = countNullValues({
+      work_experience,
+      summary: confirmed_summary,
+    })
+
+    log.log('[Optimize] Request received:', redactForLog({
       resume_id,
       job_title,
       user_id: user.id,
       clerk_user_id: user.clerk_user_id,
       has_confirmed_content: !!(work_experience || confirmed_summary),
       work_experience_count: work_experience?.length,
+      incoming_null_fields: incomingNullCount,
     }))
 
     // Get the resume
-    console.log('[Optimize] Looking up resume:', redactForLog({ resume_id, user_id: user.id }))
+    log.log('[Optimize] Looking up resume:', redactForLog({ resume_id, user_id: user.id }))
     const resume = await getResumeById(resume_id, user.id)
 
     if (!resume) {
       // Debug: Check if resume exists at all (without user filter)
       const { sql } = await import("@/lib/db")
       const [anyResume] = await sql`SELECT id, user_id, title, deleted_at FROM resumes WHERE id = ${resume_id}`
-      console.log('[Optimize] Resume lookup failed. Debug info:', redactForLog({
+      log.log('[Optimize] Resume lookup failed. Debug info:', redactForLog({
         resume_id,
         requested_user_id: user.id,
         found_resume: anyResume ? {
@@ -113,7 +132,7 @@ export async function POST(request: NextRequest) {
       throw new AppError("Resume not found", 404)
     }
 
-    console.log('[Optimize] Resume found:', redactForLog({
+    log.log('[Optimize] Resume found:', redactForLog({
       id: resume.id,
       user_id: resume.user_id,
       title: resume.title,
@@ -131,7 +150,7 @@ export async function POST(request: NextRequest) {
     // Generate optimized resume
     const optimization = await withRetry(
       async () => {
-        console.log('[Optimize] Starting structured optimization...')
+        log.log('[Optimize] Starting structured optimization...')
         const startTime = Date.now()
 
         if (!process.env.ANTHROPIC_API_KEY) {
@@ -145,14 +164,14 @@ export async function POST(request: NextRequest) {
           let cacheHit = false
 
           if (!resumeStructure) {
-            console.log('[Optimize] Cache miss: extracting structure via LLM...')
+            log.log('[Optimize] Cache miss: extracting structure via LLM...')
             const extractionResult = await extractResumeWithLLM(resume.content_text!, process.env.ANTHROPIC_API_KEY)
 
             if (!extractionResult.success) {
               // If we have confirmed content from the review dialog, use it with a minimal structure
               // Otherwise, fail with an error
               if (work_experience && work_experience.length > 0) {
-                console.warn('[Optimize] Extraction failed but we have confirmed content from review dialog. Creating minimal structure.')
+                log.warn('[Optimize] Extraction failed but we have confirmed content from review dialog. Creating minimal structure.')
                 resumeStructure = {
                   contact: { name: '' },
                   workExperience: work_experience,
@@ -191,7 +210,7 @@ export async function POST(request: NextRequest) {
                     statusCode = 500
                 }
 
-                console.error('[Optimize] LLM extraction failed:', redactForLog({
+                log.error('[Optimize] LLM extraction failed:', redactForLog({
                   errorCode,
                   errorMessage: extractionResult.error?.message,
                   documentType: extractionResult.error?.documentType,
@@ -202,7 +221,7 @@ export async function POST(request: NextRequest) {
             } else if (!extractionResult.resume) {
               // Same fallback: use confirmed content if available
               if (work_experience && work_experience.length > 0) {
-                console.warn('[Optimize] Extraction returned no structure but we have confirmed content. Creating minimal structure.')
+                log.warn('[Optimize] Extraction returned no structure but we have confirmed content. Creating minimal structure.')
                 resumeStructure = {
                   contact: { name: '' },
                   workExperience: work_experience,
@@ -223,7 +242,7 @@ export async function POST(request: NextRequest) {
               resumeStructure = extractionResult.resume
             }
             const extractionDuration = Date.now() - extractionStartTime
-            console.log('[Optimize] Extraction successful:', redactForLog({
+            log.log('[Optimize] Extraction successful:', redactForLog({
               duration: `${extractionDuration}ms`,
               workExperienceCount: resumeStructure.workExperience.length,
               educationCount: resumeStructure.education.length,
@@ -233,12 +252,12 @@ export async function POST(request: NextRequest) {
 
             // Cache the structure (non-blocking)
             saveParsedStructure(resume.id, resumeStructure).catch(err =>
-              console.error('[Optimize] Failed to cache structure:', err)
+              log.error('[Optimize] Failed to cache structure:', err)
             )
           } else {
             cacheHit = true
             const cacheCheckDuration = Date.now() - extractionStartTime
-            console.log('[Optimize] Cache hit: using stored resume structure', redactForLog({
+            log.log('[Optimize] Cache hit: using stored resume structure', redactForLog({
               duration: `${cacheCheckDuration}ms`,
               workExperienceCount: resumeStructure.workExperience.length,
               educationCount: resumeStructure.education.length,
@@ -248,28 +267,37 @@ export async function POST(request: NextRequest) {
 
           // Merge confirmed content if provided (from review step)
           // This preserves contact, education, skills, etc. while using user-confirmed work experience and summary
-          if (work_experience || confirmed_summary) {
-            console.log('[Optimize] Merging confirmed content with cached structure:', redactForLog({
-              has_work_experience: !!work_experience,
+          if (work_experience !== undefined || confirmed_summary !== undefined) {
+            log.log('[Optimize] Merging confirmed content with cached structure:', redactForLog({
+              has_work_experience: work_experience !== undefined && work_experience !== null,
               work_experience_count: work_experience?.length,
-              has_summary: !!confirmed_summary,
+              has_summary: confirmed_summary !== undefined,
             }))
             
             resumeStructure = {
               ...resumeStructure,
               // Override work experience if provided
-              ...(work_experience && { workExperience: work_experience }),
+              ...(work_experience !== undefined && work_experience !== null && { workExperience: work_experience }),
               // Override summary if provided
               ...(confirmed_summary !== undefined && { summary: confirmed_summary }),
             }
             
-            console.log('[Optimize] Merged structure:', redactForLog({
+            log.log('[Optimize] Merged structure:', redactForLog({
               workExperienceCount: resumeStructure.workExperience.length,
               educationCount: resumeStructure.education.length,
               skillsCount: resumeStructure.skills.length,
               hasSummary: !!resumeStructure.summary,
             }))
           }
+
+          // Canonical null-safe normalization before optimization.
+          resumeStructure = sanitizeParsedResume(resumeStructure)
+          log.log("[Optimize] Normalized merged structure:", {
+            normalized_null_fields_remaining: countNullValues(resumeStructure),
+            workExperienceCount: resumeStructure.workExperience.length,
+            educationCount: resumeStructure.education.length,
+            skillsCount: resumeStructure.skills.length,
+          })
 
           // Optimize with structured data (mandatory - no fallback to string parsing)
           const result = await optimizeResumeStructured(
@@ -282,7 +310,7 @@ export async function POST(request: NextRequest) {
 
           const optimizationDuration = Date.now() - startTime
           const totalDuration = Date.now() - startTime
-          console.log('[Optimize] Structured optimization completed:', redactForLog({
+          log.log('[Optimize] Structured optimization completed:', redactForLog({
             totalDuration: `${totalDuration}ms`,
             optimizationDuration: `${optimizationDuration}ms`,
             cacheHit,
@@ -317,7 +345,7 @@ export async function POST(request: NextRequest) {
             recommendations: result.optimizationDetails.recommendations,
           }
         } catch (error: any) {
-          console.error('[Optimize] Structured optimization error:', error)
+          log.error('[Optimize] Structured optimization error:', error)
 
           if (error.status === 401) {
             throw new AppError("Invalid Anthropic API key", 500, "INVALID_API_KEY")
@@ -364,15 +392,31 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    const structuredOutput = toStructuredDocument(optimization.optimized_resume, {
-      provenanceDefault: "extracted",
-      fieldProvenance: {
-        summary: optimization.summary_was_created ? "ai_generated" : "user_edited",
-        target: optimization.target_title_was_created ? "ai_generated" : "extracted",
-        experience: "ai_generated",
-      },
-      lastEditor: user.id,
-    })
+    let structuredOutput
+    try {
+      structuredOutput = toStructuredDocument(optimization.optimized_resume, {
+        provenanceDefault: "extracted",
+        fieldProvenance: {
+          summary: optimization.summary_was_created ? "ai_generated" : "user_edited",
+          target: optimization.target_title_was_created ? "ai_generated" : "extracted",
+          experience: "ai_generated",
+        },
+        lastEditor: user.id,
+      })
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return errorResponse(
+          400,
+          "INVALID_STRUCTURED_DOCUMENT",
+          "Optimized resume structure is invalid",
+          {
+            retryable: false,
+            details: error.issues,
+          }
+        )
+      }
+      throw error
+    }
 
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({

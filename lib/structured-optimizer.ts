@@ -2,6 +2,7 @@ import { parseResumeContent, type ParsedResume } from "@/lib/resume-parser"
 import Anthropic from "@anthropic-ai/sdk"
 import { z } from "zod"
 import { debugLog, debugWarn } from "@/lib/debug-logger"
+import { computeMatchScore } from "@/lib/match-score"
 
 const optimizedExperienceSchema = z.object({
   optimized_bullets: z.array(z.string()).describe("Optimized bullet points for this work experience entry"),
@@ -15,8 +16,6 @@ const optimizationResultSchema = z.object({
   optimized_experiences: z.array(optimizedExperienceSchema).describe("Optimized work experience entries, one per original entry"),
   changes_made: z.array(z.string()).describe("Overall changes made to the resume"),
   keywords_added: z.array(z.string()).describe("Keywords that were added"),
-  match_score_before: z.number().min(0).max(100),
-  match_score_after: z.number().min(0).max(100),
   recommendations: z.array(z.string()),
   summary_was_created: z.boolean().describe("Whether the summary was newly created (true) or optimized (false)"),
   target_title_was_created: z.boolean().describe("Whether the target title was newly created (true) or preserved (false)"),
@@ -24,6 +23,7 @@ const optimizationResultSchema = z.object({
 
 export interface StructuredOptimizationResult {
   optimizedResume: ParsedResume
+  originalResume: ParsedResume
   optimizationDetails: {
     changes_made: string[]
     keywords_added: string[]
@@ -291,8 +291,6 @@ Provide a JSON object with this structure:
   ],
   "changes_made": ["Overall change 1", "Overall change 2"],
   "keywords_added": ["keyword1", "keyword2", "..."],
-  "match_score_before": 65,
-  "match_score_after": 85,
   "recommendations": ["recommendation 1", "recommendation 2"],
   "summary_was_created": false,
   "target_title_was_created": true
@@ -434,13 +432,25 @@ NOT:
     awards: [...parsed.awards],
   }
 
+  // Compute algorithmic match scores (deterministic, no LLM)
+  const scoreBefore = computeMatchScore(parsed, jobDescription, jobTitle)
+  const scoreAfter = computeMatchScore(optimizedResume, jobDescription, jobTitle)
+
+  debugLog('[StructuredOptimizer] Algorithmic match scores:', {
+    before: scoreBefore.score,
+    after: scoreAfter.score,
+    beforeBreakdown: scoreBefore.breakdown,
+    afterBreakdown: scoreAfter.breakdown,
+  })
+
   return {
     optimizedResume,
+    originalResume: parsed,
     optimizationDetails: {
       changes_made: optimization.changes_made,
       keywords_added: optimization.keywords_added,
-      match_score_before: optimization.match_score_before,
-      match_score_after: optimization.match_score_after,
+      match_score_before: scoreBefore.score,
+      match_score_after: scoreAfter.score,
       recommendations: optimization.recommendations,
       summary_was_created: optimization.summary_was_created,
       target_title_was_created: optimization.target_title_was_created,

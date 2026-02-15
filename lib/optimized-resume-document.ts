@@ -131,20 +131,129 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>
 }
 
-function sanitizeParsedResume(data: Partial<ParsedResume>): ParsedResume {
+function toRequiredString(value: unknown, fallback = ""): string {
+  return typeof value === "string" ? value.trim() : fallback
+}
+
+function toOptionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => toOptionalString(item))
+    .filter((item): item is string => typeof item === "string")
+}
+
+function toRecordArray(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map((item) => asRecord(item))
+    .filter((item): item is Record<string, unknown> => item !== null)
+}
+
+function sanitizeContact(value: unknown): ContactInfo {
+  const contact = asRecord(value)
+  if (!contact) return { name: "" }
+
   return {
-    contact: (data.contact || { name: "" }) as ContactInfo,
-    targetTitle: data.targetTitle,
-    summary: data.summary,
-    workExperience: (data.workExperience || []) as WorkExperienceItem[],
-    education: (data.education || []) as EducationItem[],
-    skills: data.skills || [],
-    interests: data.interests || [],
-    certifications: (data.certifications || []) as CertificationItem[],
-    awards: data.awards || [],
-    projects: (data.projects || []) as ProjectItem[],
-    volunteering: (data.volunteering || []) as VolunteerItem[],
-    publications: (data.publications || []) as PublicationItem[],
+    name: toRequiredString(contact.name, ""),
+    location: toOptionalString(contact.location),
+    phone: toOptionalString(contact.phone),
+    email: toOptionalString(contact.email),
+    linkedin: toOptionalString(contact.linkedin),
+    website: toOptionalString(contact.website),
+  }
+}
+
+function sanitizeWorkExperienceItems(value: unknown): WorkExperienceItem[] {
+  return toRecordArray(value).map((item) => ({
+    company: toRequiredString(item.company, ""),
+    title: toRequiredString(item.title, ""),
+    location: toOptionalString(item.location),
+    startDate: toOptionalString(item.startDate),
+    endDate: toOptionalString(item.endDate),
+    employmentType: toOptionalString(item.employmentType),
+    bullets: toStringArray(item.bullets),
+  }))
+}
+
+function sanitizeEducationItems(value: unknown): EducationItem[] {
+  return toRecordArray(value).map((item) => ({
+    institution: toRequiredString(item.institution, ""),
+    degree: toOptionalString(item.degree),
+    field: toOptionalString(item.field),
+    graduationDate: toOptionalString(item.graduationDate),
+    notes: toOptionalString(item.notes),
+  }))
+}
+
+function sanitizeCertificationItems(value: unknown): CertificationItem[] {
+  return toRecordArray(value).map((item) => ({
+    name: toRequiredString(item.name, ""),
+    issuer: toOptionalString(item.issuer),
+    date: toOptionalString(item.date),
+  }))
+}
+
+function sanitizeProjectItems(value: unknown): ProjectItem[] {
+  return toRecordArray(value).map((item) => ({
+    name: toRequiredString(item.name, ""),
+    description: toOptionalString(item.description),
+    technologies: toStringArray(item.technologies),
+    bullets: toStringArray(item.bullets),
+  }))
+}
+
+function sanitizeVolunteerItems(value: unknown): VolunteerItem[] {
+  return toRecordArray(value).map((item) => ({
+    organization: toRequiredString(item.organization, ""),
+    role: toOptionalString(item.role),
+    dates: toOptionalString(item.dates),
+    description: toOptionalString(item.description),
+  }))
+}
+
+function sanitizePublicationItems(value: unknown): PublicationItem[] {
+  return toRecordArray(value).map((item) => ({
+    title: toRequiredString(item.title, ""),
+    publisher: toOptionalString(item.publisher),
+    date: toOptionalString(item.date),
+    description: toOptionalString(item.description),
+  }))
+}
+
+export function countNullValues(value: unknown): number {
+  if (value === null) return 1
+  if (Array.isArray(value)) {
+    return value.reduce((total, item) => total + countNullValues(item), 0)
+  }
+  if (!value || typeof value !== "object") return 0
+  return Object.values(value as Record<string, unknown>).reduce(
+    (total, item) => total + countNullValues(item),
+    0
+  )
+}
+
+export function sanitizeParsedResume(data: unknown): ParsedResume {
+  const source = asRecord(data) || {}
+
+  return {
+    contact: sanitizeContact(source.contact),
+    targetTitle: toOptionalString(source.targetTitle),
+    summary: toOptionalString(source.summary),
+    workExperience: sanitizeWorkExperienceItems(source.workExperience),
+    education: sanitizeEducationItems(source.education),
+    skills: toStringArray(source.skills),
+    interests: toStringArray(source.interests),
+    certifications: sanitizeCertificationItems(source.certifications),
+    awards: toStringArray(source.awards),
+    projects: sanitizeProjectItems(source.projects),
+    volunteering: sanitizeVolunteerItems(source.volunteering),
+    publications: sanitizePublicationItems(source.publications),
   }
 }
 

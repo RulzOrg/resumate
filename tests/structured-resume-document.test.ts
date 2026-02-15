@@ -3,6 +3,7 @@ import assert from "node:assert/strict"
 import {
   fromStructuredDocument,
   normalizeStructuredOutput,
+  sanitizeParsedResume,
   toDerivedMarkdown,
   toStructuredDocument,
 } from "@/lib/optimized-resume-document"
@@ -106,4 +107,79 @@ test("redaction masks pii", () => {
 
   assert.equal(redacted.includes("jane@example.com"), false)
   assert.equal(redacted.includes("555-123-4567"), false)
+})
+
+test("sanitizeParsedResume coerces nullable optionals to undefined and arrays", () => {
+  const input = {
+    contact: {
+      name: "Jane Doe",
+      location: null,
+      phone: null,
+      email: "jane@example.com",
+      linkedin: null,
+    },
+    workExperience: [
+      {
+        company: "Acme",
+        title: "Designer",
+        location: null,
+        startDate: "2021",
+        endDate: "Present",
+        employmentType: null,
+        bullets: ["Shipped feature", null, ""],
+      },
+    ],
+    education: [
+      {
+        institution: "UT Austin",
+        degree: "BFA",
+        field: null,
+        graduationDate: null,
+        notes: null,
+      },
+    ],
+    skills: null,
+    interests: null,
+  }
+
+  const sanitized = sanitizeParsedResume(input)
+  assert.equal(sanitized.contact.location, undefined)
+  assert.equal(sanitized.contact.phone, undefined)
+  assert.equal(sanitized.workExperience[0].location, undefined)
+  assert.equal(sanitized.workExperience[0].employmentType, undefined)
+  assert.equal(sanitized.education[0].field, undefined)
+  assert.equal(sanitized.education[0].graduationDate, undefined)
+  assert.equal(sanitized.education[0].notes, undefined)
+  assert.deepEqual(sanitized.skills, [])
+  assert.deepEqual(sanitized.interests, [])
+  assert.deepEqual(sanitized.workExperience[0].bullets, ["Shipped feature"])
+})
+
+test("toStructuredDocument accepts nullable optional fields", () => {
+  const nullableParsed = {
+    ...sampleParsed,
+    contact: { ...sampleParsed.contact, location: null },
+    workExperience: [
+      {
+        ...sampleParsed.workExperience[0],
+        location: null,
+        employmentType: null,
+      },
+    ],
+    education: [
+      {
+        ...sampleParsed.education[0],
+        field: null,
+        graduationDate: null,
+        notes: null,
+      },
+    ],
+  } as any
+
+  const structured = toStructuredDocument(nullableParsed)
+  assert.equal(structured.schema_version, "v1")
+  assert.equal(structured.document.contact.location, undefined)
+  assert.equal(structured.document.workExperience[0].location, undefined)
+  assert.equal(structured.document.workExperience[0].employmentType, undefined)
+  assert.equal(structured.document.education[0].field, undefined)
 })

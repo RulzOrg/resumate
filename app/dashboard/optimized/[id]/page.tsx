@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { getAuthenticatedUser } from "@/lib/user-data"
 import { getOptimizedResumeById, getResumeById } from "@/lib/db"
-import { ResumeViewerV2 } from "@/components/optimization/ResumeViewerV2"
+import { ResumeViewerV2 } from "@/components/optimization/resume-viewer"
 import Link from "next/link"
 import { ChevronLeft } from "lucide-react"
 

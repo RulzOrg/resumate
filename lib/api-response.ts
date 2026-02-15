@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { AppError } from "@/lib/error-handler"
+import { ZodError } from "zod"
 
 export interface ApiErrorBody {
   code: string
@@ -36,6 +37,18 @@ export function fromError(error: unknown) {
       error.code || "APP_ERROR",
       error.message,
       { retryable: error.statusCode >= 500 }
+    )
+  }
+
+  if (error instanceof ZodError) {
+    return errorResponse(
+      400,
+      "VALIDATION_ERROR",
+      "Validation failed",
+      {
+        retryable: false,
+        details: error.issues,
+      }
     )
   }
 
