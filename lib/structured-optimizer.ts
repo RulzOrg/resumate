@@ -433,11 +433,26 @@ NOT:
     awards: [...parsed.awards],
   }
 
+  // Aggregate per-experience keywords (deduped with top-level)
+  const allKeywords = new Set(optimization.keywords_added)
+  optimization.optimized_experiences.forEach(exp => {
+    exp.keywords_added.forEach(kw => allKeywords.add(kw))
+  })
+
+  // Aggregate per-experience changes with company context
+  const allChanges = [...optimization.changes_made]
+  optimization.optimized_experiences.forEach((exp, idx) => {
+    const company = parsed.workExperience[idx]?.company || `Entry ${idx + 1}`
+    exp.changes_made.forEach(change => {
+      allChanges.push(`${company}: ${change}`)
+    })
+  })
+
   return {
     optimizedResume,
     optimizationDetails: {
-      changes_made: optimization.changes_made,
-      keywords_added: optimization.keywords_added,
+      changes_made: allChanges,
+      keywords_added: [...allKeywords],
       match_score_before: optimization.match_score_before,
       match_score_after: optimization.match_score_after,
       recommendations: optimization.recommendations,

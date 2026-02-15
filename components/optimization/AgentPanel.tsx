@@ -11,12 +11,57 @@ import type { OptimizedResume } from "@/lib/db"
 type OptimizationSummary = OptimizedResume["optimization_summary"]
 
 interface AgentPanelProps {
-  optimizationSummary: OptimizationSummary
+  optimizationSummary: OptimizationSummary | string | null | undefined
   jobTitle?: string
   companyName?: string | null
 }
 
+function normalizeOptimizationSummary(
+  raw: OptimizationSummary | string | null | undefined
+): OptimizationSummary {
+  const defaults: OptimizationSummary = {
+    changes_made: [],
+    keywords_added: [],
+    skills_highlighted: [],
+    sections_improved: [],
+    match_score_before: 0,
+    match_score_after: 0,
+    recommendations: [],
+  }
+
+  if (raw == null) return defaults
+
+  let candidate: unknown = raw
+  for (let i = 0; i < 2 && typeof candidate === "string"; i += 1) {
+    try {
+      candidate = JSON.parse(candidate)
+    } catch {
+      return defaults
+    }
+  }
+
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return defaults
+  }
+
+  const value = candidate as Record<string, unknown>
+  const toArray = (input: unknown) =>
+    Array.isArray(input) ? input.filter((item): item is string => typeof item === "string") : []
+  const toNumber = (input: unknown) => (typeof input === "number" && Number.isFinite(input) ? input : 0)
+
+  return {
+    changes_made: toArray(value.changes_made),
+    keywords_added: toArray(value.keywords_added),
+    skills_highlighted: toArray(value.skills_highlighted),
+    sections_improved: toArray(value.sections_improved),
+    match_score_before: toNumber(value.match_score_before),
+    match_score_after: toNumber(value.match_score_after),
+    recommendations: toArray(value.recommendations),
+  }
+}
+
 export function AgentPanel({ optimizationSummary, jobTitle, companyName }: AgentPanelProps) {
+  const normalizedSummary = normalizeOptimizationSummary(optimizationSummary)
   const {
     changes_made = [],
     keywords_added = [],
@@ -25,12 +70,12 @@ export function AgentPanel({ optimizationSummary, jobTitle, companyName }: Agent
     match_score_before = 0,
     match_score_after = 0,
     recommendations = [],
-  } = optimizationSummary ?? {}
+  } = normalizedSummary
 
   const scoreImprovement = match_score_after - match_score_before
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0 flex-1">
       <div className="flex items-center justify-between p-3 border-b border-border">
         <div className="min-w-0">
           <h3 className="text-sm font-semibold truncate">What Changed & Why</h3>
@@ -77,7 +122,7 @@ export function AgentPanel({ optimizationSummary, jobTitle, companyName }: Agent
           </TabsTrigger>
         </TabsList>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 min-h-0">
           <TabsContent value="changes" className="p-3 mt-0">
             <ChangesPanel
               changesMade={changes_made}
@@ -115,9 +160,14 @@ export function AgentPanel({ optimizationSummary, jobTitle, companyName }: Agent
             )}
 
             {keywords_added.length === 0 && skills_highlighted.length === 0 && (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                No keyword changes recorded.
-              </p>
+              <div className="py-4 text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  No keyword changes recorded.
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                  Re-optimize this resume to see keyword and skill matching.
+                </p>
+              </div>
             )}
           </TabsContent>
 
@@ -137,6 +187,11 @@ export function AgentPanel({ optimizationSummary, jobTitle, companyName }: Agent
                 <p className="text-xs text-muted-foreground">
                   Up from {match_score_before}%
                 </p>
+                {match_score_before === 0 && match_score_after === 0 && (
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    Score data not available. Re-optimize to see scoring.
+                  </p>
+                )}
               </div>
 
               {recommendations.length > 0 && (

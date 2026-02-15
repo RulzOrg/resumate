@@ -10,9 +10,14 @@ interface ChangesPanelProps {
 export function ChangesPanel({ changesMade, sectionsImproved }: ChangesPanelProps) {
   if (changesMade.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-4 text-center">
-        No changes recorded for this optimization.
-      </p>
+      <div className="py-4 text-center space-y-2">
+        <p className="text-sm text-muted-foreground">
+          No changes recorded for this optimization.
+        </p>
+        <p className="text-xs text-muted-foreground/70">
+          Re-optimize this resume to see detailed change tracking.
+        </p>
+      </div>
     )
   }
 

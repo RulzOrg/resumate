@@ -39,8 +39,11 @@ export function AppLayout({ user, children }: AppLayoutProps) {
   const isNestedPage =
     pathname !== "/dashboard" && !BREADCRUMB_MAP[pathname]
 
+  // Collapse sidebar by default on optimized resume detail pages
+  const defaultSidebarOpen = !pathname.startsWith("/dashboard/optimized/")
+
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={defaultSidebarOpen}>
       <AppSidebar user={user} />
       <SidebarInset>
         <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/50 backdrop-blur-lg px-4">

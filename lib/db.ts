@@ -262,6 +262,72 @@ export interface OptimizedResume {
   updated_at: string
 }
 
+type OptimizationSummary = OptimizedResume["optimization_summary"]
+
+function defaultOptimizationSummary(): OptimizationSummary {
+  return {
+    changes_made: [],
+    keywords_added: [],
+    skills_highlighted: [],
+    sections_improved: [],
+    match_score_before: 0,
+    match_score_after: 0,
+    recommendations: [],
+  }
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string")
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0
+}
+
+function normalizeOptimizationSummary(raw: unknown): OptimizationSummary {
+  if (raw == null) {
+    return defaultOptimizationSummary()
+  }
+
+  let candidate: unknown = raw
+
+  // Handle JSONB returned as string and double-encoded strings.
+  for (let i = 0; i < 2 && typeof candidate === "string"; i += 1) {
+    try {
+      candidate = JSON.parse(candidate)
+    } catch {
+      return defaultOptimizationSummary()
+    }
+  }
+
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return defaultOptimizationSummary()
+  }
+
+  const summary = candidate as Record<string, unknown>
+
+  return {
+    changes_made: asStringArray(summary.changes_made),
+    keywords_added: asStringArray(summary.keywords_added),
+    skills_highlighted: asStringArray(summary.skills_highlighted),
+    sections_improved: asStringArray(summary.sections_improved),
+    match_score_before: asNumber(summary.match_score_before),
+    match_score_after: asNumber(summary.match_score_after),
+    recommendations: asStringArray(summary.recommendations),
+  }
+}
+
+function normalizeOptimizedResumeRow<T>(row: T | undefined): T | undefined {
+  if (!row || typeof row !== "object") return row
+
+  const rowWithSummary = row as T & { optimization_summary?: unknown }
+  return {
+    ...rowWithSummary,
+    optimization_summary: normalizeOptimizationSummary(rowWithSummary.optimization_summary),
+  } as T
+}
+
 // System Prompt v1.1 Extended Resume with Structured Output
 export interface OptimizedResumeV2 extends OptimizedResume {
   structured_output?: SystemPromptV1Output | null
@@ -1364,6 +1430,8 @@ export async function createOptimizedResume(data: {
   optimization_summary: OptimizedResume["optimization_summary"]
   match_score?: number
 }) {
+  const normalizedSummary = normalizeOptimizationSummary(data.optimization_summary)
+
   const insert = async () => {
     const [optimizedResume] = await sql`
       INSERT INTO optimized_resumes (
@@ -1374,14 +1442,14 @@ export async function createOptimizedResume(data: {
       VALUES (
         ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id || null},
         ${data.job_title || null}, ${data.company_name || null}, ${data.job_description || null},
-        ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
-        ${data.match_score || null}, ${data.optimization_summary.changes_made},
-        ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
+        ${data.title}, ${data.optimized_content}, ${normalizedSummary}::jsonb,
+        ${data.match_score || null}, ${normalizedSummary.changes_made},
+        ${normalizedSummary.keywords_added}, ${normalizedSummary.skills_highlighted},
         NOW(), NOW()
       )
       RETURNING *
     `
-    return optimizedResume as OptimizedResume
+    return normalizeOptimizedResumeRow(optimizedResume) as OptimizedResume
   }
 
   try {
@@ -1407,7 +1475,9 @@ export async function getUserOptimizedResumes(user_id: string) {
     WHERE opt_res.user_id = ${user_id}
     ORDER BY opt_res.created_at DESC
   `
-  return optimizedResumes as (OptimizedResume & {
+  return optimizedResumes.map((row) =>
+    normalizeOptimizedResumeRow(row)
+  ) as (OptimizedResume & {
     original_resume_title: string
     job_title: string
     company_name?: string
@@ -1424,7 +1494,7 @@ export async function getOptimizedResumeById(id: string, user_id: string) {
     LEFT JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
     WHERE opt_res.id = ${id} AND opt_res.user_id = ${user_id}
   `
-  return optimizedResume as
+  return normalizeOptimizedResumeRow(optimizedResume) as
     | (OptimizedResumeV2 & {
       original_resume_title: string
       job_title: string
@@ -1444,8 +1514,8 @@ export async function updateOptimizedResume(
 ) {
   // Convert undefined to null for SQL compatibility
   const optimizedContent = data.optimized_content ?? null
-  const optimizationSummary = data.optimization_summary !== undefined 
-    ? JSON.stringify(data.optimization_summary) 
+  const optimizationSummary = data.optimization_summary !== undefined
+    ? normalizeOptimizationSummary(data.optimization_summary)
     : null
   const matchScore = data.match_score ?? null
 
@@ -1459,7 +1529,7 @@ export async function updateOptimizedResume(
     WHERE id = ${id} AND user_id = ${user_id}
     RETURNING *
   `
-  return optimizedResume as OptimizedResume | undefined
+  return normalizeOptimizedResumeRow(optimizedResume) as OptimizedResume | undefined
 }
 
 type ExportFormats = {

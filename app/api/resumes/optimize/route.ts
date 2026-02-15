@@ -300,11 +300,23 @@ export async function POST(request: NextRequest) {
             skillsSectionPreview: optimizedContent.match(/## Skills[\s\S]{0,200}/)?.[0],
           })
 
+          // Derive skills_highlighted by matching resume skills against job description and keywords
+          const jobDescLower = job_description.toLowerCase()
+          const relevantSkills = (resumeStructure?.skills || [])
+            .map(s => s.replace(/\*\*/g, '').trim())
+            .filter(skill => {
+              const skillLower = skill.toLowerCase()
+              return jobDescLower.includes(skillLower) ||
+                result.optimizationDetails.keywords_added.some(
+                  kw => kw.toLowerCase().includes(skillLower) || skillLower.includes(kw.toLowerCase())
+                )
+            })
+
           return {
             optimized_content: optimizedContent,
             changes_made: result.optimizationDetails.changes_made,
             keywords_added: result.optimizationDetails.keywords_added,
-            skills_highlighted: [], // Skills are preserved, not modified
+            skills_highlighted: relevantSkills,
             sections_improved: [
               ...(result.optimizationDetails.summary_was_created ? ["Professional Summary (created)"] : ["Professional Summary (optimized)"]),
               "Work Experience",
@@ -372,7 +384,15 @@ export async function POST(request: NextRequest) {
       job_description,
       title: `${resume.title} - Optimized for ${job_title}`,
       optimized_content: optimization.optimized_content,
-      optimization_summary: optimization,
+      optimization_summary: {
+        changes_made: optimization.changes_made,
+        keywords_added: optimization.keywords_added,
+        skills_highlighted: optimization.skills_highlighted,
+        sections_improved: optimization.sections_improved,
+        match_score_before: optimization.match_score_before,
+        match_score_after: optimization.match_score_after,
+        recommendations: optimization.recommendations,
+      },
       match_score: optimization.match_score_after,
     })
 

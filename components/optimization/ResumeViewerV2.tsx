@@ -6,12 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "@/components/ui/resizable"
-import type { ImperativePanelHandle } from "react-resizable-panels"
-import {
   Sheet,
   SheetContent,
   SheetTrigger,
@@ -44,6 +38,8 @@ import {
   Check,
   PanelRightOpen,
   PanelRightClose,
+  PanelLeftOpen,
+  PanelLeftClose,
   Sparkles,
 } from "lucide-react"
 import {
@@ -471,17 +467,17 @@ function SectionContent({
     case "contact":
       return (
         <div className="pl-7 pr-2 pb-2 text-sm space-y-1">
-          {parsed.contact.name && <p className="font-medium truncate">{parsed.contact.name}</p>}
-          {parsed.contact.email && <p className="text-muted-foreground truncate">{parsed.contact.email}</p>}
-          {parsed.contact.phone && <p className="text-muted-foreground truncate">{parsed.contact.phone}</p>}
-          {parsed.contact.location && <p className="text-muted-foreground truncate">{parsed.contact.location}</p>}
+          {parsed.contact.name && <p className="font-medium break-words">{parsed.contact.name}</p>}
+          {parsed.contact.email && <p className="text-muted-foreground break-words">{parsed.contact.email}</p>}
+          {parsed.contact.phone && <p className="text-muted-foreground break-words">{parsed.contact.phone}</p>}
+          {parsed.contact.location && <p className="text-muted-foreground break-words">{parsed.contact.location}</p>}
         </div>
       )
 
     case "target":
       return (
         <div className="pl-7 pr-2 pb-2 text-sm">
-          <p className="truncate">{parsed.targetTitle || "No target title set"}</p>
+          <p className="break-words">{parsed.targetTitle || "No target title set"}</p>
         </div>
       )
 
@@ -748,10 +744,10 @@ function SectionsList({
         const isExpanded = expandedSections.includes(section.id)
 
         return (
-          <div key={section.id} className="w-full overflow-hidden">
+          <div key={section.id} className="w-full min-w-0">
             <div
               className={cn(
-                "group flex items-center gap-2 px-3 py-2.5 rounded-lg transition-colors cursor-pointer w-full overflow-hidden",
+                "group flex items-start gap-2 px-3 py-2.5 rounded-lg transition-colors cursor-pointer w-full min-w-0",
                 hasContent ? "hover:bg-muted/50" : "opacity-60 hover:opacity-80",
                 isExpanded && "bg-muted/50"
               )}
@@ -764,7 +760,9 @@ function SectionsList({
                 )}
               />
               <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm font-medium truncate flex-1 min-w-0 pr-2">{section.label}</span>
+              <span className="text-sm font-medium flex-1 min-w-0 pr-2 break-words leading-snug">
+                {section.label}
+              </span>
               {count > 0 && (
                 <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
                   {count}
@@ -819,8 +817,8 @@ function SectionsList({
 
             {/* Accordion Content */}
             {isExpanded && (
-              <div className="overflow-hidden w-full min-w-0">
-                <div className="w-full min-w-0 overflow-x-hidden">
+              <div className="w-full min-w-0">
+                <div className="w-full min-w-0">
                   <SectionContent
                     sectionId={section.id}
                     parsed={parsed}
@@ -1430,7 +1428,7 @@ export function ResumeViewerV2({
   const [hasChanges, setHasChanges] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(!!optimizationSummary)
-  const agentPanelRef = useRef<ImperativePanelHandle>(null)
+  const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
 
   // Parse initial content
   const initialParsed = useMemo(() => {
@@ -1986,34 +1984,6 @@ export function ResumeViewerV2({
                   </span>
                 </TooltipContent>
               </Tooltip>
-              {optimizationSummary && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={agentPanelOpen ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        if (agentPanelOpen) {
-                          agentPanelRef.current?.collapse()
-                        } else {
-                          agentPanelRef.current?.expand()
-                        }
-                      }}
-                      aria-label={agentPanelOpen ? "Hide changes panel" : "Show changes panel"}
-                    >
-                      {agentPanelOpen ? (
-                        <PanelRightClose className="h-4 w-4 mr-2" aria-hidden="true" />
-                      ) : (
-                        <PanelRightOpen className="h-4 w-4 mr-2" aria-hidden="true" />
-                      )}
-                      {agentPanelOpen ? "Hide" : "Changes"}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span>{agentPanelOpen ? "Hide changes panel" : "Show what changed & why"}</span>
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </div>
           </TooltipProvider>
         </div>
@@ -2043,74 +2013,95 @@ export function ResumeViewerV2({
             </div>
           )}
 
-          {/* Desktop: Resizable panels */}
-          <div className="hidden md:block">
-            <ResizablePanelGroup
-              direction="horizontal"
-              className="h-[calc(100vh-280px)] min-h-[800px]"
-            >
-              {/* Left Panel - Sections List */}
-              <ResizablePanel defaultSize={25} minSize={18} maxSize={35}>
-                <div className="relative bg-muted/20 overflow-hidden flex flex-col h-full">
-                  <ScrollArea className="flex-1 h-full">
-                    <div className="p-4">
-                      <SectionsList
-                        parsed={resumeData}
-                        expandedSections={expandedSections}
-                        onToggle={toggleSection}
-                        onEdit={handleEditSection}
-                        onAdd={handleAddSection}
-                        onEditItem={handleEditItem}
-                        onDeleteItem={handleDeleteItem}
-                      />
-                    </div>
-                  </ScrollArea>
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle withHandle />
-
-              {/* Center Panel - PDF Preview */}
-              <ResizablePanel defaultSize={optimizationSummary ? 50 : 75} minSize={35}>
-                <div className="relative bg-muted/30 overflow-hidden min-w-0 flex flex-col h-full">
-                  <ScrollArea className="flex-1 h-full">
-                    <div className="p-4 md:p-6 lg:p-8">
-                      <PaginatedResumePreview parsed={resumeData} rawContent={optimizedContent} />
-                    </div>
-                  </ScrollArea>
-                </div>
-              </ResizablePanel>
-
-              {/* Right Panel - Agent Panel (collapsible) */}
-              {optimizationSummary && (
-                <>
-                  <ResizableHandle withHandle />
-                  <ResizablePanel
-                    ref={agentPanelRef}
-                    defaultSize={25}
-                    minSize={18}
-                    maxSize={40}
-                    collapsible
-                    collapsedSize={0}
-                    onCollapse={() => setAgentPanelOpen(false)}
-                    onExpand={() => setAgentPanelOpen(true)}
-                  >
-                    <div className="border-l border-border h-full overflow-hidden">
-                      <AgentPanel
-                        optimizationSummary={optimizationSummary}
-                        jobTitle={jobTitle}
-                        companyName={companyName}
-                      />
-                    </div>
-                  </ResizablePanel>
-                </>
+          {/* Desktop: Flex layout */}
+          <div className="hidden md:flex h-[calc(100vh-280px)] min-h-[600px]">
+            {/* Left Panel - Sections List */}
+            <div
+              className={cn(
+                "shrink-0 bg-muted/20 border-r border-border flex flex-col transition-all duration-300 ease-in-out",
+                sectionsPanelOpen ? "w-[32vw] min-w-[260px] max-w-[340px]" : "w-[36px]"
               )}
-            </ResizablePanelGroup>
+            >
+              <div className="flex items-center justify-end p-1 border-b border-border shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setSectionsPanelOpen((prev) => !prev)}
+                  aria-label={sectionsPanelOpen ? "Collapse sections panel" : "Expand sections panel"}
+                >
+                  {sectionsPanelOpen ? (
+                    <PanelLeftClose className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {sectionsPanelOpen && (
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    <SectionsList
+                      parsed={resumeData}
+                      expandedSections={expandedSections}
+                      onToggle={toggleSection}
+                      onEdit={handleEditSection}
+                      onAdd={handleAddSection}
+                      onEditItem={handleEditItem}
+                      onDeleteItem={handleDeleteItem}
+                    />
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+
+            {/* Center Panel - PDF Preview */}
+            <div className="flex-1 min-w-0 bg-muted/30 overflow-hidden">
+              <ScrollArea className="h-full">
+                <div className="p-4 md:p-6 lg:p-8">
+                  <PaginatedResumePreview parsed={resumeData} rawContent={optimizedContent} />
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Right Panel - Agent Panel */}
+            {optimizationSummary && (
+              <div
+                className={cn(
+                  "shrink-0 border-l border-border flex flex-col transition-all duration-300 ease-in-out",
+                  agentPanelOpen ? "w-[320px]" : "w-[36px]"
+                )}
+              >
+                <div className="flex items-center justify-start p-1 border-b border-border shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setAgentPanelOpen((prev) => !prev)}
+                    aria-label={agentPanelOpen ? "Collapse changes panel" : "Expand changes panel"}
+                  >
+                    {agentPanelOpen ? (
+                      <PanelRightClose className="h-4 w-4" />
+                    ) : (
+                      <PanelRightOpen className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {agentPanelOpen && (
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <AgentPanel
+                      optimizationSummary={optimizationSummary}
+                      jobTitle={jobTitle}
+                      companyName={companyName}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Mobile: Stacked layout */}
           <div className="md:hidden">
-            <div className="h-[calc(100vh-280px)] min-h-[800px] flex flex-col">
+            <div className="h-[calc(100vh-280px)] min-h-[600px] flex flex-col">
               {/* Sections List */}
               <div className="relative border-b border-border bg-muted/20 overflow-hidden">
                 <ScrollArea className="h-[300px]">
