@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Sparkles, Zap, FileSearch, MessageCircle, Send, Loader2 } from "lucide-react"
+import { Sparkles, Zap, FileSearch, MessageCircle, Send, Loader2, Search } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -136,6 +136,30 @@ export function FloatingAgentButton() {
         >
           <MessageCircle className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Feedback</span>
+        </button>
+
+        <Separator orientation="vertical" className="h-4" />
+
+        <button
+          onClick={() => {
+            window.dispatchEvent(
+              new KeyboardEvent("keydown", {
+                key: "k",
+                metaKey: true,
+                bubbles: true,
+              })
+            )
+          }}
+          className={cn(
+            "flex items-center gap-1.5 rounded-full px-3 py-1.5",
+            "text-xs font-medium text-foreground/80",
+            "transition-colors hover:bg-primary/10 hover:text-primary"
+          )}
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline text-muted-foreground">
+            <kbd className="text-[10px] font-mono">⌘K</kbd>
+          </span>
         </button>
 
         <Separator orientation="vertical" className="h-4" />

@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react"
 import { ResumeUploader } from "./resume-uploader"
 import { EmailCaptureForm } from "./email-capture-form"
 import { ResultsDisplay } from "./results-display"
+import { FixPreviewModal } from "./FixPreviewModal"
 import { SocialProof } from "./social-proof"
 import { HowItWorks } from "./how-it-works"
 import { FeaturesGrid } from "./features-grid"
@@ -102,19 +103,40 @@ export function ATSCheckerClient() {
     setState({ step: "upload" })
   }, [])
 
-  // Handle "Fix This" action
+  // Handle "Fix This" action — opens preview modal
+  const [fixPreviewState, setFixPreviewState] = useState<{
+    issueId: string
+    checkId: string
+    issueTitle?: string
+    issueSeverity?: string
+  } | null>(null)
+
   const handleFixIssue = useCallback((issueId: string) => {
     if (state.step !== "results") return
 
+    const issue = state.results.issues.find(i => i.id === issueId)
+    setFixPreviewState({
+      issueId,
+      checkId: state.checkId,
+      issueTitle: issue?.title,
+      issueSeverity: issue?.severity,
+    })
+  }, [state])
+
+  const handleFixPreviewClose = useCallback(() => {
+    setFixPreviewState(null)
+  }, [])
+
+  const handleApplyFix = useCallback((_checkId: string, _issueId: string) => {
+    if (state.step !== "results") return
+
+    // Redirect to signup with fix context preserved
     const params = new URLSearchParams({
       source: "ats-checker",
       checkId: state.checkId,
-      issueId,
     })
 
-    // Redirect to signup with return URL to optimizer
-    const returnUrl = `/dashboard/optimizer?${params.toString()}`
-    window.location.href = `/sign-up?redirect=${encodeURIComponent(returnUrl)}`
+    window.location.href = `/sign-up?redirect=${encodeURIComponent(`/dashboard?${params.toString()}`)}`
   }, [state])
 
   // Handle create account
@@ -147,6 +169,13 @@ export function ATSCheckerClient() {
             onCreateAccount={handleCreateAccount}
           />
         </div>
+
+        {/* Fix Preview Modal */}
+        <FixPreviewModal
+          state={fixPreviewState}
+          onClose={handleFixPreviewClose}
+          onApplyFix={handleApplyFix}
+        />
 
         <CheckerFooter />
       </div>

@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/breadcrumb"
 import { usePathname } from "next/navigation"
 import type { User as UserType } from "@/lib/db"
+import { CommandPaletteProvider } from "@/components/command-palette/command-palette-provider"
+import { CommandPalette } from "@/components/command-palette/command-palette"
 
 const BREADCRUMB_MAP: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -44,35 +46,38 @@ export function AppLayout({ user, children }: AppLayoutProps) {
 
   return (
     <SidebarProvider defaultOpen={defaultSidebarOpen}>
-      <AppSidebar user={user} />
-      <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/50 backdrop-blur-lg px-4">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 !h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                {isNestedPage ? (
-                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-                ) : (
-                  <BreadcrumbPage>{breadcrumbLabel}</BreadcrumbPage>
-                )}
-              </BreadcrumbItem>
-              {isNestedPage && (
-                <>
-                  <BreadcrumbSeparator />
-                  <BreadcrumbItem>
+      <CommandPaletteProvider>
+        <AppSidebar user={user} />
+        <SidebarInset>
+          <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/50 backdrop-blur-lg px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 !h-4" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  {isNestedPage ? (
+                    <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+                  ) : (
                     <BreadcrumbPage>{breadcrumbLabel}</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </>
-              )}
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
-        <div className="flex-1">
-          {children}
-        </div>
-      </SidebarInset>
+                  )}
+                </BreadcrumbItem>
+                {isNestedPage && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage>{breadcrumbLabel}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
+              </BreadcrumbList>
+            </Breadcrumb>
+          </header>
+          <div className="flex-1">
+            {children}
+          </div>
+        </SidebarInset>
+        <CommandPalette />
+      </CommandPaletteProvider>
     </SidebarProvider>
   )
 }

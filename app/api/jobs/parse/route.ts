@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { parseJobFromUrl } from "@/lib/job-parser"
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(request: NextRequest) {
   const { userId } = await auth()

@@ -75,8 +75,13 @@ import {
 import { cn } from "@/lib/utils"
 import { applyEdits } from "@/lib/resume-diff"
 import type { ResumeEditOperation } from "@/lib/chat-edit-types"
+import type { ATSIssue } from "@/lib/ats-checker/types"
+import { getFixStrategy, buildFixCommand } from "@/lib/ats-checker/fix-strategies"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { usePlatform } from "@/hooks/use-platform"
+import { useLiveATSScore } from "@/hooks/use-live-ats-score"
+import { LiveATSScore } from "./LiveATSScore"
+import { ScoreHints } from "./ScoreHints"
 import {
   Tooltip,
   TooltipContent,
@@ -84,6 +89,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Kbd } from "@/components/keyboard-shortcuts/kbd"
+import { useCommandPalette } from "@/components/command-palette/command-palette-provider"
 
 /**
  * Strip markdown formatting from text
@@ -392,6 +398,7 @@ interface ResumeViewerV2Props {
   } | null
   jobTitle?: string
   companyName?: string | null
+  jobDescription?: string
 }
 
 // Section configuration
@@ -1418,6 +1425,7 @@ export function ResumeViewerV2({
   optimizationSummary,
   jobTitle,
   companyName,
+  jobDescription,
 }: ResumeViewerV2Props) {
   const layout = "modern" // TODO: Add layout selector in V2
   const [expandedSections, setExpandedSections] = useState<string[]>([
@@ -1473,6 +1481,15 @@ export function ResumeViewerV2({
     lastSyncedContentRef.current = optimizedContent
   }, [initialParsed, optimizedContent, hasChanges])
 
+  // Live ATS scoring
+  const {
+    score: liveScore,
+    scoreDelta,
+    isCalculating: isScoreCalculating,
+    recentHints,
+    dismissHint,
+  } = useLiveATSScore(resumeData, jobDescription)
+
   // Dialog states
   const [contactDialogOpen, setContactDialogOpen] = useState(false)
   const [targetDialogOpen, setTargetDialogOpen] = useState(false)
@@ -1499,8 +1516,6 @@ export function ResumeViewerV2({
   const [isNewVolunteering, setIsNewVolunteering] = useState(false)
   const [isNewPublication, setIsNewPublication] = useState(false)
 
-  const match = classifyMatch(matchScore)
-
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) =>
       prev.includes(sectionId)
@@ -1525,6 +1540,50 @@ export function ResumeViewerV2({
     },
     []
   )
+
+  // --- One-Click Fix ---
+  const [pendingFixCommand, setPendingFixCommand] = useState<string | null>(null)
+
+  const handleFixIssue = useCallback(
+    (issue: ATSIssue) => {
+      const strategy = getFixStrategy(issue)
+      if (!strategy) {
+        toast.info(issue.recommendation)
+        return
+      }
+
+      if (strategy.type === 'guidance_only') {
+        toast.info(issue.recommendation)
+        return
+      }
+
+      // TODO: handle user_input_required with a dialog
+      // For now, skip issues that need user input
+      if (strategy.type === 'user_input_required') {
+        toast.info(`This fix needs more info: ${issue.recommendation}`)
+        return
+      }
+
+      const command = buildFixCommand(strategy, issue, {
+        resumeData,
+        jobDescription,
+        jobTitle,
+      })
+
+      if (!command) {
+        toast.info(issue.recommendation)
+        return
+      }
+
+      setPendingFixCommand(command)
+      setAgentPanelOpen(true)
+    },
+    [resumeData, jobDescription, jobTitle]
+  )
+
+  const handleCommandConsumed = useCallback(() => {
+    setPendingFixCommand(null)
+  }, [])
 
   const handleEditSection = (sectionId: SectionId) => {
     switch (sectionId) {
@@ -1885,16 +1944,38 @@ export function ResumeViewerV2({
     },
   ])
 
+  // Register actions for command palette
+  const { registerActions, unregisterActions } = useCommandPalette()
+  useEffect(() => {
+    registerActions({
+      downloadDocx: () => download("docx"),
+      copyContent: copyText,
+      previewHtml: () => download("html"),
+      toggleAgentPanel: () => setAgentPanelOpen((prev) => !prev),
+    })
+    return () => {
+      unregisterActions(["downloadDocx", "copyContent", "previewHtml", "toggleAgentPanel"])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registerActions, unregisterActions])
+
   return (
     <div className="space-y-6">
       <Card className="border-border bg-card overflow-hidden">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 border-b border-border">
-          <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
-            <div className="text-sm text-muted-foreground">
-              Match: <span className={match.className}>{match.label}</span>
+          <div className="flex items-center gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                {jobTitle}{companyName ? ` at ${companyName}` : ""}
+              </div>
             </div>
+            <LiveATSScore
+              score={liveScore}
+              scoreDelta={scoreDelta}
+              isCalculating={isScoreCalculating}
+            />
           </div>
 
           <TooltipProvider>
@@ -1998,6 +2079,13 @@ export function ResumeViewerV2({
           </TooltipProvider>
         </div>
 
+        {/* Score change hints */}
+        {recentHints.length > 0 && (
+          <div className="px-6 py-2 border-b border-border bg-muted/20">
+            <ScoreHints hints={recentHints} onDismiss={dismissHint} />
+          </div>
+        )}
+
         <CardContent className="p-0">
           {/* Mobile: Sheet-based panel */}
           <div className="md:hidden border-b border-border p-2">
@@ -2019,6 +2107,10 @@ export function ResumeViewerV2({
                   resumeData={resumeData}
                   resumeId={optimizedId}
                   onApplyEdits={handleApplyEdits}
+                  liveScore={liveScore}
+                  onFixIssue={handleFixIssue}
+                  initialCommand={pendingFixCommand}
+                  onCommandConsumed={handleCommandConsumed}
                 />
               </SheetContent>
             </Sheet>
@@ -2105,6 +2197,10 @@ export function ResumeViewerV2({
                     resumeData={resumeData}
                     resumeId={optimizedId}
                     onApplyEdits={handleApplyEdits}
+                    liveScore={liveScore}
+                    onFixIssue={handleFixIssue}
+                    initialCommand={pendingFixCommand}
+                    onCommandConsumed={handleCommandConsumed}
                   />
                 </div>
               )}
