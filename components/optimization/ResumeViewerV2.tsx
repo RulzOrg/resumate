@@ -2172,6 +2172,8 @@ export function ResumeViewerV2({
         }
         onSave={handleSaveExperience}
         isNew={isNewExperience}
+        jobTitle={jobTitle}
+        companyName={companyName}
       />
 
       <EducationEditDialog

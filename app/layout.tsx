@@ -11,7 +11,7 @@ import { ClerkProvider } from "@clerk/nextjs"
 import { clerkConfig } from "@/lib/clerk-config"
 import { dark } from "@clerk/themes"
 import { ThemeProvider } from "@/components/theme-provider"
-import { FeedbackWidget } from "@/components/feedback-widget"
+import { FloatingAgentButton } from "@/components/agent/floating-agent-button"
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider"
 import { Toaster } from "sonner"
 import "./globals.css"
@@ -85,7 +85,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
-            <FeedbackWidget />
+            <FloatingAgentButton />
             <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
@@ -113,7 +113,7 @@ export default function RootLayout({
                 </p>
               </div>
             </div>
-            <FeedbackWidget />
+            <FloatingAgentButton />
             <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
@@ -166,7 +166,7 @@ export default function RootLayout({
               {children}
             </KeyboardShortcutsProvider>
           </ClerkProvider>
-          <FeedbackWidget />
+          <FloatingAgentButton />
           <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           <Analytics />
           <Script
