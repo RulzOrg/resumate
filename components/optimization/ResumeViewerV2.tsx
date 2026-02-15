@@ -10,6 +10,7 @@ import {
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable"
+import type { ImperativePanelHandle } from "react-resizable-panels"
 import {
   Sheet,
   SheetContent,
@@ -1429,6 +1430,7 @@ export function ResumeViewerV2({
   const [hasChanges, setHasChanges] = useState(false)
   const [copySuccess, setCopySuccess] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(!!optimizationSummary)
+  const agentPanelRef = useRef<ImperativePanelHandle>(null)
 
   // Parse initial content
   const initialParsed = useMemo(() => {
@@ -1990,7 +1992,13 @@ export function ResumeViewerV2({
                     <Button
                       variant={agentPanelOpen ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setAgentPanelOpen((prev) => !prev)}
+                      onClick={() => {
+                        if (agentPanelOpen) {
+                          agentPanelRef.current?.collapse()
+                        } else {
+                          agentPanelRef.current?.expand()
+                        }
+                      }}
                       aria-label={agentPanelOpen ? "Hide changes panel" : "Show changes panel"}
                     >
                       {agentPanelOpen ? (
@@ -2063,7 +2071,7 @@ export function ResumeViewerV2({
               <ResizableHandle withHandle />
 
               {/* Center Panel - PDF Preview */}
-              <ResizablePanel defaultSize={agentPanelOpen ? 50 : 75} minSize={35}>
+              <ResizablePanel defaultSize={optimizationSummary ? 50 : 75} minSize={35}>
                 <div className="relative bg-muted/30 overflow-hidden min-w-0 flex flex-col h-full">
                   <ScrollArea className="flex-1 h-full">
                     <div className="p-4 md:p-6 lg:p-8">
@@ -2074,11 +2082,20 @@ export function ResumeViewerV2({
               </ResizablePanel>
 
               {/* Right Panel - Agent Panel (collapsible) */}
-              {agentPanelOpen && optimizationSummary && (
+              {optimizationSummary && (
                 <>
                   <ResizableHandle withHandle />
-                  <ResizablePanel defaultSize={25} minSize={18} maxSize={40}>
-                    <div className="border-l border-border h-full">
+                  <ResizablePanel
+                    ref={agentPanelRef}
+                    defaultSize={25}
+                    minSize={18}
+                    maxSize={40}
+                    collapsible
+                    collapsedSize={0}
+                    onCollapse={() => setAgentPanelOpen(false)}
+                    onExpand={() => setAgentPanelOpen(true)}
+                  >
+                    <div className="border-l border-border h-full overflow-hidden">
                       <AgentPanel
                         optimizationSummary={optimizationSummary}
                         jobTitle={jobTitle}
