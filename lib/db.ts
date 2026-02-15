@@ -2720,3 +2720,80 @@ export async function updatePendingSubscriptionStatus(
 
   return subscription as PendingPolarSubscription | null
 }
+
+// Chat message functions
+
+export interface DbChatMessage {
+  id: string
+  user_id: string
+  optimized_resume_id: string
+  role: "user" | "assistant"
+  content: string
+  status: string
+  edit_result: Record<string, unknown> | null
+  edit_status: "pending" | "applied" | "dismissed" | null
+  created_at: string
+  updated_at: string
+}
+
+export async function getChatMessages(
+  optimizedResumeId: string,
+  userId: string
+): Promise<DbChatMessage[]> {
+  const rows = await sql`
+    SELECT * FROM chat_messages
+    WHERE optimized_resume_id = ${optimizedResumeId}
+      AND user_id = ${userId}
+    ORDER BY created_at ASC
+  `
+  return rows as DbChatMessage[]
+}
+
+export async function saveChatMessages(
+  messages: {
+    user_id: string
+    optimized_resume_id: string
+    role: "user" | "assistant"
+    content: string
+    status?: string
+    edit_result?: Record<string, unknown> | null
+    edit_status?: "pending" | "applied" | "dismissed" | null
+  }[]
+): Promise<DbChatMessage[]> {
+  const saved: DbChatMessage[] = []
+  for (const msg of messages) {
+    const editResultJson = msg.edit_result ? JSON.stringify(msg.edit_result) : null
+    const [row] = await sql`
+      INSERT INTO chat_messages (
+        user_id, optimized_resume_id, role, content, status,
+        edit_result, edit_status, created_at, updated_at
+      )
+      VALUES (
+        ${msg.user_id}, ${msg.optimized_resume_id}, ${msg.role},
+        ${msg.content}, ${msg.status || "complete"},
+        ${editResultJson}::jsonb, ${msg.edit_status || null},
+        NOW(), NOW()
+      )
+      RETURNING *
+    `
+    saved.push(row as DbChatMessage)
+  }
+  return saved
+}
+
+export async function updateChatMessageEditStatus(
+  messageId: string,
+  userId: string,
+  editStatus: "applied" | "dismissed",
+  content?: string
+): Promise<DbChatMessage | undefined> {
+  const [row] = await sql`
+    UPDATE chat_messages
+    SET edit_status = ${editStatus},
+        content = COALESCE(${content ?? null}, content),
+        updated_at = NOW()
+    WHERE id = ${messageId} AND user_id = ${userId}
+    RETURNING *
+  `
+  return row as DbChatMessage | undefined
+}

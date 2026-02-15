@@ -84,6 +84,7 @@ export interface ChatMessage {
   timestamp: number
   status: ChatMessageStatus
   editResult?: ChatEditResult
+  editStatus?: "pending" | "applied" | "dismissed"
   error?: string
 }
 

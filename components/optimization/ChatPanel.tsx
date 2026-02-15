@@ -122,6 +122,76 @@ function parseSSEBuffer(buffer: string): {
   return { parsed: events, remaining }
 }
 
+// ─── Persistence helpers ────────────────────────────────────────
+
+async function fetchChatHistory(resumeId: string): Promise<ChatMessage[]> {
+  const res = await fetch(`/api/resumes/optimized/${resumeId}/chat`)
+  if (!res.ok) return []
+  const data = await res.json()
+  if (!Array.isArray(data.messages)) return []
+
+  return data.messages.map((m: Record<string, unknown>) => ({
+    id: m.id as string,
+    role: m.role as "user" | "assistant",
+    content: (m.content as string) || "",
+    timestamp: new Date(m.created_at as string).getTime(),
+    status: (m.status as ChatMessage["status"]) || "complete",
+    editResult: m.edit_result as ChatEditResult | undefined,
+    editStatus: m.edit_status as ChatMessage["editStatus"],
+  }))
+}
+
+async function persistMessages(
+  resumeId: string,
+  userMsg: ChatMessage,
+  assistantMsg: ChatMessage
+): Promise<{ userDbId?: string; assistantDbId?: string }> {
+  try {
+    const res = await fetch(`/api/resumes/optimized/${resumeId}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          { role: userMsg.role, content: userMsg.content, status: userMsg.status },
+          {
+            role: assistantMsg.role,
+            content: assistantMsg.content,
+            status: assistantMsg.status,
+            editResult: assistantMsg.editResult || null,
+            editStatus: assistantMsg.editResult ? "pending" : null,
+          },
+        ],
+      }),
+    })
+    if (!res.ok) return {}
+    const data = await res.json()
+    const saved = data.messages as { id: string }[]
+    return {
+      userDbId: saved[0]?.id,
+      assistantDbId: saved[1]?.id,
+    }
+  } catch {
+    return {}
+  }
+}
+
+async function patchEditStatus(
+  resumeId: string,
+  messageId: string,
+  editStatus: "applied" | "dismissed",
+  content?: string
+) {
+  try {
+    await fetch(`/api/resumes/optimized/${resumeId}/chat/${messageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ editStatus, content }),
+    })
+  } catch {
+    // Non-blocking
+  }
+}
+
 // ─── Sub-components ─────────────────────────────────────────────
 
 function DiffPreview({ diffs }: { diffs: DiffEntry[] }) {
@@ -191,6 +261,22 @@ function EditActions({
   )
 }
 
+function EditStatusBadge({ status }: { status: "applied" | "dismissed" | "expired" }) {
+  return (
+    <Badge
+      variant="outline"
+      className={cn(
+        "text-[10px] px-1.5 py-0 h-4 mt-2",
+        status === "applied" && "border-green-500/50 text-green-600 dark:text-green-400",
+        status === "dismissed" && "border-muted-foreground/50 text-muted-foreground",
+        status === "expired" && "border-amber-500/50 text-amber-600 dark:text-amber-400"
+      )}
+    >
+      {status === "applied" ? "Applied" : status === "dismissed" ? "Dismissed" : "Expired"}
+    </Badge>
+  )
+}
+
 function StreamingCursor() {
   return (
     <span className="inline-block w-1.5 h-3.5 bg-foreground/70 animate-pulse ml-0.5 align-text-bottom" />
@@ -209,15 +295,45 @@ export function ChatPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true)
   const scrollRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // Maps client-generated message IDs to DB UUIDs for PATCH calls
+  const dbIdMapRef = useRef<Map<string, string>>(new Map())
 
   const suggestions = getCommandSuggestions(resumeData, jobTitle)
   const hasContent =
     resumeData.workExperience.length > 0 ||
     resumeData.skills.length > 0 ||
     !!resumeData.summary
+
+  // Load chat history on mount
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const history = await fetchChatHistory(resumeId)
+      if (cancelled) return
+
+      // For loaded messages, DB id IS the message id — store in map
+      for (const msg of history) {
+        dbIdMapRef.current.set(msg.id, msg.id)
+      }
+
+      // Mark stale pending edits as expired
+      const processed = history.map((msg) => {
+        if (msg.editResult && msg.editStatus === "pending") {
+          return { ...msg, editStatus: "dismissed" as const, editResult: undefined }
+        }
+        return msg
+      })
+
+      setMessages(processed)
+      setIsLoadingHistory(false)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [resumeId])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -251,6 +367,8 @@ export function ChatPanel({
 
       abortRef.current = new AbortController()
 
+      let finalAssistantMsg: ChatMessage | null = null
+
       try {
         const response = await fetch("/api/resumes/chat-edit", {
           method: "POST",
@@ -272,12 +390,16 @@ export function ChatPanel({
           if (response.status === 429) {
             toast.error(`Rate limit reached. Try again in ${error.retryAfter || 60}s.`)
           }
-          updateAssistantMessage((msg) => ({
-            ...msg,
-            content: error.error || "Something went wrong.",
-            status: "error",
-            error: error.error,
-          }))
+          updateAssistantMessage((msg) => {
+            const updated = {
+              ...msg,
+              content: error.error || "Something went wrong.",
+              status: "error" as const,
+              error: error.error,
+            }
+            finalAssistantMsg = updated
+            return updated
+          })
           return
         }
 
@@ -322,21 +444,37 @@ export function ChatPanel({
           }
         }
 
-        updateAssistantMessage((msg) => ({
-          ...msg,
-          status: msg.status === "error" ? "error" : "complete",
-        }))
+        updateAssistantMessage((msg) => {
+          const updated = {
+            ...msg,
+            status: (msg.status === "error" ? "error" : "complete") as ChatMessage["status"],
+          }
+          finalAssistantMsg = updated
+          return updated
+        })
       } catch (err) {
         if ((err as Error).name === "AbortError") return
-        updateAssistantMessage((msg) => ({
-          ...msg,
-          content: msg.content || "Connection failed. Please try again.",
-          status: "error",
-          error: "Connection failed",
-        }))
+        updateAssistantMessage((msg) => {
+          const updated = {
+            ...msg,
+            content: msg.content || "Connection failed. Please try again.",
+            status: "error" as const,
+            error: "Connection failed",
+          }
+          finalAssistantMsg = updated
+          return updated
+        })
       } finally {
         setIsStreaming(false)
         abortRef.current = null
+
+        // Persist both messages to DB (fire-and-forget)
+        if (finalAssistantMsg) {
+          persistMessages(resumeId, userMsg, finalAssistantMsg).then((ids) => {
+            if (ids.userDbId) dbIdMapRef.current.set(userMsg.id, ids.userDbId)
+            if (ids.assistantDbId) dbIdMapRef.current.set(assistantMsg.id, ids.assistantDbId)
+          })
+        }
       }
     },
     [
@@ -357,25 +495,41 @@ export function ChatPanel({
   }
 
   const handleApply = useCallback(
-    (editResult: ChatEditResult) => {
-      onApplyEdits(editResult.operations)
-      updateAssistantMessage((msg) => ({
-        ...msg,
-        content: msg.content + "\n\nChanges applied.",
+    (msg: ChatMessage) => {
+      if (!msg.editResult) return
+      onApplyEdits(msg.editResult.operations)
+      const newContent = msg.content + "\n\nChanges applied."
+      updateAssistantMessage((m) => ({
+        ...m,
+        content: newContent,
         editResult: undefined,
+        editStatus: "applied",
       }))
       toast.success("Edits applied to your resume")
+
+      // Persist edit status
+      const dbId = dbIdMapRef.current.get(msg.id)
+      if (dbId) patchEditStatus(resumeId, dbId, "applied", newContent)
     },
-    [onApplyEdits, updateAssistantMessage]
+    [onApplyEdits, updateAssistantMessage, resumeId]
   )
 
-  const handleDismiss = useCallback(() => {
-    updateAssistantMessage((msg) => ({
-      ...msg,
-      content: msg.content + "\n\nChanges dismissed.",
-      editResult: undefined,
-    }))
-  }, [updateAssistantMessage])
+  const handleDismiss = useCallback(
+    (msg: ChatMessage) => {
+      const newContent = msg.content + "\n\nChanges dismissed."
+      updateAssistantMessage((m) => ({
+        ...m,
+        content: newContent,
+        editResult: undefined,
+        editStatus: "dismissed",
+      }))
+
+      // Persist edit status
+      const dbId = dbIdMapRef.current.get(msg.id)
+      if (dbId) patchEditStatus(resumeId, dbId, "dismissed", newContent)
+    },
+    [updateAssistantMessage, resumeId]
+  )
 
   const handleRetry = useCallback(
     (originalCommand: string) => {
@@ -393,7 +547,11 @@ export function ChatPanel({
       {/* Messages area */}
       <ScrollArea className="flex-1 min-h-0">
         <div ref={scrollRef} className="p-3 space-y-3">
-          {isEmpty ? (
+          {isLoadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : isEmpty ? (
             <EmptyState
               suggestions={suggestions}
               onSuggestionClick={(s) => handleSend(s)}
@@ -430,15 +588,23 @@ export function ChatPanel({
                         </div>
                       )}
 
-                      {/* Diff preview */}
-                      {msg.editResult && (
+                      {/* Active diff preview with actions */}
+                      {msg.editResult && !msg.editStatus && (
                         <>
                           <DiffPreview diffs={msg.editResult.diffs} />
                           <EditActions
-                            onApply={() => handleApply(msg.editResult!)}
-                            onDismiss={handleDismiss}
+                            onApply={() => handleApply(msg)}
+                            onDismiss={() => handleDismiss(msg)}
                           />
                         </>
+                      )}
+
+                      {/* Historical edit status badge */}
+                      {msg.editStatus === "applied" && (
+                        <EditStatusBadge status="applied" />
+                      )}
+                      {msg.editStatus === "dismissed" && (
+                        <EditStatusBadge status="dismissed" />
                       )}
 
                       {/* Error state */}

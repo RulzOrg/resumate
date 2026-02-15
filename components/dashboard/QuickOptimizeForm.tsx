@@ -1,14 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
-import { Loader2, Sparkles, FileSearch, Check } from "lucide-react"
+import { Loader2, Sparkles, FileSearch, Check, Link2, X } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { UploadMasterResumeDialog } from "./master-resume-dialog"
 import { ReviewContentDialog, type ReviewContent } from "@/components/optimization/ReviewContentDialog"
 import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
+import { detectJobUrl } from "@/lib/job-parser"
+import { toast } from "sonner"
 import type { WorkExperienceItem } from "@/lib/resume-parser"
 
 interface Resume {
@@ -55,6 +57,10 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   const [companyName, setCompanyName] = useState("")
   const [jobDescription, setJobDescription] = useState("")
 
+  // URL parsing state
+  const [isParsing, setIsParsing] = useState(false)
+  const [parsedFromUrl, setParsedFromUrl] = useState<string | null>(null)
+
   // Track which fields have been interacted with (for showing errors)
   const [jobTitleTouched, setJobTitleTouched] = useState(false)
   const [jobDescriptionTouched, setJobDescriptionTouched] = useState(false)
@@ -64,7 +70,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   const charsNeeded = Math.max(0, 50 - jobDescription.length)
   const isJobDescriptionValid = jobDescription.length >= 50
   const isJobTitleValid = jobTitle.trim().length >= 3
-  const isFormValid = selectedResumeId && isJobTitleValid && isJobDescriptionValid && !isLoading
+  const isFormValid = selectedResumeId && isJobTitleValid && isJobDescriptionValid && !isLoading && !isParsing
 
   // Show error states only after field has been touched
   const showJobTitleError = jobTitleTouched && !isJobTitleValid && jobTitle.length > 0
@@ -89,6 +95,52 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       setSelectedResumeId(completedResumes[0].id)
     }
   }, [resumes]) // Intentionally using resumes as dependency to catch prop changes
+
+  // Handle paste in job description — detect URLs and auto-parse
+  const handleDescriptionPaste = useCallback(async (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData("text").trim()
+    const url = detectJobUrl(pasted)
+    if (!url) return // Normal text paste, let browser handle it
+
+    e.preventDefault()
+    setIsParsing(true)
+    setJobDescription("")
+    setError(null)
+
+    try {
+      const res = await fetch("/api/jobs/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || "Failed to parse job posting")
+      }
+
+      const data = await res.json()
+      if (data.jobTitle) setJobTitle(data.jobTitle)
+      if (data.companyName) setCompanyName(data.companyName)
+      if (data.jobDescription) setJobDescription(data.jobDescription)
+      setParsedFromUrl(url)
+      toast.success("Job posting parsed successfully!")
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to parse job posting"
+      toast.error(message)
+      // Fall back: put the URL in the description field so user can see what they pasted
+      setJobDescription(pasted)
+    } finally {
+      setIsParsing(false)
+    }
+  }, [])
+
+  const handleClearParsed = () => {
+    setParsedFromUrl(null)
+    setJobTitle("")
+    setCompanyName("")
+    setJobDescription("")
+  }
 
   // Phase 4: Modified handleSubmit to call extract-review API first
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,6 +256,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
           job_title: jobTitle.trim(),
           company_name: companyName.trim() || null,
           job_description: jobDescription.trim(),
+          job_url: parsedFromUrl || undefined,
           // Pass confirmed content from review dialog
           work_experience: confirmedContent.workExperience,
           summary: confirmedContent.summary,
@@ -330,22 +383,52 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
           Job Description *
           {isJobDescriptionValid && <Check className="inline w-4 h-4 ml-1 text-primary" />}
         </label>
-        <textarea
-          value={jobDescription}
-          onChange={(e) => setJobDescription(e.target.value)}
-          onBlur={() => setJobDescriptionTouched(true)}
-          placeholder="Paste the full job description here..."
-          rows={6}
-          className={`w-full px-3 py-2 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none ${
-            showJobDescriptionError
-              ? "border-red-500"
-              : isJobDescriptionValid
-              ? "border-primary/50"
-              : "border-border"
-          }`}
-          disabled={isLoading}
-        />
+        <div className="relative">
+          <textarea
+            value={jobDescription}
+            onChange={(e) => {
+              setJobDescription(e.target.value)
+              if (parsedFromUrl) setParsedFromUrl(null)
+            }}
+            onPaste={handleDescriptionPaste}
+            onBlur={() => setJobDescriptionTouched(true)}
+            placeholder="Paste a job URL or the full job description..."
+            rows={6}
+            className={`w-full px-3 py-2 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none ${
+              showJobDescriptionError
+                ? "border-red-500"
+                : isJobDescriptionValid
+                ? "border-primary/50"
+                : "border-border"
+            }`}
+            disabled={isLoading || isParsing}
+          />
+          {isParsing && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-sm border border-primary/30">
+              <div className="flex items-center gap-2 text-sm text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Parsing job posting...
+              </div>
+            </div>
+          )}
+        </div>
         <div className="mt-2 space-y-1">
+          {parsedFromUrl && (
+            <div className="flex items-center gap-1.5 text-xs text-primary mb-1">
+              <Link2 className="h-3 w-3" />
+              <span className="truncate max-w-[250px]">
+                Parsed from {new URL(parsedFromUrl).hostname}
+              </span>
+              <button
+                type="button"
+                onClick={handleClearParsed}
+                className="ml-1 text-muted-foreground hover:text-foreground"
+                aria-label="Clear parsed data"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
           <Progress
             value={charProgress}
             className={`h-1.5 ${isJobDescriptionValid ? "[&>div]:bg-primary" : showJobDescriptionError ? "[&>div]:bg-red-500" : ""}`}
