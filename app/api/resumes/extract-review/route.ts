@@ -11,6 +11,7 @@ import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
 import { AppError } from "@/lib/error-handler"
 import { fromError, errorResponse } from "@/lib/api-response"
 import { redactForLog } from "@/lib/security/redaction"
+import { sanitizeParsedResume } from "@/lib/optimized-resume-document"
 
 // Allow up to 2 minutes for extraction
 export const maxDuration = 120
@@ -179,12 +180,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const normalizedStructure = sanitizeParsedResume(resumeStructure)
+
     // Return only work_experience and summary for user review
     return NextResponse.json(
       {
         resume_id: resume.id,
-        work_experience: resumeStructure.workExperience || [],
-        summary: resumeStructure.summary || null,
+        work_experience: normalizedStructure.workExperience,
+        summary: normalizedStructure.summary,
         cache_hit: cacheHit,
       },
       { headers: getRateLimitHeaders(rateLimitResult) }

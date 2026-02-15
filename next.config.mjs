@@ -16,6 +16,7 @@ const nextConfig = {
     }
     return config;
   },
+  serverExternalPackages: ['pdf-parse', 'pdfjs-dist', '@napi-rs/canvas'],
   eslint: {
     ignoreDuringBuilds: true,
   },

@@ -12,6 +12,10 @@ import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processi
 import { detectJobUrl } from "@/lib/job-parser"
 import { toast } from "sonner"
 import type { WorkExperienceItem } from "@/lib/resume-parser"
+import {
+  buildApiErrorMessage,
+  parseApiResponse,
+} from "@/lib/quick-optimize-api"
 
 interface Resume {
   id: string
@@ -182,12 +186,16 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       // Move to next step while processing
       setExtractionStepIndex(1)
 
-      const extractData = await extractResponse.json()
+      const { data: extractData, rawText: extractRaw } = await parseApiResponse(extractResponse)
 
       if (!extractResponse.ok) {
         // Phase 5: Handle specific extraction errors
-        const errorCode = extractData.code
-        let errorMessage = extractData.error || "Failed to extract resume content"
+        const errorCode = extractData?.code
+        let errorMessage = buildApiErrorMessage(
+          extractData,
+          extractRaw,
+          "Failed to extract resume content"
+        )
         
         switch (errorCode) {
           case "NOT_A_RESUME":
@@ -206,8 +214,10 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       // Move to final step
       setExtractionStepIndex(2)
 
-      const workExperience: WorkExperienceItem[] = extractData.work_experience || []
-      const summary: string | undefined = extractData.summary || undefined
+      const workExperience: WorkExperienceItem[] = extractData?.work_experience || []
+      const summary: string | undefined = typeof extractData?.summary === "string"
+        ? extractData.summary
+        : undefined
 
       // Phase 5: Handle empty work experience
       if (workExperience.length === 0) {
@@ -263,15 +273,26 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         }),
       })
 
-      const data = await response.json()
+      const { data, rawText } = await parseApiResponse(response)
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to optimize resume")
+        throw new Error(
+          buildApiErrorMessage(
+            data,
+            rawText,
+            "Optimization failed. Please retry. If it persists, refresh and try again."
+          )
+        )
+      }
+
+      const optimizedId = data?.optimized_resume?.id
+      if (!optimizedId) {
+        throw new Error("Optimization response was invalid. Please retry.")
       }
 
       // Close dialog and redirect to the optimized resume
       setReviewDialogOpen(false)
-      router.push(`/dashboard/optimized/${data.optimized_resume.id}`)
+      router.push(`/dashboard/optimized/${optimizedId}`)
     } catch (err: any) {
       setError(err.message || "Something went wrong during optimization")
       setIsOptimizing(false)
@@ -500,4 +521,3 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
     </>
   )
 }
-

@@ -14,7 +14,10 @@
     "test-clerk-webhook": "dotenv -e .env.local tsx scripts/test-clerk-webhook-beehiiv.ts",
     "backfill-beehiiv-names": "dotenv -e .env.local tsx scripts/backfill-beehiiv-names.ts",
     "test:upload-extract": "tsx --test tests/upload-extract.test.ts",
-    "test:structured-resume": "tsx --test tests/structured-resume-document.test.ts"
+    "test:structured-resume": "tsx --test tests/structured-resume-document.test.ts",
+    "test:api-response": "tsx --test tests/api-response.test.ts",
+    "test:quick-optimize-api": "tsx --test tests/quick-optimize-api.test.ts",
+    "test:match-score": "tsx --test tests/match-score.test.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.1",
