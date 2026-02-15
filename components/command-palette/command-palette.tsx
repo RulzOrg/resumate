@@ -17,6 +17,8 @@ import {
   Sun,
   Moon,
   Keyboard,
+  Plus,
+  Wrench,
 } from "lucide-react"
 import {
   CommandDialog,
@@ -102,7 +104,7 @@ export function CommandPalette() {
           </CommandItem>
         </CommandGroup>
 
-        <CommandGroup heading="AI Actions">
+        <CommandGroup heading="Quick Actions">
           <CommandItem
             onSelect={() => runCommand(() => router.push("/dashboard"))}
             keywords={["optimize", "tailor", "job"]}
@@ -111,6 +113,46 @@ export function CommandPalette() {
             <span>New Optimization</span>
           </CommandItem>
         </CommandGroup>
+
+        {isResumeDetail && (
+          <CommandGroup heading="AI Actions">
+            <CommandItem
+              onSelect={() => runCommand(() => getAction("aiImprove")?.())}
+              keywords={["ai", "improve", "enhance", "rewrite"]}
+            >
+              <Sparkles />
+              <span>Improve my summary</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => getAction("aiTailor")?.())}
+              keywords={["ai", "tailor", "optimize", "job"]}
+            >
+              <Zap />
+              <span>Tailor resume for this job</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => getAction("aiAddSkill")?.())}
+              keywords={["ai", "skill", "add"]}
+            >
+              <Plus />
+              <span>Add a skill with AI</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => getAction("aiBullets")?.())}
+              keywords={["ai", "bullet", "improve", "experience"]}
+            >
+              <Sparkles />
+              <span>Improve bullet points</span>
+            </CommandItem>
+            <CommandItem
+              onSelect={() => runCommand(() => getAction("aiFixATS")?.())}
+              keywords={["ai", "ats", "fix", "score"]}
+            >
+              <Wrench />
+              <span>Fix ATS issues</span>
+            </CommandItem>
+          </CommandGroup>
+        )}
 
         {isResumeDetail && (
           <CommandGroup heading="Resume">

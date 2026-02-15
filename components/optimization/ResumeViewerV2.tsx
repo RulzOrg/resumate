@@ -62,16 +62,22 @@ import {
 } from "@/lib/resume-parser"
 import {
   ContactEditDialog,
-  ExperienceEditDialog,
-  EducationEditDialog,
   SkillsEditDialog,
   SimpleListEditDialog,
   TextEditDialog,
   CertificationsEditDialog,
-  ProjectEditDialog,
-  VolunteeringEditDialog,
-  PublicationEditDialog,
 } from "./dialogs"
+import { InlineEditor } from "./InlineEditor"
+import { InlineImproveAction } from "./InlineImproveAction"
+import { FixInputDialog } from "./FixInputDialog"
+import {
+  ExperienceEditDrawer,
+  EducationEditDrawer,
+  ProjectEditDrawer,
+  VolunteeringEditDrawer,
+  PublicationEditDrawer,
+} from "./drawers"
+import type { FixStrategy } from "@/lib/ats-checker/fix-strategies"
 import { cn } from "@/lib/utils"
 import { applyEdits } from "@/lib/resume-diff"
 import type { ResumeEditOperation } from "@/lib/chat-edit-types"
@@ -466,11 +472,13 @@ function SectionContent({
   parsed,
   onEditItem,
   onDeleteItem,
+  onUpdateField,
 }: {
   sectionId: SectionId
   parsed: ParsedResume
   onEditItem: (sectionId: SectionId, index: number) => void
   onDeleteItem: (sectionId: SectionId, index: number) => void
+  onUpdateField?: (updates: Partial<ParsedResume>) => void
 }) {
   switch (sectionId) {
     case "contact":
@@ -486,16 +494,24 @@ function SectionContent({
     case "target":
       return (
         <div className="pl-7 pr-2 pb-2 text-sm">
-          <p className="break-words">{parsed.targetTitle || "No target title set"}</p>
+          <InlineEditor
+            value={parsed.targetTitle || ""}
+            onSave={(val) => onUpdateField?.({ targetTitle: val })}
+            placeholder="No target title set"
+          />
         </div>
       )
 
     case "summary":
       return (
         <div className="pl-7 pr-2 pb-2 text-sm min-w-0">
-          <p className="text-muted-foreground line-clamp-3 break-words">
-            {parsed.summary || "No summary added"}
-          </p>
+          <InlineEditor
+            value={parsed.summary || ""}
+            onSave={(val) => onUpdateField?.({ summary: val })}
+            multiline
+            placeholder="No summary added"
+            className="text-muted-foreground"
+          />
         </div>
       )
 
@@ -505,24 +521,53 @@ function SectionContent({
           {parsed.workExperience.map((exp, idx) => (
             <div
               key={idx}
-              className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
-              onClick={() => onEditItem("experience", idx)}
+              className="text-sm p-2 rounded hover:bg-muted/50 min-w-0"
             >
-              <div className="flex-1 min-w-0 pr-2">
-                <p className="font-medium break-words">{exp.company}</p>
-                <p className="text-muted-foreground text-xs break-words">{exp.title}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDeleteItem("experience", idx)
-                }}
+              <div
+                className="group flex items-start justify-between cursor-pointer"
+                onClick={() => onEditItem("experience", idx)}
               >
-                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-              </Button>
+                <div className="flex-1 min-w-0 pr-2">
+                  <p className="font-medium break-words">{exp.company}</p>
+                  <p className="text-muted-foreground text-xs break-words">{exp.title}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDeleteItem("experience", idx)
+                  }}
+                >
+                  <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                </Button>
+              </div>
+              {exp.bullets.length > 0 && (
+                <ul className="mt-1 space-y-0.5 pl-2">
+                  {exp.bullets.map((bullet, bIdx) => (
+                    <li
+                      key={bIdx}
+                      className="group relative text-xs text-muted-foreground pr-8 break-words"
+                    >
+                      <span className="mr-1">&bull;</span>
+                      <span className="line-clamp-2">{bullet}</span>
+                      <InlineImproveAction
+                        bullet={bullet}
+                        company={exp.company}
+                        title={exp.title}
+                        onApply={(improved) => {
+                          const updatedExp = [...parsed.workExperience]
+                          const updatedBullets = [...updatedExp[idx].bullets]
+                          updatedBullets[bIdx] = improved
+                          updatedExp[idx] = { ...updatedExp[idx], bullets: updatedBullets }
+                          onUpdateField?.({ workExperience: updatedExp })
+                        }}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ))}
         </div>
@@ -735,6 +780,7 @@ function SectionsList({
   onAdd,
   onEditItem,
   onDeleteItem,
+  onUpdateField,
 }: {
   parsed: ParsedResume
   expandedSections: string[]
@@ -743,6 +789,7 @@ function SectionsList({
   onAdd: (sectionId: SectionId) => void
   onEditItem: (sectionId: SectionId, index: number) => void
   onDeleteItem: (sectionId: SectionId, index: number) => void
+  onUpdateField?: (updates: Partial<ParsedResume>) => void
 }) {
   return (
     <div className="space-y-0.5 w-full min-w-0">
@@ -833,6 +880,7 @@ function SectionsList({
                     parsed={parsed}
                     onEditItem={onEditItem}
                     onDeleteItem={onDeleteItem}
+                    onUpdateField={onUpdateField}
                   />
                 </div>
               </div>
@@ -1503,6 +1551,9 @@ export function ResumeViewerV2({
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [volunteeringDialogOpen, setVolunteeringDialogOpen] = useState(false)
   const [publicationDialogOpen, setPublicationDialogOpen] = useState(false)
+  const [fixInputDialogOpen, setFixInputDialogOpen] = useState(false)
+  const [pendingFixStrategy, setPendingFixStrategy] = useState<FixStrategy | null>(null)
+  const [pendingFixIssue, setPendingFixIssue] = useState<ATSIssue | null>(null)
 
   // Current editing index for array items
   const [editingExperienceIndex, setEditingExperienceIndex] = useState<number | null>(null)
@@ -1557,10 +1608,10 @@ export function ResumeViewerV2({
         return
       }
 
-      // TODO: handle user_input_required with a dialog
-      // For now, skip issues that need user input
       if (strategy.type === 'user_input_required') {
-        toast.info(`This fix needs more info: ${issue.recommendation}`)
+        setPendingFixStrategy(strategy)
+        setPendingFixIssue(issue)
+        setFixInputDialogOpen(true)
         return
       }
 
@@ -1584,6 +1635,16 @@ export function ResumeViewerV2({
   const handleCommandConsumed = useCallback(() => {
     setPendingFixCommand(null)
   }, [])
+
+  const handleFixInputSubmit = useCallback(
+    (command: string) => {
+      setPendingFixCommand(command)
+      setAgentPanelOpen(true)
+      setPendingFixStrategy(null)
+      setPendingFixIssue(null)
+    },
+    []
+  )
 
   const handleEditSection = (sectionId: SectionId) => {
     switch (sectionId) {
@@ -1952,9 +2013,33 @@ export function ResumeViewerV2({
       copyContent: copyText,
       previewHtml: () => download("html"),
       toggleAgentPanel: () => setAgentPanelOpen((prev) => !prev),
+      // AI commands
+      aiImprove: () => {
+        setPendingFixCommand("Make my summary more concise and impactful")
+        setAgentPanelOpen(true)
+      },
+      aiTailor: () => {
+        setPendingFixCommand(`Tailor my resume for ${jobTitle || "this job"}`)
+        setAgentPanelOpen(true)
+      },
+      aiAddSkill: () => {
+        setPendingFixCommand("Suggest and add relevant skills based on my experience")
+        setAgentPanelOpen(true)
+      },
+      aiBullets: () => {
+        setPendingFixCommand("Improve all my bullet points to be more impactful with quantified results")
+        setAgentPanelOpen(true)
+      },
+      aiFixATS: () => {
+        setPendingFixCommand("Fix my resume's ATS issues and improve the overall score")
+        setAgentPanelOpen(true)
+      },
     })
     return () => {
-      unregisterActions(["downloadDocx", "copyContent", "previewHtml", "toggleAgentPanel"])
+      unregisterActions([
+        "downloadDocx", "copyContent", "previewHtml", "toggleAgentPanel",
+        "aiImprove", "aiTailor", "aiAddSkill", "aiBullets", "aiFixATS",
+      ])
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registerActions, unregisterActions])
@@ -2151,6 +2236,7 @@ export function ResumeViewerV2({
                       onAdd={handleAddSection}
                       onEditItem={handleEditItem}
                       onDeleteItem={handleDeleteItem}
+                      onUpdateField={updateResumeData}
                     />
                   </div>
                 </ScrollArea>
@@ -2222,6 +2308,7 @@ export function ResumeViewerV2({
                       onAdd={handleAddSection}
                       onEditItem={handleEditItem}
                       onDeleteItem={handleDeleteItem}
+                      onUpdateField={updateResumeData}
                     />
                   </div>
                 </ScrollArea>
@@ -2270,7 +2357,7 @@ export function ResumeViewerV2({
         placeholder="Write a compelling summary highlighting your key achievements and value proposition..."
       />
 
-      <ExperienceEditDialog
+      <ExperienceEditDrawer
         open={experienceDialogOpen}
         onOpenChange={setExperienceDialogOpen}
         experience={
@@ -2284,7 +2371,7 @@ export function ResumeViewerV2({
         companyName={companyName}
       />
 
-      <EducationEditDialog
+      <EducationEditDrawer
         open={educationDialogOpen}
         onOpenChange={setEducationDialogOpen}
         education={
@@ -2332,7 +2419,7 @@ export function ResumeViewerV2({
         placeholder="Award or scholarship name..."
       />
 
-      <ProjectEditDialog
+      <ProjectEditDrawer
         open={projectDialogOpen}
         onOpenChange={(open) => {
           setProjectDialogOpen(open)
@@ -2350,7 +2437,7 @@ export function ResumeViewerV2({
         isNew={isNewProject}
       />
 
-      <VolunteeringEditDialog
+      <VolunteeringEditDrawer
         open={volunteeringDialogOpen}
         onOpenChange={(open) => {
           setVolunteeringDialogOpen(open)
@@ -2368,7 +2455,7 @@ export function ResumeViewerV2({
         isNew={isNewVolunteering}
       />
 
-      <PublicationEditDialog
+      <PublicationEditDrawer
         open={publicationDialogOpen}
         onOpenChange={(open) => {
           setPublicationDialogOpen(open)
@@ -2385,6 +2472,16 @@ export function ResumeViewerV2({
         onSave={handleSavePublication}
         isNew={isNewPublication}
       />
+
+      {pendingFixStrategy && pendingFixIssue && (
+        <FixInputDialog
+          open={fixInputDialogOpen}
+          onOpenChange={setFixInputDialogOpen}
+          strategy={pendingFixStrategy}
+          issue={pendingFixIssue}
+          onSubmit={handleFixInputSubmit}
+        />
+      )}
     </div>
   )
 }
