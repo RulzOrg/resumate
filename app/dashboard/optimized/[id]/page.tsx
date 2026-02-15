@@ -23,29 +23,6 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
       redirect("/dashboard")
     }
 
-    // Debug: Log the optimized content length and preview
-    console.log(`[Resume Detail] Loading optimized resume:`, {
-      id: optimized.id,
-      title: optimized.title,
-      contentLength: optimized.optimized_content?.length || 0,
-      contentPreview: optimized.optimized_content?.slice(0, 200) || 'EMPTY',
-      userId: user.id,
-    })
-
-    // Debug: Log optimization_summary to diagnose Agent panel data
-    console.log(`[Resume Detail] optimization_summary:`, {
-      isNull: optimized.optimization_summary === null,
-      isUndefined: optimized.optimization_summary === undefined,
-      keys: optimized.optimization_summary ? Object.keys(optimized.optimization_summary) : [],
-      changes_made_count: optimized.optimization_summary?.changes_made?.length ?? 'MISSING',
-      keywords_added_count: optimized.optimization_summary?.keywords_added?.length ?? 'MISSING',
-      skills_highlighted_count: optimized.optimization_summary?.skills_highlighted?.length ?? 'MISSING',
-      sections_improved_count: optimized.optimization_summary?.sections_improved?.length ?? 'MISSING',
-      recommendations_count: optimized.optimization_summary?.recommendations?.length ?? 'MISSING',
-      match_score_before: optimized.optimization_summary?.match_score_before ?? 'MISSING',
-      match_score_after: optimized.optimization_summary?.match_score_after ?? 'MISSING',
-    })
-
     original = await getResumeById(optimized.original_resume_id, user.id)
   } catch (error) {
     console.error(`[Resume Detail] Error loading resume:`, error)
@@ -65,6 +42,8 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
           optimizedId={optimized.id}
           title={optimized.title}
           optimizedContent={optimized.optimized_content}
+          structuredOutput={optimized.structured_output}
+          revisionToken={optimized.updated_at}
           matchScore={optimized.match_score}
           optimizationSummary={optimized.optimization_summary}
           jobTitle={optimized.job_title}

@@ -8,7 +8,9 @@ import {
 } from "@/lib/db"
 import { extractResumeWithLLM } from "@/lib/llm-resume-extractor"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
-import { handleApiError, AppError } from "@/lib/error-handler"
+import { AppError } from "@/lib/error-handler"
+import { fromError, errorResponse } from "@/lib/api-response"
+import { redactForLog } from "@/lib/security/redaction"
 
 // Allow up to 2 minutes for extraction
 export const maxDuration = 120
@@ -18,15 +20,18 @@ export async function POST(request: NextRequest) {
     // Auth check
     const { userId } = await auth()
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return errorResponse(401, "UNAUTHORIZED", "Unauthorized", { retryable: false })
     }
 
     // Rate limit: 10 requests per 5 minutes (extraction is cheaper than full optimization)
-    const rateLimitResult = rateLimit(`extract-review:${userId}`, 10, 300000)
+    const rateLimitResult = await rateLimit(`extract-review:${userId}`, 10, 300000)
     if (!rateLimitResult.success) {
       return NextResponse.json(
         {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: "Rate limit exceeded. Please wait before making another extraction request.",
           error: "Rate limit exceeded. Please wait before making another extraction request.",
+          retryable: true,
           retryAfter: rateLimitResult.retryAfter,
         },
         {
@@ -106,6 +111,7 @@ export async function POST(request: NextRequest) {
 
       if (!extractionResult.success) {
         const errorCode = extractionResult.error?.code || "EXTRACTION_FAILED"
+        const outcome = extractionResult.outcome || "raw_only"
         let errorMessage: string
         let statusCode = 400
 
@@ -120,8 +126,10 @@ export async function POST(request: NextRequest) {
             break
           case "EXTRACTION_FAILED":
             errorMessage =
-              "Failed to parse resume. Please try uploading a different format (DOCX recommended)."
-            statusCode = 500
+              outcome === "raw_only"
+                ? "We could read your file but could not structure it reliably. Please try a cleaner DOCX/PDF export."
+                : "Failed to parse resume. Please try uploading a different file."
+            statusCode = 422
             break
           case "INVALID_INPUT":
             errorMessage = "Resume content is too short or invalid."
@@ -133,12 +141,13 @@ export async function POST(request: NextRequest) {
             statusCode = 500
         }
 
-        console.error("[ExtractReview] Extraction failed:", {
+        console.error("[ExtractReview] Extraction failed:", redactForLog({
           errorCode,
+          outcome,
           errorMessage: extractionResult.error?.message,
           documentType: extractionResult.error?.documentType,
           duration: `${extractionDuration}ms`,
-        })
+        }))
 
         throw new AppError(errorMessage, statusCode, errorCode)
       }
@@ -181,11 +190,6 @@ export async function POST(request: NextRequest) {
       { headers: getRateLimitHeaders(rateLimitResult) }
     )
   } catch (error) {
-    const errorInfo = handleApiError(error)
-    return NextResponse.json(
-      { error: errorInfo.error, code: errorInfo.code },
-      { status: errorInfo.statusCode }
-    )
+    return fromError(error)
   }
 }
-

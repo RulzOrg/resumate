@@ -61,6 +61,11 @@ import {
   type PublicationItem,
 } from "@/lib/resume-parser"
 import {
+  normalizeStructuredOutput,
+  toStructuredDocument,
+  type StructuredResumeMetadataV1,
+} from "@/lib/optimized-resume-document"
+import {
   ContactEditDialog,
   SkillsEditDialog,
   SimpleListEditDialog,
@@ -392,6 +397,8 @@ interface ResumeViewerV2Props {
   optimizedId: string
   title: string
   optimizedContent: string
+  structuredOutput?: unknown
+  revisionToken?: string
   matchScore?: number | null
   optimizationSummary?: {
     changes_made: string[]
@@ -431,6 +438,12 @@ function classifyMatch(score?: number | null) {
   if (s === 0) return { label: `${s}%`, className: "text-red-500" }
   if (s < 60) return { label: `${s}%`, className: "text-amber-500" }
   return { label: `${s}%`, className: "text-primary" }
+}
+
+function normalizeRevisionToken(value: unknown): string | undefined {
+  if (!value) return undefined
+  if (value instanceof Date) return value.toISOString()
+  return String(value)
 }
 
 function getSectionCount(parsed: ParsedResume, sectionId: string): number {
@@ -581,6 +594,15 @@ function SectionContent({
               key={idx}
               className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
               onClick={() => onEditItem("education", idx)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  onEditItem("education", idx)
+                }
+              }}
+              aria-label={`Edit education item ${idx + 1}`}
             >
               <div className="flex-1 min-w-0 pr-2">
                 <p className="font-medium break-words">{edu.institution}</p>
@@ -675,6 +697,15 @@ function SectionContent({
               key={idx}
               className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
               onClick={() => onEditItem("projects", idx)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  onEditItem("projects", idx)
+                }
+              }}
+              aria-label={`Edit project item ${idx + 1}`}
             >
               <div className="flex-1 min-w-0 pr-2">
                 <p className="font-medium break-words">{project.name}</p>
@@ -708,6 +739,15 @@ function SectionContent({
               key={idx}
               className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
               onClick={() => onEditItem("volunteering", idx)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  onEditItem("volunteering", idx)
+                }
+              }}
+              aria-label={`Edit volunteering item ${idx + 1}`}
             >
               <div className="flex-1 min-w-0 pr-2">
                 <p className="font-medium break-words">{vol.organization}</p>
@@ -741,6 +781,15 @@ function SectionContent({
               key={idx}
               className="group flex items-start justify-between text-sm p-2 rounded hover:bg-muted/50 cursor-pointer min-w-0"
               onClick={() => onEditItem("publications", idx)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  onEditItem("publications", idx)
+                }
+              }}
+              aria-label={`Edit publication item ${idx + 1}`}
             >
               <div className="flex-1 min-w-0 pr-2">
                 <p className="font-medium break-words">{pub.title}</p>
@@ -774,6 +823,7 @@ function SectionContent({
 // Sections List Component (Left Panel)
 function SectionsList({
   parsed,
+  metadata,
   expandedSections,
   onToggle,
   onEdit,
@@ -783,6 +833,7 @@ function SectionsList({
   onUpdateField,
 }: {
   parsed: ParsedResume
+  metadata?: StructuredResumeMetadataV1
   expandedSections: string[]
   onToggle: (section: string) => void
   onEdit: (sectionId: SectionId) => void
@@ -798,16 +849,28 @@ function SectionsList({
         const count = getSectionCount(parsed, section.id)
         const Icon = section.icon
         const isExpanded = expandedSections.includes(section.id)
+        const provenance = metadata?.field_provenance?.[section.id]
+        const confidence = metadata?.extraction_confidence?.[section.id]
 
         return (
           <div key={section.id} className="w-full min-w-0">
             <div
+              role="button"
+              tabIndex={0}
               className={cn(
                 "group flex items-start gap-2 px-3 py-2.5 rounded-lg transition-colors cursor-pointer w-full min-w-0",
                 hasContent ? "hover:bg-muted/50" : "opacity-60 hover:opacity-80",
                 isExpanded && "bg-muted/50"
               )}
               onClick={() => onToggle(section.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault()
+                  onToggle(section.id)
+                }
+              }}
+              aria-expanded={isExpanded}
+              aria-label={`Toggle ${section.label} section`}
             >
               <ChevronRight
                 className={cn(
@@ -822,6 +885,16 @@ function SectionsList({
               {count > 0 && (
                 <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
                   {count}
+                </span>
+              )}
+              {typeof confidence === "number" && (
+                <span className="text-[10px] text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                  {Math.round(confidence * 100)}%
+                </span>
+              )}
+              {provenance && (
+                <span className="text-[10px] text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded shrink-0 uppercase">
+                  {provenance.replace("_", " ")}
                 </span>
               )}
 
@@ -859,7 +932,7 @@ function SectionsList({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => onEdit(section.id)}>
                         <Pencil className="h-4 w-4 mr-2" />
-                        Edit All
+                        Edit First Item
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onAdd(section.id)}>
                         <Plus className="h-4 w-4 mr-2" />
@@ -1469,6 +1542,8 @@ export function ResumeViewerV2({
   optimizedId,
   title,
   optimizedContent,
+  structuredOutput,
+  revisionToken,
   matchScore,
   optimizationSummary,
   jobTitle,
@@ -1487,22 +1562,23 @@ export function ResumeViewerV2({
   const [copySuccess, setCopySuccess] = useState(false)
   const [agentPanelOpen, setAgentPanelOpen] = useState(true)
   const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "unsaved" | "conflict">("saved")
+  const [serverRevision, setServerRevision] = useState<string | undefined>(normalizeRevisionToken(revisionToken))
+  const historyRef = useRef<ParsedResume[]>([])
+  const futureRef = useRef<ParsedResume[]>([])
+
+  const normalizedStructured = useMemo(
+    () => normalizeStructuredOutput(structuredOutput, optimizedContent),
+    [structuredOutput, optimizedContent]
+  )
 
   // Parse initial content
   const initialParsed = useMemo(() => {
-    console.log('[ResumeViewerV2] Parsing content:', {
-      length: optimizedContent?.length || 0,
-      preview: optimizedContent?.slice(0, 200) || 'EMPTY',
-    })
-    const parsed = parseResumeContent(optimizedContent || '')
-    console.log('[ResumeViewerV2] Parsed result:', {
-      name: parsed.contact.name,
-      email: parsed.contact.email,
-      experienceCount: parsed.workExperience.length,
-      skillsCount: parsed.skills.length,
-    })
-    return parsed
-  }, [optimizedContent])
+    if (normalizedStructured) {
+      return normalizedStructured.document
+    }
+    return parseResumeContent(optimizedContent || "")
+  }, [normalizedStructured, optimizedContent])
 
   // Editable state
   const [resumeData, setResumeData] = useState<ParsedResume>(initialParsed)
@@ -1518,16 +1594,20 @@ export function ResumeViewerV2({
     if (hasChanges) {
       // If there are unsaved changes, don't overwrite them
       // User should save or discard their changes first
-      console.warn('Skipping sync: unsaved changes present')
+      console.warn("Skipping sync: unsaved changes present")
       return
     } else {
       // No unsaved changes, safe to update directly
       setResumeData(initialParsed)
+      setSaveStatus("saved")
+      historyRef.current = []
+      futureRef.current = []
     }
-    
+
     // Update the ref to track this version
     lastSyncedContentRef.current = optimizedContent
-  }, [initialParsed, optimizedContent, hasChanges])
+    setServerRevision(normalizeRevisionToken(revisionToken))
+  }, [initialParsed, optimizedContent, hasChanges, revisionToken])
 
   // Live ATS scoring
   const {
@@ -1578,8 +1658,13 @@ export function ResumeViewerV2({
   // Update handlers
   const updateResumeData = useCallback(
     (updates: Partial<ParsedResume>) => {
-      setResumeData((prev) => ({ ...prev, ...updates }))
+      setResumeData((prev) => {
+        historyRef.current = [...historyRef.current, prev].slice(-50)
+        futureRef.current = []
+        return { ...prev, ...updates }
+      })
       setHasChanges(true)
+      setSaveStatus("unsaved")
     },
     []
   )
@@ -1893,6 +1978,24 @@ export function ResumeViewerV2({
     setPublicationDialogOpen(false)
   }
 
+  const handleUndo = useCallback(() => {
+    const previous = historyRef.current.pop()
+    if (!previous) return
+    futureRef.current = [resumeData, ...futureRef.current].slice(0, 50)
+    setResumeData(previous)
+    setHasChanges(true)
+    setSaveStatus("unsaved")
+  }, [resumeData])
+
+  const handleRedo = useCallback(() => {
+    const next = futureRef.current.shift()
+    if (!next) return
+    historyRef.current = [...historyRef.current, resumeData].slice(-50)
+    setResumeData(next)
+    setHasChanges(true)
+    setSaveStatus("unsaved")
+  }, [resumeData])
+
   const copyText = async () => {
     try {
       // Format resume data as HTML for Word (preserves formatting)
@@ -1951,27 +2054,75 @@ export function ResumeViewerV2({
     }
   }
 
-  const handleSaveChanges = async () => {
+  const handleSaveChanges = useCallback(async () => {
+    if (!hasChanges && saveStatus !== "conflict") {
+      return
+    }
+
     setIsSaving(true)
+    setSaveStatus("saving")
     try {
+      const structuredOutput = toStructuredDocument(resumeData, {
+        provenanceDefault: "user_edited",
+      })
+
       const response = await fetch(`/api/resumes/optimized/${optimizedId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resumeData }),
+        body: JSON.stringify({
+          structured_output: structuredOutput,
+          client_revision: serverRevision,
+          match_score: matchScore,
+        }),
       })
 
       if (response.ok) {
+        const result = await response.json()
+        setServerRevision(
+          normalizeRevisionToken(result?.optimized_resume?.revision_token || result?.optimized_resume?.updated_at)
+        )
         setHasChanges(false)
+        setSaveStatus("saved")
         toast.success("Changes saved")
+      } else if (response.status === 409) {
+        const conflictPayload = await response.json().catch(() => null)
+        const latestServerRevision = normalizeRevisionToken(
+          conflictPayload?.details?.server_revision
+        )
+        if (latestServerRevision) {
+          setServerRevision(latestServerRevision)
+        }
+        setSaveStatus("conflict")
+        toast.error("Save conflict detected. Review and save again.")
       } else {
+        setSaveStatus("unsaved")
         toast.error("Save failed. Try again.")
       }
     } catch {
+      setSaveStatus("unsaved")
       toast.error("Save failed. Try again.")
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [hasChanges, saveStatus, resumeData, optimizedId, serverRevision, matchScore])
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasChanges) return
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    window.addEventListener("beforeunload", onBeforeUnload)
+    return () => window.removeEventListener("beforeunload", onBeforeUnload)
+  }, [hasChanges])
+
+  useEffect(() => {
+    if (!hasChanges || isSaving || saveStatus === "conflict") return
+    const timer = window.setTimeout(() => {
+      void handleSaveChanges()
+    }, 1500)
+    return () => window.clearTimeout(timer)
+  }, [resumeData, hasChanges, isSaving, saveStatus, handleSaveChanges])
 
   // Platform detection for shortcut display
   const { modifierKey } = usePlatform()
@@ -1995,13 +2146,27 @@ export function ResumeViewerV2({
       modifiers: { meta: true },
       handler: handleSaveChanges,
       description: "Save changes",
-      enabled: hasChanges && !isSaving,
+      enabled: (hasChanges || saveStatus === "conflict") && !isSaving,
     },
     {
       key: "p",
       modifiers: { meta: true },
       handler: () => download("html"),
       description: "Preview HTML",
+    },
+    {
+      key: "z",
+      modifiers: { meta: true },
+      handler: handleUndo,
+      description: "Undo",
+      enabled: historyRef.current.length > 0,
+    },
+    {
+      key: "y",
+      modifiers: { meta: true },
+      handler: handleRedo,
+      description: "Redo",
+      enabled: futureRef.current.length > 0,
     },
   ])
 
@@ -2061,36 +2226,50 @@ export function ResumeViewerV2({
               scoreDelta={scoreDelta}
               isCalculating={isScoreCalculating}
             />
+            <div className="text-xs mt-1 text-muted-foreground">
+              Status:{" "}
+              <span
+                className={cn(
+                  saveStatus === "saved" && "text-emerald-500",
+                  saveStatus === "saving" && "text-amber-500",
+                  saveStatus === "unsaved" && "text-foreground",
+                  saveStatus === "conflict" && "text-red-500"
+                )}
+              >
+                {saveStatus === "saved" && "Saved"}
+                {saveStatus === "saving" && "Saving"}
+                {saveStatus === "unsaved" && "Unsaved"}
+                {saveStatus === "conflict" && "Conflict"}
+              </span>
+            </div>
           </div>
 
           <TooltipProvider>
             <div className="flex flex-wrap items-center gap-2">
-              {hasChanges && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={handleSaveChanges}
-                      disabled={isSaving}
-                      className="bg-primary"
-                      aria-label="Save resume changes"
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <Save className="h-4 w-4 mr-2" aria-hidden="true" />
-                      )}
-                      Save Changes
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span>Save changes</span>
-                    <span className="ml-2 opacity-60">
-                      <Kbd>{modifierKey}</Kbd>
-                      <Kbd>S</Kbd>
-                    </span>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={handleSaveChanges}
+                    disabled={isSaving || (!hasChanges && saveStatus !== "conflict")}
+                    className="bg-primary"
+                    aria-label="Save resume changes"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Save className="h-4 w-4 mr-2" aria-hidden="true" />
+                    )}
+                    Save Changes
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Save changes</span>
+                  <span className="ml-2 opacity-60">
+                    <Kbd>{modifierKey}</Kbd>
+                    <Kbd>S</Kbd>
+                  </span>
+                </TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -2230,6 +2409,7 @@ export function ResumeViewerV2({
                   <div className="p-4">
                     <SectionsList
                       parsed={resumeData}
+                      metadata={normalizedStructured?.metadata}
                       expandedSections={expandedSections}
                       onToggle={toggleSection}
                       onEdit={handleEditSection}
@@ -2247,7 +2427,7 @@ export function ResumeViewerV2({
             <div className="flex-1 min-w-0 bg-muted/30 overflow-hidden">
               <ScrollArea className="h-full">
                 <div className="p-4 md:p-6 lg:p-8">
-                  <PaginatedResumePreview parsed={resumeData} rawContent={optimizedContent} />
+                  <ResumePreview parsed={resumeData} rawContent={optimizedContent} />
                 </div>
               </ScrollArea>
             </div>

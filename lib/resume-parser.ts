@@ -3,6 +3,7 @@
  * Extracts structured sections from markdown resume content
  * Handles various LLM output formats flexibly
  */
+import { debugLog } from "@/lib/debug-logger"
 
 export interface ContactInfo {
   name: string
@@ -188,7 +189,7 @@ function extractDates(line: string): { startDate?: string, endDate?: string, ori
  * Parse markdown resume content into structured data
  */
 export function parseResumeContent(content: string): ParsedResume {
-  console.log('[ResumeParser] Parsing content:', {
+  debugLog('[ResumeParser] Parsing content:', {
     contentLength: content.length,
     hasEducation: content.includes('## Education'),
     hasSkills: content.includes('## Skills'),
@@ -383,11 +384,11 @@ export function parseResumeContent(content: string): ParsedResume {
         if (isSafeSectionHeader) {
           // Save previous section data
           if (currentSubsection && currentSection) {
-            console.log(`[ResumeParser] Saving subsection for section '${currentSection}' before switching to '${newSection}'`)
+            debugLog(`[ResumeParser] Saving subsection for section '${currentSection}' before switching to '${newSection}'`)
             saveSubsection(result, currentSection, currentSubsection, buffer)
           }
 
-          console.log(`[ResumeParser] Detected section: '${newSection}' from header: '${sectionName}'`)
+          debugLog(`[ResumeParser] Detected section: '${newSection}' from header: '${sectionName}'`)
           currentSection = newSection
           currentSubsection = null
           buffer = []
@@ -400,12 +401,12 @@ export function parseResumeContent(content: string): ParsedResume {
     if (line.match(/^###\s+/) && ['experience', 'education', 'projects', 'volunteering'].includes(currentSection)) {
       // Save previous subsection
       if (currentSubsection) {
-        console.log(`[ResumeParser] Saving previous subsection in section '${currentSection}' before new subsection`)
+        debugLog(`[ResumeParser] Saving previous subsection in section '${currentSection}' before new subsection`)
         saveSubsection(result, currentSection, currentSubsection, buffer)
       }
 
       const subsectionName = line.replace(/^###\s*/, '').trim()
-      console.log(`[ResumeParser] Starting new subsection in '${currentSection}': '${subsectionName}'`)
+      debugLog(`[ResumeParser] Starting new subsection in '${currentSection}': '${subsectionName}'`)
       currentSubsection = { headerLine: line, name: subsectionName, bullets: [] }
       buffer = []
       continue
@@ -434,16 +435,16 @@ export function parseResumeContent(content: string): ParsedResume {
         const isNewJobHeader = line.startsWith('### ') || isJobHeader(line)
 
         // Debug: Log all lines in experience section to understand parsing
-        console.log(`[ResumeParser:experience] Line: "${line.substring(0, 80)}" | isNewJobHeader=${isNewJobHeader} | hasSubsection=${!!currentSubsection}`)
+        debugLog(`[ResumeParser:experience] Line: "${line.substring(0, 80)}" | isNewJobHeader=${isNewJobHeader} | hasSubsection=${!!currentSubsection}`)
 
         if (isNewJobHeader) {
           // Save the previous job entry if we have one
           if (currentSubsection) {
-            console.log(`[ResumeParser] Saving experience entry: "${currentSubsection.headerLine?.substring(0, 50)}" with ${buffer.filter(l => l.startsWith('- ') || l.startsWith('• ')).length} bullets`)
+            debugLog(`[ResumeParser] Saving experience entry: "${currentSubsection.headerLine?.substring(0, 50)}" with ${buffer.filter(l => l.startsWith('- ') || l.startsWith('• ')).length} bullets`)
             saveSubsection(result, currentSection, currentSubsection, buffer)
           }
           // Start a new job entry
-          console.log(`[ResumeParser] Starting NEW experience entry: "${line.substring(0, 50)}"`)
+          debugLog(`[ResumeParser] Starting NEW experience entry: "${line.substring(0, 50)}"`)
           currentSubsection = { headerLine: line, bullets: [] }
           buffer = []
         } else if (currentSubsection) {
@@ -468,7 +469,7 @@ export function parseResumeContent(content: string): ParsedResume {
         break
 
       case 'skills':
-        console.log(`[ResumeParser] Processing skills line: '${line.substring(0, 100)}'`)
+        debugLog(`[ResumeParser] Processing skills line: '${line.substring(0, 100)}'`)
         parseSkillLine(result.skills, line)
         break
 
@@ -542,7 +543,7 @@ export function parseResumeContent(content: string): ParsedResume {
     }
   }
 
-  console.log('[ResumeParser] Parsed result:', {
+  debugLog('[ResumeParser] Parsed result:', {
     name: result.contact.name,
     workExperienceCount: result.workExperience.length,
     educationCount: result.education.length,
@@ -704,7 +705,7 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
       if (locationPart) {
         exp.location = locationPart
       }
-      console.log(`[ResumeParser] Parsed company+location from header: company="${exp.company}", location="${exp.location}"`)
+      debugLog(`[ResumeParser] Parsed company+location from header: company="${exp.company}", location="${exp.location}"`)
     } else {
       // No location separator, continue with original parsing
 
@@ -730,9 +731,9 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
 
       // Final check: if company still looks like it has a date, try one more aggressive cleanup
       if (exp.company.match(/\d{1,2}\/\d{4}/)) {
-        console.log(`[ResumeParser] ⚠️ Company name still contains date, attempting cleanup: '${exp.company}'`)
+        debugLog(`[ResumeParser] ⚠️ Company name still contains date, attempting cleanup: '${exp.company}'`)
         exp.company = exp.company.replace(/\s+.*\d{1,2}\/\d{4}.*$/i, '').replace(/[\s\t]+/g, ' ').trim()
-        console.log(`[ResumeParser] Cleaned company name: '${exp.company}'`)
+        debugLog(`[ResumeParser] Cleaned company name: '${exp.company}'`)
       }
     }
   }
@@ -792,14 +793,14 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
   }
 
   // Process buffer lines - check ALL lines for dates first, then parse other fields
-  console.log(`[ResumeParser:parseExp] Processing ${buffer.length} buffer lines for entry: ${exp.company || '(no company yet)'}`)
+  debugLog(`[ResumeParser:parseExp] Processing ${buffer.length} buffer lines for entry: ${exp.company || '(no company yet)'}`)
   
   for (const line of buffer) {
     // Skip empty lines
     if (!line.trim()) continue
     
     // Debug: Log each line being processed
-    console.log(`[ResumeParser:parseExp] Processing buffer line: "${line.substring(0, 80)}"`)
+    debugLog(`[ResumeParser:parseExp] Processing buffer line: "${line.substring(0, 80)}"`)
 
     // Priority 1: Bullet points - extract immediately and continue
     if (line.startsWith('- ') || line.startsWith('* ') || line.startsWith('• ')) {
@@ -812,11 +813,11 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
     if (dates.startDate || dates.endDate) {
       if (dates.startDate && !exp.startDate) {
         exp.startDate = dates.startDate
-        console.log(`[ResumeParser:parseExp] ✅ Extracted startDate: "${dates.startDate}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted startDate: "${dates.startDate}"`)
       }
       if (dates.endDate && !exp.endDate) {
         exp.endDate = dates.endDate
-        console.log(`[ResumeParser:parseExp] ✅ Extracted endDate: "${dates.endDate}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted endDate: "${dates.endDate}"`)
       }
       
       // If this line is primarily a date, extract title from before the date if present
@@ -824,7 +825,7 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
         const titlePart = line.replace(/(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{1,2}\/\d{4}|\d{4})\s*[-–—].*$/i, '').trim()
         if (titlePart && !exp.title) {
           exp.title = titlePart.replace(/\*+/g, '').replace(/[|,]$/, '').trim()
-          console.log(`[ResumeParser:parseExp] ✅ Extracted title from date line: "${exp.title}"`)
+          debugLog(`[ResumeParser:parseExp] ✅ Extracted title from date line: "${exp.title}"`)
         }
         continue // Skip further processing for date-only lines
       }
@@ -833,7 +834,7 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
     // Priority 3: Title | Date | EmploymentType format (pipe-separated)
     if (line.includes('|')) {
       const parts = line.split('|').map(p => p.trim())
-      console.log(`[ResumeParser:parseExp] Processing pipe-separated line with ${parts.length} parts`)
+      debugLog(`[ResumeParser:parseExp] Processing pipe-separated line with ${parts.length} parts`)
       
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i]
@@ -843,7 +844,7 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
           const titleMatch = part.match(/^\*\*(.+?)\*\*$/) || part.match(/^([A-Z][a-zA-Z\s]+(?:Designer|Developer|Manager|Engineer|Analyst|Lead|Director|Specialist).*)$/i)
           if (titleMatch) {
             exp.title = titleMatch[1].trim()
-            console.log(`[ResumeParser:parseExp] ✅ Extracted title from pipe part ${i}: "${exp.title}"`)
+            debugLog(`[ResumeParser:parseExp] ✅ Extracted title from pipe part ${i}: "${exp.title}"`)
           }
         }
         
@@ -851,11 +852,11 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
         const partDates = extractDates(part)
         if (partDates.startDate && !exp.startDate) {
           exp.startDate = partDates.startDate
-          console.log(`[ResumeParser:parseExp] ✅ Extracted startDate from pipe part ${i}: "${exp.startDate}"`)
+          debugLog(`[ResumeParser:parseExp] ✅ Extracted startDate from pipe part ${i}: "${exp.startDate}"`)
         }
         if (partDates.endDate && !exp.endDate) {
           exp.endDate = partDates.endDate
-          console.log(`[ResumeParser:parseExp] ✅ Extracted endDate from pipe part ${i}: "${exp.endDate}"`)
+          debugLog(`[ResumeParser:parseExp] ✅ Extracted endDate from pipe part ${i}: "${exp.endDate}"`)
         }
         
         // Extract employment type from any part
@@ -863,7 +864,7 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
           const empMatch = part.match(/(Full-time|Part-time|Contract|Freelance|Internship)/i)
           if (empMatch) {
             exp.employmentType = empMatch[1]
-            console.log(`[ResumeParser:parseExp] ✅ Extracted employmentType from pipe part ${i}: "${exp.employmentType}"`)
+            debugLog(`[ResumeParser:parseExp] ✅ Extracted employmentType from pipe part ${i}: "${exp.employmentType}"`)
           }
         }
       }
@@ -873,12 +874,12 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
     // Priority 4: Line with bullet separator (•) - common format: "Title • Full-time Location" or "Title • Date Range"
     if (line.includes('•') && !line.startsWith('•')) {
       const parts = line.split('•').map(p => p.trim())
-      console.log(`[ResumeParser:parseExp] Processing bullet-separated line with ${parts.length} parts`)
+      debugLog(`[ResumeParser:parseExp] Processing bullet-separated line with ${parts.length} parts`)
       
       // First part is usually title
       if (parts[0] && !exp.title) {
         exp.title = parts[0].replace(/\*+/g, '').trim()
-        console.log(`[ResumeParser:parseExp] ✅ Extracted title from bullet part 0: "${exp.title}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted title from bullet part 0: "${exp.title}"`)
       }
       
       // Check all parts for dates, employment type, location
@@ -889,11 +890,11 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
         const partDates = extractDates(part)
         if (partDates.startDate && !exp.startDate) {
           exp.startDate = partDates.startDate
-          console.log(`[ResumeParser:parseExp] ✅ Extracted startDate from bullet part ${i}: "${exp.startDate}"`)
+          debugLog(`[ResumeParser:parseExp] ✅ Extracted startDate from bullet part ${i}: "${exp.startDate}"`)
         }
         if (partDates.endDate && !exp.endDate) {
           exp.endDate = partDates.endDate
-          console.log(`[ResumeParser:parseExp] ✅ Extracted endDate from bullet part ${i}: "${exp.endDate}"`)
+          debugLog(`[ResumeParser:parseExp] ✅ Extracted endDate from bullet part ${i}: "${exp.endDate}"`)
         }
         
         // Extract employment type
@@ -901,18 +902,18 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
           const empMatch = part.match(/(Full-time|Part-time|Contract|Freelance|Internship)/i)
           if (empMatch) {
             exp.employmentType = empMatch[1]
-            console.log(`[ResumeParser:parseExp] ✅ Extracted employmentType from bullet part ${i}: "${exp.employmentType}"`)
+            debugLog(`[ResumeParser:parseExp] ✅ Extracted employmentType from bullet part ${i}: "${exp.employmentType}"`)
             // Rest might be location
             const remaining = part.replace(/Full-time|Part-time|Contract|Freelance|Internship/i, '').trim()
             if (remaining && !exp.location) {
               exp.location = remaining
-              console.log(`[ResumeParser:parseExp] ✅ Extracted location from bullet part ${i}: "${exp.location}"`)
+              debugLog(`[ResumeParser:parseExp] ✅ Extracted location from bullet part ${i}: "${exp.location}"`)
             }
           }
         } else if (!exp.location && part.length > 2 && part.length < 50 && !isDateLine(part)) {
           // Might be location if not a date
           exp.location = part
-          console.log(`[ResumeParser:parseExp] ✅ Extracted location from bullet part ${i}: "${exp.location}"`)
+          debugLog(`[ResumeParser:parseExp] ✅ Extracted location from bullet part ${i}: "${exp.location}"`)
         }
       }
       continue
@@ -925,7 +926,7 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
       if (!exp.title) {
         // Extract title, removing any trailing dates
         exp.title = cleanLine.replace(/\s*[-–—]\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4}|Present|Current).*$/i, '').trim()
-        console.log(`[ResumeParser:parseExp] ✅ Extracted title: "${exp.title}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted title: "${exp.title}"`)
       }
       continue
     }
@@ -945,11 +946,11 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
       const empDates = extractDates(line)
       if (empDates.startDate && !exp.startDate) {
         exp.startDate = empDates.startDate
-        console.log(`[ResumeParser:parseExp] ✅ Extracted startDate from employment line: "${exp.startDate}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted startDate from employment line: "${exp.startDate}"`)
       }
       if (empDates.endDate && !exp.endDate) {
         exp.endDate = empDates.endDate
-        console.log(`[ResumeParser:parseExp] ✅ Extracted endDate from employment line: "${exp.endDate}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted endDate from employment line: "${exp.endDate}"`)
       }
       continue
     }
@@ -959,7 +960,7 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
         line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:,\s*[A-Z]{2,})?$/) &&
         !line.includes('|') && !line.match(/^\*\*/)) {
       exp.location = line.trim()
-      console.log(`[ResumeParser:parseExp] ✅ Extracted location: "${exp.location}"`)
+      debugLog(`[ResumeParser:parseExp] ✅ Extracted location: "${exp.location}"`)
       continue
     }
     
@@ -968,17 +969,17 @@ function parseExperienceEntry(headerLine: string, buffer: string[]): WorkExperie
       const fallbackDates = extractDates(line)
       if (fallbackDates.startDate) {
         exp.startDate = fallbackDates.startDate
-        console.log(`[ResumeParser:parseExp] ✅ Extracted startDate (fallback): "${exp.startDate}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted startDate (fallback): "${exp.startDate}"`)
       }
       if (fallbackDates.endDate) {
         exp.endDate = fallbackDates.endDate
-        console.log(`[ResumeParser:parseExp] ✅ Extracted endDate (fallback): "${exp.endDate}"`)
+        debugLog(`[ResumeParser:parseExp] ✅ Extracted endDate (fallback): "${exp.endDate}"`)
       }
     }
   }
   
   // Log final parsed result
-  console.log(`[ResumeParser:parseExp] Final parsed entry:`, {
+  debugLog(`[ResumeParser:parseExp] Final parsed entry:`, {
     company: exp.company || '(empty)',
     title: exp.title || '(empty)',
     startDate: exp.startDate || '(empty)',
@@ -1033,17 +1034,17 @@ function saveSubsection(result: ParsedResume, section: string, subsection: any, 
         /(Design Strategy|Workshopper|Sprint Facilitator|User Experience Specialist)/i.test(institution)
 
       if (isCertification) {
-        console.log(`[ResumeParser] ⚠️ SKIPPING education entry that looks like certification: '${institution}'`)
+        debugLog(`[ResumeParser] ⚠️ SKIPPING education entry that looks like certification: '${institution}'`)
         break // Don't add this as education
       }
 
       // Only proceed if we have a valid institution name
       if (!institution || institution.length < 2) {
-        console.log(`[ResumeParser] ⚠️ Skipping education entry with invalid institution: '${institution}'`)
+        debugLog(`[ResumeParser] ⚠️ Skipping education entry with invalid institution: '${institution}'`)
         break
       }
 
-      console.log(`[ResumeParser] Saving education subsection: institution='${institution}', buffer lines=${buffer.length}`, {
+      debugLog(`[ResumeParser] Saving education subsection: institution='${institution}', buffer lines=${buffer.length}`, {
         buffer: buffer.slice(0, 5), // First 5 lines of buffer
         subsectionKeys: Object.keys(subsection),
       })

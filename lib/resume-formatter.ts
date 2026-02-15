@@ -1,7 +1,8 @@
 import type { ParsedResume } from "@/lib/resume-parser";
+import { debugLog } from "@/lib/debug-logger"
 
 export function formatResumeToMarkdown(data: ParsedResume): string {
-  console.log('[ResumeFormatter] Formatting resume to markdown:', {
+  debugLog('[ResumeFormatter] Formatting resume to markdown:', {
     workExperienceCount: data.workExperience.length,
     educationCount: data.education.length,
     skillsCount: data.skills.length,
@@ -190,13 +191,11 @@ export function formatResumeToMarkdown(data: ParsedResume): string {
 
   const markdown = lines.join("\n")
 
-  console.log('[ResumeFormatter] Generated markdown:', {
+  debugLog('[ResumeFormatter] Generated markdown:', {
     totalLength: markdown.length,
     hasEducation: markdown.includes('## Education'),
     hasSkills: markdown.includes('## Skills'),
     hasWorkExperience: markdown.includes('## Work Experience'),
-    educationSection: markdown.match(/## Education[\s\S]*?(?=## |$)/)?.[0]?.substring(0, 200),
-    skillsSection: markdown.match(/## Skills[\s\S]*?(?=## |$)/)?.[0]?.substring(0, 200),
   })
 
   return markdown

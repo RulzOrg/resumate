@@ -4,25 +4,41 @@ import { getResumeById, createOptimizedResume, getOrCreateUser, getUserById, ens
 import { extractResumeWithLLM } from "@/lib/llm-resume-extractor"
 import { canPerformAction } from "@/lib/subscription"
 import { rateLimit, getRateLimitHeaders } from "@/lib/rate-limit"
-import { handleApiError, withRetry, AppError } from "@/lib/error-handler"
+import { withRetry, AppError } from "@/lib/error-handler"
 import { optimizeResumeStructured } from "@/lib/structured-optimizer"
 import { formatResumeToMarkdown } from "@/lib/resume-formatter"
+import { toStructuredDocument } from "@/lib/optimized-resume-document"
+import { errorResponse, fromError } from "@/lib/api-response"
+import { redactForLog } from "@/lib/security/redaction"
+import { z } from "zod"
 
 // Allow up to 5 minutes for generation (Pro plan limit)
 export const maxDuration = 300;
+
+const OptimizeRequestSchema = z.object({
+  resume_id: z.string().min(1),
+  job_title: z.string().min(1),
+  company_name: z.string().nullish(),
+  job_description: z.string().min(50),
+  work_experience: z.array(z.any()).optional(),
+  summary: z.string().optional(),
+})
 
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return errorResponse(401, "UNAUTHORIZED", "Unauthorized", { retryable: false })
     }
 
-    const rateLimitResult = rateLimit(`optimize:${userId}`, 5, 300000) // 5 requests per 5 minutes
+    const rateLimitResult = await rateLimit(`optimize:${userId}`, 5, 300000) // 5 requests per 5 minutes
     if (!rateLimitResult.success) {
       return NextResponse.json(
         {
+          code: "RATE_LIMIT_EXCEEDED",
+          message: "Rate limit exceeded. Please wait before making another optimization request.",
           error: "Rate limit exceeded. Please wait before making another optimization request.",
+          retryable: true,
           retryAfter: rateLimitResult.retryAfter,
         },
         {
@@ -41,52 +57,49 @@ export async function POST(request: NextRequest) {
     // Check subscription limits
     const canOptimize = await canPerformAction('resumeOptimizations')
     if (!canOptimize) {
-      return NextResponse.json({
-        error: "You've reached your monthly resume optimization limit. Upgrade to Pro for unlimited optimizations.",
-        code: "LIMIT_EXCEEDED"
-      }, { status: 403 })
+      return errorResponse(
+        403,
+        "LIMIT_EXCEEDED",
+        "You've reached your monthly resume optimization limit. Upgrade to Pro for unlimited optimizations.",
+        { retryable: false }
+      )
     }
 
-    const { 
-      resume_id, 
-      job_title, 
-      company_name, 
-      job_description,
-      // Optional: pre-confirmed content from review step
-      work_experience,
-      summary: confirmed_summary
-    } = await request.json()
+    const parsedBody = OptimizeRequestSchema.safeParse(await request.json())
+    if (!parsedBody.success) {
+      return errorResponse(400, "INVALID_REQUEST", "Invalid optimize payload", {
+        retryable: false,
+        details: parsedBody.error.flatten(),
+      })
+    }
 
-    console.log('[Optimize] Request received:', {
+    const {
+      resume_id,
+      job_title,
+      company_name,
+      job_description,
+      work_experience,
+      summary: confirmed_summary,
+    } = parsedBody.data
+
+    console.log('[Optimize] Request received:', redactForLog({
       resume_id,
       job_title,
       user_id: user.id,
       clerk_user_id: user.clerk_user_id,
       has_confirmed_content: !!(work_experience || confirmed_summary),
       work_experience_count: work_experience?.length,
-    })
-
-    if (!resume_id) {
-      throw new AppError("Resume ID is required", 400)
-    }
-
-    if (!job_title || !job_description) {
-      throw new AppError("Job title and job description are required", 400)
-    }
-
-    if (job_description.trim().length < 50) {
-      throw new AppError("Job description is too short. Please provide more details about the position.", 400)
-    }
+    }))
 
     // Get the resume
-    console.log('[Optimize] Looking up resume:', { resume_id, user_id: user.id })
+    console.log('[Optimize] Looking up resume:', redactForLog({ resume_id, user_id: user.id }))
     const resume = await getResumeById(resume_id, user.id)
 
     if (!resume) {
       // Debug: Check if resume exists at all (without user filter)
       const { sql } = await import("@/lib/db")
       const [anyResume] = await sql`SELECT id, user_id, title, deleted_at FROM resumes WHERE id = ${resume_id}`
-      console.log('[Optimize] Resume lookup failed. Debug info:', {
+      console.log('[Optimize] Resume lookup failed. Debug info:', redactForLog({
         resume_id,
         requested_user_id: user.id,
         found_resume: anyResume ? {
@@ -96,18 +109,17 @@ export async function POST(request: NextRequest) {
           deleted: !!anyResume.deleted_at,
           user_mismatch: anyResume.user_id !== user.id,
         } : 'NOT_FOUND_AT_ALL'
-      })
+      }))
       throw new AppError("Resume not found", 404)
     }
 
-    console.log('[Optimize] Resume found:', {
+    console.log('[Optimize] Resume found:', redactForLog({
       id: resume.id,
       user_id: resume.user_id,
       title: resume.title,
       content_length: resume.content_text?.length || 0,
-      content_preview: resume.content_text?.substring(0, 200) || 'EMPTY',
       has_content: !!resume.content_text,
-    })
+    }))
 
     if (!resume.content_text || resume.content_text.trim().length < 50) {
       throw new AppError(
@@ -179,11 +191,11 @@ export async function POST(request: NextRequest) {
                     statusCode = 500
                 }
 
-                console.error('[Optimize] LLM extraction failed:', {
+                console.error('[Optimize] LLM extraction failed:', redactForLog({
                   errorCode,
                   errorMessage: extractionResult.error?.message,
                   documentType: extractionResult.error?.documentType,
-                })
+                }))
 
                 throw new AppError(errorMessage, statusCode, errorCode)
               }
@@ -211,13 +223,13 @@ export async function POST(request: NextRequest) {
               resumeStructure = extractionResult.resume
             }
             const extractionDuration = Date.now() - extractionStartTime
-            console.log('[Optimize] Extraction successful:', {
+            console.log('[Optimize] Extraction successful:', redactForLog({
               duration: `${extractionDuration}ms`,
               workExperienceCount: resumeStructure.workExperience.length,
               educationCount: resumeStructure.education.length,
               skillsCount: resumeStructure.skills.length,
               wasTruncated: extractionResult.metadata?.truncated,
-            })
+            }))
 
             // Cache the structure (non-blocking)
             saveParsedStructure(resume.id, resumeStructure).catch(err =>
@@ -226,22 +238,22 @@ export async function POST(request: NextRequest) {
           } else {
             cacheHit = true
             const cacheCheckDuration = Date.now() - extractionStartTime
-            console.log('[Optimize] Cache hit: using stored resume structure', {
+            console.log('[Optimize] Cache hit: using stored resume structure', redactForLog({
               duration: `${cacheCheckDuration}ms`,
               workExperienceCount: resumeStructure.workExperience.length,
               educationCount: resumeStructure.education.length,
               skillsCount: resumeStructure.skills.length,
-            })
+            }))
           }
 
           // Merge confirmed content if provided (from review step)
           // This preserves contact, education, skills, etc. while using user-confirmed work experience and summary
           if (work_experience || confirmed_summary) {
-            console.log('[Optimize] Merging confirmed content with cached structure:', {
+            console.log('[Optimize] Merging confirmed content with cached structure:', redactForLog({
               has_work_experience: !!work_experience,
               work_experience_count: work_experience?.length,
               has_summary: !!confirmed_summary,
-            })
+            }))
             
             resumeStructure = {
               ...resumeStructure,
@@ -251,12 +263,12 @@ export async function POST(request: NextRequest) {
               ...(confirmed_summary !== undefined && { summary: confirmed_summary }),
             }
             
-            console.log('[Optimize] Merged structure:', {
+            console.log('[Optimize] Merged structure:', redactForLog({
               workExperienceCount: resumeStructure.workExperience.length,
               educationCount: resumeStructure.education.length,
               skillsCount: resumeStructure.skills.length,
               hasSummary: !!resumeStructure.summary,
-            })
+            }))
           }
 
           // Optimize with structured data (mandatory - no fallback to string parsing)
@@ -270,7 +282,7 @@ export async function POST(request: NextRequest) {
 
           const optimizationDuration = Date.now() - startTime
           const totalDuration = Date.now() - startTime
-          console.log('[Optimize] Structured optimization completed:', {
+          console.log('[Optimize] Structured optimization completed:', redactForLog({
             totalDuration: `${totalDuration}ms`,
             optimizationDuration: `${optimizationDuration}ms`,
             cacheHit,
@@ -282,38 +294,29 @@ export async function POST(request: NextRequest) {
             certifications_preserved: result.optimizedResume.certifications.length,
             match_score_before: result.optimizationDetails.match_score_before,
             match_score_after: result.optimizationDetails.match_score_after,
-          })
-          console.log('[Optimize] Optimized resume data before formatting:', {
-            education: result.optimizedResume.education.map(e => ({ institution: e.institution, degree: e.degree })),
-            skills: result.optimizedResume.skills.slice(0, 5),
-            workExperience: result.optimizedResume.workExperience.map(e => ({ company: e.company, title: e.title, bulletsCount: e.bullets.length })),
-          })
+          }))
 
           // Convert optimized structured data to markdown
           const optimizedContent = formatResumeToMarkdown(result.optimizedResume)
 
-          console.log('[Optimize] Generated markdown preview:', {
-            length: optimizedContent.length,
-            educationSectionExists: optimizedContent.includes('## Education'),
-            skillsSectionExists: optimizedContent.includes('## Skills'),
-            educationSectionPreview: optimizedContent.match(/## Education[\s\S]{0,300}/)?.[0],
-            skillsSectionPreview: optimizedContent.match(/## Skills[\s\S]{0,200}/)?.[0],
-          })
-
-          // Derive skills_highlighted by matching resume skills against job description and keywords
+          // Derive skills_highlighted by matching resume skills against job description and keywords.
           const jobDescLower = job_description.toLowerCase()
           const relevantSkills = (resumeStructure?.skills || [])
-            .map(s => s.replace(/\*\*/g, '').trim())
-            .filter(skill => {
+            .map((s) => s.replace(/\*\*/g, "").trim())
+            .filter((skill) => {
               const skillLower = skill.toLowerCase()
-              return jobDescLower.includes(skillLower) ||
+              return (
+                jobDescLower.includes(skillLower) ||
                 result.optimizationDetails.keywords_added.some(
-                  kw => kw.toLowerCase().includes(skillLower) || skillLower.includes(kw.toLowerCase())
+                  (kw) => kw.toLowerCase().includes(skillLower) || skillLower.includes(kw.toLowerCase()),
                 )
+              )
             })
-
           return {
             optimized_content: optimizedContent,
+            optimized_resume: result.optimizedResume,
+            summary_was_created: result.optimizationDetails.summary_was_created,
+            target_title_was_created: result.optimizationDetails.target_title_was_created,
             changes_made: result.optimizationDetails.changes_made,
             keywords_added: result.optimizationDetails.keywords_added,
             skills_highlighted: relevantSkills,
@@ -374,6 +377,16 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    const structuredOutput = toStructuredDocument(optimization.optimized_resume, {
+      provenanceDefault: "extracted",
+      fieldProvenance: {
+        summary: optimization.summary_was_created ? "ai_generated" : "user_edited",
+        target: optimization.target_title_was_created ? "ai_generated" : "extracted",
+        experience: "ai_generated",
+      },
+      lastEditor: user.id,
+    })
+
     // Create the optimized resume record
     const optimizedResume = await createOptimizedResume({
       user_id: resume.user_id,
@@ -394,6 +407,7 @@ export async function POST(request: NextRequest) {
         recommendations: optimization.recommendations,
       },
       match_score: optimization.match_score_after,
+      structured_output: structuredOutput,
     })
 
     // Increment usage tracking for this successful optimization
@@ -401,6 +415,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       optimized_resume: optimizedResume,
+      structured_output_summary: {
+        schema_version: structuredOutput.schema_version,
+        section_counts: {
+          experience: structuredOutput.document.workExperience.length,
+          education: structuredOutput.document.education.length,
+          skills: structuredOutput.document.skills.length,
+          projects: structuredOutput.document.projects.length,
+        },
+        metadata: structuredOutput.metadata,
+      },
       optimization_details: {
         changes_made: optimization.changes_made,
         keywords_added: optimization.keywords_added,
@@ -411,7 +435,6 @@ export async function POST(request: NextRequest) {
       }
     }, { headers: getRateLimitHeaders(rateLimitResult) })
   } catch (error) {
-    const errorInfo = handleApiError(error)
-    return NextResponse.json({ error: errorInfo.error, code: errorInfo.code }, { status: errorInfo.statusCode })
+    return fromError(error)
   }
 }
