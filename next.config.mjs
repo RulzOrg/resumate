@@ -1,7 +1,21 @@
 import { withSentryConfig } from "@sentry/nextjs";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const MiniCssExtractPlugin = require("next/dist/build/webpack/plugins/mini-css-extract-plugin")
+  .default;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config) => {
+    const hasMiniCssExtract = config.plugins.some(
+      (p) => p?.constructor?.name === "MiniCssExtractPlugin"
+    );
+    if (!hasMiniCssExtract) {
+      config.plugins.push(new MiniCssExtractPlugin());
+    }
+    return config;
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

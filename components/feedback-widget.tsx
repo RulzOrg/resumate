@@ -110,12 +110,12 @@ export function FeedbackWidget() {
           'fixed bottom-6 right-6 z-50',
           'flex items-center justify-center',
           'size-14 rounded-full',
-          'bg-emerald-500 hover:bg-emerald-600',
-          'text-white shadow-lg',
+          'bg-primary hover:bg-primary/90',
+          'text-primary-foreground shadow-lg',
           'transition-all duration-200',
           'hover:scale-110 hover:shadow-xl',
-          'focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2',
-          'dark:focus:ring-offset-gray-900'
+          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+          'focus:ring-offset-background'
         )}
         aria-label="Open feedback form"
       >
@@ -131,7 +131,7 @@ export function FeedbackWidget() {
         >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MessageCircle className="size-5 text-emerald-500" />
+              <MessageCircle className="size-5 text-primary" />
               Send us Feedback
             </DialogTitle>
             <DialogDescription>
@@ -141,8 +141,8 @@ export function FeedbackWidget() {
 
           {isSuccess ? (
             <div className="py-8 text-center">
-              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-emerald-500/10">
-                <Send className="size-6 text-emerald-500" />
+              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10">
+                <Send className="size-6 text-primary" />
               </div>
               <h3 className="mb-2 text-lg font-semibold">Thank you!</h3>
               <p className="text-sm text-muted-foreground">

@@ -12,11 +12,11 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-border dark:border-white/10">
+      <header className="border-b border-border">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <Link
             href="/"
-            className="inline-flex items-center rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
+            className="inline-flex items-center rounded-full border border-border bg-surface-subtle px-3 py-2 backdrop-blur"
           >
             <Logo size="sm" />
           </Link>
@@ -211,7 +211,7 @@ export default function TermsPage() {
             </p>
             <p className="text-foreground/80 mt-4">
               <strong>Email:</strong>{" "}
-              <a href="mailto:support@useresumate.com" className="text-emerald-500 hover:text-emerald-400">
+              <a href="mailto:support@useresumate.com" className="text-primary hover:text-primary/90">
                 support@useresumate.com
               </a>
             </p>
@@ -219,15 +219,15 @@ export default function TermsPage() {
         </div>
 
         {/* Back link */}
-        <div className="mt-12 pt-8 border-t border-border dark:border-white/10">
-          <Link href="/" className="text-emerald-500 hover:text-emerald-400">
+        <div className="mt-12 pt-8 border-t border-border">
+          <Link href="/" className="text-primary hover:text-primary/90">
             ← Back to Home
           </Link>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border dark:border-white/10 mt-16">
+      <footer className="border-t border-border mt-16">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Useresumate. All rights reserved.</p>

@@ -48,12 +48,12 @@ const NavigationMenuTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "group inline-flex items-center justify-center gap-1 px-4 py-2 text-sm font-medium",
-      "text-foreground/90 dark:text-white/90",
-      "hover:text-foreground dark:hover:text-white",
-      "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2",
+      "text-foreground/90",
+      "hover:text-foreground",
+      "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2",
       "disabled:pointer-events-none disabled:opacity-50",
       "transition-colors duration-200",
-      "data-[state=open]:text-foreground dark:data-[state=open]:text-white",
+      "data-[state=open]:text-foreground",
       className
     )}
     {...props}
@@ -78,12 +78,10 @@ const NavigationMenuContent = React.forwardRef<
     ref={ref}
     className={cn(
       "left-0 top-0 w-full md:absolute md:w-auto",
-      // Entry animations
       "data-[motion^=from-]:animate-in",
       "data-[motion^=from-]:fade-in-0",
       "data-[motion=from-end]:slide-in-from-right-8",
       "data-[motion=from-start]:slide-in-from-left-8",
-      // Exit animations
       "data-[motion^=to-]:animate-out",
       "data-[motion^=to-]:fade-out-0",
       "data-[motion=to-end]:slide-out-to-right-8",
@@ -102,22 +100,17 @@ const NavigationMenuViewport = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Viewport>
 >(({ className, ...props }, ref) => (
   <div className="absolute left-1/2 top-full -translate-x-1/2 z-[9999] pt-2">
-    {/* Invisible hover bridge to prevent menu from closing when moving mouse */}
     <div className="absolute -top-2 left-0 right-0 h-4" />
     <NavigationMenuPrimitive.Viewport
       ref={ref}
       className={cn(
         "relative overflow-hidden",
         "rounded-2xl",
-        "border-2 border-neutral-200 dark:border-neutral-700",
-        // Completely solid backgrounds - NO transparency
-        "bg-[#ffffff] dark:bg-[#0a0a0a]",
-        // Strong shadow for depth
+        "border-2 border-border",
+        "bg-background",
         "shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)]",
-        // Sizing
         "h-[var(--radix-navigation-menu-viewport-height)]",
         "w-full md:w-[var(--radix-navigation-menu-viewport-width)]",
-        // Animations
         "origin-top",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
@@ -147,7 +140,7 @@ const NavigationMenuIndicator = React.forwardRef<
     )}
     {...props}
   >
-    <div className="relative top-[70%] h-2.5 w-2.5 rotate-45 rounded-tl-sm bg-white dark:bg-neutral-950 border-l border-t border-border/60 dark:border-white/10 shadow-sm" />
+    <div className="relative top-[70%] h-2.5 w-2.5 rotate-45 rounded-tl-sm bg-background border-l border-t border-border/60 shadow-sm" />
   </NavigationMenuPrimitive.Indicator>
 ))
 NavigationMenuIndicator.displayName = NavigationMenuPrimitive.Indicator.displayName

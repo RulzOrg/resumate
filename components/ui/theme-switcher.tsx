@@ -14,7 +14,7 @@ export function ThemeSwitcher() {
 
   if (!mounted) {
     return (
-      <div className="h-10 w-[140px] rounded-full bg-surface-subtle dark:bg-white/5 border border-border dark:border-white/10 animate-pulse" />
+      <div className="h-10 w-[140px] rounded-full bg-surface-subtle border border-border animate-pulse" />
     )
   }
 
@@ -30,7 +30,7 @@ export function ThemeSwitcher() {
   }
 
   return (
-    <div className="relative flex items-center p-1 bg-surface-subtle dark:bg-white/5 border border-border dark:border-white/10 rounded-full backdrop-blur">
+    <div className="relative flex items-center p-1 bg-surface-subtle border border-border rounded-full backdrop-blur">
       {themes.map(({ value, icon: Icon, label }) => (
         <button
           key={value}
@@ -38,15 +38,15 @@ export function ThemeSwitcher() {
           aria-label={label}
           className={`relative z-10 p-2 rounded-full transition-colors duration-200 ${
             theme === value
-              ? "text-white"
-              : "text-foreground/60 dark:text-white/60 hover:text-foreground/80 dark:hover:text-white/80"
+              ? "text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground/80"
           }`}
         >
           <Icon className="h-4 w-4" />
         </button>
       ))}
       <div
-        className="absolute h-8 w-8 bg-emerald-500 rounded-full transition-transform duration-300 ease-out left-1"
+        className="absolute h-8 w-8 bg-primary rounded-full transition-transform duration-300 ease-out left-1"
         style={{ transform: getTransformValue() }}
       />
     </div>

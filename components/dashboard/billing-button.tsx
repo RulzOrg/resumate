@@ -45,7 +45,7 @@ export function BillingButton({ subscriptionStatus, subscriptionPlan }: BillingB
     <button 
       onClick={handleBilling} 
       disabled={isLoading}
-      className="mt-4 w-full text-center text-sm font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white transition bg-surface-muted dark:bg-white/10 rounded-full py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="mt-4 w-full text-center text-sm font-medium text-muted-foreground hover:text-foreground transition bg-surface-muted rounded-full py-2 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {isLoading ? "Loading..." : subscriptionPlan === "free" ? "Upgrade Plan" : "Manage Billing"}
     </button>

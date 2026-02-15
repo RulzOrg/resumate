@@ -167,18 +167,18 @@ export function ATSCheckerClient() {
         <SocialProof />
 
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300 dark:border-emerald-400/30 bg-emerald-100 dark:bg-emerald-500/10 px-3 py-1 text-emerald-700 dark:text-emerald-200">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
           <Sparkles className="w-4 h-4" />
           <span className="text-xs font-medium font-sans">Instant ATS check</span>
         </div>
 
         {/* Heading */}
-        <h1 className="text-4xl tracking-tight sm:text-5xl md:text-6xl mx-auto font-space-grotesk font-semibold mt-4 text-slate-900 dark:text-white">
+        <h1 className="text-4xl tracking-tight sm:text-5xl md:text-6xl mx-auto font-space-grotesk font-semibold mt-4 text-foreground">
           Free ATS Resume Checker
         </h1>
 
         {/* Subtitle */}
-        <p className="max-w-2xl text-base sm:text-lg font-normal text-slate-500 dark:text-muted-foreground mt-6 mx-auto font-sans">
+        <p className="max-w-2xl text-base sm:text-lg font-normal text-muted-foreground mt-6 mx-auto font-sans">
           Check if your resume is ATS-compatible and get personalized recommendations
           to improve your chances of landing interviews.
         </p>
@@ -209,7 +209,7 @@ export function ATSCheckerClient() {
 
           {state.step === "error" && (
             <div className="max-w-md mx-auto text-center">
-              <div className="p-6 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+              <div className="p-6 rounded-xl border border-border bg-card">
                 <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mx-auto mb-4">
                   <svg
                     className="w-6 h-6 text-red-500 dark:text-red-400"
@@ -225,12 +225,12 @@ export function ATSCheckerClient() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold mb-2 font-sans text-slate-900 dark:text-white">Something went wrong</h3>
-                <p className="text-slate-500 dark:text-muted-foreground mb-4 font-sans">{state.error}</p>
+                <h3 className="text-lg font-semibold mb-2 font-sans text-foreground">Something went wrong</h3>
+                <p className="text-muted-foreground mb-4 font-sans">{state.error}</p>
                 {state.canRetry && (
                   <button
                     onClick={handleRetry}
-                    className="px-4 py-2 bg-emerald-500 text-black rounded-full hover:bg-emerald-400 transition-colors font-sans font-medium shadow-lg shadow-emerald-500/20"
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors font-sans font-medium shadow-lg shadow-primary/20"
                   >
                     Try Again
                   </button>

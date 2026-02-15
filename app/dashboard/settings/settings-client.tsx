@@ -69,7 +69,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+        return "bg-primary/20 text-primary border-primary/30"
       case "trialing":
         return "bg-blue-500/20 text-blue-400 border-blue-500/30"
       case "past_due":
@@ -77,7 +77,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       case "canceled":
         return "bg-red-500/20 text-red-400 border-red-500/30"
       default:
-        return "bg-white/10 text-white/70 border-white/20"
+        return "bg-accent text-muted-foreground border-border"
     }
   }
 
@@ -142,24 +142,24 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
 
   return (
     <Tabs defaultValue="account" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3 h-12 bg-white/5 dark:bg-white/10 border border-border dark:border-white/20 rounded-xl p-1.5 gap-1">
+      <TabsList className="grid w-full grid-cols-3 h-12 bg-card border border-border rounded-xl p-1.5 gap-1">
         <TabsTrigger
           value="account"
-          className="rounded-lg h-full data-[state=active]:bg-emerald-500/20 dark:data-[state=active]:bg-emerald-500/25 data-[state=active]:text-emerald-500 dark:data-[state=active]:text-emerald-400 text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white/80 transition-colors font-medium"
+          className="rounded-lg h-full data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-muted-foreground/70 hover:text-foreground transition-colors font-medium"
         >
           <User className="w-4 h-4 mr-2" />
           Account
         </TabsTrigger>
         <TabsTrigger
           value="subscription"
-          className="rounded-lg h-full data-[state=active]:bg-emerald-500/20 dark:data-[state=active]:bg-emerald-500/25 data-[state=active]:text-emerald-500 dark:data-[state=active]:text-emerald-400 text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white/80 transition-colors font-medium"
+          className="rounded-lg h-full data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-muted-foreground/70 hover:text-foreground transition-colors font-medium"
         >
           <CreditCard className="w-4 h-4 mr-2" />
           Subscription
         </TabsTrigger>
         <TabsTrigger
           value="preferences"
-          className="rounded-lg h-full data-[state=active]:bg-emerald-500/20 dark:data-[state=active]:bg-emerald-500/25 data-[state=active]:text-emerald-500 dark:data-[state=active]:text-emerald-400 text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white/80 transition-colors font-medium"
+          className="rounded-lg h-full data-[state=active]:bg-primary/20 data-[state=active]:text-primary text-muted-foreground/70 hover:text-foreground transition-colors font-medium"
         >
           <Bell className="w-4 h-4 mr-2" />
           Preferences
@@ -167,46 +167,46 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       </TabsList>
 
       <TabsContent value="account" className="space-y-6">
-        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+        <Card className="rounded-2xl border-border bg-surface-subtle">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Account Information</CardTitle>
-            <CardDescription className="text-foreground/60 dark:text-white/60">
+            <CardTitle className="text-foreground font-space-grotesk">Account Information</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Your account details and profile information
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="text-sm text-foreground/60 dark:text-white/60">Name</Label>
-              <p className="text-lg font-medium text-foreground dark:text-white">{user.name}</p>
+              <Label className="text-sm text-muted-foreground">Name</Label>
+              <p className="text-lg font-medium text-foreground">{user.name}</p>
             </div>
             <div>
-              <Label className="text-sm text-foreground/60 dark:text-white/60">Email</Label>
-              <p className="text-lg font-medium text-foreground dark:text-white">{user.email}</p>
+              <Label className="text-sm text-muted-foreground">Email</Label>
+              <p className="text-lg font-medium text-foreground">{user.email}</p>
             </div>
             <div>
-              <Label className="text-sm text-foreground/60 dark:text-white/60">User ID</Label>
-              <p className="text-sm font-mono text-foreground/50 dark:text-white/50">{user.id}</p>
+              <Label className="text-sm text-muted-foreground">User ID</Label>
+              <p className="text-sm font-mono text-muted-foreground/70">{user.id}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+        <Card className="rounded-2xl border-border bg-surface-subtle">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Security</CardTitle>
-            <CardDescription className="text-foreground/60 dark:text-white/60">
+            <CardTitle className="text-foreground font-space-grotesk">Security</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Manage your security settings
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
               variant="outline"
-              className="w-full dark:bg-white/5 dark:border-white/20 dark:hover:bg-white/10 dark:text-white"
+              className="w-full"
               onClick={() => window.location.href = "/user-profile"}
             >
               <Shield className="w-4 h-4 mr-2" />
               Manage Security Settings
             </Button>
-            <p className="text-sm text-foreground/60 dark:text-white/60 mt-3">
+            <p className="text-sm text-muted-foreground mt-3">
               Update your password, enable two-factor authentication, and manage sessions
             </p>
           </CardContent>
@@ -214,17 +214,17 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       </TabsContent>
 
       <TabsContent value="subscription" className="space-y-6">
-        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+        <Card className="rounded-2xl border-border bg-surface-subtle">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Current Plan</CardTitle>
-            <CardDescription className="text-foreground/60 dark:text-white/60">
+            <CardTitle className="text-foreground font-space-grotesk">Current Plan</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Your subscription details and usage
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-2">
-                <p className="text-2xl font-bold capitalize text-foreground dark:text-white">
+                <p className="text-2xl font-bold capitalize text-foreground">
                   {subscription?.plan || "Free"}
                 </p>
                 <Badge className={`${getStatusColor(subscription?.status || "free")} border`}>
@@ -234,7 +234,7 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
               <Button
                 onClick={handleManageSubscription}
                 disabled={loading}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                className="bg-primary hover:bg-primary/80 text-primary-foreground"
               >
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isFreeUser ? "Upgrade Plan" : "Manage Subscription"}
@@ -243,10 +243,10 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
 
             {subscription?.periodEnd && (
               <div className="pt-2">
-                <Label className="text-sm text-foreground/60 dark:text-white/60">
+                <Label className="text-sm text-muted-foreground">
                   {subscription.status === "canceled" ? "Access ends" : "Next billing date"}
                 </Label>
-                <p className="text-lg font-medium text-foreground dark:text-white">
+                <p className="text-lg font-medium text-foreground">
                   {formatDate(subscription.periodEnd)}
                 </p>
               </div>
@@ -254,10 +254,10 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+        <Card className="rounded-2xl border-border bg-surface-subtle">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Usage This Month</CardTitle>
-            <CardDescription className="text-foreground/60 dark:text-white/60">
+            <CardTitle className="text-foreground font-space-grotesk">Usage This Month</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Track your feature usage against your plan limits
             </CardDescription>
           </CardHeader>
@@ -266,36 +266,36 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
               <>
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-foreground/70 dark:text-white/70">Resume Optimizations</span>
-                    <span className="font-medium text-foreground dark:text-white">
+                    <span className="text-muted-foreground">Resume Optimizations</span>
+                    <span className="font-medium text-foreground">
                       {usageLimits.resumeOptimizations.used} / {usageLimits.resumeOptimizations.limit}
                     </span>
                   </div>
                   <Progress
                     value={(usageLimits.resumeOptimizations.used / usageLimits.resumeOptimizations.limit) * 100}
-                    className="h-2 bg-white/10"
+                    className="h-2 bg-accent"
                   />
                 </div>
               </>
             ) : (
-              <p className="text-foreground/60 dark:text-white/60">Loading usage data...</p>
+              <p className="text-muted-foreground">Loading usage data...</p>
             )}
 
             {subscription?.plan === "free" && (
-              <div className="mt-4 p-4 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl">
+              <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-xl">
                 <div className="flex items-start space-x-3">
-                  <Zap className="w-5 h-5 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
+                  <Zap className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                    <p className="text-sm font-medium text-primary">
                       Need more?
                     </p>
-                    <p className="text-sm text-emerald-600 dark:text-emerald-400/80">
+                    <p className="text-sm text-primary/80">
                       Upgrade to Pro for unlimited optimizations.
                     </p>
                     <Button
                       size="sm"
                       variant="link"
-                      className="h-auto p-0 text-emerald-600 dark:text-emerald-400 hover:text-emerald-500"
+                      className="h-auto p-0 text-primary hover:text-primary/80"
                       onClick={() => router.push("/pricing")}
                     >
                       View pricing &rarr;
@@ -309,36 +309,36 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       </TabsContent>
 
       <TabsContent value="preferences" className="space-y-6">
-        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+        <Card className="rounded-2xl border-border bg-surface-subtle">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Newsletter Preferences</CardTitle>
-            <CardDescription className="text-foreground/60 dark:text-white/60">
+            <CardTitle className="text-foreground font-space-grotesk">Newsletter Preferences</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Manage your newsletter subscription and email preferences
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {!newsletterEnabled ? (
-              <div className="p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl">
-                <p className="text-sm text-foreground/60 dark:text-white/60">
+              <div className="p-4 bg-accent border border-border rounded-xl">
+                <p className="text-sm text-muted-foreground">
                   Newsletter integration is not currently enabled.
                 </p>
               </div>
             ) : newsletterLoading ? (
               <div className="flex items-center space-x-2">
-                <Loader2 className="h-4 w-4 animate-spin text-foreground/60 dark:text-white/60" />
-                <span className="text-sm text-foreground/60 dark:text-white/60">Loading subscription status...</span>
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Loading subscription status...</span>
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between space-x-4 p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl">
+                <div className="flex items-center justify-between space-x-4 p-4 bg-accent border border-border rounded-xl">
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center space-x-2">
-                      <Mail className="w-5 h-5 text-foreground/70 dark:text-white/70" />
-                      <Label htmlFor="newsletter" className="text-base font-medium text-foreground dark:text-white">
+                      <Mail className="w-5 h-5 text-muted-foreground" />
+                      <Label htmlFor="newsletter" className="text-base font-medium text-foreground">
                         Newsletter Subscription
                       </Label>
                     </div>
-                    <p className="text-sm text-foreground/60 dark:text-white/60 ml-7">
+                    <p className="text-sm text-muted-foreground ml-7">
                       Receive updates, tips, and exclusive content via email
                     </p>
                   </div>
@@ -351,23 +351,23 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
                 </div>
 
                 {newsletterSubscribed && (
-                  <div className="p-4 bg-emerald-500/10 dark:bg-emerald-500/20 border border-emerald-500/20 dark:border-emerald-500/30 rounded-xl">
+                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl">
                     <div className="flex items-start space-x-3">
-                      <Mail className="w-5 h-5 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" />
+                      <Mail className="w-5 h-5 text-primary mt-0.5 shrink-0" />
                       <div className="space-y-1">
-                        <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                        <p className="text-sm font-medium text-primary">
                           You're subscribed!
                         </p>
-                        <p className="text-sm text-emerald-600 dark:text-emerald-400/80">
-                          You'll receive our newsletter at <strong className="text-emerald-700 dark:text-emerald-300">{user.email}</strong>
+                        <p className="text-sm text-primary/80">
+                          You'll receive our newsletter at <strong className="text-primary">{user.email}</strong>
                         </p>
                       </div>
                     </div>
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-border dark:border-white/10">
-                  <p className="text-xs text-foreground/50 dark:text-white/50">
+                <div className="pt-2 border-t border-border">
+                  <p className="text-xs text-muted-foreground/70">
                     You can unsubscribe at any time by toggling the switch above or by clicking the
                     unsubscribe link in any newsletter email.
                   </p>
@@ -377,33 +377,33 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+        <Card className="rounded-2xl border-border bg-surface-subtle">
           <CardHeader>
-            <CardTitle className="text-foreground dark:text-white font-space-grotesk">Email Notifications</CardTitle>
-            <CardDescription className="text-foreground/60 dark:text-white/60">
+            <CardTitle className="text-foreground font-space-grotesk">Email Notifications</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Configure when we send you emails
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl opacity-60">
+            <div className="flex items-center justify-between p-4 bg-surface-subtle border border-border rounded-xl opacity-60">
               <div className="flex-1 space-y-1">
-                <Label className="text-sm font-medium text-foreground dark:text-white">Resume Updates</Label>
-                <p className="text-sm text-foreground/60 dark:text-white/60">
+                <Label className="text-sm font-medium text-foreground">Resume Updates</Label>
+                <p className="text-sm text-muted-foreground">
                   Get notified when your resume optimization is complete
                 </p>
               </div>
               <Switch defaultChecked disabled />
             </div>
-            <div className="flex items-center justify-between p-4 bg-white/5 dark:bg-white/10 border border-border dark:border-white/15 rounded-xl opacity-60">
+            <div className="flex items-center justify-between p-4 bg-surface-subtle border border-border rounded-xl opacity-60">
               <div className="flex-1 space-y-1">
-                <Label className="text-sm font-medium text-foreground dark:text-white">Account Activity</Label>
-                <p className="text-sm text-foreground/60 dark:text-white/60">
+                <Label className="text-sm font-medium text-foreground">Account Activity</Label>
+                <p className="text-sm text-muted-foreground">
                   Important updates about your account and security
                 </p>
               </div>
               <Switch defaultChecked disabled />
             </div>
-            <p className="text-xs text-foreground/50 dark:text-white/50 pt-2">
+            <p className="text-xs text-muted-foreground/70 pt-2">
               Note: Critical account emails cannot be disabled.
             </p>
           </CardContent>

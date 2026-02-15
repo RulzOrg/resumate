@@ -31,10 +31,10 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
   const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false)
   const matchClasses = (score?: number | null) => {
     const s = typeof score === 'number' ? score : null
-    if (s === null) return { badge: 'bg-surface-muted dark:bg-white/10 text-foreground/70 dark:text-white/70', icon: 'text-foreground/70 dark:text-white/70' }
+    if (s === null) return { badge: 'bg-surface-muted text-muted-foreground', icon: 'text-muted-foreground' }
     if (s === 0) return { badge: 'bg-red-500/10 text-red-400', icon: 'text-red-400' }
     if (s < 60) return { badge: 'bg-amber-500/10 text-amber-400', icon: 'text-amber-400' }
-    return { badge: 'bg-emerald-500/10 text-emerald-400', icon: 'text-emerald-400' }
+    return { badge: 'bg-primary/10 text-primary', icon: 'text-primary' }
   }
   const handleDownload = async (resumeId: string, format = "docx", layout = "modern") => {
     try {
@@ -194,12 +194,12 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
                   variant="outline" 
                   size="sm" 
                   onClick={() => setIsLayoutModalOpen(true)}
-                  className="h-9 text-xs bg-surface-muted dark:bg-white/10 border-border dark:border-white/10 px-3 flex items-center gap-1.5"
+                  className="h-9 text-xs bg-surface-muted border-border px-3 flex items-center gap-1.5"
                 >
                   <Settings2 className="h-4 w-4" />
                   {layout.charAt(0).toUpperCase() + layout.slice(1)}
                 </Button>
-                <Button size="sm" variant="outline" className="bg-surface-muted dark:bg-white/10 border-border dark:border-white/10" onClick={() => handleDownload(resume.id, "docx", layout)}>
+                <Button size="sm" variant="outline" className="bg-surface-muted border-border" onClick={() => handleDownload(resume.id, "docx", layout)}>
                   <Download className="w-4 h-4 mr-2" />
                   DOCX
                 </Button>

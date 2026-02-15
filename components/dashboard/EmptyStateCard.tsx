@@ -23,15 +23,15 @@ export function EmptyStateCard({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center text-center rounded-2xl p-12 bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 min-h-[500px]",
-        dashed ? "border-dashed dark:border-white/20" : "border-solid border-border dark:border-white/10",
+        "flex flex-col items-center justify-center text-center rounded-2xl p-12 bg-surface-subtle border border-border min-h-[500px]",
+        dashed ? "border-dashed" : "border-solid border-border",
         className,
       )}
     >
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10">{icon}</div>
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-surface-subtle border border-border">{icon}</div>
       <h2 className="text-xl font-medium tracking-tight font-space-grotesk">{title}</h2>
       {description ? (
-        <p className="mt-2 max-w-sm text-base text-foreground/60 dark:text-white/60">{description}</p>
+        <p className="mt-2 max-w-sm text-base text-muted-foreground">{description}</p>
       ) : null}
       {action ? <div className="mt-6">{action}</div> : null}
     </div>

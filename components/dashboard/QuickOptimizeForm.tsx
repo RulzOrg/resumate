@@ -236,11 +236,11 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
   if (completedResumes.length === 0) {
     return (
       <div data-tour-target="resume-select" className="text-center py-8">
-        <p className="text-foreground/60 dark:text-white/60 mb-4">
+        <p className="text-muted-foreground mb-4">
           Upload a resume first to start optimizing
         </p>
         <UploadMasterResumeDialog currentResumeCount={0}>
-          <Button className="bg-emerald-500 hover:bg-emerald-400 text-black">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
             Upload Resume
           </Button>
         </UploadMasterResumeDialog>
@@ -274,7 +274,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
             setSelectedResumeId(e.target.value)
             setError(null) // Clear error when selection changes
           }}
-          className="w-full px-3 py-2 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
           disabled={isLoading}
         >
           {completedResumes.map((resume) => (
@@ -289,7 +289,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
         <div>
           <label className="block text-sm font-medium mb-2">
             Job Title *
-            {isJobTitleValid && <Check className="inline w-4 h-4 ml-1 text-emerald-500" />}
+            {isJobTitleValid && <Check className="inline w-4 h-4 ml-1 text-primary" />}
           </label>
           <input
             type="text"
@@ -297,12 +297,12 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
             onChange={(e) => setJobTitle(e.target.value)}
             onBlur={() => setJobTitleTouched(true)}
             placeholder="e.g. Senior Software Engineer"
-            className={`w-full px-3 py-2 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+            className={`w-full px-3 py-2 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring ${
               showJobTitleError
-                ? "border-red-500 dark:border-red-500"
+                ? "border-red-500"
                 : isJobTitleValid
-                ? "border-emerald-500/50 dark:border-emerald-500/50"
-                : "border-border dark:border-white/10"
+                ? "border-primary/50"
+                : "border-border"
             }`}
             disabled={isLoading}
           />
@@ -319,7 +319,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
             value={companyName}
             onChange={(e) => setCompanyName(e.target.value)}
             placeholder="e.g. Google"
-            className="w-full px-3 py-2 rounded-lg border border-border dark:border-white/10 bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-3 py-2 rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             disabled={isLoading}
           />
         </div>
@@ -328,7 +328,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
       <div data-tour-target="job-description">
         <label className="block text-sm font-medium mb-2">
           Job Description *
-          {isJobDescriptionValid && <Check className="inline w-4 h-4 ml-1 text-emerald-500" />}
+          {isJobDescriptionValid && <Check className="inline w-4 h-4 ml-1 text-primary" />}
         </label>
         <textarea
           value={jobDescription}
@@ -336,26 +336,26 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
           onBlur={() => setJobDescriptionTouched(true)}
           placeholder="Paste the full job description here..."
           rows={6}
-          className={`w-full px-3 py-2 rounded-lg border bg-background dark:bg-white/5 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none ${
+          className={`w-full px-3 py-2 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-none ${
             showJobDescriptionError
-              ? "border-red-500 dark:border-red-500"
+              ? "border-red-500"
               : isJobDescriptionValid
-              ? "border-emerald-500/50 dark:border-emerald-500/50"
-              : "border-border dark:border-white/10"
+              ? "border-primary/50"
+              : "border-border"
           }`}
           disabled={isLoading}
         />
         <div className="mt-2 space-y-1">
           <Progress
             value={charProgress}
-            className={`h-1.5 ${isJobDescriptionValid ? "[&>div]:bg-emerald-500" : showJobDescriptionError ? "[&>div]:bg-red-500" : ""}`}
+            className={`h-1.5 ${isJobDescriptionValid ? "[&>div]:bg-primary" : showJobDescriptionError ? "[&>div]:bg-red-500" : ""}`}
           />
           <p className={`text-xs ${
             isJobDescriptionValid
-              ? "text-emerald-500"
+              ? "text-primary"
               : showJobDescriptionError
               ? "text-red-500"
-              : "text-foreground/60 dark:text-white/60"
+              : "text-muted-foreground"
           }`}>
             {isJobDescriptionValid ? (
               <>
@@ -376,7 +376,7 @@ export function QuickOptimizeForm({ resumes }: QuickOptimizeFormProps) {
               <Button
                 type="submit"
                 disabled={!isFormValid}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-medium py-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3 disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none"
               >
                 {isExtracting ? (
                   <>

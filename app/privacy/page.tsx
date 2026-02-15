@@ -12,11 +12,11 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="border-b border-border dark:border-white/10">
+      <header className="border-b border-border">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <Link
             href="/"
-            className="inline-flex items-center rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
+            className="inline-flex items-center rounded-full border border-border bg-surface-subtle px-3 py-2 backdrop-blur"
           >
             <Logo size="sm" />
           </Link>
@@ -104,7 +104,7 @@ export default function PrivacyPage() {
               <li>Identify keywords and skills alignment</li>
               <li>Provide improvement recommendations</li>
             </ul>
-            <p className="text-foreground/80 leading-relaxed mt-4 p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+            <p className="text-foreground/80 leading-relaxed mt-4 p-4 bg-primary/10 rounded-lg border border-primary/20">
               <strong>Important:</strong> We do NOT use your personal resume data to train our AI models. 
               Your data is used solely to provide services to you.
             </p>
@@ -131,51 +131,51 @@ export default function PrivacyPage() {
             </p>
             
             <div className="mt-4 space-y-4">
-              <div className="p-4 bg-surface-subtle dark:bg-white/5 rounded-lg">
+              <div className="p-4 bg-surface-subtle rounded-lg">
                 <h4 className="font-medium">Clerk (Authentication)</h4>
-                <p className="text-sm text-foreground/70 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Manages user authentication and account security. 
-                  <a href="https://clerk.com/privacy" className="text-emerald-500 ml-1" target="_blank" rel="noopener noreferrer">
+                  <a href="https://clerk.com/privacy" className="text-primary ml-1" target="_blank" rel="noopener noreferrer">
                     Clerk Privacy Policy
                   </a>
                 </p>
               </div>
               
-              <div className="p-4 bg-surface-subtle dark:bg-white/5 rounded-lg">
+              <div className="p-4 bg-surface-subtle rounded-lg">
                 <h4 className="font-medium">Polar (Payments)</h4>
-                <p className="text-sm text-foreground/70 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Processes subscription payments securely. We never store your full credit card details.
-                  <a href="https://polar.sh/privacy" className="text-emerald-500 ml-1" target="_blank" rel="noopener noreferrer">
+                  <a href="https://polar.sh/privacy" className="text-primary ml-1" target="_blank" rel="noopener noreferrer">
                     Polar Privacy Policy
                   </a>
                 </p>
               </div>
               
-              <div className="p-4 bg-surface-subtle dark:bg-white/5 rounded-lg">
+              <div className="p-4 bg-surface-subtle rounded-lg">
                 <h4 className="font-medium">OpenAI (AI Processing)</h4>
-                <p className="text-sm text-foreground/70 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Powers our AI resume optimization. Content is processed but not used for model training.
-                  <a href="https://openai.com/privacy" className="text-emerald-500 ml-1" target="_blank" rel="noopener noreferrer">
+                  <a href="https://openai.com/privacy" className="text-primary ml-1" target="_blank" rel="noopener noreferrer">
                     OpenAI Privacy Policy
                   </a>
                 </p>
               </div>
               
-              <div className="p-4 bg-surface-subtle dark:bg-white/5 rounded-lg">
+              <div className="p-4 bg-surface-subtle rounded-lg">
                 <h4 className="font-medium">Cloudflare R2 (Storage)</h4>
-                <p className="text-sm text-foreground/70 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Stores uploaded resume files securely with encryption.
-                  <a href="https://www.cloudflare.com/privacypolicy/" className="text-emerald-500 ml-1" target="_blank" rel="noopener noreferrer">
+                  <a href="https://www.cloudflare.com/privacypolicy/" className="text-primary ml-1" target="_blank" rel="noopener noreferrer">
                     Cloudflare Privacy Policy
                   </a>
                 </p>
               </div>
               
-              <div className="p-4 bg-surface-subtle dark:bg-white/5 rounded-lg">
+              <div className="p-4 bg-surface-subtle rounded-lg">
                 <h4 className="font-medium">Neon (Database)</h4>
-                <p className="text-sm text-foreground/70 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Hosts our database with enterprise-grade security.
-                  <a href="https://neon.tech/privacy-policy" className="text-emerald-500 ml-1" target="_blank" rel="noopener noreferrer">
+                  <a href="https://neon.tech/privacy-policy" className="text-primary ml-1" target="_blank" rel="noopener noreferrer">
                     Neon Privacy Policy
                   </a>
                 </p>
@@ -297,16 +297,16 @@ export default function PrivacyPage() {
             <p className="text-foreground/80 leading-relaxed">
               If you have questions about this Privacy Policy or wish to exercise your data rights, please contact us:
             </p>
-            <div className="mt-4 p-4 bg-surface-subtle dark:bg-white/5 rounded-lg">
+            <div className="mt-4 p-4 bg-surface-subtle rounded-lg">
               <p className="text-foreground/80">
                 <strong>Email:</strong>{" "}
-                <a href="mailto:privacy@useresumate.com" className="text-emerald-500 hover:text-emerald-400">
+                <a href="mailto:privacy@useresumate.com" className="text-primary hover:text-primary/90">
                   privacy@useresumate.com
                 </a>
               </p>
               <p className="text-foreground/80 mt-2">
                 <strong>Support:</strong>{" "}
-                <Link href="/support" className="text-emerald-500 hover:text-emerald-400">
+                <Link href="/support" className="text-primary hover:text-primary/90">
                   Contact Support
                 </Link>
               </p>
@@ -318,15 +318,15 @@ export default function PrivacyPage() {
         </div>
 
         {/* Back link */}
-        <div className="mt-12 pt-8 border-t border-border dark:border-white/10">
-          <Link href="/" className="text-emerald-500 hover:text-emerald-400">
+        <div className="mt-12 pt-8 border-t border-border">
+          <Link href="/" className="text-primary hover:text-primary/90">
             ← Back to Home
           </Link>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border dark:border-white/10 mt-16">
+      <footer className="border-t border-border mt-16">
         <div className="mx-auto max-w-4xl px-4 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Useresumate. All rights reserved.</p>

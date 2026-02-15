@@ -2,19 +2,19 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function DashboardLoading() {
   return (
-    <main className="py-8 sm:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <main className="py-5 sm:py-6">
+      <div className="px-6">
         {/* Header */}
-        <div className="mb-8">
-          <Skeleton className="h-10 w-48 mb-2" />
-          <Skeleton className="h-5 w-72" />
+        <div className="mb-5">
+          <Skeleton className="h-8 w-48 mb-2" />
+          <Skeleton className="h-4 w-72" />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-5">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
+          <div className="lg:col-span-2 space-y-5">
             {/* Quick Optimize Section */}
-            <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
+            <div className="rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
               <Skeleton className="h-7 w-40 mb-6" />
               <div className="space-y-4">
                 {/* Select Resume */}
@@ -45,13 +45,13 @@ export default function DashboardLoading() {
             </div>
 
             {/* Optimized Resumes Section */}
-            <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6 sm:p-8">
-              <Skeleton className="h-7 w-48 mb-6" />
+            <div className="rounded-2xl border border-border bg-surface-subtle p-4 sm:p-5">
+              <Skeleton className="h-6 w-48 mb-4" />
               <div className="space-y-0">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className={`flex flex-col sm:flex-row sm:items-center gap-4 py-4 ${i > 1 ? "border-t border-gray-300 dark:border-white/10" : ""}`}
+                    className={`flex flex-col sm:flex-row sm:items-center gap-4 py-4 ${i > 1 ? "border-t border-border" : ""}`}
                   >
                     <div className="flex items-center gap-4 flex-1">
                       <Skeleton className="h-10 w-10 rounded-lg flex-shrink-0" />
@@ -76,9 +76,9 @@ export default function DashboardLoading() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-8 mt-8 lg:mt-0">
+          <div className="space-y-5 mt-5 lg:mt-0">
             {/* Account Status Card */}
-            <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6">
+            <div className="rounded-2xl border border-border bg-surface-subtle p-6">
               <Skeleton className="h-6 w-32 mb-4" />
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -93,14 +93,14 @@ export default function DashboardLoading() {
             </div>
 
             {/* Master Resumes Section */}
-            <div className="rounded-2xl border border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6">
+            <div className="rounded-2xl border border-border bg-surface-subtle p-6">
               <div className="flex items-center justify-between mb-4">
                 <Skeleton className="h-6 w-36" />
                 <Skeleton className="h-8 w-8 rounded-md" />
               </div>
               <div className="space-y-3">
                 {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-surface-muted dark:bg-white/5">
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-surface-muted">
                     <Skeleton className="h-8 w-8 rounded-md flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <Skeleton className="h-4 w-32 mb-1" />

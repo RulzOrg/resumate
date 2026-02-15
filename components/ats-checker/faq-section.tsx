@@ -39,10 +39,10 @@ export function FAQSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="max-w-4xl mx-auto text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl tracking-tight font-space-grotesk font-semibold text-slate-900 dark:text-white">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl tracking-tight font-space-grotesk font-semibold text-foreground">
             Frequently asked questions
           </h2>
-          <p className="mt-4 text-base text-slate-500 dark:text-muted-foreground font-sans">
+          <p className="mt-4 text-base text-muted-foreground font-sans">
             Everything you need to know about the Resume Health Check.
           </p>
         </div>
@@ -52,18 +52,18 @@ export function FAQSection() {
           {FAQS.map((faq, index) => (
             <div
               key={index}
-              className="relative overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5"
+              className="relative overflow-hidden rounded-xl border border-border bg-card"
             >
               <button
                 onClick={() => toggleFaq(index)}
-                className="w-full p-5 text-left flex items-center justify-between hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                className="w-full p-5 text-left flex items-center justify-between hover:bg-accent transition-colors"
               >
-                <h3 className="text-base font-medium pr-4 font-sans text-slate-900 dark:text-white">
+                <h3 className="text-base font-medium pr-4 font-sans text-foreground">
                   {faq.question}
                 </h3>
                 <span
                   className={cn(
-                    "flex-shrink-0 w-5 h-5 text-slate-400 dark:text-muted-foreground transition-transform duration-300",
+                    "flex-shrink-0 w-5 h-5 text-muted-foreground transition-transform duration-300",
                     openIndex === index && "rotate-180"
                   )}
                 >
@@ -80,7 +80,7 @@ export function FAQSection() {
                   openIndex === index ? "max-h-96" : "max-h-0"
                 )}
               >
-                <p className="px-5 pb-5 pt-0 text-sm text-slate-500 dark:text-muted-foreground font-sans">
+                <p className="px-5 pb-5 pt-0 text-sm text-muted-foreground font-sans">
                   {faq.answer}
                 </p>
               </div>

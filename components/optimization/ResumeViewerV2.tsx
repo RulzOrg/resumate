@@ -391,7 +391,7 @@ function classifyMatch(score?: number | null) {
   if (s === null) return { label: "N/A", className: "text-foreground/70" }
   if (s === 0) return { label: `${s}%`, className: "text-red-500" }
   if (s < 60) return { label: `${s}%`, className: "text-amber-500" }
-  return { label: `${s}%`, className: "text-emerald-500" }
+  return { label: `${s}%`, className: "text-primary" }
 }
 
 function getSectionCount(parsed: ParsedResume, sectionId: string): number {
@@ -1891,12 +1891,12 @@ export function ResumeViewerV2({
                     variant="outline"
                     size="sm"
                     onClick={copyText}
-                    className={copySuccess ? "bg-emerald-500/10 border-emerald-500/20" : ""}
+                    className={copySuccess ? "bg-primary/10 border-primary/20" : ""}
                     aria-label="Copy resume content to clipboard"
                   >
                     {copySuccess ? (
                       <>
-                        <Check className="h-4 w-4 mr-2 text-emerald-500" aria-hidden="true" /> Copied!
+                        <Check className="h-4 w-4 mr-2 text-primary" aria-hidden="true" /> Copied!
                       </>
                     ) : (
                       <>

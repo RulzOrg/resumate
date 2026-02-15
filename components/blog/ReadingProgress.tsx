@@ -27,7 +27,7 @@ export function ReadingProgress({ className }: ReadingProgressProps) {
   return (
     <div
       className={cn(
-        'fixed left-0 top-0 z-50 h-1 bg-emerald-500 transition-all duration-150',
+        'fixed left-0 top-0 z-50 h-1 bg-primary transition-all duration-150',
         className
       )}
       style={{ width: `${progress}%` }}

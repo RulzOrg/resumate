@@ -108,11 +108,11 @@ export function LayoutSelector({ open, onOpenChange, currentLayout, onSelect }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl bg-[#121212] border-white/10 text-white p-0 overflow-hidden sm:rounded-2xl">
+      <DialogContent className="max-w-3xl bg-card border-border text-foreground p-0 overflow-hidden sm:rounded-2xl">
         <div className="p-6 pb-2">
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-white">Choose Layout</DialogTitle>
-            <DialogDescription className="text-white/60">
+            <DialogTitle className="text-xl font-semibold text-foreground">Choose Layout</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
               Select a structure for your exported document.
             </DialogDescription>
           </DialogHeader>
@@ -129,12 +129,12 @@ export function LayoutSelector({ open, onOpenChange, currentLayout, onSelect }: 
                 onClick={() => setSelected(layout.id)}
                 className={cn(
                   "relative flex flex-col text-left group transition-all duration-200 focus:outline-none",
-                  "bg-[#1A1A1A] hover:bg-[#222] rounded-xl border-2 p-1",
-                  isSelected ? "border-emerald-500/50" : "border-transparent"
+                  "bg-accent hover:bg-accent/80 rounded-xl border-2 p-1",
+                  isSelected ? "border-primary/50" : "border-transparent"
                 )}
               >
                 {isSelected && (
-                  <div className="absolute -top-2 -right-2 z-10 bg-emerald-500 text-black rounded-full p-0.5 border-4 border-[#121212]">
+                  <div className="absolute -top-2 -right-2 z-10 bg-primary text-primary-foreground rounded-full p-0.5 border-4 border-card">
                     <Check className="h-3 w-3 stroke-[3]" />
                   </div>
                 )}
@@ -145,10 +145,10 @@ export function LayoutSelector({ open, onOpenChange, currentLayout, onSelect }: 
 
                 <div className="px-3 pb-3">
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className={cn("h-4 w-4", isSelected ? "text-emerald-400" : "text-white/40")} />
+                    <Icon className={cn("h-4 w-4", isSelected ? "text-primary" : "text-muted-foreground/60")} />
                     <span className="font-medium text-sm">{layout.title}</span>
                   </div>
-                  <p className="text-xs text-white/40 leading-relaxed">
+                  <p className="text-xs text-muted-foreground/60 leading-relaxed">
                     {layout.description}
                   </p>
                 </div>
@@ -161,7 +161,7 @@ export function LayoutSelector({ open, onOpenChange, currentLayout, onSelect }: 
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="text-white/60 hover:text-white hover:bg-white/5 font-medium"
+            className="text-muted-foreground hover:text-foreground hover:bg-card font-medium"
           >
             Cancel
           </Button>

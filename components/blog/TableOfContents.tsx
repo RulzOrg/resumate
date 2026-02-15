@@ -71,7 +71,7 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
               className={cn(
                 'block w-full text-left transition-colors hover:text-foreground',
                 activeId === item.id
-                  ? 'font-medium text-emerald-500'
+                  ? 'font-medium text-primary'
                   : 'text-muted-foreground'
               )}
             >

@@ -129,22 +129,22 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
+    <div className="rounded-2xl border border-border bg-surface-subtle p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Master Resumes</h3>
-        <span className="text-xs font-medium text-foreground/50 dark:text-white/50">{masterResumes.length} of 3 files</span>
+        <h3 className="text-base font-medium text-foreground/90">Master Resumes</h3>
+        <span className="text-xs font-medium text-muted-foreground/70">{masterResumes.length} of 3 files</span>
       </div>
 
       {masterResumes.length > 0 ? (
         <div className="space-y-2">
           {masterResumes.map((resume) => (
-            <div key={resume.id} className="group rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10 p-3 transition-colors hover:bg-surface-muted dark:hover:bg-white/10">
+            <div key={resume.id} className="group rounded-lg bg-surface-subtle border border-border p-3 transition-colors hover:bg-surface-muted">
               <div className="flex items-center gap-3">
                 <div 
                   className="cursor-pointer transition-opacity hover:opacity-80"
                   onClick={() => handlePreview(resume)}
                 >
-                  <FileCheck className="h-5 w-5 flex-shrink-0 text-foreground/70 dark:text-white/70" />
+                  <FileCheck className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
                 </div>
                 <div className="flex flex-1 flex-col gap-0.5 text-left min-w-0">
                   {editingId === resume.id ? (
@@ -153,7 +153,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         type="text"
                         value={editingTitle}
                         onChange={(e) => setEditingTitle(e.target.value)}
-                        className="w-full text-sm font-medium bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 rounded px-2 py-1 text-foreground dark:text-white focus:outline-none focus:border-emerald-500"
+                        className="w-full text-sm font-medium bg-surface-muted border border-border rounded px-2 py-1 text-foreground focus:outline-none focus:border-ring"
                         disabled={isUpdating === resume.id}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -168,7 +168,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         <button
                           onClick={() => handleSaveEdit(resume.id)}
                           disabled={isUpdating === resume.id}
-                          className="text-xs px-2 py-1 bg-emerald-500 text-black rounded hover:bg-emerald-400 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1"
                           aria-label="Save resume name"
                         >
                           {isUpdating === resume.id ? (
@@ -183,7 +183,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         <button
                           onClick={handleCancelEdit}
                           disabled={isUpdating === resume.id}
-                          className="text-xs px-2 py-1 bg-surface-muted dark:bg-white/10 text-foreground/80 dark:text-white/80 rounded hover:bg-surface-strong dark:hover:bg-white/20 transition-colors disabled:opacity-50 flex items-center gap-1"
+                          className="text-xs px-2 py-1 bg-surface-muted text-foreground/80 rounded hover:bg-surface-strong transition-colors disabled:opacity-50 flex items-center gap-1"
                           aria-label="Cancel editing"
                         >
                           <X className="h-3 w-3" aria-hidden="true" />
@@ -197,12 +197,12 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                   ) : (
                     <>
                       <p 
-                        className="truncate text-sm font-medium text-foreground/90 dark:text-white/90 cursor-pointer hover:text-emerald-500 transition-colors"
+                        className="truncate text-sm font-medium text-foreground/90 cursor-pointer hover:text-primary transition-colors"
                         onClick={() => handlePreview(resume)}
                       >
                         {resume.title}
                       </p>
-                      <p className="text-xs text-foreground/50 dark:text-white/50">
+                      <p className="text-xs text-muted-foreground/70">
                         {resume.processing_status === "completed"
                           ? `Last updated ${formatDistanceToNow(new Date(resume.updated_at), { addSuffix: true })}`
                           : resume.processing_status === "processing"
@@ -224,14 +224,14 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                   >
                     <button
                       onClick={() => handlePreview(resume)}
-                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
+                      className="text-muted-foreground transition-colors hover:text-foreground"
                       aria-label={`View ${resume.title} details`}
                     >
                       <Eye className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => handleStartEdit(resume.id, resume.title)}
-                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-foreground dark:hover:text-white"
+                      className="text-muted-foreground transition-colors hover:text-foreground"
                       aria-label={`Edit ${resume.title} name`}
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -242,7 +242,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         setDeleteError(null)
                       }}
                       disabled={isDeleting === resume.id}
-                      className="text-foreground/60 dark:text-white/60 transition-colors hover:text-red-400 disabled:opacity-50"
+                      className="text-muted-foreground transition-colors hover:text-red-400 disabled:opacity-50"
                       aria-label={`Delete ${resume.title}`}
                     >
                       <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} aria-hidden="true" />
@@ -267,7 +267,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         setConfirmingDeleteId(null)
                         setDeleteError(null)
                       }}
-                      className="flex-1 rounded-full border border-border/80 dark:border-white/20 px-3 py-2 text-sm font-medium text-foreground/80 dark:text-white/80 transition-colors hover:text-foreground dark:hover:text-white"
+                      className="flex-1 rounded-full border border-border px-3 py-2 text-sm font-medium text-foreground/80 transition-colors hover:text-foreground"
                     >
                       Cancel
                     </button>
@@ -281,15 +281,15 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
           ))}
         </div>
       ) : (
-        <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-surface-subtle dark:bg-white/5 border border-dashed border-border/80 dark:border-white/20">
-          <p className="text-sm text-foreground/60 dark:text-white/60">Upload your master resumes to get started.</p>
+        <div className="flex items-center justify-center text-center gap-3 p-4 rounded-lg bg-surface-subtle border border-dashed border-border">
+          <p className="text-sm text-muted-foreground">Upload your master resumes to get started.</p>
         </div>
       )}
 
       {masterResumes.length < 3 && (
         <UploadMasterResumeDialog currentResumeCount={masterResumes.length}>
           <button
-            className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white transition bg-surface-muted dark:bg-white/10 rounded-full py-2"
+            className="mt-4 w-full flex items-center justify-center gap-2 text-center text-sm font-medium text-foreground/80 hover:text-foreground transition bg-surface-muted rounded-full py-2"
             aria-label="Upload new resume"
           >
             <UploadCloud className="h-4 w-4" aria-hidden="true" />

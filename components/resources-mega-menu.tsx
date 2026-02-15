@@ -18,13 +18,6 @@ const RESOURCES_ITEMS: ResourceItem[] = [
     icon: FileSearch,
     description: "Free ATS compatibility score and optimization insights",
   },
-  // Add more resources here as needed:
-  // {
-  //   label: "Resume Templates",
-  //   href: "/resources/templates",
-  //   icon: FileText,
-  //   description: "Professional templates designed for ATS systems",
-  // },
 ]
 
 interface ResourcesMegaMenuProps {
@@ -33,22 +26,20 @@ interface ResourcesMegaMenuProps {
 
 export function ResourcesMegaMenu({ onItemClick }: ResourcesMegaMenuProps) {
   return (
-    // Solid background wrapper - ensures no transparency
     <div
       className="w-full min-w-[320px] sm:min-w-[380px]"
       style={{ backgroundColor: 'inherit' }}
     >
-      {/* Inner content with solid background */}
-      <div className="bg-[#ffffff] dark:bg-[#0a0a0a] p-4 sm:p-5 rounded-2xl">
-        {/* Header - High contrast for accessibility */}
+      <div className="bg-background p-4 sm:p-5 rounded-2xl">
+        {/* Header */}
         <div className="mb-3 px-1">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Resources
           </h3>
         </div>
 
-        {/* Divider - Solid color */}
-        <div className="mb-3 h-px bg-neutral-200 dark:bg-neutral-800" />
+        {/* Divider */}
+        <div className="mb-3 h-px bg-border" />
 
         {/* Items */}
         <nav role="menu" aria-label="Resources menu">
@@ -61,14 +52,12 @@ export function ResourcesMegaMenu({ onItemClick }: ResourcesMegaMenuProps) {
               className={cn(
                 "group relative flex items-center gap-4 rounded-xl p-3 sm:p-4",
                 "transition-colors duration-150",
-                // Solid hover backgrounds - no transparency
-                "hover:bg-neutral-100 dark:hover:bg-neutral-900",
-                // High contrast focus ring for accessibility
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2",
-                "focus-visible:ring-offset-white dark:focus-visible:ring-offset-[#0a0a0a]"
+                "hover:bg-accent",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "focus-visible:ring-offset-background"
               )}
             >
-              {/* Icon Container - Solid background */}
+              {/* Icon Container */}
               <div
                 className={cn(
                   "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
@@ -83,12 +72,12 @@ export function ResourcesMegaMenu({ onItemClick }: ResourcesMegaMenuProps) {
                 />
               </div>
 
-              {/* Content - High contrast text */}
+              {/* Content */}
               <div className="flex-1 min-w-0">
-                <div className="text-base font-semibold text-neutral-900 dark:text-white">
+                <div className="text-base font-semibold text-foreground">
                   {item.label}
                 </div>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-0.5 line-clamp-2">
+                <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
                   {item.description}
                 </p>
               </div>
@@ -96,9 +85,9 @@ export function ResourcesMegaMenu({ onItemClick }: ResourcesMegaMenuProps) {
               {/* Arrow indicator */}
               <ChevronRight
                 className={cn(
-                  "h-5 w-5 shrink-0 text-neutral-400 dark:text-neutral-500",
+                  "h-5 w-5 shrink-0 text-muted-foreground",
                   "transition-transform duration-150",
-                  "group-hover:translate-x-0.5 group-hover:text-neutral-600 dark:group-hover:text-neutral-300"
+                  "group-hover:translate-x-0.5 group-hover:text-foreground"
                 )}
                 aria-hidden="true"
               />

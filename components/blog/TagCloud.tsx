@@ -24,8 +24,8 @@ export function TagCloud({ tags, activeTag, className, limit }: TagCloudProps) {
           className={cn(
             'rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200',
             activeTag === tag
-              ? 'bg-emerald-500 text-white shadow-sm'
-              : 'bg-muted/60 text-muted-foreground hover:bg-emerald-500/10 hover:text-emerald-500'
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'bg-muted/60 text-muted-foreground hover:bg-primary/10 hover:text-primary'
           )}
         >
           #{tag}
