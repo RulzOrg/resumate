@@ -18,14 +18,14 @@ interface AgentPanelProps {
 
 export function AgentPanel({ optimizationSummary, jobTitle, companyName }: AgentPanelProps) {
   const {
-    changes_made,
-    keywords_added,
-    skills_highlighted,
-    sections_improved,
-    match_score_before,
-    match_score_after,
-    recommendations,
-  } = optimizationSummary
+    changes_made = [],
+    keywords_added = [],
+    skills_highlighted = [],
+    sections_improved = [],
+    match_score_before = 0,
+    match_score_after = 0,
+    recommendations = [],
+  } = optimizationSummary ?? {}
 
   const scoreImprovement = match_score_after - match_score_before
 
