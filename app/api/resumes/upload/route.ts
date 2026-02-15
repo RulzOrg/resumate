@@ -54,15 +54,16 @@ export async function POST(request: NextRequest) {
 
     // Upload file to S3 with sanitized filename
     const key = buildS3Key({ userId: user.id, kind: "master", fileName: sanitizedFilename })
+    const detectedFileType = validation.validationResult?.fileType || file.type
     const { url: fileUrl } = await uploadBufferToS3({ 
       buffer, 
       key, 
-      contentType: validation.validationResult?.fileType || file.type 
+      contentType: detectedFileType
     })
 
     // Extract text synchronously (MVP simplified flow)
     console.log(`[upload] Extracting text from resume...`)
-    const extractResult = await extractText(buffer, file.type)
+    const extractResult = await extractText(buffer, detectedFileType)
     
     const contentText = extractResult.text || ""
 
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       clerk_user_id: user.clerk_user_id,
       title,
-      file_type: file.type,
+      file_type: detectedFileType,
       content_length: contentText.length,
     })
     
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
       title,
       file_name: file.name,
       file_url: fileUrl,
-      file_type: file.type,
+      file_type: detectedFileType,
       file_size: file.size,
       content_text: contentText,
       kind: "master",
@@ -118,6 +119,9 @@ export async function POST(request: NextRequest) {
           chars: extractResult.total_chars,
           warnings: extractResult.warnings,
           mode: extractResult.mode_used,
+          provider: extractResult.provider || extractResult.mode_used,
+          retries: extractResult.retries || 0,
+          confidence: extractResult.confidence ?? 0,
         }
       },
     })

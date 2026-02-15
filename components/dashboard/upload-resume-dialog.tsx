@@ -21,6 +21,14 @@ import { Upload, FileText, X, CheckCircle, AlertTriangle } from "lucide-react"
 import { uploadResume } from "@/lib/upload-handler"
 import { ReviewFallbackUI } from "@/components/resume/review-fallback-ui"
 import { ProcessingOverlay, type ProcessingStep } from "@/components/ui/processing-overlay"
+import {
+  MAX_RESUME_FILE_SIZE,
+  SUPPORTED_RESUME_EXTENSIONS,
+  SUPPORTED_RESUME_MIME_TYPES,
+  normalizeMimeType,
+} from "@/lib/resume-upload-config"
+
+const SUPPORTED_MIME_SET = new Set<string>(SUPPORTED_RESUME_MIME_TYPES)
 
 interface UploadResumeDialogProps {
   children: React.ReactNode
@@ -91,31 +99,28 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
 
   const handleFileSelect = (selectedFile: File) => {
     // Check file size first (10MB limit)
-    if (selectedFile.size > 10 * 1024 * 1024) {
+    if (selectedFile.size > MAX_RESUME_FILE_SIZE) {
       setError(`File size is ${(selectedFile.size / 1024 / 1024).toFixed(1)}MB. Please upload a file smaller than 10MB.`)
       return
     }
 
     // Check file extension (more reliable than MIME type)
     const fileName = selectedFile.name.toLowerCase()
-    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt']
-    const hasValidExtension = allowedExtensions.some(ext => fileName.endsWith(ext))
+    const hasValidExtension = SUPPORTED_RESUME_EXTENSIONS.some(ext => fileName.endsWith(ext))
 
     if (!hasValidExtension) {
       setError("Only PDF, Word (.doc, .docx), and plain text (.txt) files are allowed. CSV, JPEG, PNG files are not supported.")
       return
     }
 
-    // Double-check with MIME type for additional security
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain",
-    ]
-    if (!allowedTypes.includes(selectedFile.type)) {
-      setError("Please upload a PDF, Word, or plain text file")
-      return
+    // MIME can be inconsistent across browsers/OS; use as warning only.
+    const normalizedMime = normalizeMimeType(selectedFile.type)
+    if (normalizedMime && !SUPPORTED_MIME_SET.has(normalizedMime)) {
+      console.warn("Unexpected MIME type for selected file:", {
+        file: selectedFile.name,
+        mime: selectedFile.type,
+        normalizedMime,
+      })
     }
 
     setFile(selectedFile)
@@ -278,7 +283,7 @@ export function UploadResumeDialog({ children }: UploadResumeDialogProps) {
           {error && isNotResumeError ? (
             <div className="border-2 border-destructive/50 bg-destructive/10 rounded-lg p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="w-6 h-6 text-destructive flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-6 h-6 text-destructive shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-semibold text-destructive">Wrong Document Type</p>
                   <p className="text-sm text-muted-foreground">{error.replace(/^\[\d+\]\s*/, '')}</p>

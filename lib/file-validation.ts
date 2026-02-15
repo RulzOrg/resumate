@@ -1,21 +1,18 @@
 import { NextRequest } from "next/server"
+import {
+  EXTENSION_TO_MIME,
+  getFileExtension,
+  MAX_RESUME_FILE_SIZE,
+  normalizeMimeType,
+  SUPPORTED_RESUME_EXTENSIONS,
+  SUPPORTED_RESUME_MIME_TYPES,
+} from "@/lib/resume-upload-config"
+import { incrementMetric } from "@/lib/services/extraction/metrics"
 
-// Maximum file size: 10MB
-export const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB in bytes
-
-// Allowed MIME types for resume uploads
-export const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-  'application/msword', // .doc (legacy)
-] as const
-
-// File extension to MIME type mapping
-export const EXTENSION_TO_MIME: Record<string, string> = {
-  '.pdf': 'application/pdf',
-  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  '.doc': 'application/msword',
-}
+// Backward-compatible exports used by existing code
+export const MAX_FILE_SIZE = MAX_RESUME_FILE_SIZE
+export const ALLOWED_MIME_TYPES = SUPPORTED_RESUME_MIME_TYPES
+const ALLOWED_MIME_SET = new Set<string>(ALLOWED_MIME_TYPES)
 
 // Magic numbers for file type verification
 const FILE_SIGNATURES = {
@@ -29,6 +26,7 @@ export interface FileValidationResult {
   error?: string
   fileType?: string
   size?: number
+  warnings?: string[]
 }
 
 /**
@@ -56,12 +54,12 @@ export function validateFileSize(size: number): FileValidationResult {
  * Validates MIME type
  */
 export function validateMimeType(mimeType: string): FileValidationResult {
-  const normalizedMime = mimeType.toLowerCase().split(';')[0].trim()
+  const normalizedMime = normalizeMimeType(mimeType)
 
-  if (!ALLOWED_MIME_TYPES.includes(normalizedMime as any)) {
+  if (!ALLOWED_MIME_SET.has(normalizedMime)) {
     return {
       valid: false,
-      error: `Invalid file type. Allowed types: PDF, DOCX`
+      error: "Invalid file type. Allowed types: PDF, DOCX, DOC, TXT",
     }
   }
 
@@ -72,21 +70,19 @@ export function validateMimeType(mimeType: string): FileValidationResult {
  * Validates file extension
  */
 export function validateFileExtension(filename: string): FileValidationResult {
-  const lastDotIndex = filename.lastIndexOf('.')
-  if (lastDotIndex === -1) {
+  const extension = getFileExtension(filename)
+  if (!extension) {
     return {
       valid: false,
-      error: "File has no extension"
+      error: "File has no extension",
     }
   }
-
-  const extension = filename.substring(lastDotIndex).toLowerCase()
   const expectedMime = EXTENSION_TO_MIME[extension]
 
   if (!expectedMime) {
     return {
       valid: false,
-      error: `Invalid file extension. Allowed: .pdf, .docx`
+      error: `Invalid file extension. Allowed: ${SUPPORTED_RESUME_EXTENSIONS.join(", ")}`,
     }
   }
 
@@ -164,55 +160,82 @@ export async function validateUploadedFile(
     return sizeValidation
   }
 
-  // Validate MIME type
-  const mimeValidation = validateMimeType(fileBlob.type)
-  if (!mimeValidation.valid) {
-    return mimeValidation
-  }
-
   // Validate file extension
   const extensionValidation = validateFileExtension(fileBlob.name)
   if (!extensionValidation.valid) {
     return extensionValidation
   }
 
-  // Cross-check MIME type and extension
-  if (mimeValidation.fileType !== extensionValidation.fileType) {
-    return {
-      valid: false,
-      error: "File extension does not match file type"
-    }
-  }
+  const warnings: string[] = []
 
   // Read first bytes for signature verification
   try {
-    const arrayBuffer = await fileBlob.slice(0, 8).arrayBuffer()
+    const extension = getFileExtension(fileBlob.name)
+    const signatureBytes = extension === ".txt" ? Math.min(512, fileBlob.size) : 8
+    const arrayBuffer = await fileBlob.slice(0, signatureBytes).arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
-    const signatureValidation = verifyFileSignature(buffer)
+    const signatureValidation =
+      extension === ".txt" ? verifyTextFileSignature(buffer) : verifyFileSignature(buffer)
 
     if (!signatureValidation.valid) {
       return signatureValidation
     }
 
-    // Final check: ensure detected signature matches declared type
-    if (signatureValidation.fileType !== mimeValidation.fileType) {
+    // Signature and extension must agree.
+    if (signatureValidation.fileType !== extensionValidation.fileType) {
       return {
         valid: false,
-        error: "File content does not match declared file type"
+        error: "File content does not match file extension",
+      }
+    }
+
+    // MIME type is advisory; do not hard fail if extension/signature are valid.
+    const normalizedMime = normalizeMimeType(fileBlob.type)
+    if (normalizedMime) {
+      const mimeValidation = validateMimeType(normalizedMime)
+      if (mimeValidation.valid && mimeValidation.fileType !== extensionValidation.fileType) {
+        warnings.push(
+          `MIME type mismatch (${normalizedMime}) for extension ${extension}; accepted by signature`
+        )
+      } else if (!mimeValidation.valid) {
+        warnings.push(`Unrecognized MIME type (${normalizedMime}); accepted by extension/signature`)
       }
     }
   } catch (error) {
     return {
       valid: false,
-      error: "Failed to read file for verification"
+      error: "Failed to read file for verification",
     }
   }
 
   return {
     valid: true,
-    fileType: mimeValidation.fileType,
-    size: fileBlob.size
+    fileType: extensionValidation.fileType,
+    size: fileBlob.size,
+    warnings,
   }
+}
+
+function verifyTextFileSignature(buffer: Buffer): FileValidationResult {
+  if (!buffer.length) {
+    return {
+      valid: false,
+      error: "Text file is empty",
+    }
+  }
+
+  const nonPrintableCount = buffer.filter(
+    (byte) => (byte < 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d) || byte > 0x7e
+  ).length
+
+  if (nonPrintableCount >= buffer.length * 0.15) {
+    return {
+      valid: false,
+      error: "Text file appears to contain binary content",
+    }
+  }
+
+  return { valid: true, fileType: "text/plain" }
 }
 
 /**
@@ -253,6 +276,7 @@ export async function validateFileUpload(request: NextRequest): Promise<{
     const file = formData.get('file')
 
     if (!file || typeof file === 'string') {
+      incrementMetric("upload_validation_failures")
       return {
         valid: false,
         error: "No file provided in request"
@@ -263,6 +287,7 @@ export async function validateFileUpload(request: NextRequest): Promise<{
     const validation = await validateUploadedFile(formData, 'file')
 
     if (!validation.valid) {
+      incrementMetric("upload_validation_failures")
       return {
         valid: false,
         error: validation.error,
@@ -277,6 +302,7 @@ export async function validateFileUpload(request: NextRequest): Promise<{
       validationResult: validation
     }
   } catch (error: any) {
+    incrementMetric("upload_validation_failures")
     return {
       valid: false,
       error: error.message || "Failed to process file upload"

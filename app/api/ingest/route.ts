@@ -64,7 +64,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<IngestRes
 
     // 7. Extract text content
     console.log(`[ingest] Extracting text from file: ${file.name}`)
-    const extractResult = await extractText(buffer, file.type)
+    const detectedFileType = validation.validationResult?.fileType || file.type
+    const extractResult = await extractText(buffer, detectedFileType)
     const contentText = extractResult.text || ""
 
     // 8. Check if we got enough text
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<IngestRes
     const { url: fileUrl } = await uploadBufferToS3({
       buffer,
       key,
-      contentType: validation.validationResult?.fileType || file.type
+      contentType: detectedFileType
     })
 
     // 11. Create resume record
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<IngestRes
       title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension for title
       file_name: file.name,
       file_url: fileUrl,
-      file_type: file.type,
+      file_type: detectedFileType,
       file_size: file.size,
       file_hash: fileHash,
       content_text: contentText,
@@ -124,6 +125,9 @@ export async function POST(request: NextRequest): Promise<NextResponse<IngestRes
           chars: extractResult.total_chars,
           warnings: extractResult.warnings,
           mode: extractResult.mode_used,
+          provider: extractResult.provider || extractResult.mode_used,
+          retries: extractResult.retries || 0,
+          confidence: extractResult.confidence ?? 0,
         },
         validation: {
           documentType: contentValidation.documentType,

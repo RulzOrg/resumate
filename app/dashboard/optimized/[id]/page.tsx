@@ -25,15 +25,6 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
       redirect("/dashboard")
     }
 
-    // Debug: Log the optimized content length and preview
-    console.log(`[Resume Detail] Loading optimized resume:`, {
-      id: optimized.id,
-      title: optimized.title,
-      contentLength: optimized.optimized_content?.length || 0,
-      contentPreview: optimized.optimized_content?.slice(0, 200) || 'EMPTY',
-      userId: user.id,
-    })
-
     original = await getResumeById(optimized.original_resume_id, user.id)
   } catch (error) {
     console.error(`[Resume Detail] Error loading resume:`, error)
@@ -60,6 +51,8 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
           optimizedId={optimized.id}
           title={optimized.title}
           optimizedContent={optimized.optimized_content}
+          structuredOutput={optimized.structured_output}
+          revisionToken={optimized.updated_at}
           matchScore={optimized.match_score}
         />
       </div>

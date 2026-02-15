@@ -2,6 +2,7 @@ import { type ParsedResume } from "@/lib/resume-parser"
 import Anthropic from "@anthropic-ai/sdk"
 import { z } from "zod"
 import { createLogger } from "@/lib/debug-logger"
+import { incrementMetric } from "@/lib/services/extraction/metrics"
 
 const logger = createLogger("LLM-Resume-Extractor")
 
@@ -316,6 +317,7 @@ export type StructuredResume = z.infer<typeof ParsedResumeSchema>
 export type ExtractionResult = {
   success: boolean
   resume?: ParsedResume
+  outcome?: 'structured_complete' | 'structured_partial' | 'raw_only'
   error?: {
     code: 'NOT_A_RESUME' | 'INCOMPLETE' | 'EXTRACTION_FAILED' | 'INVALID_INPUT'
     documentType?: string
@@ -326,6 +328,107 @@ export type ExtractionResult = {
     originalLength?: number
     truncatedLength?: number
   }
+}
+
+function sanitizeStringArray(input: unknown): string[] {
+  if (!Array.isArray(input)) {
+    return []
+  }
+  return input
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean)
+}
+
+function coercePartialResume(input: unknown): StructuredResume | null {
+  if (!input || typeof input !== "object") {
+    return null
+  }
+
+  const source = input as Record<string, unknown>
+  const workExperienceRaw = Array.isArray(source.workExperience) ? source.workExperience : []
+  const educationRaw = Array.isArray(source.education) ? source.education : []
+  const skillsRaw = sanitizeStringArray(source.skills)
+
+  const workExperience = workExperienceRaw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null
+      }
+      const exp = entry as Record<string, unknown>
+      const company = typeof exp.company === "string" ? exp.company.trim() : ""
+      const title = typeof exp.title === "string" ? exp.title.trim() : ""
+      const bullets = sanitizeStringArray(exp.bullets)
+      if (!company || !title || bullets.length === 0) {
+        return null
+      }
+      return {
+        company,
+        title,
+        location: typeof exp.location === "string" ? exp.location : null,
+        startDate: typeof exp.startDate === "string" ? exp.startDate : null,
+        endDate: typeof exp.endDate === "string" ? exp.endDate : null,
+        employmentType: typeof exp.employmentType === "string" ? exp.employmentType : null,
+        bullets,
+      }
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+
+  const education = educationRaw
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null
+      }
+      const edu = entry as Record<string, unknown>
+      const institution = typeof edu.institution === "string" ? edu.institution.trim() : ""
+      if (!institution) {
+        return null
+      }
+      return {
+        institution,
+        degree: typeof edu.degree === "string" ? edu.degree : null,
+        field: typeof edu.field === "string" ? edu.field : null,
+        graduationDate: typeof edu.graduationDate === "string" ? edu.graduationDate : null,
+        notes: typeof edu.notes === "string" ? edu.notes : null,
+      }
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+
+  const contactRaw = source.contact && typeof source.contact === "object"
+    ? (source.contact as Record<string, unknown>)
+    : {}
+
+  const contactName =
+    typeof contactRaw.name === "string" && contactRaw.name.trim().length > 0
+      ? contactRaw.name.trim()
+      : "Unknown Candidate"
+
+  const partial: StructuredResume = {
+    contact: {
+      name: contactName,
+      location: typeof contactRaw.location === "string" ? contactRaw.location : null,
+      phone: typeof contactRaw.phone === "string" ? contactRaw.phone : null,
+      email: typeof contactRaw.email === "string" ? contactRaw.email : null,
+      linkedin: typeof contactRaw.linkedin === "string" ? contactRaw.linkedin : null,
+      website: typeof contactRaw.website === "string" ? contactRaw.website : null,
+    },
+    targetTitle: typeof source.targetTitle === "string" ? source.targetTitle : null,
+    summary: typeof source.summary === "string" ? source.summary : null,
+    workExperience,
+    education,
+    skills: skillsRaw,
+    interests: sanitizeStringArray(source.interests),
+    certifications: [],
+    awards: sanitizeStringArray(source.awards),
+    projects: [],
+    volunteering: [],
+    publications: [],
+  }
+
+  if (partial.workExperience.length === 0 && partial.education.length === 0 && partial.skills.length === 0) {
+    return null
+  }
+
+  return partial
 }
 
 /**
@@ -528,24 +631,46 @@ export async function extractResumeWithLLM(
     // We try to locate the data
     const resumeData = result.data || result;
 
-    // Attempt to validate - allow partial failures by defaults in schema
+    // Attempt strict validation first.
     const validation = ParsedResumeSchema.safeParse(resumeData)
+    let data: StructuredResume
+    let outcome: ExtractionResult["outcome"] = "structured_complete"
 
     if (!validation.success) {
       console.error("[LLM Extraction] Schema validation failed:", validation.error)
-      // If validation fails, we might still want to return what we have if it's "good enough"
-      // But for now, let's treat it as a failure or try to fix common issues
-      return {
-        success: false,
-        error: {
-          code: 'EXTRACTION_FAILED',
-          message: 'Failed to extract valid resume structure',
+      incrementMetric("structured_parse_failures")
+      const coerced = coercePartialResume(resumeData)
+      if (!coerced) {
+        return {
+          success: false,
+          outcome: "raw_only",
+          error: {
+            code: 'EXTRACTION_FAILED',
+            message: 'Failed to extract valid resume structure',
+          }
         }
       }
+
+      const coercedValidation = ParsedResumeSchema.safeParse(coerced)
+      if (!coercedValidation.success) {
+        incrementMetric("structured_parse_failures")
+        return {
+          success: false,
+          outcome: "raw_only",
+          error: {
+            code: 'EXTRACTION_FAILED',
+            message: 'Failed to normalize resume structure from parsed output',
+          }
+        }
+      }
+
+      data = coercedValidation.data
+      outcome = "structured_partial"
+    } else {
+      data = validation.data
     }
 
     // Logic checks for "Incomplete" resume
-    const data = validation.data
     const hasWork = data.workExperience.length > 0
     const hasEdu = data.education.length > 0
     const hasSkills = data.skills.length > 0
@@ -630,6 +755,7 @@ export async function extractResumeWithLLM(
     return {
       success: true,
       resume: data as ParsedResume,
+      outcome,
       metadata: wasTruncated
         ? {
           truncated: true,

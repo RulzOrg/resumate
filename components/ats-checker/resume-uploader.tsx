@@ -3,6 +3,13 @@
 import { useState, useCallback, useRef } from "react"
 import { CloudUpload, FileText, X, ArrowRight, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+  MAX_RESUME_FILE_SIZE,
+  SUPPORTED_RESUME_MIME_TYPES,
+  normalizeMimeType,
+} from "@/lib/resume-upload-config"
+
+const SUPPORTED_MIME_SET = new Set<string>(SUPPORTED_RESUME_MIME_TYPES)
 
 interface ResumeUploaderProps {
   onUploadStart: () => void
@@ -19,15 +26,6 @@ interface ResumeUploaderProps {
   onUploadError: (error: string) => void
 }
 
-const ACCEPTED_TYPES = [
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword",
-  "text/plain",
-]
-
-const MAX_SIZE = 10 * 1024 * 1024 // 10MB
-
 export function ResumeUploader({
   onUploadStart,
   onUploadProgress,
@@ -40,14 +38,15 @@ export function ResumeUploader({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const validateFile = (file: File): string | null => {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    const normalizedMime = normalizeMimeType(file.type)
+    if (!SUPPORTED_MIME_SET.has(normalizedMime)) {
       const ext = file.name.split(".").pop()?.toLowerCase()
       if (!["pdf", "docx", "doc", "txt"].includes(ext || "")) {
         return "Please upload a PDF, DOCX, or TXT file."
       }
     }
 
-    if (file.size > MAX_SIZE) {
+    if (file.size > MAX_RESUME_FILE_SIZE) {
       return "File size must be under 10MB."
     }
 

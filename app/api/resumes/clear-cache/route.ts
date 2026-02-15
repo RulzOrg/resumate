@@ -1,29 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
-import { clearParsedStructure } from "@/lib/db"
+import { clearParsedStructure, getOrCreateUser, getResumeById } from "@/lib/db"
+import { errorResponse, fromError } from "@/lib/api-response"
 
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return errorResponse(401, "UNAUTHORIZED", "Unauthorized", { retryable: false })
     }
 
     const { resume_id } = await request.json()
-    
+
     if (!resume_id) {
-      return NextResponse.json({ error: "resume_id is required" }, { status: 400 })
+      return errorResponse(400, "MISSING_RESUME_ID", "resume_id is required", { retryable: false })
+    }
+
+    const user = await getOrCreateUser()
+    if (!user) {
+      return errorResponse(404, "USER_NOT_FOUND", "User not found", { retryable: false })
+    }
+
+    const resume = await getResumeById(resume_id, user.id)
+    if (!resume) {
+      return errorResponse(404, "RESUME_NOT_FOUND", "Resume not found", { retryable: false })
     }
 
     await clearParsedStructure(resume_id)
 
-    return NextResponse.json({ 
-      success: true, 
-      message: `Cache cleared for resume ${resume_id}. Next optimization will re-extract.` 
+    return NextResponse.json({
+      success: true,
+      message: `Cache cleared for resume ${resume_id}. Next optimization will re-extract.`,
     })
-  } catch (error: any) {
-    console.error("[ClearCache] Error:", error)
-    return NextResponse.json({ error: error.message || "Failed to clear cache" }, { status: 500 })
+  } catch (error) {
+    return fromError(error)
   }
 }
-

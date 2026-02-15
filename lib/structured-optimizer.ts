@@ -1,6 +1,7 @@
 import { parseResumeContent, type ParsedResume } from "@/lib/resume-parser"
 import Anthropic from "@anthropic-ai/sdk"
 import { z } from "zod"
+import { debugLog, debugWarn } from "@/lib/debug-logger"
 
 const optimizedExperienceSchema = z.object({
   optimized_bullets: z.array(z.string()).describe("Optimized bullet points for this work experience entry"),
@@ -61,11 +62,11 @@ export async function optimizeResumeStructured(
         const extractedText = jsonContent.text || jsonContent.content || jsonContent.resume || jsonContent.data
         if (extractedText && typeof extractedText === 'string') {
           actualContent = extractedText
-          console.log('[StructuredOptimizer] Extracted text from JSON-encoded content')
+          debugLog('[StructuredOptimizer] Extracted text from JSON-encoded content')
         }
       } catch (e) {
         // If JSON parsing fails, content might not be JSON - continue with original
-        console.warn('[StructuredOptimizer] Content starts with { but is not valid JSON, using as-is')
+        debugWarn('[StructuredOptimizer] Content starts with { but is not valid JSON, using as-is')
       }
     }
 
@@ -77,7 +78,7 @@ export async function optimizeResumeStructured(
       throw new Error('Invalid resume content: content appears to be JSON data, not resume text')
     }
 
-    console.log('[StructuredOptimizer] Received string content:', {
+    debugLog('[StructuredOptimizer] Received string content:', {
       contentLength: actualContent.length,
       contentPreview: actualContent.substring(0, 500),
       contentType: typeof actualContent,
@@ -87,7 +88,7 @@ export async function optimizeResumeStructured(
     parsed = parseResumeContent(actualContent)
   } else {
     // Use provided structured data directly
-    console.log('[StructuredOptimizer] Using provided structured resume data')
+    debugLog('[StructuredOptimizer] Using provided structured resume data')
     parsed = resumeInput
   }
 
@@ -124,7 +125,7 @@ export async function optimizeResumeStructured(
       cleaned = cleaned.replace(/[\s\t]{5,}.*$/, '') // Remove if 5+ spaces followed by anything
       cleaned = cleaned.replace(/[\s\t]+/g, ' ').trim()
       if (cleaned !== exp.company) {
-        console.log(`[StructuredOptimizer] Cleaned company name: '${exp.company}' → '${cleaned}'`)
+        debugLog(`[StructuredOptimizer] Cleaned company name: '${exp.company}' → '${cleaned}'`)
         exp.company = cleaned
       }
     }
@@ -144,7 +145,7 @@ export async function optimizeResumeStructured(
       /(Design Strategy|Workshopper|Sprint Facilitator|User Experience Specialist)/i.test(institution)
 
     if (isCertification) {
-      console.log(`[StructuredOptimizer] ⚠️ Filtering out certification from education: '${institution}'`)
+      debugLog(`[StructuredOptimizer] ⚠️ Filtering out certification from education: '${institution}'`)
       return false
     }
 
@@ -159,10 +160,10 @@ export async function optimizeResumeStructured(
   })
 
   if (parsed.education.length !== originalEducationCount) {
-    console.log(`[StructuredOptimizer] Filtered ${originalEducationCount - parsed.education.length} certifications from education`)
+    debugLog(`[StructuredOptimizer] Filtered ${originalEducationCount - parsed.education.length} certifications from education`)
   }
 
-  console.log('[StructuredOptimizer] Parsed resume:', {
+  debugLog('[StructuredOptimizer] Parsed resume:', {
     name: parsed.contact.name,
     hasSummary: !!parsed.summary,
     hasTargetTitle: !!parsed.targetTitle,
@@ -175,7 +176,7 @@ export async function optimizeResumeStructured(
   })
 
   // Log detailed parsing results to identify issues
-  console.log('[StructuredOptimizer] Detailed parsing results:', {
+  debugLog('[StructuredOptimizer] Detailed parsing results:', {
     workExperience: parsed.workExperience.map(exp => ({
       company: exp.company?.substring(0, 100),
       title: exp.title,
@@ -375,13 +376,13 @@ NOT:
     const optimizedBulletCount = optExp.optimized_bullets.length
 
     // Log for debugging
-    console.log(`[StructuredOptimizer] Entry ${idx}: ${originalExp.company} - ${originalExp.title} - bullets: ${originalBulletCount} → ${optimizedBulletCount}`)
+    debugLog(`[StructuredOptimizer] Entry ${idx}: ${originalExp.company} - ${originalExp.title} - bullets: ${originalBulletCount} → ${optimizedBulletCount}`)
 
     // Only flag as merged if optimized has significantly more bullets than original (3x+ is suspicious)
     // This catches cases where LLM combined multiple jobs into one
     // Note: removed hard 8-bullet limit since some jobs legitimately have many accomplishments
     if (optimizedBulletCount > originalBulletCount * 3 && optimizedBulletCount > 15) {
-      console.warn(`[StructuredOptimizer] Entry ${idx} (${originalExp.company}) has suspicious bullet count: ${originalBulletCount} → ${optimizedBulletCount}. May indicate merged entries.`)
+      debugWarn(`[StructuredOptimizer] Entry ${idx} (${originalExp.company}) has suspicious bullet count: ${originalBulletCount} → ${optimizedBulletCount}. May indicate merged entries.`)
     }
   })
 
@@ -409,7 +410,7 @@ NOT:
       }
 
       // Log to verify preservation
-      console.log(`[StructuredOptimizer] Preserving entry ${idx}:`, {
+      debugLog(`[StructuredOptimizer] Preserving entry ${idx}:`, {
         company: optimized.company || '(empty)',
         title: optimized.title || '(empty)',
         dates: `${optimized.startDate || 'N/A'} - ${optimized.endDate || 'N/A'}`,

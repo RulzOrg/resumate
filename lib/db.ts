@@ -2,6 +2,7 @@ import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
 import { normalizeSalaryRange, normalizeJobField, type SalaryRangeInput } from "./normalizers"
 import type { SystemPromptV1Output, QASection } from "./schemas-v2"
 import type { ParsedResume } from "@/lib/resume-parser"
+import type { StructuredResumeEnvelopeV1 } from "@/lib/optimized-resume-document"
 import { createSupabaseSQL, withTransaction } from "./supabase-db"
 
 type SqlClient = <T = Record<string, any>>(strings: TemplateStringsArray, ...values: any[]) => Promise<T[]>
@@ -264,7 +265,7 @@ export interface OptimizedResume {
 
 // System Prompt v1.1 Extended Resume with Structured Output
 export interface OptimizedResumeV2 extends OptimizedResume {
-  structured_output?: SystemPromptV1Output | null
+  structured_output?: SystemPromptV1Output | StructuredResumeEnvelopeV1 | null
   qa_metrics?: QASection | null
   export_formats?: {
     docx_url?: string
@@ -1363,13 +1364,27 @@ export async function createOptimizedResume(data: {
   optimized_content: string
   optimization_summary: OptimizedResume["optimization_summary"]
   match_score?: number
+  structured_output?: SystemPromptV1Output | StructuredResumeEnvelopeV1
+  qa_metrics?: QASection
+  export_formats?: ExportFormats
 }) {
+  const structuredOutputJson = data.structured_output !== undefined
+    ? JSON.stringify(data.structured_output)
+    : null
+  const qaMetricsJson = data.qa_metrics !== undefined
+    ? JSON.stringify(data.qa_metrics)
+    : null
+  const exportFormatsJson = data.export_formats !== undefined
+    ? JSON.stringify(data.export_formats)
+    : null
+
   const insert = async () => {
     const [optimizedResume] = await sql`
       INSERT INTO optimized_resumes (
         user_id, original_resume_id, job_analysis_id, job_title, company_name,
-        job_description, title, optimized_content, optimization_summary, match_score, 
-        improvements_made, keywords_added, skills_highlighted, created_at, updated_at
+        job_description, title, optimized_content, optimization_summary, match_score,
+        improvements_made, keywords_added, skills_highlighted,
+        structured_output, qa_metrics, export_formats, created_at, updated_at
       )
       VALUES (
         ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id || null},
@@ -1377,11 +1392,12 @@ export async function createOptimizedResume(data: {
         ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
         ${data.match_score || null}, ${data.optimization_summary.changes_made},
         ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
+        ${structuredOutputJson}::jsonb, ${qaMetricsJson}::jsonb, ${exportFormatsJson}::jsonb,
         NOW(), NOW()
       )
       RETURNING *
     `
-    return optimizedResume as OptimizedResume
+    return optimizedResume as OptimizedResumeV2
   }
 
   try {
@@ -1442,6 +1458,8 @@ export async function updateOptimizedResume(
     match_score?: number
   }
 ) {
+  // Deprecated: markdown-first update path kept for compatibility.
+  // New editor flow should use updateOptimizedResumeV2 with structured_output.
   // Convert undefined to null for SQL compatibility
   const optimizedContent = data.optimized_content ?? null
   const optimizationSummary = data.optimization_summary !== undefined 
@@ -1472,16 +1490,13 @@ export async function updateOptimizedResumeV2(
   id: string,
   user_id: string,
   data: {
-    structured_output?: SystemPromptV1Output
+    structured_output?: SystemPromptV1Output | StructuredResumeEnvelopeV1
     qa_metrics?: QASection
     export_formats?: ExportFormats
     optimized_content?: string
     match_score?: number
   }
 ) {
-  console.log('[DB] Updating resume:', id)
-  console.log('[DB] Fields being updated:', Object.keys(data).filter(k => (data as any)[k] !== undefined))
-
   // Prepare JSON values outside SQL query for better type safety
   const structuredOutputJson = data.structured_output !== undefined
     ? JSON.stringify(data.structured_output)
@@ -1492,10 +1507,6 @@ export async function updateOptimizedResumeV2(
   const exportFormatsJson = data.export_formats !== undefined
     ? JSON.stringify(data.export_formats)
     : null
-
-  if (structuredOutputJson) {
-    console.log('[DB] Structured output size:', structuredOutputJson.length, 'bytes')
-  }
 
   const [optimizedResume] = await sql`
     UPDATE optimized_resumes
@@ -1509,9 +1520,6 @@ export async function updateOptimizedResumeV2(
     WHERE id = ${id} AND user_id = ${user_id}
     RETURNING *
   `
-
-  console.log('[DB] Update result:', optimizedResume ? 'Success ✓' : 'Failed - No rows updated')
-
   return optimizedResume as OptimizedResumeV2 | undefined
 }
 

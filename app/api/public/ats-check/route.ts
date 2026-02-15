@@ -9,13 +9,8 @@ import { uploadLeadMagnetFile } from '@/lib/supabase-storage'
 import { createATSCheck, getQuickPreview } from '@/lib/ats-checker'
 import { extractText } from '@/lib/extract'
 import { validateResumeContent } from '@/lib/llm-resume-extractor'
-
-// Max file size: 10MB
-const MAX_FILE_SIZE = 10 * 1024 * 1024
-
-// Allowed file types
-const ALLOWED_TYPES = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'text/plain']
-const ALLOWED_EXTENSIONS = ['pdf', 'docx', 'doc', 'txt']
+import { validateUploadedFile } from '@/lib/file-validation'
+import { getFileExtension } from '@/lib/resume-upload-config'
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,49 +21,21 @@ export async function POST(request: NextRequest) {
 
     // Parse form data
     const formData = await request.formData()
+    const validation = await validateUploadedFile(formData, 'file')
     const file = formData.get('file') as File | null
 
-    if (!file) {
+    if (!validation.valid || !file) {
       return NextResponse.json(
         {
           status: 'error',
-          error: 'No file provided',
-          code: 'NO_FILE',
-          userMessage: 'Please select a resume file to upload.',
-        },
-        { status: 400 }
-      )
-    }
-
-    // Validate file size
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        {
-          status: 'error',
-          error: 'File too large',
-          code: 'FILE_TOO_LARGE',
-          userMessage: 'File size must be under 10MB.',
-        },
-        { status: 400 }
-      )
-    }
-
-    // Validate file type
-    const fileExtension = file.name.split('.').pop()?.toLowerCase() || ''
-    const hasValidExtension = ALLOWED_EXTENSIONS.includes(fileExtension)
-    const hasValidMimeType = ALLOWED_TYPES.includes(file.type)
-    
-    if (!hasValidExtension || !hasValidMimeType) {
-      return NextResponse.json(
-        {
-          status: 'error',
-          error: 'Invalid file type',
+          error: validation.error || 'No file provided',
           code: 'INVALID_FILE_TYPE',
-          userMessage: 'Please upload a PDF, DOCX, or TXT file with a matching file extension and type.',
+          userMessage: validation.error || 'Please upload a PDF, DOCX, DOC, or TXT file.',
         },
         { status: 400 }
       )
     }
+    const fileExtension = getFileExtension(file.name).replace('.', '')
 
     // Generate check ID
     const checkId = uuidv4()
@@ -77,48 +44,15 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    // Validate file signature (magic bytes) for security
-    const fileSignature = buffer.subarray(0, 8)
-    let isValidSignature = false
-
-    if (fileExtension === 'pdf') {
-      // PDF files start with %PDF
-      isValidSignature = fileSignature.subarray(0, 4).toString() === '%PDF'
-    } else if (fileExtension === 'docx') {
-      // DOCX files are ZIP archives, start with PK (50 4B 03 04)
-      isValidSignature = fileSignature[0] === 0x50 && fileSignature[1] === 0x4B && 
-                         fileSignature[2] === 0x03 && fileSignature[3] === 0x04
-    } else if (fileExtension === 'doc') {
-      // DOC files start with D0 CF 11 E0 A1 B1 1A E1 (MS Office compound document)
-      isValidSignature = fileSignature[0] === 0xD0 && fileSignature[1] === 0xCF && 
-                         fileSignature[2] === 0x11 && fileSignature[3] === 0xE0 &&
-                         fileSignature[4] === 0xA1 && fileSignature[5] === 0xB1 &&
-                         fileSignature[6] === 0x1A && fileSignature[7] === 0xE1
-    } else if (fileExtension === 'txt') {
-      // TXT files should be readable text (check for non-binary content)
-      // Allow if first 512 bytes contain mostly printable ASCII or UTF-8
-      const sample = buffer.subarray(0, Math.min(512, buffer.length))
-      const nonPrintableCount = sample.filter(byte => (byte < 0x20 && byte !== 0x09 && byte !== 0x0A && byte !== 0x0D) || byte > 0x7E).length
-      isValidSignature = nonPrintableCount < sample.length * 0.1 // Less than 10% non-printable
-    }
-
-    if (!isValidSignature) {
-      return NextResponse.json(
-        {
-          status: 'error',
-          error: 'Invalid file signature',
-          code: 'INVALID_FILE_SIGNATURE',
-          userMessage: 'File content does not match the expected file type. Please ensure the file is not corrupted or renamed.',
-        },
-        { status: 400 }
-      )
-    }
-
     // Extract text from file first to validate content before uploading
     let extractedText: string
+    let extractionMode = "unknown"
+    let extractionProvider = "unknown"
     try {
-      const extractResult = await extractText(buffer, file.type || 'application/pdf')
+      const extractResult = await extractText(buffer, validation.fileType || file.type || 'application/pdf')
       extractedText = extractResult.text
+      extractionMode = extractResult.mode_used
+      extractionProvider = extractResult.provider || extractResult.mode_used
 
       // Basic validation - check if it looks like a resume
       if (extractedText.length < 100) {
@@ -219,6 +153,8 @@ export async function POST(request: NextRequest) {
       checkId: atsCheck.id,
       fileName: file.name,
       fileSize: file.size,
+      extractionMode,
+      extractionProvider,
       preview,
     })
 

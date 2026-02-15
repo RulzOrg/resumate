@@ -1,234 +1,181 @@
 /**
  * Resume Export API Endpoint
- * Generates DOCX or HTML files from optimized resumes
- * 
- * POST /api/resumes/export
- * Body: { resume_id: string, format: "docx" | "html", layout?: "classic" | "modern" | "compact" }
+ * Structured output is canonical source. Markdown fallback is legacy-only.
  */
 
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@clerk/nextjs/server"
+import { z } from "zod"
 import { getOptimizedResumeById, getOrCreateUser } from "@/lib/db"
 import { generateDOCX, generateDOCXFromMarkdown, type ResumeLayout } from "@/lib/export/docx-generator"
-import type { ResumeJSON } from "@/lib/schemas-v2"
+import { errorResponse, fromError } from "@/lib/api-response"
+import {
+  normalizeStructuredOutput,
+  toDerivedMarkdown,
+  toResumeJSON,
+} from "@/lib/optimized-resume-document"
+import { renderSafeHtmlFromMarkdown, wrapHtmlDocument } from "@/lib/export/safe-html"
+
+const ExportPayloadSchema = z.object({
+  resume_id: z.string().min(1),
+  format: z.enum(["docx", "html", "txt"]).default("docx"),
+  layout: z.enum(["classic", "modern", "compact"]).default("modern"),
+  job_title: z.string().optional(),
+  company: z.string().optional(),
+})
+
+const LAYOUT_STYLE_MAP: Record<ResumeLayout, string> = {
+  classic: `
+    body { font-family: 'Times New Roman', serif; max-width: 8.5in; margin: 0 auto; padding: 0.75in; line-height: 1.4; font-size: 11pt; color: #222; }
+    h1 { font-size: 18pt; text-align: center; margin-bottom: 12px; text-transform: uppercase; }
+    h2 { font-size: 13pt; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; }
+    h3 { font-size: 11pt; margin-top: 12px; margin-bottom: 4px; font-weight: bold; }
+    ul { padding-left: 20px; margin: 4px 0; }
+    li { margin-bottom: 2px; }
+    p { margin: 4px 0; }
+  `,
+  modern: `
+    body { font-family: Arial, sans-serif; max-width: 8.5in; margin: 0 auto; padding: 0.75in; line-height: 1.6; font-size: 10.5pt; color: #1f2937; }
+    h1 { font-size: 20pt; text-align: center; margin-bottom: 12px; text-transform: uppercase; }
+    h2 { font-size: 14pt; text-transform: uppercase; border-bottom: 2px solid #e5e7eb; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; }
+    h3 { font-size: 11pt; margin-top: 12px; margin-bottom: 4px; font-weight: bold; }
+    ul { padding-left: 20px; margin: 4px 0; }
+    li { margin-bottom: 2px; }
+    p { margin: 4px 0; }
+  `,
+  compact: `
+    body { font-family: Calibri, sans-serif; max-width: 8.5in; margin: 0 auto; padding: 0.5in; line-height: 1.3; font-size: 9.5pt; color: #111827; }
+    h1 { font-size: 16pt; text-align: center; margin-bottom: 8px; text-transform: uppercase; }
+    h2 { font-size: 11pt; text-transform: uppercase; border-bottom: 1px solid #d1d5db; padding-bottom: 2px; margin-top: 12px; margin-bottom: 6px; }
+    h3 { font-size: 10pt; margin-top: 8px; margin-bottom: 3px; font-weight: bold; }
+    ul { padding-left: 18px; margin: 3px 0; }
+    li { margin-bottom: 1px; }
+    p { margin: 3px 0; }
+  `,
+}
+
+function sanitizeFilePart(input: string | null | undefined, fallback: string): string {
+  const value = input || fallback
+  const sanitized = value.replace(/[^a-zA-Z0-9]/g, "_")
+  return sanitized || fallback
+}
+
+async function handleExport(payload: z.infer<typeof ExportPayloadSchema>) {
+  const { userId } = await auth()
+  if (!userId) {
+    return errorResponse(401, "UNAUTHORIZED", "Unauthorized", { retryable: false })
+  }
+
+  const user = await getOrCreateUser()
+  if (!user) {
+    return errorResponse(404, "USER_NOT_FOUND", "User not found", { retryable: false })
+  }
+
+  const resume = await getOptimizedResumeById(payload.resume_id, user.id)
+  if (!resume) {
+    return errorResponse(404, "RESUME_NOT_FOUND", "Resume not found", { retryable: false })
+  }
+
+  const structured = normalizeStructuredOutput(resume.structured_output, resume.optimized_content, {
+    migrated: !resume.structured_output,
+    lastEditor: user.id,
+  })
+
+  const markdown = structured ? toDerivedMarkdown(structured) : resume.optimized_content
+  if (!markdown) {
+    return errorResponse(400, "MISSING_CONTENT", "Resume has no optimized content", { retryable: false })
+  }
+
+  const resumeData = structured ? toResumeJSON(structured) : null
+
+  const targetJobTitle = sanitizeFilePart(payload.job_title || resume.job_title, "Resume")
+  const targetCompany = sanitizeFilePart(payload.company || resume.company_name, "Optimized")
+  const fileNameBase = `Resume_${targetJobTitle}_${targetCompany}`
+
+  if (payload.format === "docx") {
+    let buffer: Buffer
+
+    if (resumeData) {
+      buffer = await generateDOCX(resumeData, {
+        fileName: `${fileNameBase}.docx`,
+        includePageNumbers: true,
+        layout: payload.layout,
+      })
+    } else {
+      buffer = await generateDOCXFromMarkdown(markdown, resume.title || "Resume", {
+        fileName: `${fileNameBase}.docx`,
+        includePageNumbers: true,
+        layout: payload.layout,
+      })
+    }
+
+    return new NextResponse(new Uint8Array(buffer), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "Content-Disposition": `attachment; filename="${fileNameBase}.docx"`,
+        "Content-Length": buffer.length.toString(),
+      },
+    })
+  }
+
+  if (payload.format === "txt") {
+    return new NextResponse(markdown, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${fileNameBase}.txt"`,
+      },
+    })
+  }
+
+  const contentHtml = await renderSafeHtmlFromMarkdown(markdown)
+  const fullHtml = wrapHtmlDocument(contentHtml, resume.title || "Resume", LAYOUT_STYLE_MAP[payload.layout])
+
+  return new NextResponse(fullHtml, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Disposition": `inline; filename="${fileNameBase}.html"`,
+    },
+  })
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // Authentication
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const user = await getOrCreateUser()
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
-    // Parse request
-    const body = await request.json()
-    const { resume_id, format = "docx", layout = "modern", job_title, company } = body
-
-    if (!resume_id) {
-      return NextResponse.json({ error: "Missing resume_id" }, { status: 400 })
-    }
-
-    if (!["docx", "html"].includes(format)) {
-      return NextResponse.json(
-        { error: "Invalid format. Must be docx or html" },
-        { status: 400 }
-      )
-    }
-
-    // Fetch optimized resume
-    const resume = await getOptimizedResumeById(resume_id, user.id)
-    if (!resume) {
-      return NextResponse.json({ error: "Resume not found" }, { status: 404 })
-    }
-
-    // Check for content
-    const optimizedContent = resume.optimized_content
-    if (!optimizedContent) {
-      return NextResponse.json(
-        { error: "Resume has no optimized content" },
-        { status: 400 }
-      )
-    }
-
-    // Try to extract structured output if available
-    let resumeData: ResumeJSON | null = null
-    if (resume.structured_output && typeof resume.structured_output === "object") {
-      const structuredOutput = resume.structured_output as any
-      if (structuredOutput.resume_json) {
-        resumeData = structuredOutput.resume_json as ResumeJSON
-      }
-    }
-
-    // Generate file name
-    const targetJobTitle = job_title || resume.job_title || "Resume"
-    const targetCompany = company || resume.company_name || "Optimized"
-    const fileName = `Resume_${targetJobTitle.replace(/[^a-zA-Z0-9]/g, "_")}_${targetCompany.replace(/[^a-zA-Z0-9]/g, "_")}.${format === "html" ? "html" : "docx"}`
-
-    // Generate file based on format
-    if (format === "docx") {
-      let buffer: Buffer
-
-      if (resumeData) {
-        buffer = await generateDOCX(resumeData, {
-          fileName,
-          includePageNumbers: true,
-          layout: layout as ResumeLayout,
-        })
-      } else {
-        buffer = await generateDOCXFromMarkdown(optimizedContent, resume.title || "Resume", {
-          fileName,
-          includePageNumbers: true,
-          layout: layout as ResumeLayout,
-        })
-      }
-
-      return new NextResponse(new Uint8Array(buffer), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "Content-Disposition": `attachment; filename="${fileName}"`,
-          "Content-Length": buffer.length.toString(),
-        },
-      })
-    } else if (format === "html") {
-      const html = generateHTMLFromMarkdown(optimizedContent, resume.title || "Resume", layout as ResumeLayout)
-
-      return new NextResponse(html, {
-        status: 200,
-        headers: {
-          "Content-Type": "text/html",
-          "Content-Disposition": `inline; filename="${fileName}"`,
-        },
+    const parse = ExportPayloadSchema.safeParse(await request.json())
+    if (!parse.success) {
+      return errorResponse(400, "INVALID_REQUEST", "Invalid export payload", {
+        retryable: false,
+        details: parse.error.flatten(),
       })
     }
 
-    return NextResponse.json({ error: "Unsupported format" }, { status: 400 })
-  } catch (error: any) {
-    console.error("Export error:", error)
-    return NextResponse.json(
-      { error: "Failed to export resume", message: error.message || "Unknown error" },
-      { status: 500 }
-    )
+    return handleExport(parse.data)
+  } catch (error) {
+    return fromError(error)
   }
 }
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const searchParams = request.nextUrl.searchParams
-    const resume_id = searchParams.get("resume_id")
-    const format = searchParams.get("format") || "docx"
-    const layout = searchParams.get("layout") || "modern"
-    const job_title = searchParams.get("job_title") || undefined
-    const company = searchParams.get("company") || undefined
-
-    if (!resume_id) {
-      return NextResponse.json({ error: "Missing resume_id" }, { status: 400 })
-    }
-
-    const mockRequest = new Request(request.url, {
-      method: "POST",
-      body: JSON.stringify({ resume_id, format, layout, job_title, company }),
+    const parse = ExportPayloadSchema.safeParse({
+      resume_id: request.nextUrl.searchParams.get("resume_id"),
+      format: request.nextUrl.searchParams.get("format") || "docx",
+      layout: request.nextUrl.searchParams.get("layout") || "modern",
+      job_title: request.nextUrl.searchParams.get("job_title") || undefined,
+      company: request.nextUrl.searchParams.get("company") || undefined,
     })
 
-    return await POST(mockRequest as NextRequest)
-  } catch (error: any) {
-    console.error("Export GET error:", error)
-    return NextResponse.json(
-      { error: "Failed to export resume", message: error.message || "Unknown error" },
-      { status: 500 }
-    )
+    if (!parse.success) {
+      return errorResponse(400, "INVALID_REQUEST", "Invalid export query params", {
+        retryable: false,
+        details: parse.error.flatten(),
+      })
+    }
+
+    return handleExport(parse.data)
+  } catch (error) {
+    return fromError(error)
   }
-}
-
-/**
- * Enhanced HTML generation with layout styles
- */
-function generateHTMLFromMarkdown(markdown: string, title: string, layout: ResumeLayout = 'modern'): string {
-  const configs = {
-    classic: {
-      font: "'Times New Roman', serif",
-      size: "11pt",
-      lineHeight: "1.4",
-      margin: "0.75in",
-      h1Size: "18pt",
-      h2Size: "13pt",
-      h2Border: "1px solid #333",
-    },
-    modern: {
-      font: "Arial, sans-serif",
-      size: "10.5pt",
-      lineHeight: "1.6",
-      margin: "0.75in",
-      h1Size: "20pt",
-      h2Size: "14pt",
-      h2Border: "2px solid #eee",
-    },
-    compact: {
-      font: "Calibri, sans-serif",
-      size: "9.5pt",
-      lineHeight: "1.3",
-      margin: "0.5in",
-      h1Size: "16pt",
-      h2Size: "11pt",
-      h2Border: "1px solid #ddd",
-    }
-  }
-
-  const config = configs[layout] || configs.modern
-
-  let html = markdown
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/^- (.+)$/gm, '<li>$1</li>')
-    .replace(/^• (.+)$/gm, '<li>$1</li>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-
-  html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>')
-  html = html.replace(/<\/ul>\s*<ul>/g, '')
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>${title}</title>
-  <style>
-    body {
-      font-family: ${config.font};
-      max-width: 8.5in;
-      margin: 0 auto;
-      padding: ${config.margin};
-      line-height: ${config.lineHeight};
-      font-size: ${config.size};
-      color: #333;
-    }
-    h1 { font-size: ${config.h1Size}; text-align: center; margin-bottom: 12px; text-transform: uppercase; }
-    h2 { font-size: ${config.h2Size}; text-transform: uppercase; border-bottom: ${config.h2Border}; padding-bottom: 3px; margin-top: 16px; margin-bottom: 8px; font-weight: bold; }
-    h3 { font-size: ${config.size}; margin-top: 12px; margin-bottom: 4px; font-weight: bold; }
-    ul { padding-left: 20px; margin: 4px 0; }
-    li { margin-bottom: 2px; }
-    p { margin: 4px 0; }
-    @page { size: letter; margin: 0; }
-    @media print {
-      body { margin: 0; padding: ${config.margin}; }
-    }
-  </style>
-</head>
-<body>
-  ${html}
-</body>
-</html>`
 }
