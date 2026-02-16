@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     || request.headers.get('x-real-ip')
     || 'unknown'
 
-  const rateLimitResult = rateLimit(`fix-preview:${ip}`, 3, 3600000)
+  const rateLimitResult = await rateLimit(`fix-preview:${ip}`, 3, 3600000)
   if (!rateLimitResult.success) {
     return NextResponse.json(
       {

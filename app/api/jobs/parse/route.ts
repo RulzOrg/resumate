@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const rateLimitResult = rateLimit(`parse-job:${userId}`, 10, 60000)
+  const rateLimitResult = await rateLimit(`parse-job:${userId}`, 10, 60000)
   if (!rateLimitResult.success) {
     return NextResponse.json(
       { error: "Rate limit exceeded. Please wait before trying again.", retryAfter: rateLimitResult.retryAfter },
