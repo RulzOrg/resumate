@@ -53,7 +53,7 @@ function CheckoutSuccessContent() {
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -61,18 +61,18 @@ function CheckoutSuccessContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="max-w-md w-full">
-        <div className="bg-surface-subtle dark:bg-white/5 rounded-2xl border border-border/80 dark:border-white/10 p-8 text-center space-y-6">
+        <div className="bg-surface-subtle rounded-2xl border border-border p-8 text-center space-y-6">
           {/* Success Icon */}
-          <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center">
-            <Check className="h-8 w-8 text-emerald-500" />
+          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+            <Check className="h-8 w-8 text-primary" />
           </div>
 
           {/* Success Message */}
           <div className="space-y-2">
-            <h1 className="text-2xl font-semibold text-foreground dark:text-white">
+            <h1 className="text-2xl font-semibold text-foreground">
               Payment Successful!
             </h1>
-            <p className="text-foreground/70 dark:text-white/70">
+            <p className="text-muted-foreground">
               Thank you for upgrading to Pro.
             </p>
           </div>
@@ -81,10 +81,10 @@ function CheckoutSuccessContent() {
           {isSignedIn ? (
             <>
               <div className="space-y-2">
-                <p className="text-sm text-foreground/70 dark:text-white/70">
+                <p className="text-sm text-muted-foreground">
                   Your Pro features are now active. Redirecting to dashboard in {countdown}...
                 </p>
-                <Loader2 className="h-5 w-5 animate-spin text-emerald-500 mx-auto" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto" />
               </div>
               <Button
                 onClick={() => {
@@ -94,7 +94,7 @@ function CheckoutSuccessContent() {
                   }
                   router.push("/dashboard")
                 }}
-                className="w-full bg-emerald-500 text-black hover:bg-emerald-400"
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Go to Dashboard Now
               </Button>
@@ -102,7 +102,7 @@ function CheckoutSuccessContent() {
           ) : (
             <>
               <div className="space-y-3">
-                <p className="text-sm text-foreground/70 dark:text-white/70">
+                <p className="text-sm text-muted-foreground">
                   Create your account to activate your Pro subscription and start optimizing your resumes.
                 </p>
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
@@ -115,16 +115,16 @@ function CheckoutSuccessContent() {
               <div className="space-y-3">
                 <Button
                   asChild
-                  className="w-full bg-emerald-500 text-black hover:bg-emerald-400"
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <Link href="/auth/signup">Create Your Account</Link>
                 </Button>
 
-                <div className="text-sm text-foreground/70 dark:text-white/70">
+                <div className="text-sm text-muted-foreground">
                   Already have an account?{" "}
                   <Link
                     href="/auth/login"
-                    className="text-emerald-500 hover:text-emerald-400 underline underline-offset-4"
+                    className="text-primary hover:text-primary/90 underline underline-offset-4"
                   >
                     Sign in
                   </Link>
@@ -135,8 +135,8 @@ function CheckoutSuccessContent() {
 
           {/* Session Token for debugging */}
           {sessionToken && (
-            <div className="pt-4 border-t border-border/50 dark:border-white/10">
-              <p className="text-xs text-foreground/50 dark:text-white/50">
+            <div className="pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground/70">
                 Session: {sessionToken.slice(0, 20)}...
               </p>
             </div>
@@ -144,11 +144,11 @@ function CheckoutSuccessContent() {
         </div>
 
         {/* Help Text */}
-        <p className="mt-6 text-center text-sm text-foreground/60 dark:text-white/60">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           Need help? Contact{" "}
           <a
             href="mailto:support@useresumate.com"
-            className="text-emerald-500 hover:text-emerald-400 underline"
+            className="text-primary hover:text-primary/90 underline"
           >
             support@useresumate.com
           </a>
@@ -163,7 +163,7 @@ export default function CheckoutSuccessPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       }
     >

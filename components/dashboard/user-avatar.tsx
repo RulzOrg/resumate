@@ -18,7 +18,7 @@ export function UserAvatar({ user }: UserAvatarProps) {
 
   if (avatarUrl) {
     return (
-      <div className="relative h-9 w-9 rounded-full overflow-hidden border border-border dark:border-white/20">
+      <div className="relative h-9 w-9 rounded-full overflow-hidden border border-border">
         <Image
           src={avatarUrl}
           alt={userName}
@@ -31,8 +31,8 @@ export function UserAvatar({ user }: UserAvatarProps) {
   }
 
   return (
-    <div className="relative h-9 w-9 rounded-full bg-emerald-500/20 border border-border dark:border-white/20 flex items-center justify-center">
-      <User className="h-5 w-5 text-emerald-500" />
+    <div className="relative h-9 w-9 rounded-full bg-primary/20 border border-border flex items-center justify-center">
+      <User className="h-5 w-5 text-primary" />
     </div>
   )
 }

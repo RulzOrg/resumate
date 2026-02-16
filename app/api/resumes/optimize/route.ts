@@ -327,6 +327,19 @@ export async function POST(request: NextRequest) {
           // Convert optimized structured data to markdown
           const optimizedContent = formatResumeToMarkdown(result.optimizedResume)
 
+          // Derive skills_highlighted by matching resume skills against job description and keywords.
+          const jobDescLower = job_description.toLowerCase()
+          const relevantSkills = (resumeStructure?.skills || [])
+            .map((s) => s.replace(/\*\*/g, "").trim())
+            .filter((skill) => {
+              const skillLower = skill.toLowerCase()
+              return (
+                jobDescLower.includes(skillLower) ||
+                result.optimizationDetails.keywords_added.some(
+                  (kw) => kw.toLowerCase().includes(skillLower) || skillLower.includes(kw.toLowerCase()),
+                )
+              )
+            })
           return {
             optimized_content: optimizedContent,
             optimized_resume: result.optimizedResume,
@@ -334,7 +347,7 @@ export async function POST(request: NextRequest) {
             target_title_was_created: result.optimizationDetails.target_title_was_created,
             changes_made: result.optimizationDetails.changes_made,
             keywords_added: result.optimizationDetails.keywords_added,
-            skills_highlighted: [], // Skills are preserved, not modified
+            skills_highlighted: relevantSkills,
             sections_improved: [
               ...(result.optimizationDetails.summary_was_created ? ["Professional Summary (created)"] : ["Professional Summary (optimized)"]),
               "Work Experience",

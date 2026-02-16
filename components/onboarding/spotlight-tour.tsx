@@ -154,7 +154,7 @@ export function SpotlightTour({
       {/* Fallback when target not found */}
       {!targetRect && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75">
-          <div className="max-w-sm rounded-xl border border-border bg-card p-6 dark:border-white/20 dark:bg-zinc-900">
+          <div className="max-w-sm rounded-xl border border-border bg-card p-6">
             <h3 className="text-base font-semibold">{step.title}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{step.content}</p>
             <p className="mt-4 text-xs text-amber-500">
@@ -169,7 +169,7 @@ export function SpotlightTour({
               </button>
               <button
                 onClick={onNext}
-                className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-400"
+                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 {isLastStep ? "Finish" : "Next"}
               </button>

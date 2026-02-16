@@ -19,16 +19,16 @@ export function MarkdownContent({ html, className }: MarkdownContentProps) {
         // Headings - using serif font
         'prose-headings:font-serif prose-headings:text-foreground',
         // Links
-        'prose-a:text-emerald-500 prose-a:no-underline hover:prose-a:text-emerald-400',
+        'prose-a:text-primary prose-a:no-underline hover:prose-a:text-primary/90',
         // Code - inline
         'prose-code:rounded prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal',
         'prose-code:before:content-none prose-code:after:content-none',
         // Code blocks
         'prose-pre:rounded-xl prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-border/50',
         // Lists
-        'prose-li:marker:text-emerald-500',
+        'prose-li:marker:text-primary',
         // Blockquotes
-        'prose-blockquote:border-l-emerald-500 prose-blockquote:text-muted-foreground prose-blockquote:not-italic',
+        'prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-blockquote:not-italic',
         // Images
         'prose-img:rounded-xl',
         // Strong/Bold

@@ -2,8 +2,6 @@ import { redirect } from "next/navigation"
 import { getAuthenticatedUser } from "@/lib/user-data"
 import { getOptimizedResumeById, getResumeById } from "@/lib/db"
 import { ResumeViewerV2 } from "@/components/optimization/resume-viewer"
-import Link from "next/link"
-import { ChevronLeft } from "lucide-react"
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -32,18 +30,11 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
   }
 
   return (
-    <main className="py-8 sm:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <main className="py-5 sm:py-6">
+      <div className="px-6">
         <div className="mb-6">
-          <Link
-            href="/dashboard/optimized"
-            className="inline-flex items-center gap-1 text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white transition-colors mb-3"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back to Optimized Resumes
-          </Link>
           <h1 className="text-2xl sm:text-3xl tracking-tight font-space-grotesk font-semibold">Optimized Resume</h1>
-          <p className="mt-1 text-base text-foreground/60 dark:text-white/60">
+          <p className="mt-1 text-base text-muted-foreground">
             For {optimized.job_title}{optimized.company_name ? ` at ${optimized.company_name}` : ''}
           </p>
         </div>
@@ -54,6 +45,10 @@ export default async function OptimizedDetailPage({ params }: { params: Promise<
           structuredOutput={optimized.structured_output}
           revisionToken={optimized.updated_at}
           matchScore={optimized.match_score}
+          optimizationSummary={optimized.optimization_summary}
+          jobTitle={optimized.job_title}
+          companyName={optimized.company_name}
+          jobDescription={optimized.job_description}
         />
       </div>
     </main>

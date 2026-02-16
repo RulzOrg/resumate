@@ -3,8 +3,8 @@ import { Card, CardContent } from "@/components/ui/card"
 
 export default function OptimizedResumeLoading() {
   return (
-    <main className="py-8 sm:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <main className="py-5 sm:py-6">
+      <div className="px-6">
         {/* Header */}
         <div className="mb-6">
           <Skeleton className="h-5 w-48 mb-3" />
@@ -45,11 +45,11 @@ export default function OptimizedResumeLoading() {
               </div>
 
               {/* Right Panel - Resume Preview Skeleton */}
-              <div className="relative bg-gray-100 dark:bg-gray-900 overflow-hidden">
+              <div className="relative bg-muted overflow-hidden">
                 <div className="p-4 md:p-6 lg:p-8">
                   <div className="bg-white rounded-lg shadow-xl p-8 md:p-10 min-h-[900px] space-y-6">
                     {/* Header */}
-                    <div className="border-b-2 border-emerald-500/20 pb-4">
+                    <div className="border-b-2 border-primary/20 pb-4">
                       <Skeleton className="h-8 w-48 mb-2 bg-slate-200" />
                       <Skeleton className="h-4 w-80 bg-slate-200" />
                     </div>

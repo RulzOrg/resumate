@@ -100,7 +100,7 @@ export function TourTooltip({
       ref={tooltipRef}
       className={cn(
         "fixed z-[70] max-w-sm rounded-xl border border-border bg-card p-4 shadow-2xl",
-        "dark:border-white/20 dark:bg-zinc-900"
+        ""
       )}
       style={{
         top: position.top,
@@ -113,7 +113,7 @@ export function TourTooltip({
       <div
         className={cn(
           "absolute h-3 w-3 rotate-45 border bg-card",
-          "dark:border-white/20 dark:bg-zinc-900",
+          "",
           arrowPosition === "bottom" && "-top-1.5 left-1/2 -translate-x-1/2 border-l border-t",
           arrowPosition === "top" && "-bottom-1.5 left-1/2 -translate-x-1/2 border-b border-r",
           arrowPosition === "left" && "-right-1.5 top-1/2 -translate-y-1/2 border-r border-t",
@@ -146,9 +146,9 @@ export function TourTooltip({
               className={cn(
                 "h-1.5 w-1.5 rounded-full transition-colors",
                 i === stepNumber
-                  ? "bg-emerald-500"
+                  ? "bg-primary"
                   : i < stepNumber
-                    ? "bg-emerald-500/50"
+                    ? "bg-primary/50"
                     : "bg-muted-foreground/30"
               )}
             />
@@ -171,7 +171,7 @@ export function TourTooltip({
           <Button
             size="sm"
             onClick={onNext}
-            className="h-8 bg-emerald-500 px-3 hover:bg-emerald-400"
+            className="h-8 bg-primary px-3 hover:bg-primary/90"
           >
             {isLastStep ? (
               "Get Started"

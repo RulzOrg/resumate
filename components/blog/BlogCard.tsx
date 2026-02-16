@@ -45,7 +45,7 @@ export function BlogCard({ post, className, variant = 'default' }: BlogCardProps
         {post.category && (
           <Link
             href={`/blog/category/${post.category}`}
-            className="mb-3 inline-block text-xs font-semibold uppercase tracking-widest text-emerald-500 hover:text-emerald-400 transition-colors"
+            className="mb-3 inline-block text-xs font-semibold uppercase tracking-widest text-primary hover:text-primary/90 transition-colors"
           >
             {post.category.replace(/-/g, ' ')}
           </Link>
@@ -56,7 +56,7 @@ export function BlogCard({ post, className, variant = 'default' }: BlogCardProps
         )}>
           <Link
             href={`/blog/${post.slug}`}
-            className="hover:text-emerald-500 transition-colors duration-200"
+            className="hover:text-primary transition-colors duration-200"
           >
             {post.title}
           </Link>

@@ -63,12 +63,12 @@ export function NewsletterForm({
     return (
       <div
         className={cn(
-          'flex items-center gap-3 rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-4',
+          'flex items-center gap-3 rounded-xl border border-primary/50 bg-primary/10 p-4',
           className
         )}
       >
-        <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-500" />
-        <p className="text-sm text-emerald-500">{message}</p>
+        <CheckCircle className="h-5 w-5 flex-shrink-0 text-primary" />
+        <p className="text-sm text-primary">{message}</p>
       </div>
     )
   }
@@ -83,14 +83,14 @@ export function NewsletterForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="h-10 w-full rounded-lg border bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="h-10 w-full rounded-lg border bg-background pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
             disabled={status === 'loading'}
           />
         </div>
         <button
           type="submit"
           disabled={status === 'loading'}
-          className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-500 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {status === 'loading' ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -109,12 +109,12 @@ export function NewsletterForm({
     return (
       <div
         className={cn(
-          'rounded-xl border bg-gradient-to-br from-emerald-500/10 to-transparent p-6',
+          'rounded-xl border bg-gradient-to-br from-primary/10 to-transparent p-6',
           className
         )}
       >
-        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/20">
-          <Mail className="h-5 w-5 text-emerald-500" />
+        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-primary/20">
+          <Mail className="h-5 w-5 text-primary" />
         </div>
         <h3 className="mb-2 text-lg font-semibold text-foreground">
           Get Career Tips Weekly
@@ -128,13 +128,13 @@ export function NewsletterForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="h-10 w-full rounded-lg border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="h-10 w-full rounded-lg border bg-background px-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
             disabled={status === 'loading'}
           />
           <button
             type="submit"
             disabled={status === 'loading'}
-            className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-emerald-500 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
+            className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-primary text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {status === 'loading' ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -164,14 +164,14 @@ export function NewsletterForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="h-11 w-full rounded-lg border bg-background pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="h-11 w-full rounded-lg border bg-background pl-10 pr-4 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring"
             disabled={status === 'loading'}
           />
         </div>
         <button
           type="submit"
           disabled={status === 'loading'}
-          className="inline-flex h-11 items-center justify-center rounded-lg bg-emerald-500 px-6 font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
+          className="inline-flex h-11 items-center justify-center rounded-lg bg-primary px-6 font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {status === 'loading' ? (
             <Loader2 className="h-4 w-4 animate-spin" />

@@ -15,7 +15,7 @@ interface AIButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
  * AIButton - A reusable button component for AI-powered features
  * 
  * Features:
- * - Emerald/teal color scheme
+ * - Primary color scheme
  * - Automatic loading state with spinner
  * - Sparkles icon indicator
  * - Accessible hover states and cursor pointer
@@ -47,7 +47,7 @@ export function AIButton({
       disabled={disabled || isLoading}
       className={cn(
         "cursor-pointer",
-        "hover:border-emerald-500/50 hover:bg-emerald-500/10",
+        "hover:border-primary/50 hover:bg-primary/10",
         "transition-all",
         className
       )}
@@ -56,7 +56,7 @@ export function AIButton({
       {isLoading ? (
         <>
           <Loader2 className={cn(
-            "animate-spin text-emerald-500",
+            "animate-spin text-primary",
             children ? "mr-2" : "",
             size === "sm" ? "h-3 w-3" : "h-4 w-4"
           )} />
@@ -66,7 +66,7 @@ export function AIButton({
         <>
           {showIcon && (
             <Sparkles className={cn(
-              "text-emerald-500",
+              "text-primary",
               children ? "mr-2" : "",
               size === "sm" ? "h-3 w-3" : "h-4 w-4"
             )} />

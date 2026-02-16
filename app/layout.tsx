@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter, Lora } from "next/font/google"
+import { Lora } from "next/font/google"
+import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Space_Grotesk } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
@@ -10,15 +11,10 @@ import { ClerkProvider } from "@clerk/nextjs"
 import { clerkConfig } from "@/lib/clerk-config"
 import { dark } from "@clerk/themes"
 import { ThemeProvider } from "@/components/theme-provider"
-import { FeedbackWidget } from "@/components/feedback-widget"
+import { FloatingAgentButton } from "@/components/agent/floating-agent-button"
 import { KeyboardShortcutsProvider } from "@/components/keyboard-shortcuts/keyboard-shortcuts-provider"
 import { Toaster } from "sonner"
 import "./globals.css"
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-})
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -81,7 +77,7 @@ export default function RootLayout({
   if (process.env.E2E_TEST_MODE === '1') {
     return (
       <html lang="en" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
+        <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -89,7 +85,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
-            <FeedbackWidget />
+            <FloatingAgentButton />
             <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
@@ -101,7 +97,7 @@ export default function RootLayout({
   if (!publishableKey) {
     return (
       <html lang="en" suppressHydrationWarning>
-        <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
+        <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
@@ -117,7 +113,7 @@ export default function RootLayout({
                 </p>
               </div>
             </div>
-            <FeedbackWidget />
+            <FloatingAgentButton />
             <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
@@ -127,7 +123,7 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`font-sans ${inter.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
+      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} ${spaceGrotesk.variable} ${lora.variable} antialiased`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -170,7 +166,7 @@ export default function RootLayout({
               {children}
             </KeyboardShortcutsProvider>
           </ClerkProvider>
-          <FeedbackWidget />
+          <FloatingAgentButton />
           <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           <Analytics />
           <Script

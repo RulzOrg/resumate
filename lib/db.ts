@@ -263,6 +263,72 @@ export interface OptimizedResume {
   updated_at: string
 }
 
+type OptimizationSummary = OptimizedResume["optimization_summary"]
+
+function defaultOptimizationSummary(): OptimizationSummary {
+  return {
+    changes_made: [],
+    keywords_added: [],
+    skills_highlighted: [],
+    sections_improved: [],
+    match_score_before: 0,
+    match_score_after: 0,
+    recommendations: [],
+  }
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === "string")
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0
+}
+
+function normalizeOptimizationSummary(raw: unknown): OptimizationSummary {
+  if (raw == null) {
+    return defaultOptimizationSummary()
+  }
+
+  let candidate: unknown = raw
+
+  // Handle JSONB returned as string and double-encoded strings.
+  for (let i = 0; i < 2 && typeof candidate === "string"; i += 1) {
+    try {
+      candidate = JSON.parse(candidate)
+    } catch {
+      return defaultOptimizationSummary()
+    }
+  }
+
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+    return defaultOptimizationSummary()
+  }
+
+  const summary = candidate as Record<string, unknown>
+
+  return {
+    changes_made: asStringArray(summary.changes_made),
+    keywords_added: asStringArray(summary.keywords_added),
+    skills_highlighted: asStringArray(summary.skills_highlighted),
+    sections_improved: asStringArray(summary.sections_improved),
+    match_score_before: asNumber(summary.match_score_before),
+    match_score_after: asNumber(summary.match_score_after),
+    recommendations: asStringArray(summary.recommendations),
+  }
+}
+
+function normalizeOptimizedResumeRow<T>(row: T | undefined): T | undefined {
+  if (!row || typeof row !== "object") return row
+
+  const rowWithSummary = row as T & { optimization_summary?: unknown }
+  return {
+    ...rowWithSummary,
+    optimization_summary: normalizeOptimizationSummary(rowWithSummary.optimization_summary),
+  } as T
+}
+
 // System Prompt v1.1 Extended Resume with Structured Output
 export interface OptimizedResumeV2 extends OptimizedResume {
   structured_output?: SystemPromptV1Output | StructuredResumeEnvelopeV1 | null
@@ -1368,6 +1434,7 @@ export async function createOptimizedResume(data: {
   qa_metrics?: QASection
   export_formats?: ExportFormats
 }) {
+  const normalizedSummary = normalizeOptimizationSummary(data.optimization_summary)
   const structuredOutputJson = data.structured_output !== undefined
     ? JSON.stringify(data.structured_output)
     : null
@@ -1389,15 +1456,15 @@ export async function createOptimizedResume(data: {
       VALUES (
         ${data.user_id}, ${data.original_resume_id}, ${data.job_analysis_id || null},
         ${data.job_title || null}, ${data.company_name || null}, ${data.job_description || null},
-        ${data.title}, ${data.optimized_content}, ${JSON.stringify(data.optimization_summary)},
-        ${data.match_score || null}, ${data.optimization_summary.changes_made},
-        ${data.optimization_summary.keywords_added}, ${data.optimization_summary.skills_highlighted},
+        ${data.title}, ${data.optimized_content}, ${JSON.stringify(normalizedSummary)}::jsonb,
+        ${data.match_score || null}, ${normalizedSummary.changes_made},
+        ${normalizedSummary.keywords_added}, ${normalizedSummary.skills_highlighted},
         ${structuredOutputJson}::jsonb, ${qaMetricsJson}::jsonb, ${exportFormatsJson}::jsonb,
         NOW(), NOW()
       )
       RETURNING *
     `
-    return optimizedResume as OptimizedResumeV2
+    return normalizeOptimizedResumeRow(optimizedResume) as OptimizedResumeV2
   }
 
   try {
@@ -1423,7 +1490,9 @@ export async function getUserOptimizedResumes(user_id: string) {
     WHERE opt_res.user_id = ${user_id}
     ORDER BY opt_res.created_at DESC
   `
-  return optimizedResumes as (OptimizedResume & {
+  return optimizedResumes.map((row) =>
+    normalizeOptimizedResumeRow(row)
+  ) as (OptimizedResume & {
     original_resume_title: string
     job_title: string
     company_name?: string
@@ -1440,7 +1509,7 @@ export async function getOptimizedResumeById(id: string, user_id: string) {
     LEFT JOIN job_analysis ja ON opt_res.job_analysis_id = ja.id
     WHERE opt_res.id = ${id} AND opt_res.user_id = ${user_id}
   `
-  return optimizedResume as
+  return normalizeOptimizedResumeRow(optimizedResume) as
     | (OptimizedResumeV2 & {
       original_resume_title: string
       job_title: string
@@ -1462,8 +1531,8 @@ export async function updateOptimizedResume(
   // New editor flow should use updateOptimizedResumeV2 with structured_output.
   // Convert undefined to null for SQL compatibility
   const optimizedContent = data.optimized_content ?? null
-  const optimizationSummary = data.optimization_summary !== undefined 
-    ? JSON.stringify(data.optimization_summary) 
+  const optimizationSummary = data.optimization_summary !== undefined
+    ? normalizeOptimizationSummary(data.optimization_summary)
     : null
   const matchScore = data.match_score ?? null
 
@@ -1477,7 +1546,7 @@ export async function updateOptimizedResume(
     WHERE id = ${id} AND user_id = ${user_id}
     RETURNING *
   `
-  return optimizedResume as OptimizedResume | undefined
+  return normalizeOptimizedResumeRow(optimizedResume) as OptimizedResume | undefined
 }
 
 type ExportFormats = {
@@ -2657,4 +2726,81 @@ export async function updatePendingSubscriptionStatus(
   `
 
   return subscription as PendingPolarSubscription | null
+}
+
+// Chat message functions
+
+export interface DbChatMessage {
+  id: string
+  user_id: string
+  optimized_resume_id: string
+  role: "user" | "assistant"
+  content: string
+  status: string
+  edit_result: Record<string, unknown> | null
+  edit_status: "pending" | "applied" | "dismissed" | null
+  created_at: string
+  updated_at: string
+}
+
+export async function getChatMessages(
+  optimizedResumeId: string,
+  userId: string
+): Promise<DbChatMessage[]> {
+  const rows = await sql`
+    SELECT * FROM chat_messages
+    WHERE optimized_resume_id = ${optimizedResumeId}
+      AND user_id = ${userId}
+    ORDER BY created_at ASC
+  `
+  return rows as DbChatMessage[]
+}
+
+export async function saveChatMessages(
+  messages: {
+    user_id: string
+    optimized_resume_id: string
+    role: "user" | "assistant"
+    content: string
+    status?: string
+    edit_result?: Record<string, unknown> | null
+    edit_status?: "pending" | "applied" | "dismissed" | null
+  }[]
+): Promise<DbChatMessage[]> {
+  const saved: DbChatMessage[] = []
+  for (const msg of messages) {
+    const editResultJson = msg.edit_result ? JSON.stringify(msg.edit_result) : null
+    const [row] = await sql`
+      INSERT INTO chat_messages (
+        user_id, optimized_resume_id, role, content, status,
+        edit_result, edit_status, created_at, updated_at
+      )
+      VALUES (
+        ${msg.user_id}, ${msg.optimized_resume_id}, ${msg.role},
+        ${msg.content}, ${msg.status || "complete"},
+        ${editResultJson}::jsonb, ${msg.edit_status || null},
+        NOW(), NOW()
+      )
+      RETURNING *
+    `
+    saved.push(row as DbChatMessage)
+  }
+  return saved
+}
+
+export async function updateChatMessageEditStatus(
+  messageId: string,
+  userId: string,
+  editStatus: "applied" | "dismissed",
+  content?: string
+): Promise<DbChatMessage | undefined> {
+  const [row] = await sql`
+    UPDATE chat_messages
+    SET edit_status = ${editStatus},
+        content = COALESCE(${content ?? null}, content),
+        updated_at = NOW()
+    WHERE id = ${messageId} AND user_id = ${userId}
+    RETURNING *
+  `
+  return row as DbChatMessage | undefined
 }

@@ -115,15 +115,15 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen w-full text-foreground dark:text-white bg-background dark:bg-black flex items-center justify-center p-4">
+    <div className="min-h-screen w-full text-foreground bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 backdrop-blur"
           >
-            <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
+            <span className="inline-flex h-8 w-8 items-center justify-center bg-primary rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="24"
@@ -142,7 +142,7 @@ export default function ForgotPasswordPage() {
                 <path d="M21 21v-5h-5" />
               </svg>
             </span>
-            <span className="text-base font-medium tracking-tighter" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            <span className="text-base font-medium tracking-tighter font-display">
               Useresumate
             </span>
           </Link>
@@ -152,17 +152,17 @@ export default function ForgotPasswordPage() {
         {step === "email" && (
           <>
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              <h1 className="text-2xl font-semibold tracking-tight font-display">
                 Reset your password
               </h1>
-              <p className="mt-2 text-sm text-foreground/60 dark:text-white/60">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Enter your email and we'll send you a code to reset your password.
               </p>
             </div>
 
             <form className="space-y-4" onSubmit={handleEmailSubmit}>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="email">
+                <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="email">
                   Email address
                 </label>
                 <input
@@ -172,7 +172,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                 />
               </div>
 
@@ -185,7 +185,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex w-full justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:pointer-events-none disabled:opacity-60"
+                className="flex w-full justify-center rounded-full bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-60"
               >
                 {isLoading ? "Sending..." : "Send Reset Code"}
               </button>
@@ -197,17 +197,17 @@ export default function ForgotPasswordPage() {
         {step === "code" && (
           <>
             <div className="text-center mb-6">
-              <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              <h1 className="text-2xl font-semibold tracking-tight font-display">
                 Check your email
               </h1>
-              <p className="mt-2 text-sm text-foreground/60 dark:text-white/60">
+              <p className="mt-2 text-sm text-muted-foreground">
                 We sent a code to {email}. Enter it below with your new password.
               </p>
             </div>
 
             <form className="space-y-4" onSubmit={handleCodeSubmit}>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="code">
+                <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="code">
                   Verification Code
                 </label>
                 <input
@@ -218,12 +218,12 @@ export default function ForgotPasswordPage() {
                   required
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="new-password">
+                <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="new-password">
                   New Password
                 </label>
                 <input
@@ -233,12 +233,12 @@ export default function ForgotPasswordPage() {
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="confirm-password">
+                <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="confirm-password">
                   Confirm Password
                 </label>
                 <input
@@ -248,7 +248,7 @@ export default function ForgotPasswordPage() {
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                  className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                 />
               </div>
 
@@ -262,14 +262,14 @@ export default function ForgotPasswordPage() {
                 <button
                   type="button"
                   onClick={handleResendCode}
-                  className="text-sm font-medium text-foreground/70 dark:text-white/70 transition-colors hover:text-foreground dark:hover:text-white"
+                  className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Resend code
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="flex flex-1 justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:pointer-events-none disabled:opacity-60"
+                  className="flex flex-1 justify-center rounded-full bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-60"
                 >
                   {isLoading ? "Resetting..." : "Reset Password"}
                 </button>
@@ -281,9 +281,9 @@ export default function ForgotPasswordPage() {
         {/* Step: Success */}
         {step === "success" && (
           <div className="text-center">
-            <div className="mx-auto mb-4 h-12 w-12 flex items-center justify-center rounded-full bg-emerald-500/10">
+            <div className="mx-auto mb-4 h-12 w-12 flex items-center justify-center rounded-full bg-primary/10">
               <svg
-                className="h-6 w-6 text-emerald-500"
+                className="h-6 w-6 text-primary"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -292,15 +292,15 @@ export default function ForgotPasswordPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            <h1 className="text-2xl font-semibold tracking-tight font-display">
               Password reset!
             </h1>
-            <p className="mt-2 text-sm text-foreground/60 dark:text-white/60">
+            <p className="mt-2 text-sm text-muted-foreground">
               Your password has been successfully reset. You can now sign in with your new password.
             </p>
             <Link
               href="/auth/login"
-              className="mt-6 inline-flex w-full justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400"
+              className="mt-6 inline-flex w-full justify-center rounded-full bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             >
               Sign In
             </Link>
@@ -309,9 +309,9 @@ export default function ForgotPasswordPage() {
 
         {/* Back to login link */}
         {step !== "success" && (
-          <p className="mt-6 text-center text-sm text-foreground/60 dark:text-white/60">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Remember your password?{" "}
-            <Link href="/auth/login" className="font-medium text-emerald-500 hover:text-emerald-400">
+            <Link href="/auth/login" className="font-medium text-primary hover:text-primary/90">
               Sign in
             </Link>
           </p>

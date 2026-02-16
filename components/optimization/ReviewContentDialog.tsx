@@ -214,21 +214,21 @@ export function ReviewContentDialog({
 
       <Dialog open={open} onOpenChange={isLoading ? undefined : onOpenChange}>
       <DialogContent 
-        className="sm:max-w-[800px] w-[95vw] h-[90vh] max-h-[850px] flex flex-col p-0 bg-zinc-950 border-zinc-800 shadow-2xl overflow-hidden rounded-xl" 
+        className="sm:max-w-[800px] w-[95vw] h-[90vh] max-h-[850px] flex flex-col p-0 bg-background border-border shadow-2xl overflow-hidden rounded-xl" 
         overlayClassName="bg-black/80 backdrop-blur-sm"
       >
-        <DialogHeader className="px-6 py-6 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur-md z-10">
-          <DialogTitle className="flex items-center gap-2 text-xl text-zinc-100">
-            <FileText className="h-5 w-5 text-emerald-500" />
+        <DialogHeader className="px-6 py-6 border-b border-border bg-background/50 backdrop-blur-md z-10">
+          <DialogTitle className="flex items-center gap-2 text-xl text-foreground">
+            <FileText className="h-5 w-5 text-primary" />
             Review Your Resume Content
           </DialogTitle>
-          <DialogDescription className="text-zinc-400">
+          <DialogDescription className="text-muted-foreground">
             Review and edit your work experience bullets and summary before
             optimization. The AI will enhance this content for the target job.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-zinc-950">
+        <div className="flex-1 overflow-y-auto custom-scrollbar bg-background">
           <div className="space-y-8 p-6">
             {validationError && (
               <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
@@ -239,8 +239,8 @@ export function ReviewContentDialog({
 
             {/* Professional Summary */}
             {(editedContent.summary || editedContent.summary === "") && (
-              <div className="space-y-3 bg-zinc-900/30 p-5 rounded-xl border border-zinc-800/50">
-                <Label htmlFor="summary" className="text-sm font-semibold text-zinc-200">
+              <div className="space-y-3 bg-card/30 p-5 rounded-xl border border-border/50">
+                <Label htmlFor="summary" className="text-sm font-semibold text-foreground">
                   Professional Summary
                 </Label>
                 <Textarea
@@ -248,10 +248,10 @@ export function ReviewContentDialog({
                   value={editedContent.summary}
                   onChange={(e) => handleSummaryChange(e.target.value)}
                   placeholder="Enter your professional summary (optional)..."
-                  className="min-h-[120px] resize-none bg-zinc-950 border-zinc-800 focus-visible:ring-emerald-500/30 text-zinc-300 leading-relaxed"
+                  className="min-h-[120px] resize-none bg-background border-border focus-visible:ring-ring/30 text-foreground/80 leading-relaxed"
                   rows={4}
                 />
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-muted-foreground">
                   This will be tailored to match the job requirements.
                 </p>
               </div>
@@ -260,16 +260,16 @@ export function ReviewContentDialog({
             {/* Work Experience */}
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <Label className="text-sm font-semibold text-zinc-200 uppercase tracking-wider">
+                <Label className="text-sm font-semibold text-foreground uppercase tracking-wider">
                   Work Experience ({editedContent.workExperience.length})
                 </Label>
-                <span className="text-xs font-medium text-zinc-500 bg-zinc-900 px-2 py-1 rounded">
+                <span className="text-xs font-medium text-muted-foreground bg-card px-2 py-1 rounded">
                   {totalBullets} bullet{totalBullets !== 1 ? "s" : ""} total
                 </span>
               </div>
 
               {editedContent.workExperience.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500 border border-dashed border-zinc-800 rounded-xl bg-zinc-900/10">
+                <div className="text-center py-12 text-muted-foreground border border-dashed border-border rounded-xl bg-card/10">
                   <p>No work experience found in your resume.</p>
                 </div>
               ) : (
@@ -292,19 +292,19 @@ export function ReviewContentDialog({
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-zinc-800 bg-zinc-950/50 backdrop-blur-md z-10">
+        <DialogFooter className="px-6 py-4 border-t border-border bg-background/50 backdrop-blur-md z-10">
           <Button 
             variant="outline" 
             onClick={handleCancel} 
             disabled={isLoading}
-            className="border-zinc-800 hover:bg-zinc-900 hover:text-zinc-100"
+            className="border-border hover:bg-card hover:text-foreground"
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={isLoading || editedContent.workExperience.length === 0}
-            className="bg-emerald-500 hover:bg-emerald-400 text-black font-semibold shadow-lg shadow-emerald-500/20"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-lg shadow-primary/20"
           >
             {isLoading ? (
               <>

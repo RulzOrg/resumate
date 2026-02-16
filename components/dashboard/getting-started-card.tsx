@@ -27,7 +27,7 @@ function ChecklistItem({ completed, label, description, action }: ChecklistItemP
         className={cn(
           "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors",
           completed
-            ? "border-emerald-500 bg-emerald-500"
+            ? "border-primary bg-primary"
             : "border-muted-foreground/30 bg-transparent"
         )}
       >
@@ -81,11 +81,11 @@ export function GettingStartedCard({
   const allComplete = completedSteps === totalSteps
 
   return (
-    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6">
+    <div className="rounded-2xl border border-primary/30 bg-primary/5 p-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-base font-medium flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-emerald-500" />
+            <Sparkles className="h-4 w-4 text-primary" />
             Getting Started
           </h3>
           <p className="text-sm text-muted-foreground mt-1">
@@ -108,7 +108,7 @@ export function GettingStartedCard({
       <div className="mt-4 flex items-center gap-2">
         <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
           <div
-            className="h-full bg-emerald-500 transition-all duration-500"
+            className="h-full bg-primary transition-all duration-500"
             style={{ width: `${(completedSteps / totalSteps) * 100}%` }}
           />
         </div>
@@ -127,7 +127,7 @@ export function GettingStartedCard({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 text-xs border-emerald-500/30 hover:bg-emerald-500/10"
+                className="h-8 text-xs border-primary/30 hover:bg-primary/10"
               >
                 <Upload className="h-3 w-3 mr-1.5" />
                 Upload Resume
@@ -141,7 +141,7 @@ export function GettingStartedCard({
           description="Paste a job description and let AI do the work"
           action={
             hasResume ? (
-              <p className="text-xs text-emerald-500">
+              <p className="text-xs text-primary">
                 <FileText className="inline h-3 w-3 mr-1" />
                 Use the Quick Optimize form above
               </p>
@@ -150,13 +150,13 @@ export function GettingStartedCard({
         />
       </div>
 
-      <div className="mt-4 pt-4 border-t border-emerald-500/20">
+      <div className="mt-4 pt-4 border-t border-primary/20">
         <p className="text-xs text-muted-foreground flex items-center gap-1">
           <HelpCircle className="h-3 w-3" />
           Need help?{" "}
           <Link
             href="/support"
-            className="text-emerald-500 hover:text-emerald-400 underline-offset-2 hover:underline"
+            className="text-primary hover:text-primary/90 underline-offset-2 hover:underline"
           >
             Visit our support center
           </Link>

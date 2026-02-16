@@ -56,27 +56,27 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                   <UserAvatar user={user} />
                 </div>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56 bg-foreground/90 dark:bg-black/90 backdrop-blur-lg border-border dark:border-white/10" align="end" forceMount>
+              <DropdownMenuContent className="w-56 bg-popover backdrop-blur-lg border-border" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium text-foreground dark:text-white">{user.name}</p>
-                    <p className="w-[200px] truncate text-sm text-foreground/60 dark:text-white/60">{user.email}</p>
+                    <p className="font-medium text-foreground">{user.name}</p>
+                    <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
-                <DropdownMenuSeparator className="bg-surface-muted dark:bg-white/10" />
-                <DropdownMenuItem asChild className="text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/10">
+                <DropdownMenuSeparator className="bg-surface-muted" />
+                <DropdownMenuItem asChild className="text-foreground/80 hover:text-foreground hover:bg-surface-muted">
                   <Link href="/dashboard/profile">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="text-foreground/80 dark:text-white/80 hover:text-foreground dark:hover:text-white hover:bg-surface-muted dark:hover:bg-white/10">
+                <DropdownMenuItem asChild className="text-foreground/80 hover:text-foreground hover:bg-surface-muted">
                   <Link href="/dashboard/settings">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-surface-muted dark:bg-white/10" />
+                <DropdownMenuSeparator className="bg-surface-muted" />
                 <LogoutButton />
               </DropdownMenuContent>
             </DropdownMenu>

@@ -39,7 +39,7 @@ export function ShareButtons({
 
   const buttonClass = cn(
     'flex items-center justify-center rounded-lg border bg-card p-2.5 text-muted-foreground transition-all',
-    'hover:border-emerald-500/50 hover:bg-emerald-500/10 hover:text-emerald-500'
+    'hover:border-primary/50 hover:bg-primary/10 hover:text-primary'
   )
 
   return (
@@ -70,7 +70,7 @@ export function ShareButtons({
       </a>
       <button
         onClick={copyToClipboard}
-        className={cn(buttonClass, copied && 'border-emerald-500 bg-emerald-500/10 text-emerald-500')}
+        className={cn(buttonClass, copied && 'border-primary bg-primary/10 text-primary')}
         aria-label="Copy link"
       >
         {copied ? <Check className="h-4 w-4" /> : <Link2 className="h-4 w-4" />}

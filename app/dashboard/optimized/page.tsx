@@ -4,7 +4,7 @@ import { getUserById, getUserOptimizedResumes } from "@/lib/db"
 import { OptimizedResumeList } from "@/components/optimization/optimized-resume-list"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Zap, Plus, TrendingUp, FileText, Target, ChevronLeft } from "lucide-react"
+import { Zap, Plus, TrendingUp, FileText, Target } from "lucide-react"
 import Link from "next/link"
 
 export default async function OptimizedResumesPage() {
@@ -21,18 +21,11 @@ export default async function OptimizedResumesPage() {
   const optimizedResumes = await getUserOptimizedResumes(user.id)
 
   return (
-    <main className="py-8 sm:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <main className="py-5 sm:py-6">
+      <div className="px-6">
         <div className="mb-8">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1 text-sm text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white transition-colors mb-3"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
-          <h1 className="text-3xl sm:text-4xl tracking-tight font-space-grotesk font-semibold">Optimized Resumes</h1>
-          <p className="mt-1 text-base text-foreground/60 dark:text-white/60">
+          <h1 className="text-2xl sm:text-3xl tracking-tight font-space-grotesk font-semibold">Optimized Resumes</h1>
+          <p className="mt-1 text-base text-muted-foreground">
             View and manage your AI-optimized resume versions tailored for specific job applications.
           </p>
         </div>
@@ -55,7 +48,7 @@ export default async function OptimizedResumesPage() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-medium tracking-tight font-space-grotesk">Your Optimized Resumes</h2>
               <Button asChild>
@@ -67,22 +60,22 @@ export default async function OptimizedResumesPage() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6 mb-8">
-              <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+              <Card className="rounded-2xl border-border bg-surface-subtle">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-lg font-space-grotesk text-foreground dark:text-white">
-                    <FileText className="w-5 h-5 mr-2 text-emerald-500" />
+                  <CardTitle className="flex items-center text-lg font-space-grotesk text-foreground">
+                    <FileText className="w-5 h-5 mr-2 text-primary" />
                     Total Optimized
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-emerald-500">{optimizedResumes.length}</div>
-                  <p className="text-sm text-foreground/60 dark:text-white/60">Resume versions created</p>
+                  <div className="text-3xl font-bold text-primary">{optimizedResumes.length}</div>
+                  <p className="text-sm text-muted-foreground">Resume versions created</p>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+              <Card className="rounded-2xl border-border bg-surface-subtle">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-lg font-space-grotesk text-foreground dark:text-white">
+                  <CardTitle className="flex items-center text-lg font-space-grotesk text-foreground">
                     <TrendingUp className="w-5 h-5 mr-2 text-blue-500" />
                     Avg Match Score
                   </CardTitle>
@@ -99,13 +92,13 @@ export default async function OptimizedResumesPage() {
                       : 0}
                     %
                   </div>
-                  <p className="text-sm text-foreground/60 dark:text-white/60">Job match accuracy</p>
+                  <p className="text-sm text-muted-foreground">Job match accuracy</p>
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-border dark:border-white/20 bg-surface-subtle dark:bg-white/5">
+              <Card className="rounded-2xl border-border bg-surface-subtle">
                 <CardHeader>
-                  <CardTitle className="flex items-center text-lg font-space-grotesk text-foreground dark:text-white">
+                  <CardTitle className="flex items-center text-lg font-space-grotesk text-foreground">
                     <Target className="w-5 h-5 mr-2 text-purple-500" />
                     Jobs Targeted
                   </CardTitle>
@@ -114,7 +107,7 @@ export default async function OptimizedResumesPage() {
                   <div className="text-3xl font-bold text-purple-500">
                     {new Set(optimizedResumes.map((r) => r.job_analysis_id)).size}
                   </div>
-                  <p className="text-sm text-foreground/60 dark:text-white/60">Unique positions</p>
+                  <p className="text-sm text-muted-foreground">Unique positions</p>
                 </CardContent>
               </Card>
             </div>

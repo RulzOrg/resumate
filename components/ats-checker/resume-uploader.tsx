@@ -212,9 +212,9 @@ export function ResumeUploader({
           className={cn(
             "group relative flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-6 text-center transition-all cursor-pointer",
             isDragOver
-              ? "border-emerald-500 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/5 ring-2 ring-emerald-500/30"
-              : "border-slate-300 dark:border-white/15 bg-slate-50 dark:bg-white/5 hover:border-slate-400 dark:hover:border-white/25 hover:bg-slate-100 dark:hover:bg-white/[0.07]",
-            selectedFile && "bg-emerald-50 dark:bg-emerald-500/5 border-emerald-400 dark:border-emerald-500/30"
+              ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+              : "border-border bg-card hover:border-border hover:bg-accent",
+            selectedFile && "bg-primary/5 border-primary/30"
           )}
         >
           <input
@@ -227,26 +227,26 @@ export function ResumeUploader({
 
           {!selectedFile ? (
             <>
-              <div className="flex items-center justify-center h-10 w-10 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 group-hover:bg-slate-50 dark:group-hover:bg-white/10 transition-colors">
-                <CloudUpload className="w-5 h-5 text-slate-600 dark:text-white/80" />
+              <div className="flex items-center justify-center h-10 w-10 rounded-full border border-border bg-white dark:bg-card group-hover:bg-card transition-colors">
+                <CloudUpload className="w-5 h-5 text-foreground/80" />
               </div>
-              <div className="text-sm font-medium text-slate-700 dark:text-white/80 font-sans">
+              <div className="text-sm font-medium text-foreground/80 font-sans">
                 Drag & drop your resume
               </div>
-              <div className="text-xs text-slate-500 dark:text-white/50 font-sans">
+              <div className="text-xs text-muted-foreground/70 font-sans">
                 PDF, DOC, DOCX · max 10 MB
               </div>
             </>
           ) : (
             <div className="flex items-center gap-3 w-full">
-              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-200 dark:border-emerald-500/30">
-                <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center justify-center h-10 w-10 rounded-lg bg-primary/10 border border-primary/30">
+                <FileText className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 text-left min-w-0">
-                <p className="font-medium text-sm text-slate-900 dark:text-white/90 truncate font-sans">
+                <p className="font-medium text-sm text-foreground/90 truncate font-sans">
                   {selectedFile.name}
                 </p>
-                <p className="text-xs text-slate-500 dark:text-white/50 font-sans">
+                <p className="text-xs text-muted-foreground/70 font-sans">
                   {formatFileSize(selectedFile.size)}
                 </p>
               </div>
@@ -255,9 +255,9 @@ export function ResumeUploader({
                   e.stopPropagation()
                   handleRemoveFile()
                 }}
-                className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 hover:bg-accent rounded-lg transition-colors"
               >
-                <X className="w-4 h-4 text-slate-500 dark:text-white/60" />
+                <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
           )}
@@ -270,8 +270,8 @@ export function ResumeUploader({
           className={cn(
             "w-full inline-flex justify-center items-center gap-2 rounded-full text-sm font-medium px-6 py-3 transition-all",
             selectedFile && !isUploading
-              ? "bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20"
-              : "bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-white/50 cursor-not-allowed"
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+              : "bg-muted text-muted-foreground/70 cursor-not-allowed"
           )}
         >
           <span className="font-sans">
@@ -283,8 +283,8 @@ export function ResumeUploader({
 
       {/* Privacy Notice */}
       <div className="mt-4 flex items-center justify-center gap-2">
-        <Shield className="w-3.5 h-3.5 text-slate-400 dark:text-white/50" />
-        <p className="text-xs text-slate-500 dark:text-white/60 font-sans">
+        <Shield className="w-3.5 h-3.5 text-muted-foreground/70" />
+        <p className="text-xs text-muted-foreground font-sans">
           We'll email a personalized report with actionable recommendations.
         </p>
       </div>

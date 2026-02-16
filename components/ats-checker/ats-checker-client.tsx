@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react"
 import { ResumeUploader } from "./resume-uploader"
 import { EmailCaptureForm } from "./email-capture-form"
 import { ResultsDisplay } from "./results-display"
+import { FixPreviewModal } from "./FixPreviewModal"
 import { SocialProof } from "./social-proof"
 import { HowItWorks } from "./how-it-works"
 import { FeaturesGrid } from "./features-grid"
@@ -102,19 +103,40 @@ export function ATSCheckerClient() {
     setState({ step: "upload" })
   }, [])
 
-  // Handle "Fix This" action
+  // Handle "Fix This" action — opens preview modal
+  const [fixPreviewState, setFixPreviewState] = useState<{
+    issueId: string
+    checkId: string
+    issueTitle?: string
+    issueSeverity?: string
+  } | null>(null)
+
   const handleFixIssue = useCallback((issueId: string) => {
     if (state.step !== "results") return
 
+    const issue = state.results.issues.find(i => i.id === issueId)
+    setFixPreviewState({
+      issueId,
+      checkId: state.checkId,
+      issueTitle: issue?.title,
+      issueSeverity: issue?.severity,
+    })
+  }, [state])
+
+  const handleFixPreviewClose = useCallback(() => {
+    setFixPreviewState(null)
+  }, [])
+
+  const handleApplyFix = useCallback((_checkId: string, _issueId: string) => {
+    if (state.step !== "results") return
+
+    // Redirect to signup with fix context preserved
     const params = new URLSearchParams({
       source: "ats-checker",
       checkId: state.checkId,
-      issueId,
     })
 
-    // Redirect to signup with return URL to optimizer
-    const returnUrl = `/dashboard/optimizer?${params.toString()}`
-    window.location.href = `/sign-up?redirect=${encodeURIComponent(returnUrl)}`
+    window.location.href = `/sign-up?redirect=${encodeURIComponent(`/dashboard?${params.toString()}`)}`
   }, [state])
 
   // Handle create account
@@ -148,6 +170,13 @@ export function ATSCheckerClient() {
           />
         </div>
 
+        {/* Fix Preview Modal */}
+        <FixPreviewModal
+          state={fixPreviewState}
+          onClose={handleFixPreviewClose}
+          onApplyFix={handleApplyFix}
+        />
+
         <CheckerFooter />
       </div>
     )
@@ -167,18 +196,18 @@ export function ATSCheckerClient() {
         <SocialProof />
 
         {/* Badge */}
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300 dark:border-emerald-400/30 bg-emerald-100 dark:bg-emerald-500/10 px-3 py-1 text-emerald-700 dark:text-emerald-200">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-primary">
           <Sparkles className="w-4 h-4" />
           <span className="text-xs font-medium font-sans">Instant ATS check</span>
         </div>
 
         {/* Heading */}
-        <h1 className="text-4xl tracking-tight sm:text-5xl md:text-6xl mx-auto font-space-grotesk font-semibold mt-4 text-slate-900 dark:text-white">
+        <h1 className="text-4xl tracking-tight sm:text-5xl md:text-6xl mx-auto font-space-grotesk font-semibold mt-4 text-foreground">
           Free ATS Resume Checker
         </h1>
 
         {/* Subtitle */}
-        <p className="max-w-2xl text-base sm:text-lg font-normal text-slate-500 dark:text-muted-foreground mt-6 mx-auto font-sans">
+        <p className="max-w-2xl text-base sm:text-lg font-normal text-muted-foreground mt-6 mx-auto font-sans">
           Check if your resume is ATS-compatible and get personalized recommendations
           to improve your chances of landing interviews.
         </p>
@@ -209,7 +238,7 @@ export function ATSCheckerClient() {
 
           {state.step === "error" && (
             <div className="max-w-md mx-auto text-center">
-              <div className="p-6 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5">
+              <div className="p-6 rounded-xl border border-border bg-card">
                 <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center mx-auto mb-4">
                   <svg
                     className="w-6 h-6 text-red-500 dark:text-red-400"
@@ -225,12 +254,12 @@ export function ATSCheckerClient() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold mb-2 font-sans text-slate-900 dark:text-white">Something went wrong</h3>
-                <p className="text-slate-500 dark:text-muted-foreground mb-4 font-sans">{state.error}</p>
+                <h3 className="text-lg font-semibold mb-2 font-sans text-foreground">Something went wrong</h3>
+                <p className="text-muted-foreground mb-4 font-sans">{state.error}</p>
                 {state.canRetry && (
                   <button
                     onClick={handleRetry}
-                    className="px-4 py-2 bg-emerald-500 text-black rounded-full hover:bg-emerald-400 transition-colors font-sans font-medium shadow-lg shadow-emerald-500/20"
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors font-sans font-medium shadow-lg shadow-primary/20"
                   >
                     Try Again
                   </button>

@@ -35,7 +35,7 @@ export function BlogSidebar({
               className={cn(
                 'block rounded-xl px-4 py-2.5 text-sm transition-colors',
                 !activeCategory
-                  ? 'bg-emerald-500/10 text-emerald-500 font-medium'
+                  ? 'bg-primary/10 text-primary font-medium'
                   : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
               )}
             >
@@ -48,13 +48,13 @@ export function BlogSidebar({
                 className={cn(
                   'flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-colors',
                   activeCategory === category.slug
-                    ? 'bg-emerald-500/10 text-emerald-500 font-medium'
+                    ? 'bg-primary/10 text-primary font-medium'
                     : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                 )}
               >
                 <span
-                  className="h-2 w-2 rounded-full shrink-0"
-                  style={{ backgroundColor: category.color || '#10b981' }}
+                  className="h-2 w-2 rounded-full shrink-0 text-primary"
+                  style={{ backgroundColor: category.color }}
                 />
                 {category.name}
               </Link>
@@ -86,7 +86,7 @@ export function BlogSidebar({
                 href={`/blog/${post.slug}`}
                 className="group block"
               >
-                <h4 className="font-serif text-sm font-medium text-foreground leading-snug group-hover:text-emerald-500 transition-colors">
+                <h4 className="font-serif text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors">
                   {post.title}
                 </h4>
                 <p className="mt-1.5 text-xs text-muted-foreground/70">

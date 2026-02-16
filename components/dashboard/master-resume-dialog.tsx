@@ -235,10 +235,10 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
 
         {success ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <div className="h-12 w-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-emerald-400" />
+            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
+              <CheckCircle className="h-6 w-6 text-primary" />
             </div>
-            <p className="text-sm text-foreground/70 dark:text-white/70">Master resume uploaded successfully! You can now generate tailored versions.</p>
+            <p className="text-sm text-muted-foreground">Master resume uploaded successfully! You can now generate tailored versions.</p>
             <Button 
               onClick={() => {
                 setOpen(false)
@@ -264,7 +264,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
             <div className="space-y-3">
               <Label htmlFor="master-resume-file">Resume File</Label>
               <div
-                className="flex flex-col items-center justify-center gap-3 rounded border border-dashed border-border/80 dark:border-white/20 bg-surface-subtle dark:bg-white/5 p-6 text-center"
+                className="flex flex-col items-center justify-center gap-3 rounded border border-dashed border-border bg-surface-subtle p-6 text-center"
                 onDragOver={(event) => {
                   event.preventDefault()
                 }}
@@ -276,19 +276,19 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
                   }
                 }}
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/10">
-                  <Upload className="h-5 w-5 text-foreground/70 dark:text-white/70" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted border border-border">
+                  <Upload className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground dark:text-white">Drag & drop your resume</p>
-                  <p className="text-xs text-foreground/60 dark:text-white/60">PDF, Word, or plain text file, up to 10MB</p>
+                  <p className="text-sm font-medium text-foreground">Drag & drop your resume</p>
+                  <p className="text-xs text-muted-foreground">PDF, Word, or plain text file, up to 10MB</p>
                 </div>
                 <div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="bg-foreground/40 dark:bg-black/40 text-foreground dark:text-white"
+                    className="bg-background/40 text-foreground"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploading}
                   >
@@ -309,9 +309,9 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
                   />
                 </div>
                 {file && (
-                  <div className="flex items-center justify-between text-xs text-foreground/60 dark:text-white/60 bg-surface-muted dark:bg-white/10 border border-border/80 dark:border-white/20 rounded-lg p-3 mt-3">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground bg-surface-muted border border-border rounded-lg p-3 mt-3">
                     <div>
-                      <span className="text-foreground/80 dark:text-white/80">{file.name}</span>
+                      <span className="text-foreground/80">{file.name}</span>
                       <span className="ml-2">({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
                     </div>
                     <button
@@ -324,7 +324,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
                         }
                       }}
                       disabled={isUploading}
-                      className="text-foreground/60 dark:text-white/60 hover:text-red-400 transition-colors disabled:opacity-50"
+                      className="text-muted-foreground hover:text-red-400 transition-colors disabled:opacity-50"
                       title="Remove file"
                     >
                       <X className="h-4 w-4" />
@@ -336,7 +336,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
 
             {isUploading && (
               <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-foreground/70 dark:text-white/70">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Uploading and analyzing...
                 </div>
@@ -372,7 +372,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
                           fileInputRef.current.value = ""
                         }
                 }}
-                className="text-foreground/70 dark:text-white/70"
+                className="text-muted-foreground"
               >
                 <X className="mr-2 h-4 w-4" /> Cancel
               </Button>

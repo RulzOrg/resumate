@@ -35,7 +35,7 @@ export function CategoryList({ categories, activeCategory, className }: Category
         className={cn(
           'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
           !activeCategory
-            ? 'bg-emerald-500 text-white'
+            ? 'bg-primary text-primary-foreground'
             : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
         )}
       >
@@ -53,8 +53,8 @@ export function CategoryList({ categories, activeCategory, className }: Category
               'rounded-full px-4 py-1.5 text-sm font-medium transition-colors',
               isActive
                 ? hasCustomColor
-                  ? 'bg-emerald-500' // backgroundColor overridden by inline style
-                  : 'bg-emerald-500 text-white'
+                  ? 'bg-primary' // backgroundColor overridden by inline style
+                  : 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
             )}
             style={

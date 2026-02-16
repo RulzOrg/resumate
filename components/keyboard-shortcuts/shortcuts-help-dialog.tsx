@@ -21,10 +21,12 @@ export function ShortcutsHelpDialog({
   const { modifierKey } = usePlatform()
 
   const shortcuts = [
+    { keys: [modifierKey, "K"], description: "Open command palette" },
     { keys: [modifierKey, "D"], description: "Download resume as DOCX" },
     { keys: [modifierKey, "C"], description: "Copy resume content" },
     { keys: [modifierKey, "S"], description: "Save changes" },
     { keys: [modifierKey, "P"], description: "Preview as HTML" },
+    { keys: [modifierKey, "B"], description: "Toggle sidebar" },
     { keys: ["Esc"], description: "Close dialog" },
     { keys: ["Shift", "?"], description: "Show this help" },
   ]

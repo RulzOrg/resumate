@@ -25,10 +25,10 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   )
   const matchClass = (score?: number | null) => {
     const s = finiteScore(score)
-    if (s === null) return 'text-foreground/60 dark:text-white/60'
+    if (s === null) return 'text-muted-foreground'
     if (s === 0) return 'text-red-400'
     if (s < 60) return 'text-amber-400'
-    return 'text-emerald-400'
+    return 'text-primary'
   }
   const handleDownload = async (id: string, format = "docx", layout = "modern") => {
     try {
@@ -55,22 +55,22 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   return (
     <div className="space-y-0">
       {items.map((resume, index) => (
-        <div key={resume.id} className={`flex flex-col sm:flex-row sm:items-center gap-4 py-4 ${index > 0 ? 'border-t border-gray-300 dark:border-white/10' : ''}`}>
+        <div key={resume.id} className={`flex flex-col sm:flex-row sm:items-center gap-4 py-4 ${index > 0 ? 'border-t border-border' : ''}`}>
           <div className="flex items-center gap-4 flex-1">
-            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-surface-subtle dark:bg-white/5 border border-border/80 dark:border-white/10">
-              <FileText className="h-5 w-5 text-foreground/70 dark:text-white/70" />
+            <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-lg bg-surface-subtle border border-border">
+              <FileText className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium line-clamp-2" title={resume.job_title ? `${resume.job_title} - (${resume.original_resume_title || resume.title})` : resume.title}>
                 {resume.job_title ? (
                   <>
-                    {resume.job_title} - <span className="text-foreground/60 dark:text-white/60 font-normal">({resume.original_resume_title || resume.title})</span>
+                    {resume.job_title} - <span className="text-muted-foreground font-normal">({resume.original_resume_title || resume.title})</span>
                   </>
                 ) : (
                   resume.title
                 )}
               </p>
-              <p className="text-sm text-foreground/60 dark:text-white/60">
+              <p className="text-sm text-muted-foreground">
                 Generated {new Date(resume.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </p>
             </div>
@@ -80,9 +80,9 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
               <p className={`font-medium ${matchClass(resume.match_score)}`}>
                 {finiteScore(resume.match_score) === null ? '—' : `${finiteScore(resume.match_score)}%`}
               </p>
-              <p className="text-xs text-foreground/60 dark:text-white/60">Match</p>
+              <p className="text-xs text-muted-foreground">Match</p>
             </div>
-            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20 p-0" asChild>
+            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted hover:bg-surface-strong p-0" asChild>
               <Link href={`/dashboard/optimized/${resume.id}`}>
                 <Eye className="h-4 w-4" />
               </Link>
@@ -91,12 +91,12 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
               variant="outline" 
               size="sm" 
               onClick={() => setIsLayoutModalOpen(true)}
-              className="h-8 text-[10px] bg-surface-muted dark:bg-white/10 border-border dark:border-white/10 px-2 flex items-center gap-1.5"
+              className="h-8 text-[10px] bg-surface-muted border-border px-2 flex items-center gap-1.5"
             >
               <Settings2 className="h-3 w-3" />
               {layout.charAt(0).toUpperCase() + layout.slice(1)}
             </Button>
-            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted dark:bg-white/10 hover:bg-surface-strong dark:hover:bg-white/20 p-0" onClick={() => handleDownload(resume.id, "docx", layout)}>
+            <Button size="sm" variant="ghost" className="h-9 w-9 rounded-full bg-surface-muted hover:bg-surface-strong p-0" onClick={() => handleDownload(resume.id, "docx", layout)}>
               <Download className="h-4 w-4" />
             </Button>
           </div>

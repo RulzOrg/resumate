@@ -144,7 +144,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 {category && (
                   <Link
                     href={`/blog/category/${category.slug}`}
-                    className="mb-6 inline-block text-sm font-semibold uppercase tracking-widest text-emerald-500 hover:text-emerald-400 transition-colors"
+                    className="mb-6 inline-block text-sm font-semibold uppercase tracking-widest text-primary hover:text-primary/90 transition-colors"
                   >
                     {category.name}
                   </Link>

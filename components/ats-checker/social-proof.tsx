@@ -40,7 +40,7 @@ export function SocialProof() {
             />
           ))}
         </div>
-        <p className="text-xs font-medium text-slate-500 dark:text-muted-foreground mt-1 font-sans">
+        <p className="text-xs font-medium text-muted-foreground mt-1 font-sans">
           Run a quick ATS health check
         </p>
       </div>

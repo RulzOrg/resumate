@@ -226,7 +226,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
   }
 
   return (
-    <div className="min-h-screen w-full text-foreground dark:text-white bg-background dark:bg-black">
+    <div className="min-h-screen w-full text-foreground bg-background">
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="hidden md:block h-screen relative">
           <img
@@ -234,13 +234,13 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
             alt="A professional person smiling"
             className="absolute w-full h-full object-cover top-0 right-0 bottom-0 left-0"
           />
-          <div className="absolute inset-0 bg-foreground/40 dark:bg-black/40" />
+          <div className="absolute inset-0 bg-foreground/40" />
           <div className="z-10 flex flex-col relative h-full p-12 justify-end">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur w-fit mb-6"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 backdrop-blur w-fit mb-6"
             >
-              <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
+              <span className="inline-flex h-8 w-8 items-center justify-center bg-primary rounded-full">
                 {/* Refresh icon */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -260,27 +260,27 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   <path d="M21 21v-5h-5" />
                 </svg>
               </span>
-              <span className="text-base font-medium tracking-tighter" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              <span className="text-base font-medium tracking-tighter font-display">
                 Useresumate
               </span>
             </Link>
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground dark:text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+            <h2 className="text-3xl font-semibold tracking-tight font-display text-foreground">
               Land your dream job faster.
             </h2>
-            <p className="mt-2 text-foreground/70 dark:text-white/70 max-w-md">
+            <p className="mt-2 text-muted-foreground max-w-md">
               Our AI optimizes your resume for every application, getting you past the bots and in front of hiring managers.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col min-h-screen sm:p-6 lg:p-8 bg-background dark:bg-black p-4 justify-center">
+        <div className="flex flex-col min-h-screen sm:p-6 lg:p-8 bg-background p-4 justify-center">
           <div className="mx-auto w-full max-w-sm">
             <div className="text-center">
             <Link
               href="/"
-              className="inline-flex items-center gap-2 rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 backdrop-blur w-fit mb-6"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-subtle px-3 py-2 backdrop-blur w-fit mb-6"
             >
-              <span className="inline-flex h-8 w-8 items-center justify-center bg-emerald-500 rounded-full">
+              <span className="inline-flex h-8 w-8 items-center justify-center bg-primary rounded-full">
                 {/* Refresh icon */}
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -300,23 +300,23 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   <path d="M21 21v-5h-5" />
                 </svg>
               </span>
-              <span className="text-base font-medium tracking-tighter" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              <span className="text-base font-medium tracking-tighter font-display">
                 Useresumate
               </span>
             </Link>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground dark:text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+              <h1 className="text-3xl font-semibold tracking-tight font-display text-foreground">
                 Welcome
               </h1>
-              <p className="mt-2 text-sm text-foreground/60 dark:text-white/60">Sign in or create an account to get started.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Sign in or create an account to get started.</p>
             </div>
 
             <div className="mt-8">
               {/* Tabs */}
               <div className="mb-6">
-                <div className="flex gap-1 bg-surface-subtle dark:bg-white/5 border-border dark:border-white/10 border rounded-full p-1 backdrop-blur items-center">
+                <div className="flex gap-1 bg-surface-subtle border-border border rounded-full p-1 backdrop-blur items-center">
                   <button
                     className={`w-full rounded-full px-4 py-2 text-sm font-medium ${
-                      tab === "signin" ? "bg-surface-muted dark:bg-white/10 text-foreground dark:text-white" : "text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white"
+                      tab === "signin" ? "bg-surface-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                     }`}
                     onClick={() => handleTabChange("signin")}
                   >
@@ -324,7 +324,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   </button>
                   <button
                     className={`w-full rounded-full px-4 py-2 text-sm font-medium ${
-                      tab === "signup" ? "bg-surface-muted dark:bg-white/10 text-foreground dark:text-white" : "text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white"
+                      tab === "signup" ? "bg-surface-muted text-foreground" : "text-muted-foreground hover:text-foreground"
                     }`}
                     onClick={() => handleTabChange("signup")}
                   >
@@ -337,7 +337,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               <div className={tab === "signin" ? "block" : "hidden"}>
                 <form className="space-y-4" onSubmit={handleSignInSubmit}>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="email-signin">
+                    <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="email-signin">
                       Email address
                     </label>
                     <input
@@ -347,15 +347,15 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                       required
                       value={signInEmail}
                       onChange={event => setSignInEmail(event.target.value)}
-                      className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                     />
                   </div>
                   <div>
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="password-signin">
+                      <label className="text-sm font-medium text-foreground/80" htmlFor="password-signin">
                         Password
                       </label>
-                      <Link href="/auth/forgot-password" className="text-sm font-medium text-emerald-500 hover:text-emerald-400">
+                      <Link href="/auth/forgot-password" className="text-sm font-medium text-primary hover:text-primary/80">
                         Forgot?
                       </Link>
                     </div>
@@ -366,7 +366,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                       required
                       value={signInPassword}
                       onChange={event => setSignInPassword(event.target.value)}
-                      className="mt-1.5 block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                      className="mt-1.5 block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                     />
                   </div>
 
@@ -379,7 +379,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   <button
                     type="submit"
                     disabled={isSigningIn}
-                    className="mt-2 flex w-full justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:pointer-events-none disabled:opacity-60"
+                    className="mt-2 flex w-full justify-center rounded-full bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-60"
                   >
                     {isSigningIn ? "Signing in..." : "Sign In"}
                   </button>
@@ -389,7 +389,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 {!isVerifying ? (
                   <form className="space-y-4" onSubmit={handleSignUpSubmit}>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="name-signup">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="name-signup">
                         Full Name
                       </label>
                       <input
@@ -399,11 +399,11 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={signUpName}
                         onChange={event => setSignUpName(event.target.value)}
-                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="email-signup">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="email-signup">
                         Email address
                       </label>
                       <input
@@ -413,11 +413,11 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={signUpEmail}
                         onChange={event => setSignUpEmail(event.target.value)}
-                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="password-signup">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="password-signup">
                         Password
                       </label>
                       <input
@@ -427,7 +427,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={signUpPassword}
                         onChange={event => setSignUpPassword(event.target.value)}
-                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                       />
                     </div>
 
@@ -437,9 +437,9 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         type="checkbox"
                         checked={newsletterConsent}
                         onChange={event => setNewsletterConsent(event.target.checked)}
-                        className="mt-0.5 h-4 w-4 rounded border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0"
+                        className="mt-0.5 h-4 w-4 rounded border-border bg-surface-subtle text-primary focus:ring-ring focus:ring-offset-0"
                       />
-                      <label htmlFor="newsletter-consent" className="text-sm text-foreground/70 dark:text-white/70 cursor-pointer">
+                      <label htmlFor="newsletter-consent" className="text-sm text-muted-foreground cursor-pointer">
                         I want to receive resume tips, job search advice, and product updates
                       </label>
                     </div>
@@ -453,7 +453,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                     <button
                       type="submit"
                       disabled={isSigningUp}
-                      className="mt-2 flex w-full justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:pointer-events-none disabled:opacity-60"
+                      className="mt-2 flex w-full justify-center rounded-full bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-60"
                     >
                       {isSigningUp ? "Creating account..." : "Create Account"}
                     </button>
@@ -461,7 +461,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 ) : (
                   <form className="space-y-4" onSubmit={handleVerificationSubmit}>
                     <div>
-                      <label className="mb-1.5 block text-sm font-medium text-foreground/80 dark:text-white/80" htmlFor="verification-code">
+                      <label className="mb-1.5 block text-sm font-medium text-foreground/80" htmlFor="verification-code">
                         Enter the 6-digit code sent to {signUpEmail}
                       </label>
                       <input
@@ -472,7 +472,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                         required
                         value={verificationCode}
                         onChange={event => setVerificationCode(event.target.value)}
-                        className="block w-full rounded-full border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-foreground dark:text-white shadow-sm placeholder-foreground/40 dark:placeholder-white/30 focus:border-emerald-500 focus:outline-none focus:ring-emerald-500 sm:text-sm"
+                        className="block w-full rounded-full border border-border bg-surface-subtle px-3 py-2 text-foreground shadow-sm placeholder-muted-foreground/70 focus:border-ring focus:outline-none focus:ring-ring sm:text-sm"
                       />
                     </div>
 
@@ -486,13 +486,13 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                       <button
                         type="button"
                         onClick={handleResendVerification}
-                        className="text-sm font-medium text-foreground/70 dark:text-white/70 transition-colors hover:text-foreground dark:hover:text-white"
+                        className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
                       >
                         Resend code
                       </button>
                       <button
                         type="submit"
-                        className="flex flex-1 justify-center rounded-full bg-emerald-500 px-3 py-2.5 text-sm font-semibold text-black shadow-sm transition-colors hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                        className="flex flex-1 justify-center rounded-full bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         Verify &amp; Continue
                       </button>
@@ -504,10 +504,10 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="w-full border-t border-border dark:border-white/10" />
+                  <div className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-background dark:bg-black px-2 text-foreground/50 dark:text-white/50">Or continue with</span>
+                  <span className="bg-background px-2 text-muted-foreground/70">Or continue with</span>
                 </div>
               </div>
 
@@ -522,7 +522,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                 <button
                   onClick={() => handleOAuth("oauth_google")}
                   disabled={!isSignInLoaded}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 px-3 py-2 text-sm font-medium text-foreground/90 dark:text-white/90 shadow-sm transition-colors hover:bg-surface-muted dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-md border border-border bg-surface-subtle px-3 py-2 text-sm font-medium text-foreground/90 shadow-sm transition-colors hover:bg-surface-muted disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <svg className="h-5 w-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />

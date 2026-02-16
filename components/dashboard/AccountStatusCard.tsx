@@ -39,25 +39,25 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
   }
 
   return (
-    <div className="rounded-2xl border border-border dark:border-white/10 bg-surface-subtle dark:bg-white/5 p-6">
-      <h3 className="text-base font-medium text-foreground/90 dark:text-white/90">Account Status</h3>
-      <p className="text-sm text-foreground/60 dark:text-white/60 mt-1">
+    <div className="rounded-2xl border border-border bg-surface-subtle p-6">
+      <h3 className="text-base font-medium text-foreground/90">Account Status</h3>
+      <p className="text-sm text-muted-foreground mt-1">
         {plan === "pro" ? "Pro Plan" : plan === "enterprise" ? "Enterprise Plan" : "Free Plan"}
-        {status ? <span className="ml-2 text-foreground/40 dark:text-white/40">({status})</span> : null}
+        {status ? <span className="ml-2 text-muted-foreground/60">({status})</span> : null}
       </p>
       {nextRenewal && plan !== "free" ? (
-        <p className="text-xs text-foreground/50 dark:text-white/50 mt-1">Renews on {nextRenewal}</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">Renews on {nextRenewal}</p>
       ) : null}
 
       {/* Job Analyses Usage */}
       <div className="mt-4">
-        <div className="flex justify-between text-xs text-foreground/70 dark:text-white/70 mb-1">
+        <div className="flex justify-between text-xs text-muted-foreground mb-1">
           <span className="flex items-center gap-1">
             Job Analyses
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-3 w-3 text-foreground/40 dark:text-white/40 cursor-help" />
+                  <HelpCircle className="h-3 w-3 text-muted-foreground/60 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px]">
                   <p>Track how many job descriptions you've analyzed. Each analysis identifies key skills and requirements.</p>
@@ -69,7 +69,7 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
             {jobAnalyses} of {usageLimits ? formatLimit(usageLimits.jobAnalyses.limit) : (isFree ? '5' : '∞')}
           </span>
         </div>
-        <div className="w-full bg-surface-muted dark:bg-white/10 rounded-full h-2">
+        <div className="w-full bg-surface-muted rounded-full h-2">
           <div
             className="bg-blue-500 h-2 rounded-full"
             style={{
@@ -78,7 +78,7 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
           />
         </div>
         {jobAnalyses === 0 && (
-          <p className="text-[10px] text-foreground/50 dark:text-white/50 mt-1">
+          <p className="text-[10px] text-muted-foreground/70 mt-1">
             Paste a job description to run your first analysis
           </p>
         )}
@@ -86,13 +86,13 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
 
       {/* Resume Optimizations Usage */}
       <div className="mt-3">
-        <div className="flex justify-between text-xs text-foreground/70 dark:text-white/70 mb-1">
+        <div className="flex justify-between text-xs text-muted-foreground mb-1">
           <span className="flex items-center gap-1">
             Resume Optimizations
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-3 w-3 text-foreground/40 dark:text-white/40 cursor-help" />
+                  <HelpCircle className="h-3 w-3 text-muted-foreground/60 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="top" className="max-w-[200px]">
                   <p>AI-tailored resumes created for specific job applications.</p>
@@ -104,16 +104,16 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
             {optimizedResumes} of {usageLimits ? formatLimit(usageLimits.resumeOptimizations.limit) : (isFree ? '3' : '∞')}
           </span>
         </div>
-        <div className="w-full bg-surface-muted dark:bg-white/10 rounded-full h-2">
+        <div className="w-full bg-surface-muted rounded-full h-2">
           <div
-            className="bg-emerald-500 h-2 rounded-full"
+            className="bg-primary h-2 rounded-full"
             style={{
               width: `${usageLimits ? getUsagePercentage(optimizedResumes, usageLimits.resumeOptimizations.limit) : getUsagePercentage(optimizedResumes, isFree ? 3 : 'unlimited')}%`
             }}
           />
         </div>
         {optimizedResumes === 0 && (
-          <p className="text-[10px] text-foreground/50 dark:text-white/50 mt-1">
+          <p className="text-[10px] text-muted-foreground/70 mt-1">
             Optimize your first resume to get started
           </p>
         )}
@@ -123,7 +123,7 @@ export function AccountStatusCard({ plan, status, periodEnd, jobAnalyses, optimi
         <BillingButton subscriptionStatus={status} subscriptionPlan={plan} />
       </div>
       {isFree ? (
-        <p className="text-[11px] text-foreground/50 dark:text-white/50 mt-2">Upgrade to Pro for higher limits and priority AI.</p>
+        <p className="text-[11px] text-muted-foreground/70 mt-2">Upgrade to Pro for higher limits and priority AI.</p>
       ) : null}
     </div>
   )
