@@ -16,7 +16,6 @@ import type { SectionsListProps } from "./types"
 
 export function SectionsList({
   parsed,
-  metadata,
   expandedSections,
   onToggle,
   onEdit,
@@ -31,16 +30,13 @@ export function SectionsList({
         const count = getSectionCount(parsed, section.id)
         const Icon = section.icon
         const isExpanded = expandedSections.includes(section.id)
-        const provenance = metadata?.field_provenance?.[section.id]
-        const confidence = metadata?.extraction_confidence?.[section.id]
-
         return (
-          <div key={section.id} className="w-full overflow-hidden">
+          <div key={section.id} className="w-full min-w-0">
             <div
               role="button"
               tabIndex={0}
               className={cn(
-                "group flex items-center gap-2 px-3 py-2.5 rounded-lg transition-colors cursor-pointer w-full overflow-hidden",
+                "group flex items-center gap-2 px-3 py-2.5 rounded-lg transition-colors cursor-pointer w-full min-w-0",
                 hasContent ? "hover:bg-muted/50" : "opacity-60 hover:opacity-80",
                 isExpanded && "bg-muted/50"
               )}
@@ -61,20 +57,10 @@ export function SectionsList({
                 )}
               />
               <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm font-medium truncate flex-1 min-w-0 pr-2">{section.label}</span>
+              <span className="text-sm font-medium truncate flex-1 min-w-0">{section.label}</span>
               {count > 0 && (
                 <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
                   {count}
-                </span>
-              )}
-              {typeof confidence === "number" && (
-                <span className="text-[10px] text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
-                  {Math.round(confidence * 100)}%
-                </span>
-              )}
-              {provenance && (
-                <span className="text-[10px] text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded shrink-0 uppercase">
-                  {provenance.replace("_", " ")}
                 </span>
               )}
 
@@ -126,8 +112,8 @@ export function SectionsList({
 
             {/* Accordion Content */}
             {isExpanded && (
-              <div className="overflow-hidden w-full min-w-0">
-                <div className="w-full min-w-0 overflow-x-hidden">
+              <div className="w-full min-w-0">
+                <div className="w-full min-w-0">
                   <SectionContent
                     sectionId={section.id}
                     parsed={parsed}
