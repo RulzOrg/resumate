@@ -1,9 +1,18 @@
 "use client"
 
-import { useState, useMemo, useEffect, useRef } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
+import { AgentPanel } from "../AgentPanel"
 import {
   Copy,
   Download,
@@ -13,6 +22,11 @@ import {
   Check,
   Undo2,
   Redo2,
+  PanelLeftOpen,
+  PanelLeftClose,
+  PanelRightOpen,
+  PanelRightClose,
+  Sparkles,
 } from "lucide-react"
 import {
   parseResumeContent,
@@ -21,16 +35,23 @@ import {
 import { normalizeStructuredOutput } from "@/lib/optimized-resume-document"
 import {
   ContactEditDialog,
-  ExperienceEditDialog,
-  EducationEditDialog,
   SkillsEditDialog,
   SimpleListEditDialog,
   TextEditDialog,
   CertificationsEditDialog,
-  ProjectEditDialog,
-  VolunteeringEditDialog,
-  PublicationEditDialog,
 } from "../dialogs"
+import {
+  ExperienceEditDrawer,
+  EducationEditDrawer,
+  ProjectEditDrawer,
+  VolunteeringEditDrawer,
+  PublicationEditDrawer,
+} from "../drawers"
+import { applyEdits } from "@/lib/resume-diff"
+import type { ResumeEditOperation } from "@/lib/chat-edit-types"
+import type { ATSIssue } from "@/lib/ats-checker/types"
+import { getFixStrategy, buildFixCommand } from "@/lib/ats-checker/fix-strategies"
+import { useLiveATSScore } from "@/hooks/use-live-ats-score"
 import { cn } from "@/lib/utils"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { usePlatform } from "@/hooks/use-platform"
@@ -59,9 +80,15 @@ export function ResumeViewerV2({
   structuredOutput,
   revisionToken,
   matchScore,
+  optimizationSummary,
+  jobTitle,
+  companyName,
+  jobDescription,
 }: ResumeViewerV2Props) {
   const layout = "modern"
   const [expandedSections, setExpandedSections] = useState<string[]>([...DEFAULT_EXPANDED_SECTIONS])
+  const [sectionsPanelOpen, setSectionsPanelOpen] = useState(true)
+  const [agentPanelOpen, setAgentPanelOpen] = useState(!!optimizationSummary)
 
   // Normalize structured data
   const normalizedStructured = useMemo(
@@ -80,6 +107,44 @@ export function ResumeViewerV2({
   // Core editor state (undo/redo, change tracking)
   const editor = useResumeEditor(initialParsed)
   const { resumeData, setResumeData, hasChanges, setHasChanges, updateResumeData } = editor
+
+  const handleApplyEdits = (operations: ResumeEditOperation[]) => {
+    setResumeData((prev) => applyEdits(prev, operations))
+    setHasChanges(true)
+  }
+
+  // Live ATS scoring
+  const {
+    score: liveScore,
+  } = useLiveATSScore(resumeData, jobDescription ?? undefined)
+
+  // One-click fix system
+  const [pendingFixCommand, setPendingFixCommand] = useState<string | null>(null)
+
+  const handleFixIssue = useCallback(
+    (issue: ATSIssue) => {
+      const strategy = getFixStrategy(issue)
+      if (!strategy) { toast.info(issue.recommendation); return }
+      if (strategy.type === "guidance_only") { toast.info(issue.recommendation); return }
+      if (strategy.type === "user_input_required") {
+        toast.info(`This fix needs more info: ${issue.recommendation}`)
+        return
+      }
+      const command = buildFixCommand(strategy, issue, {
+        resumeData,
+        jobDescription: jobDescription ?? undefined,
+        jobTitle,
+      })
+      if (!command) { toast.info(issue.recommendation); return }
+      setPendingFixCommand(command)
+      setAgentPanelOpen(true)
+    },
+    [resumeData, jobDescription, jobTitle]
+  )
+
+  const handleCommandConsumed = useCallback(() => {
+    setPendingFixCommand(null)
+  }, [])
 
   // Sync resumeData when optimizedContent changes externally
   const lastSyncedContentRef = useRef<string | undefined>(optimizedContent)
@@ -339,37 +404,186 @@ export function ResumeViewerV2({
                   </span>
                 </TooltipContent>
               </Tooltip>
+
+              {/* Agent Panel Toggle */}
+              {!!optimizationSummary && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={agentPanelOpen ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setAgentPanelOpen((prev) => !prev)}
+                      aria-label={agentPanelOpen ? "Hide changes panel" : "Show changes panel"}
+                    >
+                      {agentPanelOpen ? (
+                        <PanelRightClose className="h-4 w-4 mr-2" aria-hidden="true" />
+                      ) : (
+                        <PanelRightOpen className="h-4 w-4 mr-2" aria-hidden="true" />
+                      )}
+                      {agentPanelOpen ? "Hide" : "Changes"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <span>{agentPanelOpen ? "Hide changes panel" : "Show what changed & why"}</span>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </TooltipProvider>
         </div>
 
         <CardContent className="p-0">
-          <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] lg:grid-cols-[380px_1fr] h-[calc(100vh-280px)] min-h-[800px]">
-            {/* Left Panel - Sections List */}
-            <div className="relative border-r-0 md:border-r border-border bg-muted/20 overflow-hidden flex flex-col">
-              <ScrollArea className="flex-1 h-full">
-                <div className="p-4">
-                  <SectionsList
-                    parsed={resumeData}
-                    metadata={normalizedStructured?.metadata}
-                    expandedSections={expandedSections}
-                    onToggle={toggleSection}
-                    onEdit={dialogs.openEdit}
-                    onAdd={dialogs.openAdd}
-                    onEditItem={dialogs.openEditItem}
-                    onDeleteItem={dialogs.handleDeleteItem}
+          {/* Mobile: Sheet-based agent panel */}
+          {!!optimizationSummary && (
+            <div className="md:hidden border-b border-border p-2">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="w-full">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    What Changed & Why
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[340px] p-0">
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>What Changed & Why</SheetTitle>
+                  </SheetHeader>
+                  <AgentPanel
+                    optimizationSummary={optimizationSummary as string}
+                    jobTitle={jobTitle}
+                    companyName={companyName}
+                    resumeData={resumeData}
+                    resumeId={optimizedId}
+                    onApplyEdits={handleApplyEdits}
+                    liveScore={liveScore}
+                    onFixIssue={handleFixIssue}
+                    initialCommand={pendingFixCommand}
+                    onCommandConsumed={handleCommandConsumed}
                   />
-                </div>
-              </ScrollArea>
+                </SheetContent>
+              </Sheet>
+            </div>
+          )}
+
+          {/* Desktop: Flexbox 3-column layout */}
+          <div className="hidden md:flex h-[calc(100vh-280px)] min-h-[600px]">
+            {/* Left Panel - Sections List */}
+            <div
+              className={cn(
+                "shrink-0 bg-muted/20 border-r border-border flex flex-col transition-all duration-300 ease-in-out",
+                sectionsPanelOpen ? "w-[32vw] min-w-[260px] max-w-[340px]" : "w-[36px]"
+              )}
+            >
+              <div className="flex items-center justify-end p-1 border-b border-border shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => setSectionsPanelOpen((prev) => !prev)}
+                  aria-label={sectionsPanelOpen ? "Collapse sections panel" : "Expand sections panel"}
+                >
+                  {sectionsPanelOpen ? (
+                    <PanelLeftClose className="h-4 w-4" />
+                  ) : (
+                    <PanelLeftOpen className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              {sectionsPanelOpen && (
+                <ScrollArea className="h-full">
+                  <div className="p-4">
+                    <SectionsList
+                      parsed={resumeData}
+                      metadata={normalizedStructured?.metadata}
+                      expandedSections={expandedSections}
+                      onToggle={toggleSection}
+                      onEdit={dialogs.openEdit}
+                      onAdd={dialogs.openAdd}
+                      onEditItem={dialogs.openEditItem}
+                      onDeleteItem={dialogs.handleDeleteItem}
+                    />
+                  </div>
+                </ScrollArea>
+              )}
             </div>
 
-            {/* Right Panel - Preview */}
-            <div className="relative bg-gray-100 dark:bg-gray-900 overflow-hidden min-w-0 flex flex-col">
-              <ScrollArea className="flex-1 h-full">
+            {/* Center Panel - Resume Preview */}
+            <div className="flex-1 min-w-0 bg-gray-100 dark:bg-gray-900 overflow-hidden">
+              <ScrollArea className="h-full">
                 <div className="p-4 md:p-6 lg:p-8">
                   <ResumePreview parsed={resumeData} rawContent={optimizedContent} />
                 </div>
               </ScrollArea>
+            </div>
+
+            {/* Right Panel - Agent Panel */}
+            {!!optimizationSummary && (
+              <div
+                className={cn(
+                  "shrink-0 border-l border-border flex flex-col transition-all duration-300 ease-in-out",
+                  agentPanelOpen ? "w-[360px]" : "w-[36px]"
+                )}
+              >
+                <div className="flex items-center justify-start p-1 border-b border-border shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setAgentPanelOpen((prev) => !prev)}
+                    aria-label={agentPanelOpen ? "Collapse agent panel" : "Expand agent panel"}
+                  >
+                    {agentPanelOpen ? (
+                      <PanelRightClose className="h-4 w-4" />
+                    ) : (
+                      <PanelRightOpen className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {agentPanelOpen && (
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <AgentPanel
+                      optimizationSummary={optimizationSummary as string}
+                      jobTitle={jobTitle}
+                      companyName={companyName}
+                      resumeData={resumeData}
+                      resumeId={optimizedId}
+                      onApplyEdits={handleApplyEdits}
+                      liveScore={liveScore}
+                      onFixIssue={handleFixIssue}
+                      initialCommand={pendingFixCommand}
+                      onCommandConsumed={handleCommandConsumed}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Mobile: Stacked layout */}
+          <div className="md:hidden">
+            <div className="h-[calc(100vh-280px)] min-h-[600px] flex flex-col">
+              <div className="relative border-b border-border bg-muted/20 overflow-hidden">
+                <ScrollArea className="h-[300px]">
+                  <div className="p-4">
+                    <SectionsList
+                      parsed={resumeData}
+                      metadata={normalizedStructured?.metadata}
+                      expandedSections={expandedSections}
+                      onToggle={toggleSection}
+                      onEdit={dialogs.openEdit}
+                      onAdd={dialogs.openAdd}
+                      onEditItem={dialogs.openEditItem}
+                      onDeleteItem={dialogs.handleDeleteItem}
+                    />
+                  </div>
+                </ScrollArea>
+              </div>
+              <div className="relative flex-1 bg-gray-100 dark:bg-gray-900 overflow-hidden min-w-0 flex flex-col">
+                <ScrollArea className="flex-1 h-full">
+                  <div className="p-4">
+                    <ResumePreview parsed={resumeData} rawContent={optimizedContent} />
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -405,7 +619,7 @@ export function ResumeViewerV2({
         placeholder="Write a compelling summary highlighting your key achievements and value proposition..."
       />
 
-      <ExperienceEditDialog
+      <ExperienceEditDrawer
         open={dialogs.activeDialog.type === "experience"}
         onOpenChange={(open) => { if (!open) dialogs.closeDialog() }}
         experience={
@@ -415,9 +629,11 @@ export function ResumeViewerV2({
         }
         onSave={(exp) => { dialogs.handleSaveExperience(exp); dialogs.closeDialog() }}
         isNew={dialogs.activeDialog.isNew}
+        jobTitle={jobTitle}
+        companyName={companyName}
       />
 
-      <EducationEditDialog
+      <EducationEditDrawer
         open={dialogs.activeDialog.type === "education"}
         onOpenChange={(open) => { if (!open) dialogs.closeDialog() }}
         education={
@@ -461,7 +677,7 @@ export function ResumeViewerV2({
         placeholder="Award or scholarship name..."
       />
 
-      <ProjectEditDialog
+      <ProjectEditDrawer
         open={dialogs.activeDialog.type === "projects"}
         onOpenChange={(open) => { if (!open) dialogs.closeDialog() }}
         project={
@@ -473,7 +689,7 @@ export function ResumeViewerV2({
         isNew={dialogs.activeDialog.isNew}
       />
 
-      <VolunteeringEditDialog
+      <VolunteeringEditDrawer
         open={dialogs.activeDialog.type === "volunteering"}
         onOpenChange={(open) => { if (!open) dialogs.closeDialog() }}
         volunteering={
@@ -485,7 +701,7 @@ export function ResumeViewerV2({
         isNew={dialogs.activeDialog.isNew}
       />
 
-      <PublicationEditDialog
+      <PublicationEditDrawer
         open={dialogs.activeDialog.type === "publications"}
         onOpenChange={(open) => { if (!open) dialogs.closeDialog() }}
         publication={

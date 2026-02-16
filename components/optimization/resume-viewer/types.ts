@@ -22,6 +22,10 @@ export interface ResumeViewerV2Props {
   structuredOutput?: unknown
   revisionToken?: string
   matchScore?: number | null
+  optimizationSummary?: unknown
+  jobTitle?: string
+  companyName?: string | null
+  jobDescription?: string | null
 }
 
 export interface DialogState {
