@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useAuth } from "@clerk/nextjs"
 import Link from "next/link"
 import { Sparkles, Zap, FileSearch, MessageCircle, Send, Loader2, Search } from "lucide-react"
 import {
@@ -28,6 +29,7 @@ const feedbackTypes: { value: FeedbackType; label: string }[] = [
 ]
 
 export function FloatingAgentButton() {
+  const { isSignedIn } = useAuth()
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
@@ -84,6 +86,8 @@ export function FloatingAgentButton() {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
+
+  if (!isSignedIn) return null
 
   return (
     <>

@@ -85,7 +85,6 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
-            <FloatingAgentButton />
             <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
@@ -113,7 +112,6 @@ export default function RootLayout({
                 </p>
               </div>
             </div>
-            <FloatingAgentButton />
             <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           </ThemeProvider>
         </body>
@@ -164,9 +162,9 @@ export default function RootLayout({
           >
             <KeyboardShortcutsProvider>
               {children}
+              <FloatingAgentButton />
             </KeyboardShortcutsProvider>
           </ClerkProvider>
-          <FloatingAgentButton />
           <Toaster position="bottom-right" toastOptions={{ duration: 4000 }} richColors closeButton />
           <Analytics />
           <Script
