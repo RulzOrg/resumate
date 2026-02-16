@@ -446,7 +446,6 @@ NOT:
       allChanges.push(`${company}: ${change}`)
     })
   })
-
   // Compute algorithmic match scores (deterministic, no LLM)
   const scoreBefore = computeMatchScore(parsed, jobDescription, jobTitle)
   const scoreAfter = computeMatchScore(optimizedResume, jobDescription, jobTitle)
