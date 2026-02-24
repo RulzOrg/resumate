@@ -7,6 +7,8 @@
 -- ENABLE RLS ON ALL TABLES
 -- ============================================================================
 
+ALTER TABLE public.ats_checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.clerk_webhook_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.job_analysis ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.job_applications ENABLE ROW LEVEL SECURITY;
@@ -18,6 +20,7 @@ ALTER TABLE public.resume_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.resumes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.usage_tracking ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.optimization_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users_sync ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
@@ -25,6 +28,22 @@ ALTER TABLE public.users_sync ENABLE ROW LEVEL SECURITY;
 -- These policies deny all access to anon and authenticated roles.
 -- The service role (used by your Next.js API) bypasses RLS entirely.
 -- ============================================================================
+
+-- ats_checks - ATS check data, accessed via API
+CREATE POLICY "Deny all access to ats_checks"
+  ON public.ats_checks
+  FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
+
+-- chat_messages - User chat data, accessed via API
+CREATE POLICY "Deny all access to chat_messages"
+  ON public.chat_messages
+  FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
 
 -- clerk_webhook_events - Only accessed by webhook handlers (service role)
 CREATE POLICY "Deny all access to clerk_webhook_events"
@@ -65,6 +84,26 @@ CREATE POLICY "Deny all access to lead_magnet_submissions"
   TO anon, authenticated
   USING (false)
   WITH CHECK (false);
+
+-- optimization_sessions - Session data, accessed via API
+CREATE POLICY "Deny all access to optimization_sessions"
+  ON public.optimization_sessions
+  FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
+
+-- Fix mutable search_path on optimization_sessions trigger function
+CREATE OR REPLACE FUNCTION public.update_optimization_sessions_updated_at()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
 
 -- optimized_resumes - User data, accessed via API
 CREATE POLICY "Deny all access to optimized_resumes"

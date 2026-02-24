@@ -9,13 +9,12 @@ import {
   Settings,
   HelpCircle,
   LogOut,
-  User,
   Sun,
   Monitor,
   Moon,
 } from "lucide-react"
 import { useTheme } from "next-themes"
-import { useClerk } from "@clerk/nextjs"
+import { SignOutButton } from "@clerk/nextjs"
 import { Logo } from "@/components/ui/logo"
 import { UserAvatar } from "./user-avatar"
 import { ThemeSwitcher } from "@/components/ui/theme-switcher"
@@ -34,13 +33,6 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -62,7 +54,6 @@ const THEME_ICONS = { light: Sun, system: Monitor, dark: Moon } as const
 
 export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname()
-  const { signOut } = useClerk()
   const { state } = useSidebar()
   const { theme, setTheme } = useTheme()
   const isCollapsed = state === "collapsed"
@@ -151,44 +142,23 @@ export function AppSidebar({ user }: AppSidebarProps) {
             )}
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                >
-                  <UserAvatar user={user} size={isCollapsed ? "sm" : "default"} />
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
-                  </div>
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-56"
-                side="top"
-                align="start"
-                sideOffset={4}
-              >
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/profile">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut({ redirectUrl: "/" })}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/dashboard/profile">
+                <UserAvatar user={user} size={isCollapsed ? "sm" : "default"} />
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-medium">{user.name}</span>
+                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SignOutButton redirectUrl="/">
+              <SidebarMenuButton tooltip="Sign out">
+                <LogOut />
+                <span>Sign out</span>
+              </SidebarMenuButton>
+            </SignOutButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

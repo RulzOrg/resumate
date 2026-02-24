@@ -84,12 +84,15 @@ COMMENT ON COLUMN ats_checks.expires_at IS 'Results expire 30 days after analysi
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_ats_checks_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Trigger for automatic updated_at
 DROP TRIGGER IF EXISTS trigger_ats_checks_updated_at ON ats_checks;

@@ -31,6 +31,7 @@ test-results/.last-run.json
 
 # marketing content (local only)
 docs/marketing/
+content/social/
 
 # ai dev tasks (local only)
 ai-dev-tasks/
@@ -43,3 +44,6 @@ ai-dev-tasks/
 
 # Local documentation
 docs/
+
+*storybook.log
+storybook-static

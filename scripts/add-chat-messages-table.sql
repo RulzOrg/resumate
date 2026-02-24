@@ -37,12 +37,15 @@ COMMENT ON COLUMN chat_messages.edit_status IS 'What the user did with proposed 
 
 -- Auto-update trigger for updated_at
 CREATE OR REPLACE FUNCTION update_chat_messages_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS trigger_chat_messages_updated_at ON chat_messages;
 CREATE TRIGGER trigger_chat_messages_updated_at

@@ -12,6 +12,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { usePathname } from "next/navigation"
+import { UserButton } from "@clerk/nextjs"
 import type { User as UserType } from "@/lib/db"
 import { CommandPaletteProvider } from "@/components/command-palette/command-palette-provider"
 import { CommandPalette } from "@/components/command-palette/command-palette"
@@ -71,6 +72,17 @@ export function AppLayout({ user, children }: AppLayoutProps) {
                 )}
               </BreadcrumbList>
             </Breadcrumb>
+
+            <div className="flex-1" />
+
+            <UserButton
+              afterSignOutUrl="/"
+              appearance={{
+                elements: {
+                  avatarBox: "h-7 w-7",
+                },
+              }}
+            />
           </header>
           <div className="flex-1">
             {children}

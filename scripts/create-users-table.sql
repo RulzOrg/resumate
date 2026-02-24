@@ -32,12 +32,15 @@ CREATE INDEX IF NOT EXISTS idx_users_sync_deleted_at ON users_sync(deleted_at);
 
 -- Add trigger for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public, pg_temp
+AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- Ensure idempotent trigger creation
 DROP TRIGGER IF EXISTS update_users_sync_updated_at ON users_sync;
