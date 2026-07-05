@@ -106,7 +106,7 @@ function CheckoutSuccessContent() {
                   Create your account to activate your Pro subscription and start optimizing your resumes.
                 </p>
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-                  <p className="text-xs text-amber-400">
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
                     💡 Use the same email address you used for payment to automatically link your subscription.
                   </p>
                 </div>

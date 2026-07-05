@@ -233,7 +233,7 @@ export function ReviewContentDialog({
             {validationError && (
               <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
                 <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-400 font-medium leading-relaxed">{validationError}</p>
+                <p className="text-sm text-red-700 dark:text-red-400 font-medium leading-relaxed">{validationError}</p>
               </div>
             )}
 

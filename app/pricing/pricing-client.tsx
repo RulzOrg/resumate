@@ -129,7 +129,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 flex items-center gap-2 flex-wrap">
                     Standard Templates
-                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
                   </div>
                   <div className="text-center"><Check className="h-5 w-5 text-primary mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-primary mx-auto" /></div>
@@ -137,7 +137,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 flex items-center gap-2 flex-wrap">
                     AI Cover Letter Generator
-                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
                   </div>
                   <div className="text-center"><Minus className="h-5 w-5 text-muted-foreground/60 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-primary mx-auto" /></div>
@@ -145,7 +145,7 @@ export function PricingClient({ currentPlan, pricingTiers, annualPricingTiers }:
                 <div className="grid grid-cols-3 gap-6 py-5 items-center">
                   <div className="text-sm text-foreground/80 flex items-center gap-2 flex-wrap">
                     Premium Templates
-                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5">Coming Soon</span>
                   </div>
                   <div className="text-center"><Minus className="h-5 w-5 text-muted-foreground/60 mx-auto" /></div>
                   <div className="text-center"><Check className="h-5 w-5 text-primary mx-auto" /></div>

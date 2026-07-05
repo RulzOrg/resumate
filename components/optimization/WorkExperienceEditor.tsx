@@ -111,7 +111,7 @@ export function WorkExperienceEditor({
                   variant="ghost"
                   size="icon"
                   onClick={() => onRemoveBullet(index, bulletIndex)}
-                  className="h-9 w-9 text-muted-foreground hover:text-red-400 hover:bg-red-400/10 transition-colors shrink-0"
+                  className="h-9 w-9 text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-600/10 dark:hover:bg-red-400/10 transition-colors shrink-0"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>

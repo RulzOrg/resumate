@@ -160,7 +160,7 @@ export function PricingCard({
                 <span className="text-sm text-foreground/90 flex items-center gap-2 flex-wrap">
                   {featureText}
                   {isComingSoon && (
-                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">
+                    <span className="text-[10px] font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">
                       Coming Soon
                     </span>
                   )}

@@ -32,8 +32,8 @@ export function OptimizedResumeList({ optimizedResumes }: OptimizedResumeListPro
   const matchClasses = (score?: number | null) => {
     const s = typeof score === 'number' ? score : null
     if (s === null) return { badge: 'bg-surface-muted text-muted-foreground', icon: 'text-muted-foreground' }
-    if (s === 0) return { badge: 'bg-red-500/10 text-red-400', icon: 'text-red-400' }
-    if (s < 60) return { badge: 'bg-amber-500/10 text-amber-400', icon: 'text-amber-400' }
+    if (s === 0) return { badge: 'bg-red-500/10 text-red-600 dark:text-red-400', icon: 'text-red-600 dark:text-red-400' }
+    if (s < 60) return { badge: 'bg-amber-500/10 text-amber-600 dark:text-amber-400', icon: 'text-amber-600 dark:text-amber-400' }
     return { badge: 'bg-primary/10 text-primary', icon: 'text-primary' }
   }
   const handleDownload = async (resumeId: string, format = "docx", layout = "modern") => {

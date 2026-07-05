@@ -220,7 +220,7 @@ export default function HomePage() {
                     className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle rounded-xl border border-border/80transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
-                      <Target className="h-5 w-5 text-blue-400" />
+                      <Target className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div className="flex-1">
                       <div className="text-foreground font-sans">Features</div>
@@ -234,7 +234,7 @@ export default function HomePage() {
                     className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle rounded-xl border border-border/80transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
-                      <Star className="h-5 w-5 text-purple-400" />
+                      <Star className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div className="flex-1">
                       <div className="text-foreground font-sans">Pricing</div>
@@ -248,7 +248,7 @@ export default function HomePage() {
                     className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle rounded-xl border border-border/80transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-amber-500/10 group-hover:bg-amber-500/20 transition-colors">
-                      <Check className="h-5 w-5 text-amber-400" />
+                      <Check className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                     </div>
                     <div className="flex-1">
                       <div className="text-foreground font-sans">FAQ</div>
@@ -375,12 +375,12 @@ export default function HomePage() {
           OPTIMIZED FOR MAJOR APPLICANT TRACKING SYSTEMS
         </p>
         <div className="grid grid-cols-2 items-center justify-items-center gap-y-8 gap-x-4 sm:grid-cols-3 md:grid-cols-6">
-          <div className="h-7 w-auto text-muted-foreground/60 flex items-center justify-center text-base font-semibold font-sans">Workday</div>
-          <div className="h-6 w-auto text-muted-foreground/60 flex items-center justify-center text-base font-semibold font-sans">Greenhouse</div>
-          <div className="h-7 w-auto text-muted-foreground/60 flex items-center justify-center text-base font-semibold font-sans">Lever</div>
-          <div className="h-6 w-auto text-muted-foreground/60 flex items-center justify-center text-base font-semibold font-sans">Taleo</div>
-          <div className="h-6 w-auto text-muted-foreground/60 flex items-center justify-center text-base font-semibold font-sans">iCIMS</div>
-          <div className="h-7 w-auto text-muted-foreground/60 flex items-center justify-center text-base font-semibold font-sans">BambooHR</div>
+          <div className="h-7 w-auto text-muted-foreground flex items-center justify-center text-base font-semibold font-sans">Workday</div>
+          <div className="h-6 w-auto text-muted-foreground flex items-center justify-center text-base font-semibold font-sans">Greenhouse</div>
+          <div className="h-7 w-auto text-muted-foreground flex items-center justify-center text-base font-semibold font-sans">Lever</div>
+          <div className="h-6 w-auto text-muted-foreground flex items-center justify-center text-base font-semibold font-sans">Taleo</div>
+          <div className="h-6 w-auto text-muted-foreground flex items-center justify-center text-base font-semibold font-sans">iCIMS</div>
+          <div className="h-7 w-auto text-muted-foreground flex items-center justify-center text-base font-semibold font-sans">BambooHR</div>
         </div>
       </section>
 
@@ -693,8 +693,8 @@ export default function HomePage() {
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans">Unlimited resume optimizations</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans">Advanced job analysis</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans">ATS compatibility check</span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans flex items-center gap-2">AI cover letter generator <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">Coming Soon</span></span></li>
-                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans flex items-center gap-2">Premium templates <span className="text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">Coming Soon</span></span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans flex items-center gap-2">AI cover letter generator <span className="text-[10px] font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">Coming Soon</span></span></li>
+                <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans flex items-center gap-2">Premium templates <span className="text-[10px] font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded px-1.5 py-0.5 whitespace-nowrap">Coming Soon</span></span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans">Resume version management</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans">Keyword optimization</span></li>
                 <li className="flex items-center gap-3"><Check className="h-5 w-5 text-primary/90" /><span className="text-foreground/90 font-sans">Priority email support</span></li>

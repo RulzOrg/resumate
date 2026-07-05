@@ -371,7 +371,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                   </div>
 
                   {signInError && (
-                    <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                    <Alert className="border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200">
                       <AlertDescription>{signInError}</AlertDescription>
                     </Alert>
                   )}
@@ -445,7 +445,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                     </div>
 
                     {signUpError && (
-                      <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                      <Alert className="border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200">
                         <AlertDescription>{signUpError}</AlertDescription>
                       </Alert>
                     )}
@@ -477,7 +477,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
                     </div>
 
                     {verificationError && (
-                      <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                      <Alert className="border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200">
                         <AlertDescription>{verificationError}</AlertDescription>
                       </Alert>
                     )}
@@ -512,7 +512,7 @@ export default function CustomAuthPage({ defaultTab = "signup" }: Props) {
               </div>
 
               {oauthError && (
-                <Alert variant="destructive" className="mb-4 bg-red-500/10 border-red-500/30 text-red-200">
+                <Alert variant="destructive" className="mb-4 bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-200">
                   <AlertDescription>{oauthError}</AlertDescription>
                 </Alert>
               )}

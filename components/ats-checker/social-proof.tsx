@@ -36,7 +36,7 @@ export function SocialProof() {
           {[...Array(5)].map((_, i) => (
             <Star
               key={i}
-              className="h-4 w-4 fill-amber-400 text-amber-400"
+              className="h-4 w-4 fill-amber-500 dark:fill-amber-400 text-amber-500 dark:text-amber-400"
             />
           ))}
         </div>

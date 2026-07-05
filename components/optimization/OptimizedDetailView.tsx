@@ -27,8 +27,8 @@ interface OptimizedDetailViewProps {
 function classifyMatch(score?: number | null) {
   const s = typeof score === 'number' ? score : null
   if (s === null) return { label: 'N/A', className: 'text-muted-foreground' }
-  if (s === 0) return { label: `${s}%`, className: 'text-red-400' }
-  if (s < 60) return { label: `${s}%`, className: 'text-amber-400' }
+  if (s === 0) return { label: `${s}%`, className: 'text-red-600 dark:text-red-400' }
+  if (s < 60) return { label: `${s}%`, className: 'text-amber-600 dark:text-amber-400' }
   return { label: `${s}%`, className: 'text-primary' }
 }
 

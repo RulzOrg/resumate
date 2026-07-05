@@ -104,7 +104,7 @@ export function JobDetailsCard({
                         {benefits.length > 0 && (
                             <div>
                                 <div className="flex items-center gap-2 text-xs font-medium text-foreground/80 mb-2">
-                                    <Trophy className="h-3 w-3 text-amber-400" />
+                                    <Trophy className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                                     Key Benefits
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">

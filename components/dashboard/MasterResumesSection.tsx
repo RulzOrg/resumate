@@ -191,7 +191,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         </button>
                       </div>
                       {updateError?.id === resume.id && (
-                        <p className="text-xs text-red-400">{updateError.message}</p>
+                        <p className="text-xs text-red-700 dark:text-red-400">{updateError.message}</p>
                       )}
                     </div>
                   ) : (
@@ -212,7 +212,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                               : "Ready"}
                       </p>
                       {resume.processing_error && (
-                        <p className="text-xs text-red-400">{resume.processing_error}</p>
+                        <p className="text-xs text-red-700 dark:text-red-400">{resume.processing_error}</p>
                       )}
                     </>
                   )}
@@ -242,7 +242,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                         setDeleteError(null)
                       }}
                       disabled={isDeleting === resume.id}
-                      className="text-muted-foreground transition-colors hover:text-red-400 disabled:opacity-50"
+                      className="text-muted-foreground transition-colors hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50"
                       aria-label={`Delete ${resume.title}`}
                     >
                       <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} aria-hidden="true" />
@@ -273,7 +273,7 @@ export function MasterResumesSection({ resumes }: MasterResumesSectionProps) {
                     </button>
                   </div>
                   {deleteError?.id === resume.id && (
-                    <p className="mt-2 text-xs text-red-200">{deleteError.message}</p>
+                    <p className="mt-2 text-xs text-red-700 dark:text-red-200">{deleteError.message}</p>
                   )}
                 </div>
               )}

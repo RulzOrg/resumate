@@ -187,7 +187,7 @@ export function SiteHeader() {
                 className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle rounded-xl border border-border transition-all duration-200"
               >
                 <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-purple-500/10 group-hover:bg-purple-500/20 transition-colors">
-                  <CreditCard className="h-5 w-5 text-purple-400" />
+                  <CreditCard className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div className="flex-1">
                   <div className="text-foreground">Pricing</div>
@@ -202,7 +202,7 @@ export function SiteHeader() {
                   className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle rounded-xl border border-border transition-all duration-200"
                 >
                   <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
-                    <LayoutDashboard className="h-5 w-5 text-blue-400" />
+                    <LayoutDashboard className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
                     <div className="text-foreground">Dashboard</div>

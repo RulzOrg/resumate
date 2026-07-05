@@ -163,7 +163,7 @@ export function PublicHeader() {
                     className="group flex items-center gap-4 px-4 py-4 text-lg font-medium hover:bg-surface-subtle rounded-xl border border-border/80 transition-all duration-200"
                   >
                     <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-blue-500/10 group-hover:bg-blue-500/20 transition-colors">
-                      <item.icon className="h-5 w-5 text-blue-400" />
+                      <item.icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div className="flex-1">
                       <div className="text-foreground font-sans">{item.label}</div>

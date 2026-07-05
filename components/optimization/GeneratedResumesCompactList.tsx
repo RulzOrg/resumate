@@ -26,8 +26,8 @@ export function GeneratedResumesCompactList({ resumes, limit }: GeneratedResumes
   const matchClass = (score?: number | null) => {
     const s = finiteScore(score)
     if (s === null) return 'text-muted-foreground'
-    if (s === 0) return 'text-red-400'
-    if (s < 60) return 'text-amber-400'
+    if (s === 0) return 'text-red-600 dark:text-red-400'
+    if (s < 60) return 'text-amber-600 dark:text-amber-400'
     return 'text-primary'
   }
   const handleDownload = async (id: string, format = "docx", layout = "modern") => {

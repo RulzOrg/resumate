@@ -140,11 +140,11 @@ export function ProfileClient({
       case "active":
         return "bg-primary/20 text-primary border-primary/30"
       case "trialing":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
+        return "bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30"
       case "past_due":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+        return "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30"
       case "canceled":
-        return "bg-red-500/20 text-red-400 border-red-500/30"
+        return "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30"
       default:
         return "bg-surface-muted text-muted-foreground border-border"
     }
@@ -322,22 +322,22 @@ export function ProfileClient({
           {/* Quick Stats - Inline */}
           <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground/60" />
+              <FileText className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Resumes</span>
               <span className="text-sm font-semibold text-foreground">{masterResumes.length}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-muted-foreground/60" />
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Optimized</span>
               <span className="text-sm font-semibold text-foreground">{totalOptimizations}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-muted-foreground/60" />
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Jobs</span>
               <span className="text-sm font-semibold text-foreground">{totalJobAnalyses}</span>
             </div>
             <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground/60" />
+              <Building2 className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Companies</span>
               <span className="text-sm font-semibold text-foreground">{uniqueCompanies.length}</span>
             </div>
@@ -407,7 +407,7 @@ export function ProfileClient({
                             {isOptimizedResume ? (
                               <Sparkles className="h-4 w-4 text-primary" />
                             ) : (
-                              <Briefcase className="h-4 w-4 text-blue-400" />
+                              <Briefcase className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -498,7 +498,7 @@ export function ProfileClient({
                   <UploadMasterResumeDialog currentResumeCount={masterResumes.length}>
                     <div className="flex items-center gap-3 p-4 rounded-lg bg-surface-muted border border-border hover:bg-surface-strong transition-colors cursor-pointer">
                       <div className="p-2 rounded-lg bg-blue-500/20">
-                        <Upload className="h-5 w-5 text-blue-400" />
+                        <Upload className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-foreground">Upload Resume</p>
@@ -512,7 +512,7 @@ export function ProfileClient({
                 <Link href="/dashboard/settings" className="block">
                   <div className="flex items-center gap-3 p-4 rounded-lg bg-surface-muted border border-border hover:bg-surface-strong transition-colors cursor-pointer">
                     <div className="p-2 rounded-lg bg-purple-500/20">
-                      <Settings className="h-5 w-5 text-purple-400" />
+                      <Settings className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-foreground">Account Settings</p>
@@ -637,7 +637,7 @@ export function ProfileClient({
                                 </Button>
                               </div>
                               {updateError?.id === resume.id && (
-                                <p className="text-xs text-red-400">{updateError.message}</p>
+                                <p className="text-xs text-red-700 dark:text-red-400">{updateError.message}</p>
                               )}
                             </div>
                           ) : (
@@ -665,9 +665,9 @@ export function ProfileClient({
                                     resume.processing_status === 'completed'
                                       ? 'bg-primary/20 text-primary border-primary/30'
                                       : resume.processing_status === 'processing'
-                                      ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+                                      ? 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30'
                                       : resume.processing_status === 'failed'
-                                      ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                                      ? 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30'
                                       : 'bg-surface-muted text-muted-foreground border-border'
                                   }`}
                                 >
@@ -703,7 +703,7 @@ export function ProfileClient({
                                 setDeleteError(null)
                               }}
                               disabled={isDeleting === resume.id}
-                              className="h-8 w-8 text-muted-foreground hover:text-red-400"
+                              className="h-8 w-8 text-muted-foreground hover:text-red-600 dark:hover:text-red-400"
                             >
                               <Trash2 className={`h-4 w-4 ${isDeleting === resume.id ? 'animate-pulse' : ''}`} />
                             </Button>
@@ -713,7 +713,7 @@ export function ProfileClient({
 
                       {confirmingDeleteId === resume.id && (
                         <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-                          <p className="text-sm text-red-200">Delete "{resume.title}"? This action cannot be undone.</p>
+                          <p className="text-sm text-red-700 dark:text-red-200">Delete "{resume.title}"? This action cannot be undone.</p>
                           <div className="mt-3 flex gap-2">
                             <Button
                               size="sm"
@@ -736,7 +736,7 @@ export function ProfileClient({
                             </Button>
                           </div>
                           {deleteError?.id === resume.id && (
-                            <p className="mt-2 text-xs text-red-300">{deleteError.message}</p>
+                            <p className="mt-2 text-xs text-red-600 dark:text-red-300">{deleteError.message}</p>
                           )}
                         </div>
                       )}
@@ -786,7 +786,7 @@ export function ProfileClient({
                       className="flex items-center gap-4 p-4 rounded-xl bg-surface-muted border border-border"
                     >
                       <div className="p-2 rounded-lg bg-purple-500/10">
-                        <Sparkles className="h-5 w-5 text-purple-400" />
+                        <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">
@@ -851,7 +851,7 @@ export function ProfileClient({
                       className="flex items-start gap-4 p-4 rounded-xl bg-surface-muted border border-border"
                     >
                       <div className="p-2 rounded-lg bg-blue-500/10 mt-0.5">
-                        <Briefcase className="h-5 w-5 text-blue-400" />
+                        <Briefcase className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4">

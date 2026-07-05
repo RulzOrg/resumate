@@ -324,7 +324,7 @@ export function UploadMasterResumeDialog({ children, currentResumeCount = 0 }: U
                         }
                       }}
                       disabled={isUploading}
-                      className="text-muted-foreground hover:text-red-400 transition-colors disabled:opacity-50"
+                      className="text-muted-foreground hover:text-red-600 dark:hover:text-red-400 transition-colors disabled:opacity-50"
                       title="Remove file"
                     >
                       <X className="h-4 w-4" />

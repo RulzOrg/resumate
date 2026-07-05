@@ -177,7 +177,7 @@ export default function ForgotPasswordPage() {
               </div>
 
               {error && (
-                <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                <Alert className="border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
@@ -253,7 +253,7 @@ export default function ForgotPasswordPage() {
               </div>
 
               {error && (
-                <Alert className="border-red-500/30 bg-red-500/10 text-red-200">
+                <Alert className="border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-200">
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}

@@ -71,11 +71,11 @@ export function SettingsClient({ user, subscription, usageLimits }: SettingsClie
       case "active":
         return "bg-primary/20 text-primary border-primary/30"
       case "trialing":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
+        return "bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30"
       case "past_due":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+        return "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30"
       case "canceled":
-        return "bg-red-500/20 text-red-400 border-red-500/30"
+        return "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30"
       default:
         return "bg-accent text-muted-foreground border-border"
     }
