@@ -70,6 +70,15 @@ export const Group: Story = {
       <Avatar>
         <AvatarFallback>C</AvatarFallback>
       </Avatar>
+      <Avatar>
+        <AvatarFallback>D</AvatarFallback>
+      </Avatar>
+      <Avatar>
+        <AvatarFallback>E</AvatarFallback>
+      </Avatar>
+      <Avatar>
+        <AvatarFallback>F</AvatarFallback>
+      </Avatar>
       <AvatarGroupCount>+3</AvatarGroupCount>
     </AvatarGroup>
   ),
